@@ -1,0 +1,31 @@
+{
+  "watch": [
+    "server.js",
+    "src",
+    "config",
+    ".env",
+    "../.env"
+  ],
+  "ext": "js,cjs,json,env",
+  "ignore": [
+    "node_modules/**",
+    "logs/**",
+    "uploads/**",
+    "temp/**",
+    "coverage/**",
+    "build/**",
+    "../node_modules/**",
+    "../dist/**",
+    "../src/**",
+    "../build/**",
+    "../coverage/**",
+    "../.firebase/**",
+    "../.chrome-debug/**",
+    "../.npm-cache/**",
+    "../.npm-cache-root/**",
+    "../.npm-cache-tailwind/**",
+    "../.npm-cache-vite/**",
+    "../**/*.log"
+  ],
+  "delay": "300"
+}

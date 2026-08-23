@@ -1,0 +1,957 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Users\resar\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.15.0
+2 info using node@v24.14.1
+3 silly config load:file:C:\Users\resar\AppData\Roaming\npm\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\resar\OneDrive\Desktop\Capstone_Project\server\.npmrc
+5 silly config load:file:C:\Users\resar\.npmrc
+6 silly config load:file:C:\Users\resar\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm audit fix
+8 verbose argv "audit" "fix" "--cache" "..\\.npm-cache"
+9 verbose logfile logs-max:10 dir:C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache\_logs\2026-07-06T09_23_33_642Z-
+10 verbose logfile C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache\_logs\2026-07-06T09_23_33_642Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly audit bulk request {
+13 silly audit   '@fastify/busboy': [ '3.2.0' ],
+13 silly audit   '@firebase/app-check-interop-types': [ '0.3.4' ],
+13 silly audit   '@firebase/app-types': [ '0.9.5' ],
+13 silly audit   '@firebase/auth-interop-types': [ '0.2.5' ],
+13 silly audit   '@firebase/component': [ '0.7.3' ],
+13 silly audit   '@firebase/database': [ '1.1.3' ],
+13 silly audit   '@firebase/database-compat': [ '2.1.4' ],
+13 silly audit   '@firebase/database-types': [ '1.0.20' ],
+13 silly audit   '@firebase/logger': [ '0.5.1' ],
+13 silly audit   '@firebase/util': [ '1.15.1' ],
+13 silly audit   '@google-cloud/firestore': [ '7.11.6' ],
+13 silly audit   '@google-cloud/paginator': [ '5.0.2' ],
+13 silly audit   '@google-cloud/projectify': [ '4.0.0' ],
+13 silly audit   '@google-cloud/promisify': [ '4.0.0' ],
+13 silly audit   '@google-cloud/storage': [ '7.19.0' ],
+13 silly audit   'gcp-metadata': [ '6.1.1', '8.1.2' ],
+13 silly audit   'google-auth-library': [ '9.15.1', '10.6.2' ],
+13 silly audit   'google-logging-utils': [ '0.0.2', '1.1.3' ],
+13 silly audit   '@grpc/grpc-js': [ '1.14.3' ],
+13 silly audit   '@grpc/proto-loader': [ '0.8.1', '0.7.15' ],
+13 silly audit   '@js-sdsl/ordered-map': [ '4.4.2' ],
+13 silly audit   '@nodable/entities': [ '2.1.0' ],
+13 silly audit   '@opentelemetry/api': [ '1.9.1' ],
+13 silly audit   '@protobufjs/aspromise': [ '1.1.2' ],
+13 silly audit   '@protobufjs/base64': [ '1.1.2' ],
+13 silly audit   '@protobufjs/codegen': [ '2.0.5' ],
+13 silly audit   '@protobufjs/eventemitter': [ '1.1.0' ],
+13 silly audit   '@protobufjs/fetch': [ '1.1.0' ],
+13 silly audit   '@protobufjs/float': [ '1.0.2' ],
+13 silly audit   '@protobufjs/inquire': [ '1.1.1' ],
+13 silly audit   '@protobufjs/path': [ '1.1.2' ],
+13 silly audit   '@protobufjs/pool': [ '1.1.0' ],
+13 silly audit   '@protobufjs/utf8': [ '1.1.1' ],
+13 silly audit   '@tootallnate/once': [ '2.0.1' ],
+13 silly audit   '@types/caseless': [ '0.12.5' ],
+13 silly audit   '@types/jsonwebtoken': [ '9.0.10' ],
+13 silly audit   '@types/long': [ '4.0.2' ],
+13 silly audit   '@types/ms': [ '2.1.0' ],
+13 silly audit   '@types/node': [ '25.8.0' ],
+13 silly audit   '@types/request': [ '2.48.13' ],
+13 silly audit   '@types/tough-cookie': [ '4.0.5' ],
+13 silly audit   'abort-controller': [ '3.0.0' ],
+13 silly audit   accepts: [ '2.0.0' ],
+13 silly audit   'agent-base': [ '7.1.4', '6.0.2' ],
+13 silly audit   'ansi-regex': [ '5.0.1' ],
+13 silly audit   'ansi-styles': [ '4.3.0' ],
+13 silly audit   anymatch: [ '3.1.3' ],
+13 silly audit   arrify: [ '2.0.1' ],
+13 silly audit   'async-retry': [ '1.3.3' ],
+13 silly audit   asynckit: [ '0.4.0' ],
+13 silly audit   'balanced-match': [ '4.0.4' ],
+13 silly audit   'base64-js': [ '1.5.1' ],
+13 silly audit   'bignumber.js': [ '9.3.1' ],
+13 silly audit   'binary-extensions': [ '2.3.0' ],
+13 silly audit   'body-parser': [ '2.2.2' ],
+13 silly audit   'brace-expansion': [ '5.0.6' ],
+13 silly audit   braces: [ '3.0.3' ],
+13 silly audit   'buffer-equal-constant-time': [ '1.0.1' ],
+13 silly audit   bytes: [ '3.1.2' ],
+13 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+13 silly audit   'call-bound': [ '1.0.4' ],
+13 silly audit   chokidar: [ '3.6.0' ],
+13 silly audit   cliui: [ '8.0.1' ],
+13 silly audit   'color-convert': [ '2.0.1' ],
+13 silly audit   'color-name': [ '1.1.4' ],
+13 silly audit   'combined-stream': [ '1.0.8' ],
+13 silly audit   'content-disposition': [ '1.1.0' ],
+13 silly audit   'content-type': [ '1.0.5', '2.0.0' ],
+13 silly audit   cookie: [ '0.7.2' ],
+13 silly audit   'cookie-signature': [ '1.2.2' ],
+13 silly audit   cors: [ '2.8.6' ],
+13 silly audit   'data-uri-to-buffer': [ '4.0.1' ],
+13 silly audit   debug: [ '4.4.3' ],
+13 silly audit   'delayed-stream': [ '1.0.0' ],
+13 silly audit   depd: [ '2.0.0' ],
+13 silly audit   dotenv: [ '17.4.2' ],
+13 silly audit   'dunder-proto': [ '1.0.1' ],
+13 silly audit   duplexify: [ '4.1.3' ],
+13 silly audit   'ecdsa-sig-formatter': [ '1.0.11' ],
+13 silly audit   'ee-first': [ '1.1.1' ],
+13 silly audit   'emoji-regex': [ '8.0.0' ],
+13 silly audit   encodeurl: [ '2.0.0' ],
+13 silly audit   'end-of-stream': [ '1.4.5' ],
+13 silly audit   'es-define-property': [ '1.0.1' ],
+13 silly audit   'es-errors': [ '1.3.0' ],
+13 silly audit   'es-object-atoms': [ '1.1.1' ],
+13 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+13 silly audit   escalade: [ '3.2.0' ],
+13 silly audit   'escape-html': [ '1.0.3' ],
+13 silly audit   etag: [ '1.8.1' ],
+13 silly audit   'event-target-shim': [ '5.0.1' ],
+13 silly audit   express: [ '5.2.1' ],
+13 silly audit   'express-rate-limit': [ '8.5.2' ],
+13 silly audit   extend: [ '3.0.2' ],
+13 silly audit   'farmhash-modern': [ '1.1.0' ],
+13 silly audit   'fast-deep-equal': [ '3.1.3' ],
+13 silly audit   'fast-xml-builder': [ '1.2.0' ],
+13 silly audit   'fast-xml-parser': [ '5.8.0' ],
+13 silly audit   'faye-websocket': [ '0.11.4' ],
+13 silly audit   'fetch-blob': [ '3.2.0' ],
+13 silly audit   'fill-range': [ '7.1.1' ],
+13 silly audit   finalhandler: [ '2.1.1' ],
+13 silly audit   'firebase-admin': [ '13.10.0' ],
+13 silly audit   'form-data': [ '2.5.5' ],
+13 silly audit   'mime-db': [ '1.52.0', '1.54.0' ],
+13 silly audit   'mime-types': [ '2.1.35', '3.0.2' ],
+13 silly audit   'formdata-polyfill': [ '4.0.10' ],
+13 silly audit   forwarded: [ '0.2.0' ],
+13 silly audit   fresh: [ '2.0.0' ],
+13 silly audit   fsevents: [ '2.3.3' ],
+13 silly audit   'function-bind': [ '1.1.2' ],
+13 silly audit   'functional-red-black-tree': [ '1.0.1' ],
+13 silly audit   gaxios: [ '6.7.1', '7.1.4' ],
+13 silly audit   uuid: [ '9.0.1', '8.3.2' ],
+13 silly audit   'node-fetch': [ '3.3.2', '2.7.0' ],
+13 silly audit   'get-caller-file': [ '2.0.5' ],
+13 silly audit   'get-intrinsic': [ '1.3.0' ],
+13 silly audit   'get-proto': [ '1.0.1' ],
+13 silly audit   'glob-parent': [ '5.1.2' ],
+13 silly audit   'google-gax': [ '4.6.1' ],
+13 silly audit   gopd: [ '1.2.0' ],
+13 silly audit   gtoken: [ '7.1.0' ],
+13 silly audit   'has-flag': [ '3.0.0' ],
+13 silly audit   'has-symbols': [ '1.1.0' ],
+13 silly audit   'has-tostringtag': [ '1.0.2' ],
+13 silly audit   hasown: [ '2.0.3' ],
+13 silly audit   helmet: [ '8.1.0' ],
+13 silly audit   'html-entities': [ '2.6.0' ],
+13 silly audit   'http-errors': [ '2.0.1' ],
+13 silly audit   'http-parser-js': [ '0.5.10' ],
+13 silly audit   'http-proxy-agent': [ '5.0.0' ],
+13 silly audit   'https-proxy-agent': [ '7.0.6', '5.0.1' ],
+13 silly audit   'iconv-lite': [ '0.7.2' ],
+13 silly audit   'ignore-by-default': [ '1.0.1' ],
+13 silly audit   inherits: [ '2.0.4' ],
+13 silly audit   'ip-address': [ '10.2.0' ],
+13 silly audit   'ipaddr.js': [ '1.9.1' ],
+13 silly audit   'is-binary-path': [ '2.1.0' ],
+13 silly audit   'is-extglob': [ '2.1.1' ],
+13 silly audit   'is-fullwidth-code-point': [ '3.0.0' ],
+13 silly audit   'is-glob': [ '4.0.3' ],
+13 silly audit   'is-number': [ '7.0.0' ],
+13 silly audit   'is-promise': [ '4.0.0' ],
+13 silly audit   'is-stream': [ '2.0.1' ],
+13 silly audit   jose: [ '4.15.9' ],
+13 silly audit   'json-bigint': [ '1.0.0' ],
+13 silly audit   jsonwebtoken: [ '9.0.3' ],
+13 silly audit   jwa: [ '2.0.1' ],
+13 silly audit   'jwks-rsa': [ '3.2.2' ],
+13 silly audit   jws: [ '4.0.1' ],
+13 silly audit   limiter: [ '1.1.5' ],
+13 silly audit   'lodash.camelcase': [ '4.3.0' ],
+13 silly audit   'lodash.clonedeep': [ '4.5.0' ],
+13 silly audit   'lodash.includes': [ '4.3.0' ],
+13 silly audit   'lodash.isboolean': [ '3.0.3' ],
+13 silly audit   'lodash.isinteger': [ '4.0.4' ],
+13 silly audit   'lodash.isnumber': [ '3.0.3' ],
+13 silly audit   'lodash.isplainobject': [ '4.0.6' ],
+13 silly audit   'lodash.isstring': [ '4.0.1' ],
+13 silly audit   'lodash.once': [ '4.1.1' ],
+13 silly audit   long: [ '5.3.2' ],
+13 silly audit   'lru-cache': [ '6.0.0' ],
+13 silly audit   'lru-memoizer': [ '2.3.0' ],
+13 silly audit   'math-intrinsics': [ '1.1.0' ],
+13 silly audit   'media-typer': [ '1.1.0' ],
+13 silly audit   'merge-descriptors': [ '2.0.0' ],
+13 silly audit   mime: [ '3.0.0' ],
+13 silly audit   minimatch: [ '10.2.5' ],
+13 silly audit   ms: [ '2.1.3' ],
+13 silly audit   negotiator: [ '1.0.0' ],
+13 silly audit   'node-domexception': [ '1.0.0' ],
+13 silly audit   nodemailer: [ '8.0.7' ],
+13 silly audit   nodemon: [ '3.1.14' ],
+13 silly audit   'normalize-path': [ '3.0.0' ],
+13 silly audit   'object-assign': [ '4.1.1' ],
+13 silly audit   'object-hash': [ '3.0.0' ],
+13 silly audit   'object-inspect': [ '1.13.4' ],
+13 silly audit   'on-finished': [ '2.4.1' ],
+13 silly audit   once: [ '1.4.0' ],
+13 silly audit   'p-limit': [ '3.1.0' ],
+13 silly audit   parseurl: [ '1.3.3' ],
+13 silly audit   'path-expression-matcher': [ '1.5.0' ],
+13 silly audit   'path-to-regexp': [ '8.4.2' ],
+13 silly audit   picomatch: [ '2.3.2' ],
+13 silly audit   'proto3-json-serializer': [ '2.0.2' ],
+13 silly audit   protobufjs: [ '7.5.8' ],
+13 silly audit   'proxy-addr': [ '2.0.7' ],
+13 silly audit   'pstree.remy': [ '1.1.8' ],
+13 silly audit   qs: [ '6.15.2' ],
+13 silly audit   'range-parser': [ '1.2.1' ],
+13 silly audit   'raw-body': [ '3.0.2' ],
+13 silly audit   'readable-stream': [ '3.6.2' ],
+13 silly audit   readdirp: [ '3.6.0' ],
+13 silly audit   'require-directory': [ '2.1.1' ],
+13 silly audit   retry: [ '0.13.1' ],
+13 silly audit   'retry-request': [ '7.0.2' ],
+13 silly audit   router: [ '2.2.0' ],
+13 silly audit   'safe-buffer': [ '5.2.1' ],
+13 silly audit   'safer-buffer': [ '2.1.2' ],
+13 silly audit   semver: [ '7.8.0' ],
+13 silly audit   send: [ '1.2.1' ],
+13 silly audit   'serve-static': [ '2.2.1' ],
+13 silly audit   setprototypeof: [ '1.2.0' ],
+13 silly audit   'side-channel': [ '1.1.0' ],
+13 silly audit   'side-channel-list': [ '1.0.1' ],
+13 silly audit   'side-channel-map': [ '1.0.1' ],
+13 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+13 silly audit   'simple-update-notifier': [ '2.0.0' ],
+13 silly audit   statuses: [ '2.0.2' ],
+13 silly audit   'stream-events': [ '1.0.5' ],
+13 silly audit   'stream-shift': [ '1.0.3' ],
+13 silly audit   string_decoder: [ '1.3.0' ],
+13 silly audit   'string-width': [ '4.2.3' ],
+13 silly audit   'strip-ansi': [ '6.0.1' ],
+13 silly audit   strnum: [ '2.3.0' ],
+13 silly audit   stubs: [ '3.0.0' ],
+13 silly audit   'supports-color': [ '5.5.0' ],
+13 silly audit   'teeny-request': [ '9.0.0' ],
+13 silly audit   'to-regex-range': [ '5.0.1' ],
+13 silly audit   toidentifier: [ '1.0.1' ],
+13 silly audit   touch: [ '3.1.1' ],
+13 silly audit   tr46: [ '0.0.3' ],
+13 silly audit   tslib: [ '2.8.1' ],
+13 silly audit   'type-is': [ '2.1.0' ],
+13 silly audit   undefsafe: [ '2.0.5' ],
+13 silly audit   'undici-types': [ '7.24.6' ],
+13 silly audit   unpipe: [ '1.0.0' ],
+13 silly audit   'util-deprecate': [ '1.0.2' ],
+13 silly audit   vary: [ '1.1.2' ],
+13 silly audit   'web-streams-polyfill': [ '3.3.3' ],
+13 silly audit   'webidl-conversions': [ '3.0.1' ],
+13 silly audit   'websocket-driver': [ '0.7.4' ],
+13 silly audit   'websocket-extensions': [ '0.1.4' ],
+13 silly audit   'whatwg-url': [ '5.0.0' ],
+13 silly audit   'wrap-ansi': [ '7.0.0' ],
+13 silly audit   wrappy: [ '1.0.2' ],
+13 silly audit   'xml-naming': [ '0.1.0' ],
+13 silly audit   y18n: [ '5.0.8' ],
+13 silly audit   yallist: [ '4.0.0' ],
+13 silly audit   yargs: [ '17.7.2' ],
+13 silly audit   'yargs-parser': [ '21.1.1' ],
+13 silly audit   'yocto-queue': [ '0.1.0' ]
+13 silly audit }
+14 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 378ms
+15 silly audit report {
+15 silly audit report   '@grpc/grpc-js': [
+15 silly audit report     {
+15 silly audit report       id: 1120582,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-5375-pq7m-f5r2',
+15 silly audit report       title: '@grpc/grpc-js: A malformed request can cause a server crash',
+15 silly audit report       severity: 'high',
+15 silly audit report       vulnerable_versions: '>=1.14.0 <1.14.4',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     },
+15 silly audit report     {
+15 silly audit report       id: 1120588,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-99f4-grh7-6pcq',
+15 silly audit report       title: '@grpc/grpc-js: An incoming malformed compressed message can cause a client or server crash',
+15 silly audit report       severity: 'high',
+15 silly audit report       vulnerable_versions: '>=1.14.0 <1.14.4',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     }
+15 silly audit report   ],
+15 silly audit report   'form-data': [
+15 silly audit report     {
+15 silly audit report       id: 1120745,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-hmw2-7cc7-3qxx',
+15 silly audit report       title: 'form-data: CRLF injection in form-data via unescaped multipart field names and filenames',
+15 silly audit report       severity: 'high',
+15 silly audit report       vulnerable_versions: '<2.5.6',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     }
+15 silly audit report   ],
+15 silly audit report   uuid: [
+15 silly audit report     {
+15 silly audit report       id: 1119441,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-w5hq-g745-h8pq',
+15 silly audit report       title: 'uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided',
+15 silly audit report       severity: 'moderate',
+15 silly audit report       vulnerable_versions: '<11.1.1',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     }
+15 silly audit report   ],
+15 silly audit report   nodemailer: [
+15 silly audit report     {
+15 silly audit report       id: 1120795,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-268h-hp4c-crq3',
+15 silly audit report       title: 'Nodemailer: CRLF injection in Nodemailer List-* header comments allows arbitrary message header injection',
+15 silly audit report       severity: 'moderate',
+15 silly audit report       vulnerable_versions: '<=8.0.8',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     },
+15 silly audit report     {
+15 silly audit report       id: 1120796,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-wqvq-jvpq-h66f',
+15 silly audit report       title: 'Nodemailer jsonTransport bypasses disableFileAccess and disableUrlAccess during message normalization',
+15 silly audit report       severity: 'moderate',
+15 silly audit report       vulnerable_versions: '<=8.0.8',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     },
+15 silly audit report     {
+15 silly audit report       id: 1120797,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-r7g4-qg5f-qqm2',
+15 silly audit report       title: 'Nodemailer: Improper TLS Certificate Validation in OAuth2 Token Fetch Enables Credential Interception',
+15 silly audit report       severity: 'moderate',
+15 silly audit report       vulnerable_versions: '<=8.0.7',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     },
+15 silly audit report     {
+15 silly audit report       id: 1121191,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-p6gq-j5cr-w38f',
+15 silly audit report       title: 'Nodemailer: Message-level raw option bypasses disableFileAccess/disableUrlAccess, enabling arbitrary file read and full-response SSRF in the delivered message',
+15 silly audit report       severity: 'high',
+15 silly audit report       vulnerable_versions: '<=9.0.0',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     }
+15 silly audit report   ],
+15 silly audit report   protobufjs: [
+15 silly audit report     {
+15 silly audit report       id: 1120742,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-f38q-mgvj-vph7',
+15 silly audit report       title: 'protobufjs : Schema-derived names can shadow runtime-significant properties',
+15 silly audit report       severity: 'moderate',
+15 silly audit report       vulnerable_versions: '<=7.6.2',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     },
+15 silly audit report     {
+15 silly audit report       id: 1120799,
+15 silly audit report       url: 'https://github.com/advisories/GHSA-wcpc-wj8m-hjx6',
+15 silly audit report       title: 'protobufjs: Denial of service through unbounded Any expansion during JSON conversion',
+15 silly audit report       severity: 'high',
+15 silly audit report       vulnerable_versions: '<=7.6.0',
+15 silly audit report       cwe: [Array],
+15 silly audit report       cvss: [Object]
+15 silly audit report     }
+15 silly audit report   ]
+15 silly audit report }
+16 silly packumentCache corgi:https://registry.npmjs.org/@grpc%2fgrpc-js cache-miss
+17 silly packumentCache corgi:https://registry.npmjs.org/form-data cache-miss
+18 silly packumentCache corgi:https://registry.npmjs.org/uuid cache-miss
+19 silly packumentCache corgi:https://registry.npmjs.org/nodemailer cache-miss
+20 silly packumentCache corgi:https://registry.npmjs.org/protobufjs cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/npm 675ms
+22 http fetch GET 200 https://registry.npmjs.org/@grpc%2fgrpc-js 985ms (cache miss)
+23 silly packumentCache corgi:https://registry.npmjs.org/@grpc%2fgrpc-js set size:undefined disposed:false
+24 http fetch GET 200 https://registry.npmjs.org/form-data 2922ms (cache miss)
+25 silly packumentCache corgi:https://registry.npmjs.org/form-data set size:undefined disposed:false
+26 http fetch GET 200 https://registry.npmjs.org/uuid 2943ms (cache miss)
+27 silly packumentCache corgi:https://registry.npmjs.org/uuid set size:undefined disposed:false
+28 http fetch GET 200 https://registry.npmjs.org/protobufjs 2954ms (cache miss)
+29 silly packumentCache corgi:https://registry.npmjs.org/protobufjs set size:undefined disposed:false
+30 http fetch GET 200 https://registry.npmjs.org/nodemailer 2993ms (cache miss)
+31 silly packumentCache corgi:https://registry.npmjs.org/nodemailer set size:undefined disposed:false
+32 silly packumentCache corgi:https://registry.npmjs.org/google-gax cache-miss
+33 http fetch GET 200 https://registry.npmjs.org/google-gax 119ms (cache miss)
+34 silly packumentCache corgi:https://registry.npmjs.org/google-gax set size:undefined disposed:false
+35 silly packumentCache corgi:https://registry.npmjs.org/@types%2frequest cache-miss
+36 http fetch GET 200 https://registry.npmjs.org/@types%2frequest 69ms (cache miss)
+37 silly packumentCache corgi:https://registry.npmjs.org/@types%2frequest set size:undefined disposed:false
+38 silly packumentCache corgi:https://registry.npmjs.org/gaxios cache-miss
+39 silly packumentCache corgi:https://registry.npmjs.org/teeny-request cache-miss
+40 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2fstorage cache-miss
+41 http fetch GET 200 https://registry.npmjs.org/teeny-request 101ms (cache miss)
+42 silly packumentCache corgi:https://registry.npmjs.org/teeny-request set size:undefined disposed:false
+43 http fetch GET 200 https://registry.npmjs.org/gaxios 108ms (cache miss)
+44 silly packumentCache corgi:https://registry.npmjs.org/gaxios set size:undefined disposed:false
+45 http fetch GET 200 https://registry.npmjs.org/@google-cloud%2fstorage 139ms (cache miss)
+46 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2fstorage set size:undefined disposed:false
+47 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2ffirestore cache-miss
+48 silly packumentCache corgi:https://registry.npmjs.org/@grpc%2fproto-loader cache-miss
+49 silly packumentCache corgi:https://registry.npmjs.org/proto3-json-serializer cache-miss
+50 http fetch GET 200 https://registry.npmjs.org/proto3-json-serializer 102ms (cache miss)
+51 silly packumentCache corgi:https://registry.npmjs.org/proto3-json-serializer set size:undefined disposed:false
+52 http fetch GET 200 https://registry.npmjs.org/@grpc%2fproto-loader 137ms (cache miss)
+53 silly packumentCache corgi:https://registry.npmjs.org/@grpc%2fproto-loader set size:undefined disposed:false
+54 http fetch GET 200 https://registry.npmjs.org/@google-cloud%2ffirestore 154ms (cache miss)
+55 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2ffirestore set size:undefined disposed:false
+56 silly packumentCache corgi:https://registry.npmjs.org/retry-request cache-miss
+57 http fetch GET 200 https://registry.npmjs.org/retry-request 170ms (cache miss)
+58 silly packumentCache corgi:https://registry.npmjs.org/retry-request set size:undefined disposed:false
+59 silly packumentCache corgi:https://registry.npmjs.org/gcp-metadata cache-miss
+60 silly packumentCache corgi:https://registry.npmjs.org/google-auth-library cache-miss
+61 silly packumentCache corgi:https://registry.npmjs.org/gtoken cache-miss
+62 http fetch GET 200 https://registry.npmjs.org/gtoken 102ms (cache miss)
+63 silly packumentCache corgi:https://registry.npmjs.org/gtoken set size:undefined disposed:false
+64 http fetch GET 200 https://registry.npmjs.org/gcp-metadata 120ms (cache miss)
+65 silly packumentCache corgi:https://registry.npmjs.org/gcp-metadata set size:undefined disposed:false
+66 http fetch GET 200 https://registry.npmjs.org/google-auth-library 129ms (cache miss)
+67 silly packumentCache corgi:https://registry.npmjs.org/google-auth-library set size:undefined disposed:false
+68 silly packumentCache corgi:https://registry.npmjs.org/firebase-admin cache-miss
+69 http fetch GET 200 https://registry.npmjs.org/firebase-admin 94ms (cache miss)
+70 silly packumentCache corgi:https://registry.npmjs.org/firebase-admin set size:undefined disposed:false
+71 silly idealTree buildDeps
+72 silly fetch manifest firebase-admin@^13.10.0
+73 silly packumentCache full:https://registry.npmjs.org/firebase-admin cache-miss
+74 http fetch GET 200 https://registry.npmjs.org/firebase-admin 375ms (cache updated)
+75 silly packumentCache full:https://registry.npmjs.org/firebase-admin set size:undefined disposed:false
+76 silly fetch manifest nodemailer@^8.0.7
+77 silly packumentCache full:https://registry.npmjs.org/nodemailer cache-miss
+78 http fetch GET 200 https://registry.npmjs.org/nodemailer 141ms (cache miss)
+79 silly packumentCache full:https://registry.npmjs.org/nodemailer set size:undefined disposed:false
+80 silly placeDep ROOT firebase-admin@13.10.0 KEEP for: server@1.0.0 want: ^13.10.0
+81 silly placeDep ROOT nodemailer@8.0.11 REPLACE for: server@1.0.0 want: ^8.0.7
+82 silly fetch manifest google-gax@^4.3.3
+83 silly packumentCache full:https://registry.npmjs.org/google-gax cache-miss
+84 http fetch GET 200 https://registry.npmjs.org/google-gax 172ms (cache miss)
+85 silly packumentCache full:https://registry.npmjs.org/google-gax set size:undefined disposed:false
+86 silly fetch manifest protobufjs@^7.2.6
+87 silly packumentCache full:https://registry.npmjs.org/protobufjs cache-miss
+88 http fetch GET 200 https://registry.npmjs.org/protobufjs 131ms (cache miss)
+89 silly packumentCache full:https://registry.npmjs.org/protobufjs set size:undefined disposed:false
+90 silly placeDep ROOT google-gax@4.6.1 KEEP for: @google-cloud/firestore@7.11.6 want: ^4.3.3
+91 silly placeDep ROOT protobufjs@7.6.5 REPLACE for: @google-cloud/firestore@7.11.6 want: ^7.2.6
+92 silly fetch manifest @protobufjs/aspromise@^1.1.2
+93 silly packumentCache full:https://registry.npmjs.org/@protobufjs%2faspromise cache-miss
+94 silly fetch manifest @protobufjs/eventemitter@^1.1.1
+95 silly packumentCache full:https://registry.npmjs.org/@protobufjs%2feventemitter cache-miss
+96 silly fetch manifest @protobufjs/fetch@^1.1.1
+97 silly packumentCache full:https://registry.npmjs.org/@protobufjs%2ffetch cache-miss
+98 http fetch GET 200 https://registry.npmjs.org/@protobufjs%2faspromise 106ms (cache miss)
+99 silly packumentCache full:https://registry.npmjs.org/@protobufjs%2faspromise set size:undefined disposed:false
+100 http fetch GET 200 https://registry.npmjs.org/@protobufjs%2ffetch 113ms (cache miss)
+101 silly packumentCache full:https://registry.npmjs.org/@protobufjs%2ffetch set size:undefined disposed:false
+102 http fetch GET 200 https://registry.npmjs.org/@protobufjs%2feventemitter 125ms (cache miss)
+103 silly packumentCache full:https://registry.npmjs.org/@protobufjs%2feventemitter set size:undefined disposed:false
+104 silly fetch manifest gaxios@^6.0.2
+105 silly packumentCache full:https://registry.npmjs.org/gaxios cache-miss
+106 http fetch GET 200 https://registry.npmjs.org/gaxios 114ms (cache miss)
+107 silly packumentCache full:https://registry.npmjs.org/gaxios set size:undefined disposed:false
+108 silly fetch manifest retry-request@^7.0.0
+109 silly packumentCache full:https://registry.npmjs.org/retry-request cache-miss
+110 http fetch GET 200 https://registry.npmjs.org/retry-request 84ms (cache miss)
+111 silly packumentCache full:https://registry.npmjs.org/retry-request set size:undefined disposed:false
+112 silly fetch manifest teeny-request@^9.0.0
+113 silly packumentCache full:https://registry.npmjs.org/teeny-request cache-miss
+114 http fetch GET 200 https://registry.npmjs.org/teeny-request 111ms (cache miss)
+115 silly packumentCache full:https://registry.npmjs.org/teeny-request set size:undefined disposed:false
+116 silly fetch manifest uuid@^8.0.0
+117 silly packumentCache full:https://registry.npmjs.org/uuid cache-miss
+118 http fetch GET 200 https://registry.npmjs.org/uuid 85ms (cache miss)
+119 silly packumentCache full:https://registry.npmjs.org/uuid set size:undefined disposed:false
+120 silly placeDep ROOT gaxios@6.3.0 KEEP for: @google-cloud/storage@7.19.0 want: ^6.0.2
+121 silly placeDep ROOT retry-request@7.0.2 KEEP for: @google-cloud/storage@7.19.0 want: ^7.0.0
+122 silly placeDep ROOT teeny-request@9.0.0 KEEP for: @google-cloud/storage@7.19.0 want: ^9.0.0
+123 silly placeDep ROOT uuid@8.3.2 KEEP for: @google-cloud/storage@7.19.0 want: ^8.0.0
+124 silly fetch manifest form-data@^2.5.5
+125 silly packumentCache full:https://registry.npmjs.org/form-data cache-miss
+126 http fetch GET 200 https://registry.npmjs.org/form-data 82ms (cache miss)
+127 silly packumentCache full:https://registry.npmjs.org/form-data set size:undefined disposed:false
+128 silly placeDep ROOT form-data@2.5.6 REPLACE for: @types/request@2.48.13 want: ^2.5.5
+129 silly fetch manifest hasown@^2.0.4
+130 silly packumentCache full:https://registry.npmjs.org/hasown cache-miss
+131 http fetch GET 200 https://registry.npmjs.org/hasown 73ms (cache miss)
+132 silly packumentCache full:https://registry.npmjs.org/hasown set size:undefined disposed:false
+133 silly fetch manifest @google-cloud/firestore@^7.11.0
+134 silly packumentCache full:https://registry.npmjs.org/@google-cloud%2ffirestore cache-miss
+135 http fetch GET 200 https://registry.npmjs.org/@google-cloud%2ffirestore 124ms (cache miss)
+136 silly packumentCache full:https://registry.npmjs.org/@google-cloud%2ffirestore set size:undefined disposed:false
+137 silly fetch manifest @google-cloud/storage@^7.19.0
+138 silly packumentCache full:https://registry.npmjs.org/@google-cloud%2fstorage cache-miss
+139 http fetch GET 200 https://registry.npmjs.org/@google-cloud%2fstorage 130ms (cache miss)
+140 silly packumentCache full:https://registry.npmjs.org/@google-cloud%2fstorage set size:undefined disposed:false
+141 silly placeDep ROOT @google-cloud/firestore@7.11.6 KEEP for: firebase-admin@13.10.0 want: ^7.11.0
+142 silly placeDep ROOT @google-cloud/storage@7.21.0 REPLACE for: firebase-admin@13.10.0 want: ^7.19.0
+143 silly placeDep ROOT gaxios@6.3.0 KEEP for: @google-cloud/storage@7.21.0 want: ^6.0.2
+144 silly placeDep ROOT retry-request@7.0.2 KEEP for: @google-cloud/storage@7.21.0 want: ^7.0.0
+145 silly placeDep ROOT teeny-request@9.0.0 KEEP for: @google-cloud/storage@7.21.0 want: ^9.0.0
+146 silly placeDep ROOT hasown@2.0.4 REPLACE for: form-data@2.5.6 want: ^2.0.4
+147 silly fetch manifest uuid@^9.0.1
+148 silly packumentCache full:https://registry.npmjs.org/uuid cache-miss
+149 http cache https://registry.npmjs.org/uuid 23ms (cache hit)
+150 silly packumentCache full:https://registry.npmjs.org/uuid set size:256419 disposed:false
+151 silly placeDep ROOT uuid@9.0.1 OK for: gaxios@6.7.1 want: ^9.0.1
+152 silly fetch manifest @grpc/grpc-js@^1.10.9
+153 silly packumentCache full:https://registry.npmjs.org/@grpc%2fgrpc-js cache-miss
+154 http fetch GET 200 https://registry.npmjs.org/@grpc%2fgrpc-js 122ms (cache miss)
+155 silly packumentCache full:https://registry.npmjs.org/@grpc%2fgrpc-js set size:undefined disposed:false
+156 silly placeDep ROOT @grpc/grpc-js@1.14.4 REPLACE for: google-gax@4.6.1 want: ^1.10.9
+157 silly placeDep ROOT retry-request@7.0.2 KEEP for: google-gax@4.6.1 want: ^7.0.0
+158 silly placeDep ROOT uuid@9.0.1 KEEP for: google-gax@4.6.1 want: ^9.0.1
+159 silly fetch manifest gaxios@^6.0.0
+160 silly packumentCache full:https://registry.npmjs.org/gaxios cache-miss
+161 http cache https://registry.npmjs.org/gaxios 24ms (cache hit)
+162 silly packumentCache full:https://registry.npmjs.org/gaxios set size:348857 disposed:false
+163 silly placeDep ROOT gaxios@6.3.0 KEEP for: gtoken@7.1.0 want: ^6.0.0
+164 silly placeDep ROOT @protobufjs/aspromise@1.1.2 OK for: protobufjs@7.6.5 want: ^1.1.2
+165 silly placeDep ROOT @protobufjs/eventemitter@1.1.1 OK for: protobufjs@7.6.5 want: ^1.1.1
+166 silly placeDep ROOT @protobufjs/fetch@1.1.1 OK for: protobufjs@7.6.5 want: ^1.1.1
+167 silly placeDep ROOT teeny-request@9.0.0 KEEP for: retry-request@7.0.2 want: ^9.0.0
+168 silly fetch manifest uuid@^9.0.0
+169 silly packumentCache full:https://registry.npmjs.org/uuid cache-hit
+170 silly placeDep ROOT uuid@9.0.1 KEEP for: teeny-request@9.0.0 want: ^9.0.0
+171 silly fetch manifest gaxios@^6.1.1
+172 silly packumentCache full:https://registry.npmjs.org/gaxios cache-hit
+173 silly placeDep ROOT gaxios@6.3.0 KEEP for: gcp-metadata@6.1.1 want: ^6.1.1
+174 silly placeDep ROOT gaxios@6.3.0 KEEP for: google-auth-library@9.15.1 want: ^6.1.1
+175 silly placeDep ROOT gaxios@6.3.0 KEEP for: gcp-metadata@6.1.1 want: ^6.1.1
+176 silly placeDep ROOT gaxios@6.3.0 KEEP for: google-auth-library@9.15.1 want: ^6.1.1
+177 silly reify mark retired [
+177 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@google-cloud\\storage'
+177 silly reify ]
+178 silly reify mark retired [
+178 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@grpc\\grpc-js'
+178 silly reify ]
+179 silly reify mark retired [
+179 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\eventemitter'
+179 silly reify ]
+180 silly reify mark retired [
+180 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\fetch'
+180 silly reify ]
+181 silly reify mark retired [
+181 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\inquire'
+181 silly reify ]
+182 silly reify mark retired [
+182 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\form-data'
+182 silly reify ]
+183 silly reify mark retired [
+183 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\uuid',
+183 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\uuid',
+183 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\uuid.cmd',
+183 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\uuid.ps1'
+183 silly reify ]
+184 silly reify mark retired [
+184 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\uuid',
+184 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\uuid',
+184 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\uuid.cmd',
+184 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\uuid.ps1'
+184 silly reify ]
+185 silly reify mark retired [
+185 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\hasown'
+185 silly reify ]
+186 silly reify mark retired [
+186 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\nodemailer'
+186 silly reify ]
+187 silly reify mark retired [
+187 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\protobufjs'
+187 silly reify ]
+188 silly reify mark retired [
+188 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\uuid',
+188 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\uuid',
+188 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\uuid.cmd',
+188 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\uuid.ps1'
+188 silly reify ]
+189 silly reify mark retired [
+189 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\uuid',
+189 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\uuid',
+189 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\uuid.cmd',
+189 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\uuid.ps1'
+189 silly reify ]
+190 silly reify moves {
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@google-cloud\\storage': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@google-cloud\\.storage-KYD93XKB',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@grpc\\grpc-js': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@grpc\\.grpc-js-w18LelGB',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\eventemitter': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\.eventemitter-74R7lrAb',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\fetch': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\.fetch-PfDfHq9G',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\inquire': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\@protobufjs\\.inquire-eG3STJiq',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\form-data': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.form-data-RhxxF8aC',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.uuid-mUZbjCi8',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\.uuid-UcD2eWky',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\uuid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\.uuid.cmd-ka37WzLe',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\uuid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\gaxios\\node_modules\\.bin\\.uuid.ps1-0weI6NAw',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.uuid-yDLy8sF9',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\.uuid-QX28RlZc',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\uuid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\.uuid.cmd-kcY0Luyk',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\uuid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\google-gax\\node_modules\\.bin\\.uuid.ps1-h4uIcTGq',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\hasown': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.hasown-ztPqJ1aj',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\nodemailer': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.nodemailer-XQvU7auU',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\protobufjs': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.protobufjs-qnN70oX3',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.uuid-2ubVL6x6',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\.uuid-bWJybD3h',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\uuid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\.uuid.cmd-aCao9Sj3',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\uuid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\teeny-request\\node_modules\\.bin\\.uuid.ps1-wyZFxyAX',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.uuid-k3FETJHB',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\.uuid-JaENlb0C',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\uuid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\.uuid.cmd-IVLJ9c4b',
+190 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\uuid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\server\\node_modules\\.bin\\.uuid.ps1-Ons5S7ta'
+190 silly reify }
+191 silly audit bulk request {
+191 silly audit   '@fastify/busboy': [ '3.2.0' ],
+191 silly audit   '@firebase/app-check-interop-types': [ '0.3.4' ],
+191 silly audit   '@firebase/app-types': [ '0.9.5' ],
+191 silly audit   '@firebase/auth-interop-types': [ '0.2.5' ],
+191 silly audit   '@firebase/component': [ '0.7.3' ],
+191 silly audit   '@firebase/database': [ '1.1.3' ],
+191 silly audit   '@firebase/database-compat': [ '2.1.4' ],
+191 silly audit   '@firebase/database-types': [ '1.0.20' ],
+191 silly audit   '@firebase/logger': [ '0.5.1' ],
+191 silly audit   '@firebase/util': [ '1.15.1' ],
+191 silly audit   '@google-cloud/firestore': [ '7.11.6' ],
+191 silly audit   '@google-cloud/paginator': [ '5.0.2' ],
+191 silly audit   '@google-cloud/projectify': [ '4.0.0' ],
+191 silly audit   '@google-cloud/promisify': [ '4.0.0' ],
+191 silly audit   'gcp-metadata': [ '8.1.2', '6.1.1' ],
+191 silly audit   'google-auth-library': [ '10.6.2', '9.15.1' ],
+191 silly audit   'google-logging-utils': [ '0.0.2', '1.1.3' ],
+191 silly audit   '@grpc/proto-loader': [ '0.7.15', '0.8.1' ],
+191 silly audit   '@js-sdsl/ordered-map': [ '4.4.2' ],
+191 silly audit   '@nodable/entities': [ '2.1.0' ],
+191 silly audit   '@opentelemetry/api': [ '1.9.1' ],
+191 silly audit   '@protobufjs/base64': [ '1.1.2' ],
+191 silly audit   '@protobufjs/codegen': [ '2.0.5' ],
+191 silly audit   '@protobufjs/float': [ '1.0.2' ],
+191 silly audit   '@protobufjs/path': [ '1.1.2' ],
+191 silly audit   '@protobufjs/pool': [ '1.1.0' ],
+191 silly audit   '@protobufjs/utf8': [ '1.1.1' ],
+191 silly audit   '@tootallnate/once': [ '2.0.1' ],
+191 silly audit   '@types/caseless': [ '0.12.5' ],
+191 silly audit   '@types/jsonwebtoken': [ '9.0.10' ],
+191 silly audit   '@types/long': [ '4.0.2' ],
+191 silly audit   '@types/ms': [ '2.1.0' ],
+191 silly audit   '@types/node': [ '25.8.0' ],
+191 silly audit   '@types/request': [ '2.48.13' ],
+191 silly audit   '@types/tough-cookie': [ '4.0.5' ],
+191 silly audit   'abort-controller': [ '3.0.0' ],
+191 silly audit   accepts: [ '2.0.0' ],
+191 silly audit   'agent-base': [ '7.1.4', '6.0.2' ],
+191 silly audit   'ansi-regex': [ '5.0.1' ],
+191 silly audit   'ansi-styles': [ '4.3.0' ],
+191 silly audit   anymatch: [ '3.1.3' ],
+191 silly audit   arrify: [ '2.0.1' ],
+191 silly audit   'async-retry': [ '1.3.3' ],
+191 silly audit   asynckit: [ '0.4.0' ],
+191 silly audit   'balanced-match': [ '4.0.4' ],
+191 silly audit   'base64-js': [ '1.5.1' ],
+191 silly audit   'bignumber.js': [ '9.3.1' ],
+191 silly audit   'binary-extensions': [ '2.3.0' ],
+191 silly audit   'body-parser': [ '2.2.2' ],
+191 silly audit   'brace-expansion': [ '5.0.6' ],
+191 silly audit   braces: [ '3.0.3' ],
+191 silly audit   'buffer-equal-constant-time': [ '1.0.1' ],
+191 silly audit   bytes: [ '3.1.2' ],
+191 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+191 silly audit   'call-bound': [ '1.0.4' ],
+191 silly audit   chokidar: [ '3.6.0' ],
+191 silly audit   cliui: [ '8.0.1' ],
+191 silly audit   'color-convert': [ '2.0.1' ],
+191 silly audit   'color-name': [ '1.1.4' ],
+191 silly audit   'combined-stream': [ '1.0.8' ],
+191 silly audit   'content-disposition': [ '1.1.0' ],
+191 silly audit   'content-type': [ '1.0.5', '2.0.0' ],
+191 silly audit   cookie: [ '0.7.2' ],
+191 silly audit   'cookie-signature': [ '1.2.2' ],
+191 silly audit   cors: [ '2.8.6' ],
+191 silly audit   'data-uri-to-buffer': [ '4.0.1' ],
+191 silly audit   debug: [ '4.4.3' ],
+191 silly audit   'delayed-stream': [ '1.0.0' ],
+191 silly audit   depd: [ '2.0.0' ],
+191 silly audit   dotenv: [ '17.4.2' ],
+191 silly audit   'dunder-proto': [ '1.0.1' ],
+191 silly audit   duplexify: [ '4.1.3' ],
+191 silly audit   'ecdsa-sig-formatter': [ '1.0.11' ],
+191 silly audit   'ee-first': [ '1.1.1' ],
+191 silly audit   'emoji-regex': [ '8.0.0' ],
+191 silly audit   encodeurl: [ '2.0.0' ],
+191 silly audit   'end-of-stream': [ '1.4.5' ],
+191 silly audit   'es-define-property': [ '1.0.1' ],
+191 silly audit   'es-errors': [ '1.3.0' ],
+191 silly audit   'es-object-atoms': [ '1.1.1' ],
+191 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+191 silly audit   escalade: [ '3.2.0' ],
+191 silly audit   'escape-html': [ '1.0.3' ],
+191 silly audit   etag: [ '1.8.1' ],
+191 silly audit   'event-target-shim': [ '5.0.1' ],
+191 silly audit   express: [ '5.2.1' ],
+191 silly audit   'express-rate-limit': [ '8.5.2' ],
+191 silly audit   extend: [ '3.0.2' ],
+191 silly audit   'farmhash-modern': [ '1.1.0' ],
+191 silly audit   'fast-deep-equal': [ '3.1.3' ],
+191 silly audit   'fast-xml-builder': [ '1.2.0' ],
+191 silly audit   'fast-xml-parser': [ '5.8.0' ],
+191 silly audit   'faye-websocket': [ '0.11.4' ],
+191 silly audit   'fetch-blob': [ '3.2.0' ],
+191 silly audit   'fill-range': [ '7.1.1' ],
+191 silly audit   finalhandler: [ '2.1.1' ],
+191 silly audit   'firebase-admin': [ '13.10.0' ],
+191 silly audit   'mime-db': [ '1.54.0', '1.52.0' ],
+191 silly audit   'mime-types': [ '3.0.2', '2.1.35' ],
+191 silly audit   'formdata-polyfill': [ '4.0.10' ],
+191 silly audit   forwarded: [ '0.2.0' ],
+191 silly audit   fresh: [ '2.0.0' ],
+191 silly audit   fsevents: [ '2.3.3' ],
+191 silly audit   'function-bind': [ '1.1.2' ],
+191 silly audit   'functional-red-black-tree': [ '1.0.1' ],
+191 silly audit   gaxios: [ '6.7.1', '7.1.4' ],
+191 silly audit   uuid: [ '9.0.1' ],
+191 silly audit   'node-fetch': [ '3.3.2', '2.7.0' ],
+191 silly audit   'get-caller-file': [ '2.0.5' ],
+191 silly audit   'get-intrinsic': [ '1.3.0' ],
+191 silly audit   'get-proto': [ '1.0.1' ],
+191 silly audit   'glob-parent': [ '5.1.2' ],
+191 silly audit   'google-gax': [ '4.6.1' ],
+191 silly audit   gopd: [ '1.2.0' ],
+191 silly audit   gtoken: [ '7.1.0' ],
+191 silly audit   'has-flag': [ '3.0.0' ],
+191 silly audit   'has-symbols': [ '1.1.0' ],
+191 silly audit   'has-tostringtag': [ '1.0.2' ],
+191 silly audit   helmet: [ '8.1.0' ],
+191 silly audit   'html-entities': [ '2.6.0' ],
+191 silly audit   'http-errors': [ '2.0.1' ],
+191 silly audit   'http-parser-js': [ '0.5.10' ],
+191 silly audit   'http-proxy-agent': [ '5.0.0' ],
+191 silly audit   'https-proxy-agent': [ '7.0.6', '5.0.1' ],
+191 silly audit   'iconv-lite': [ '0.7.2' ],
+191 silly audit   'ignore-by-default': [ '1.0.1' ],
+191 silly audit   inherits: [ '2.0.4' ],
+191 silly audit   'ip-address': [ '10.2.0' ],
+191 silly audit   'ipaddr.js': [ '1.9.1' ],
+191 silly audit   'is-binary-path': [ '2.1.0' ],
+191 silly audit   'is-extglob': [ '2.1.1' ],
+191 silly audit   'is-fullwidth-code-point': [ '3.0.0' ],
+191 silly audit   'is-glob': [ '4.0.3' ],
+191 silly audit   'is-number': [ '7.0.0' ],
+191 silly audit   'is-promise': [ '4.0.0' ],
+191 silly audit   'is-stream': [ '2.0.1' ],
+191 silly audit   jose: [ '4.15.9' ],
+191 silly audit   'json-bigint': [ '1.0.0' ],
+191 silly audit   jsonwebtoken: [ '9.0.3' ],
+191 silly audit   jwa: [ '2.0.1' ],
+191 silly audit   'jwks-rsa': [ '3.2.2' ],
+191 silly audit   jws: [ '4.0.1' ],
+191 silly audit   limiter: [ '1.1.5' ],
+191 silly audit   'lodash.camelcase': [ '4.3.0' ],
+191 silly audit   'lodash.clonedeep': [ '4.5.0' ],
+191 silly audit   'lodash.includes': [ '4.3.0' ],
+191 silly audit   'lodash.isboolean': [ '3.0.3' ],
+191 silly audit   'lodash.isinteger': [ '4.0.4' ],
+191 silly audit   'lodash.isnumber': [ '3.0.3' ],
+191 silly audit   'lodash.isplainobject': [ '4.0.6' ],
+191 silly audit   'lodash.isstring': [ '4.0.1' ],
+191 silly audit   'lodash.once': [ '4.1.1' ],
+191 silly audit   long: [ '5.3.2' ],
+191 silly audit   'lru-cache': [ '6.0.0' ],
+191 silly audit   'lru-memoizer': [ '2.3.0' ],
+191 silly audit   'math-intrinsics': [ '1.1.0' ],
+191 silly audit   'media-typer': [ '1.1.0' ],
+191 silly audit   'merge-descriptors': [ '2.0.0' ],
+191 silly audit   mime: [ '3.0.0' ],
+191 silly audit   minimatch: [ '10.2.5' ],
+191 silly audit   ms: [ '2.1.3' ],
+191 silly audit   negotiator: [ '1.0.0' ],
+191 silly audit   'node-domexception': [ '1.0.0' ],
+191 silly audit   nodemon: [ '3.1.14' ],
+191 silly audit   'normalize-path': [ '3.0.0' ],
+191 silly audit   'object-assign': [ '4.1.1' ],
+191 silly audit   'object-hash': [ '3.0.0' ],
+191 silly audit   'object-inspect': [ '1.13.4' ],
+191 silly audit   'on-finished': [ '2.4.1' ],
+191 silly audit   once: [ '1.4.0' ],
+191 silly audit   'p-limit': [ '3.1.0' ],
+191 silly audit   parseurl: [ '1.3.3' ],
+191 silly audit   'path-expression-matcher': [ '1.5.0' ],
+191 silly audit   'path-to-regexp': [ '8.4.2' ],
+191 silly audit   picomatch: [ '2.3.2' ],
+191 silly audit   'proto3-json-serializer': [ '2.0.2' ],
+191 silly audit   'proxy-addr': [ '2.0.7' ],
+191 silly audit   'pstree.remy': [ '1.1.8' ],
+191 silly audit   qs: [ '6.15.2' ],
+191 silly audit   'range-parser': [ '1.2.1' ],
+191 silly audit   'raw-body': [ '3.0.2' ],
+191 silly audit   'readable-stream': [ '3.6.2' ],
+191 silly audit   readdirp: [ '3.6.0' ],
+191 silly audit   'require-directory': [ '2.1.1' ],
+191 silly audit   retry: [ '0.13.1' ],
+191 silly audit   'retry-request': [ '7.0.2' ],
+191 silly audit   router: [ '2.2.0' ],
+191 silly audit   'safe-buffer': [ '5.2.1' ],
+191 silly audit   'safer-buffer': [ '2.1.2' ],
+191 silly audit   semver: [ '7.8.0' ],
+191 silly audit   send: [ '1.2.1' ],
+191 silly audit   'serve-static': [ '2.2.1' ],
+191 silly audit   setprototypeof: [ '1.2.0' ],
+191 silly audit   'side-channel': [ '1.1.0' ],
+191 silly audit   'side-channel-list': [ '1.0.1' ],
+191 silly audit   'side-channel-map': [ '1.0.1' ],
+191 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+191 silly audit   'simple-update-notifier': [ '2.0.0' ],
+191 silly audit   statuses: [ '2.0.2' ],
+191 silly audit   'stream-events': [ '1.0.5' ],
+191 silly audit   'stream-shift': [ '1.0.3' ],
+191 silly audit   string_decoder: [ '1.3.0' ],
+191 silly audit   'string-width': [ '4.2.3' ],
+191 silly audit   'strip-ansi': [ '6.0.1' ],
+191 silly audit   strnum: [ '2.3.0' ],
+191 silly audit   stubs: [ '3.0.0' ],
+191 silly audit   'supports-color': [ '5.5.0' ],
+191 silly audit   'teeny-request': [ '9.0.0' ],
+191 silly audit   'to-regex-range': [ '5.0.1' ],
+191 silly audit   toidentifier: [ '1.0.1' ],
+191 silly audit   touch: [ '3.1.1' ],
+191 silly audit   tr46: [ '0.0.3' ],
+191 silly audit   tslib: [ '2.8.1' ],
+191 silly audit   'type-is': [ '2.1.0' ],
+191 silly audit   undefsafe: [ '2.0.5' ],
+191 silly audit   'undici-types': [ '7.24.6' ],
+191 silly audit   unpipe: [ '1.0.0' ],
+191 silly audit   'util-deprecate': [ '1.0.2' ],
+191 silly audit   vary: [ '1.1.2' ],
+191 silly audit   'web-streams-polyfill': [ '3.3.3' ],
+191 silly audit   'webidl-conversions': [ '3.0.1' ],
+191 silly audit   'websocket-driver': [ '0.7.4' ],
+191 silly audit   'websocket-extensions': [ '0.1.4' ],
+191 silly audit   'whatwg-url': [ '5.0.0' ],
+191 silly audit   'wrap-ansi': [ '7.0.0' ],
+191 silly audit   wrappy: [ '1.0.2' ],
+191 silly audit   'xml-naming': [ '0.1.0' ],
+191 silly audit   y18n: [ '5.0.8' ],
+191 silly audit   yallist: [ '4.0.0' ],
+191 silly audit   yargs: [ '17.7.2' ],
+191 silly audit   'yargs-parser': [ '21.1.1' ],
+191 silly audit   'yocto-queue': [ '0.1.0' ],
+191 silly audit   nodemailer: [ '8.0.11' ],
+191 silly audit   protobufjs: [ '7.6.5' ],
+191 silly audit   'form-data': [ '2.5.6' ],
+191 silly audit   '@google-cloud/storage': [ '7.21.0' ],
+191 silly audit   hasown: [ '2.0.4' ],
+191 silly audit   '@grpc/grpc-js': [ '1.14.4' ],
+191 silly audit   '@protobufjs/aspromise': [ '1.1.2' ],
+191 silly audit   '@protobufjs/eventemitter': [ '1.1.1' ],
+191 silly audit   '@protobufjs/fetch': [ '1.1.1' ]
+191 silly audit }
+192 http cache uuid@https://registry.npmjs.org/uuid/-/uuid-9.0.1.tgz 0ms (cache hit)
+193 http cache protobufjs@https://registry.npmjs.org/protobufjs/-/protobufjs-7.6.5.tgz 0ms (cache hit)
+194 http cache nodemailer@https://registry.npmjs.org/nodemailer/-/nodemailer-8.0.11.tgz 0ms (cache hit)
+195 http cache form-data@https://registry.npmjs.org/form-data/-/form-data-2.5.6.tgz 0ms (cache hit)
+196 http cache @grpc/grpc-js@https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.14.4.tgz 0ms (cache hit)
+197 http cache hasown@https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz 0ms (cache hit)
+198 silly tarball no local data for uuid@https://registry.npmjs.org/uuid/-/uuid-9.0.1.tgz. Extracting by manifest.
+199 silly tarball no local data for protobufjs@https://registry.npmjs.org/protobufjs/-/protobufjs-7.6.5.tgz. Extracting by manifest.
+200 silly tarball no local data for nodemailer@https://registry.npmjs.org/nodemailer/-/nodemailer-8.0.11.tgz. Extracting by manifest.
+201 http cache @protobufjs/fetch@https://registry.npmjs.org/@protobufjs/fetch/-/fetch-1.1.1.tgz 0ms (cache hit)
+202 http cache @google-cloud/storage@https://registry.npmjs.org/@google-cloud/storage/-/storage-7.21.0.tgz 1ms (cache hit)
+203 silly tarball no local data for form-data@https://registry.npmjs.org/form-data/-/form-data-2.5.6.tgz. Extracting by manifest.
+204 http cache @protobufjs/eventemitter@https://registry.npmjs.org/@protobufjs/eventemitter/-/eventemitter-1.1.1.tgz 0ms (cache hit)
+205 silly tarball no local data for @grpc/grpc-js@https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.14.4.tgz. Extracting by manifest.
+206 silly tarball no local data for hasown@https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz. Extracting by manifest.
+207 silly tarball no local data for @protobufjs/fetch@https://registry.npmjs.org/@protobufjs/fetch/-/fetch-1.1.1.tgz. Extracting by manifest.
+208 silly tarball no local data for @google-cloud/storage@https://registry.npmjs.org/@google-cloud/storage/-/storage-7.21.0.tgz. Extracting by manifest.
+209 silly tarball no local data for @protobufjs/eventemitter@https://registry.npmjs.org/@protobufjs/eventemitter/-/eventemitter-1.1.1.tgz. Extracting by manifest.
+210 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 297ms
+211 silly audit report {
+211 silly audit report   uuid: [
+211 silly audit report     {
+211 silly audit report       id: 1119441,
+211 silly audit report       url: 'https://github.com/advisories/GHSA-w5hq-g745-h8pq',
+211 silly audit report       title: 'uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided',
+211 silly audit report       severity: 'moderate',
+211 silly audit report       vulnerable_versions: '<11.1.1',
+211 silly audit report       cwe: [Array],
+211 silly audit report       cvss: [Object]
+211 silly audit report     }
+211 silly audit report   ],
+211 silly audit report   nodemailer: [
+211 silly audit report     {
+211 silly audit report       id: 1121191,
+211 silly audit report       url: 'https://github.com/advisories/GHSA-p6gq-j5cr-w38f',
+211 silly audit report       title: 'Nodemailer: Message-level raw option bypasses disableFileAccess/disableUrlAccess, enabling arbitrary file read and full-response SSRF in the delivered message',
+211 silly audit report       severity: 'high',
+211 silly audit report       vulnerable_versions: '<=9.0.0',
+211 silly audit report       cwe: [Array],
+211 silly audit report       cvss: [Object]
+211 silly audit report     }
+211 silly audit report   ]
+211 silly audit report }
+212 silly packumentCache corgi:https://registry.npmjs.org/uuid cache-miss
+213 silly packumentCache corgi:https://registry.npmjs.org/nodemailer cache-miss
+214 http cache https://registry.npmjs.org/uuid 98ms (cache hit)
+215 silly packumentCache corgi:https://registry.npmjs.org/uuid set size:82973 disposed:false
+216 http cache https://registry.npmjs.org/nodemailer 107ms (cache hit)
+217 silly packumentCache corgi:https://registry.npmjs.org/nodemailer set size:319751 disposed:false
+218 silly packumentCache corgi:https://registry.npmjs.org/gaxios cache-miss
+219 silly packumentCache corgi:https://registry.npmjs.org/google-gax cache-miss
+220 silly packumentCache corgi:https://registry.npmjs.org/teeny-request cache-miss
+221 http cache https://registry.npmjs.org/gaxios 99ms (cache hit)
+222 silly packumentCache corgi:https://registry.npmjs.org/gaxios set size:197686 disposed:false
+223 http cache https://registry.npmjs.org/google-gax 116ms (cache hit)
+224 silly packumentCache corgi:https://registry.npmjs.org/google-gax set size:998748 disposed:false
+225 http cache https://registry.npmjs.org/teeny-request 136ms (cache hit)
+226 silly packumentCache corgi:https://registry.npmjs.org/teeny-request set size:98817 disposed:false
+227 silly packumentCache corgi:https://registry.npmjs.org/gcp-metadata cache-miss
+228 silly packumentCache corgi:https://registry.npmjs.org/google-auth-library cache-miss
+229 silly packumentCache corgi:https://registry.npmjs.org/gtoken cache-miss
+230 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2fstorage cache-miss
+231 http fetch GET 200 https://registry.npmjs.org/form-data/-/form-data-2.5.6.tgz 583ms (cache miss)
+232 http cache https://registry.npmjs.org/gtoken 123ms (cache hit)
+233 silly packumentCache corgi:https://registry.npmjs.org/gtoken set size:74319 disposed:false
+234 http cache https://registry.npmjs.org/google-auth-library 133ms (cache hit)
+235 silly packumentCache corgi:https://registry.npmjs.org/google-auth-library set size:370241 disposed:false
+236 http cache https://registry.npmjs.org/gcp-metadata 147ms (cache hit)
+237 silly packumentCache corgi:https://registry.npmjs.org/gcp-metadata set size:88264 disposed:false
+238 http cache https://registry.npmjs.org/@google-cloud%2fstorage 148ms (cache hit)
+239 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2fstorage set size:479910 disposed:false
+240 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2ffirestore cache-miss
+241 http fetch GET 200 https://registry.npmjs.org/@protobufjs/eventemitter/-/eventemitter-1.1.1.tgz 732ms (cache miss)
+242 http fetch GET 200 https://registry.npmjs.org/hasown/-/hasown-2.0.4.tgz 775ms (cache miss)
+243 http cache https://registry.npmjs.org/@google-cloud%2ffirestore 103ms (cache hit)
+244 silly packumentCache corgi:https://registry.npmjs.org/@google-cloud%2ffirestore set size:330220 disposed:false
+245 silly packumentCache corgi:https://registry.npmjs.org/retry-request cache-miss
+246 http fetch GET 200 https://registry.npmjs.org/@protobufjs/fetch/-/fetch-1.1.1.tgz 819ms (cache miss)
+247 http cache https://registry.npmjs.org/retry-request 81ms (cache hit)
+248 silly packumentCache corgi:https://registry.npmjs.org/retry-request set size:41621 disposed:false
+249 silly packumentCache corgi:https://registry.npmjs.org/firebase-admin cache-miss
+250 http cache https://registry.npmjs.org/firebase-admin 61ms (cache hit)
+251 silly packumentCache corgi:https://registry.npmjs.org/firebase-admin set size:347498 disposed:false
+252 http fetch GET 200 https://registry.npmjs.org/nodemailer/-/nodemailer-8.0.11.tgz 1430ms (cache miss)
+253 http fetch GET 200 https://registry.npmjs.org/uuid/-/uuid-9.0.1.tgz 1644ms (cache miss)
+254 warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+255 http fetch GET 200 https://registry.npmjs.org/protobufjs/-/protobufjs-7.6.5.tgz 2092ms (cache miss)
+256 http fetch GET 200 https://registry.npmjs.org/@google-cloud/storage/-/storage-7.21.0.tgz 2249ms (cache miss)
+257 http fetch GET 200 https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.14.4.tgz 8169ms (cache miss)
+258 info run protobufjs@7.6.5 postinstall node_modules/protobufjs node scripts/postinstall
+259 info run protobufjs@7.6.5 postinstall { code: 0, signal: null }
+260 silly CHANGE node_modules/uuid
+261 silly REMOVE node_modules/teeny-request/node_modules/uuid
+262 silly CHANGE node_modules/protobufjs
+263 silly CHANGE node_modules/nodemailer
+264 silly CHANGE node_modules/hasown
+265 silly REMOVE node_modules/google-gax/node_modules/uuid
+266 silly REMOVE node_modules/gaxios/node_modules/uuid
+267 silly CHANGE node_modules/form-data
+268 silly REMOVE node_modules/@protobufjs/inquire
+269 silly CHANGE node_modules/@protobufjs/fetch
+270 silly CHANGE node_modules/@protobufjs/eventemitter
+271 silly CHANGE node_modules/@grpc/grpc-js
+272 silly CHANGE node_modules/@google-cloud/storage
+273 verbose cwd C:\Users\resar\OneDrive\Desktop\Capstone_Project\server
+274 verbose os Windows_NT 10.0.26200
+275 verbose node v24.14.1
+276 verbose npm  v11.15.0
+277 notice
+277 notice New minor version of npm available! 11.15.0 -> 11.18.0
+277 notice Changelog: https://github.com/npm/cli/releases/tag/v11.18.0
+277 notice To update run: npm install -g npm@11.18.0
+277 notice  { force: true, Symbol(proc-log.meta): true }
+278 verbose exit 1
+279 verbose code 1

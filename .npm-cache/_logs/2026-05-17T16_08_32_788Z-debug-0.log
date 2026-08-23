@@ -1,0 +1,25 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.11.0
+2 info using node@v24.14.1
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npmrc
+5 silly config load:file:C:\Users\resar\.npmrc
+6 silly config load:file:C:\Users\resar\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm view vite version
+8 verbose argv "view" "vite" "version"
+9 verbose logfile logs-max:10 dir:c:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache\_logs\2026-05-17T16_08_32_788Z-
+10 verbose logfile c:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache\_logs\2026-05-17T16_08_32_788Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET 200 https://registry.npmjs.org/npm 355ms
+13 http fetch GET 200 https://registry.npmjs.org/vite 2294ms (cache miss)
+14 verbose cwd C:\Users\resar\OneDrive\Desktop\Capstone_Project
+15 verbose os Windows_NT 10.0.26200
+16 verbose node v24.14.1
+17 verbose npm  v11.11.0
+18 notice
+18 notice New minor version of npm available! 11.11.0 -> 11.14.1
+18 notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1
+18 notice To update run: npm install -g npm@11.14.1
+18 notice  { force: true, Symbol(proc-log.meta): true }
+19 verbose exit 0
+20 info ok

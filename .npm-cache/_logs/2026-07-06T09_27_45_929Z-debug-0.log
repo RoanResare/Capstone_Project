@@ -1,0 +1,552 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Users\resar\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.15.0
+2 info using node@v24.14.1
+3 silly config load:file:C:\Users\resar\AppData\Roaming\npm\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npmrc
+5 silly config load:file:C:\Users\resar\.npmrc
+6 silly config load:file:C:\Users\resar\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--cache" ".npm-cache"
+9 verbose logfile logs-max:10 dir:C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache\_logs\2026-07-06T09_27_45_929Z-
+10 verbose logfile C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache\_logs\2026-07-06T09_27_45_929Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly idealTree buildDeps
+14 silly fetch manifest gaxios@^7.1.5
+15 silly packumentCache full:https://registry.npmjs.org/gaxios cache-miss
+16 http cache https://registry.npmjs.org/gaxios 340ms (cache hit)
+17 silly packumentCache full:https://registry.npmjs.org/gaxios set size:348857 disposed:false
+18 silly fetch manifest teeny-request@^10.1.3
+19 silly packumentCache full:https://registry.npmjs.org/teeny-request cache-miss
+20 http cache https://registry.npmjs.org/teeny-request 68ms (cache hit)
+21 silly packumentCache full:https://registry.npmjs.org/teeny-request set size:175551 disposed:false
+22 silly placeDep ROOT gaxios@7.1.5 REPLACE for: @google-cloud/storage@7.21.0 want: ^7.1.5
+23 silly placeDep ROOT teeny-request@10.1.3 REPLACE for: @google-cloud/storage@7.21.0 want: ^10.1.3
+24 silly fetch manifest node-fetch@^3.3.2
+25 silly packumentCache full:https://registry.npmjs.org/node-fetch cache-miss
+26 silly fetch manifest http-proxy-agent@^7.0.0
+27 silly packumentCache full:https://registry.npmjs.org/http-proxy-agent cache-miss
+28 silly fetch manifest https-proxy-agent@^7.0.1
+29 silly packumentCache full:https://registry.npmjs.org/https-proxy-agent cache-miss
+30 silly fetch manifest node-fetch@^3.3.2
+31 silly packumentCache full:https://registry.npmjs.org/node-fetch cache-miss
+32 http cache https://registry.npmjs.org/http-proxy-agent 43ms (cache hit)
+33 silly packumentCache full:https://registry.npmjs.org/http-proxy-agent set size:57253 disposed:false
+34 http cache https://registry.npmjs.org/https-proxy-agent 46ms (cache hit)
+35 silly packumentCache full:https://registry.npmjs.org/https-proxy-agent set size:83792 disposed:false
+36 http cache https://registry.npmjs.org/node-fetch 56ms (cache hit)
+37 silly packumentCache full:https://registry.npmjs.org/node-fetch set size:896010 disposed:false
+38 http cache https://registry.npmjs.org/node-fetch 96ms (cache hit)
+39 silly packumentCache full:https://registry.npmjs.org/node-fetch set size:896010 disposed:false
+40 silly packumentCache full:https://registry.npmjs.org/node-fetch dispose
+41 silly placeDep ROOT node-fetch@3.3.2 OK for: gaxios@7.1.5 want: ^3.3.2
+42 silly placeDep ROOT http-proxy-agent@7.0.2 OK for: teeny-request@10.1.3 want: ^7.0.0
+43 silly placeDep node_modules/teeny-request https-proxy-agent@7.0.6 OK for: teeny-request@10.1.3 want: ^7.0.1
+44 silly fetch manifest agent-base@^7.1.0
+45 silly packumentCache full:https://registry.npmjs.org/agent-base cache-miss
+46 silly fetch manifest agent-base@^7.1.2
+47 silly packumentCache full:https://registry.npmjs.org/agent-base cache-miss
+48 http cache https://registry.npmjs.org/agent-base 43ms (cache hit)
+49 silly packumentCache full:https://registry.npmjs.org/agent-base set size:72085 disposed:false
+50 http cache https://registry.npmjs.org/agent-base 47ms (cache hit)
+51 silly packumentCache full:https://registry.npmjs.org/agent-base set size:72085 disposed:false
+52 silly packumentCache full:https://registry.npmjs.org/agent-base dispose
+53 silly placeDep node_modules/http-proxy-agent agent-base@7.1.4 OK for: http-proxy-agent@7.0.2 want: ^7.1.0
+54 silly placeDep node_modules/teeny-request agent-base@7.1.4 OK for: https-proxy-agent@7.0.6 want: ^7.1.2
+55 silly reify mark retired [
+55 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tootallnate\\once'
+55 silly reify ]
+56 silly reify mark retired [
+56 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gaxios'
+56 silly reify ]
+57 silly reify mark retired [
+57 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\agent-base'
+57 silly reify ]
+58 silly reify mark retired [
+58 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\gaxios'
+58 silly reify ]
+59 silly reify mark retired [
+59 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\https-proxy-agent'
+59 silly reify ]
+60 silly reify mark retired [
+60 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\node-fetch'
+60 silly reify ]
+61 silly reify mark retired [
+61 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\agent-base'
+61 silly reify ]
+62 silly reify mark retired [
+62 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\gaxios'
+62 silly reify ]
+63 silly reify mark retired [
+63 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\https-proxy-agent'
+63 silly reify ]
+64 silly reify mark retired [
+64 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\node-fetch'
+64 silly reify ]
+65 silly reify mark retired [
+65 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\agent-base'
+65 silly reify ]
+66 silly reify mark retired [
+66 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\gaxios'
+66 silly reify ]
+67 silly reify mark retired [
+67 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\http-proxy-agent'
+67 silly reify ]
+68 silly reify mark retired [
+68 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\https-proxy-agent'
+68 silly reify ]
+69 silly reify mark retired [
+69 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\node-fetch'
+69 silly reify ]
+70 silly reify mark retired [
+70 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\teeny-request'
+70 silly reify ]
+71 silly reify mark retired [
+71 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\http-proxy-agent'
+71 silly reify ]
+72 silly reify mark retired [
+72 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\is-stream'
+72 silly reify ]
+73 silly reify mark retired [
+73 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\node-fetch'
+73 silly reify ]
+74 silly reify mark retired [
+74 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\teeny-request'
+74 silly reify ]
+75 silly reify mark retired [
+75 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tr46'
+75 silly reify ]
+76 silly reify mark retired [
+76 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\uuid',
+76 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid',
+76 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.cmd',
+76 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.ps1'
+76 silly reify ]
+77 silly reify mark retired [
+77 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\webidl-conversions'
+77 silly reify ]
+78 silly reify mark retired [
+78 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\whatwg-url'
+78 silly reify ]
+79 silly reify moves {
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tootallnate\\once': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tootallnate\\.once-BN7x0MpQ',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gaxios': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.gaxios-Y3YsGpJ6',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\agent-base': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\.agent-base-MwSdH4Dh',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\gaxios': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\.gaxios-pEAUJUNa',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\https-proxy-agent': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\.https-proxy-agent-0D7XZWnb',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\node-fetch': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata\\node_modules\\.node-fetch-QDo4QR8D',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\agent-base': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\.agent-base-kQBNsR4b',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\gaxios': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\.gaxios-kouB2OaM',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\https-proxy-agent': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\.https-proxy-agent-mjHTIX8H',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\node-fetch': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library\\node_modules\\.node-fetch-0ZcVfXoH',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\agent-base': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\.agent-base-KB0nmOGL',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\gaxios': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\.gaxios-mAjjOOZ9',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\http-proxy-agent': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\.http-proxy-agent-L3ZXHYvj',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\https-proxy-agent': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\.https-proxy-agent-3k8Ad69Z',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\node-fetch': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\.node-fetch-ykvn0zpK',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\teeny-request': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax\\node_modules\\.teeny-request-fsBaODVr',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\http-proxy-agent': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.http-proxy-agent-bpSBvKSx',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\is-stream': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.is-stream-0ZgiIxnI',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\node-fetch': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.node-fetch-HmUTHred',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\teeny-request': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.teeny-request-XaNZhMUD',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tr46': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.tr46-mFYdZpvC',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.uuid-EKkmMsei',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.uuid-KtdZb6TE',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.uuid.cmd-iJdedqNx',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.uuid.ps1-sN3oIg2j',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\webidl-conversions': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.webidl-conversions-iE4cjIQT',
+79 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\whatwg-url': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.whatwg-url-eEBWrdtu'
+79 silly reify }
+80 silly audit bulk request {
+80 silly audit   '@emnapi/core': [ '1.11.1' ],
+80 silly audit   '@emnapi/runtime': [ '1.11.1' ],
+80 silly audit   '@emnapi/wasi-threads': [ '1.2.2' ],
+80 silly audit   '@fastify/busboy': [ '3.2.0' ],
+80 silly audit   '@firebase/ai': [ '2.12.0' ],
+80 silly audit   '@firebase/analytics': [ '0.10.22' ],
+80 silly audit   '@firebase/analytics-compat': [ '0.2.28' ],
+80 silly audit   '@firebase/analytics-types': [ '0.8.4' ],
+80 silly audit   '@firebase/app': [ '0.14.12' ],
+80 silly audit   '@firebase/app-check': [ '0.11.3' ],
+80 silly audit   '@firebase/app-check-compat': [ '0.4.3' ],
+80 silly audit   '@firebase/app-check-interop-types': [ '0.3.4' ],
+80 silly audit   '@firebase/app-check-types': [ '0.5.4' ],
+80 silly audit   '@firebase/app-compat': [ '0.5.12' ],
+80 silly audit   '@firebase/app-types': [ '0.9.5' ],
+80 silly audit   '@firebase/auth': [ '1.13.1' ],
+80 silly audit   '@firebase/auth-compat': [ '0.6.6' ],
+80 silly audit   '@firebase/auth-interop-types': [ '0.2.5' ],
+80 silly audit   '@firebase/auth-types': [ '0.13.1' ],
+80 silly audit   '@firebase/component': [ '0.7.3' ],
+80 silly audit   '@firebase/data-connect': [ '0.7.0' ],
+80 silly audit   '@firebase/database': [ '1.1.3' ],
+80 silly audit   '@firebase/database-compat': [ '2.1.4' ],
+80 silly audit   '@firebase/database-types': [ '1.0.20' ],
+80 silly audit   '@firebase/firestore': [ '4.14.1' ],
+80 silly audit   '@firebase/firestore-compat': [ '0.4.9' ],
+80 silly audit   '@firebase/firestore-types': [ '3.0.4' ],
+80 silly audit   '@firebase/functions': [ '0.13.4' ],
+80 silly audit   '@firebase/functions-compat': [ '0.4.4' ],
+80 silly audit   '@firebase/functions-types': [ '0.6.4' ],
+80 silly audit   '@firebase/installations': [ '0.6.22' ],
+80 silly audit   '@firebase/installations-compat': [ '0.2.22' ],
+80 silly audit   '@firebase/installations-types': [ '0.5.4' ],
+80 silly audit   '@firebase/logger': [ '0.5.1' ],
+80 silly audit   '@firebase/messaging': [ '0.12.26' ],
+80 silly audit   '@firebase/messaging-compat': [ '0.2.26' ],
+80 silly audit   '@firebase/messaging-interop-types': [ '0.2.4' ],
+80 silly audit   '@firebase/performance': [ '0.7.12' ],
+80 silly audit   '@firebase/performance-compat': [ '0.2.25' ],
+80 silly audit   '@firebase/performance-types': [ '0.2.4' ],
+80 silly audit   '@firebase/remote-config': [ '0.8.3' ],
+80 silly audit   '@firebase/remote-config-compat': [ '0.2.24' ],
+80 silly audit   '@firebase/remote-config-types': [ '0.5.1' ],
+80 silly audit   '@firebase/storage': [ '0.14.3' ],
+80 silly audit   '@firebase/storage-compat': [ '0.4.3' ],
+80 silly audit   '@firebase/storage-types': [ '0.8.4' ],
+80 silly audit   '@firebase/util': [ '1.15.1' ],
+80 silly audit   '@firebase/webchannel-wrapper': [ '1.0.6' ],
+80 silly audit   '@google-cloud/firestore': [ '8.6.0' ],
+80 silly audit   '@google-cloud/paginator': [ '5.0.2' ],
+80 silly audit   '@google-cloud/projectify': [ '4.0.0' ],
+80 silly audit   '@google-cloud/promisify': [ '4.0.0' ],
+80 silly audit   '@google-cloud/storage': [ '7.21.0' ],
+80 silly audit   'gcp-metadata': [ '6.1.1', '8.1.2' ],
+80 silly audit   'google-auth-library': [ '9.15.1', '10.6.2', '10.5.0' ],
+80 silly audit   'google-logging-utils': [ '0.0.2', '1.1.3' ],
+80 silly audit   '@grpc/grpc-js': [ '1.9.16', '1.14.4' ],
+80 silly audit   '@grpc/proto-loader': [ '0.7.15', '0.8.1' ],
+80 silly audit   '@isaacs/cliui': [ '8.0.2' ],
+80 silly audit   'ansi-regex': [ '6.2.2', '5.0.1' ],
+80 silly audit   'ansi-styles': [ '6.2.3', '4.3.0' ],
+80 silly audit   'emoji-regex': [ '9.2.2', '8.0.0' ],
+80 silly audit   'string-width': [ '5.1.2', '4.2.3' ],
+80 silly audit   'strip-ansi': [ '7.2.0', '6.0.1' ],
+80 silly audit   'wrap-ansi': [ '8.1.0', '7.0.0' ],
+80 silly audit   '@jridgewell/gen-mapping': [ '0.3.13' ],
+80 silly audit   '@jridgewell/remapping': [ '2.3.5' ],
+80 silly audit   '@jridgewell/resolve-uri': [ '3.1.2' ],
+80 silly audit   '@jridgewell/sourcemap-codec': [ '1.5.5' ],
+80 silly audit   '@jridgewell/trace-mapping': [ '0.3.31' ],
+80 silly audit   '@js-sdsl/ordered-map': [ '4.4.2' ],
+80 silly audit   '@napi-rs/wasm-runtime': [ '1.1.6' ],
+80 silly audit   '@nodable/entities': [ '2.1.0' ],
+80 silly audit   '@opentelemetry/api': [ '1.9.1' ],
+80 silly audit   '@oxc-project/types': [ '0.138.0' ],
+80 silly audit   '@pkgjs/parseargs': [ '0.11.0' ],
+80 silly audit   '@protobufjs/aspromise': [ '1.1.2' ],
+80 silly audit   '@protobufjs/base64': [ '1.1.2' ],
+80 silly audit   '@protobufjs/codegen': [ '2.0.5' ],
+80 silly audit   '@protobufjs/eventemitter': [ '1.1.1' ],
+80 silly audit   '@protobufjs/fetch': [ '1.1.1' ],
+80 silly audit   '@protobufjs/float': [ '1.0.2' ],
+80 silly audit   '@protobufjs/path': [ '1.1.2' ],
+80 silly audit   '@protobufjs/pool': [ '1.1.0' ],
+80 silly audit   '@protobufjs/utf8': [ '1.1.1' ],
+80 silly audit   '@rolldown/binding-android-arm64': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-darwin-arm64': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-darwin-x64': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-freebsd-x64': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-arm-gnueabihf': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-arm64-gnu': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-arm64-musl': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-ppc64-gnu': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-s390x-gnu': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-x64-gnu': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-linux-x64-musl': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-openharmony-arm64': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-wasm32-wasi': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-win32-arm64-msvc': [ '1.1.4' ],
+80 silly audit   '@rolldown/binding-win32-x64-msvc': [ '1.1.4' ],
+80 silly audit   '@rolldown/pluginutils': [ '1.0.1' ],
+80 silly audit   '@tailwindcss/node': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-android-arm64': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-darwin-arm64': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-darwin-x64': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-freebsd-x64': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-linux-arm-gnueabihf': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-linux-arm64-gnu': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-linux-arm64-musl': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-linux-x64-gnu': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-linux-x64-musl': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-wasm32-wasi': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-win32-arm64-msvc': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/oxide-win32-x64-msvc': [ '4.3.0' ],
+80 silly audit   '@tailwindcss/vite': [ '4.3.0' ],
+80 silly audit   '@tybys/wasm-util': [ '0.10.3' ],
+80 silly audit   '@types/caseless': [ '0.12.5' ],
+80 silly audit   '@types/jsonwebtoken': [ '9.0.10' ],
+80 silly audit   '@types/ms': [ '2.1.0' ],
+80 silly audit   '@types/node': [ '25.8.0' ],
+80 silly audit   '@types/request': [ '2.48.13' ],
+80 silly audit   'form-data': [ '2.5.6', '4.0.6' ],
+80 silly audit   'mime-db': [ '1.52.0', '1.54.0' ],
+80 silly audit   'mime-types': [ '2.1.35', '3.0.2' ],
+80 silly audit   '@types/tough-cookie': [ '4.0.5' ],
+80 silly audit   '@vitejs/plugin-react': [ '6.0.2' ],
+80 silly audit   'abort-controller': [ '3.0.0' ],
+80 silly audit   accepts: [ '2.0.0' ],
+80 silly audit   'agent-base': [ '6.0.2', '7.1.4' ],
+80 silly audit   arrify: [ '2.0.1' ],
+80 silly audit   'async-retry': [ '1.3.3' ],
+80 silly audit   asynckit: [ '0.4.0' ],
+80 silly audit   axios: [ '1.16.1' ],
+80 silly audit   'balanced-match': [ '1.0.2' ],
+80 silly audit   'base64-js': [ '1.5.1' ],
+80 silly audit   'bignumber.js': [ '9.3.1' ],
+80 silly audit   'body-parser': [ '2.2.2' ],
+80 silly audit   'brace-expansion': [ '2.1.1' ],
+80 silly audit   'buffer-equal-constant-time': [ '1.0.1' ],
+80 silly audit   bytes: [ '3.1.2' ],
+80 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+80 silly audit   'call-bound': [ '1.0.4' ],
+80 silly audit   cliui: [ '8.0.1' ],
+80 silly audit   'color-convert': [ '2.0.1' ],
+80 silly audit   'color-name': [ '1.1.4' ],
+80 silly audit   'combined-stream': [ '1.0.8' ],
+80 silly audit   'content-disposition': [ '1.1.0' ],
+80 silly audit   'content-type': [ '1.0.5' ],
+80 silly audit   cookie: [ '1.1.1', '0.7.2' ],
+80 silly audit   'cookie-signature': [ '1.2.2' ],
+80 silly audit   cors: [ '2.8.6' ],
+80 silly audit   'cross-spawn': [ '7.0.6' ],
+80 silly audit   'data-uri-to-buffer': [ '4.0.1' ],
+80 silly audit   debug: [ '4.4.3' ],
+80 silly audit   'delayed-stream': [ '1.0.0' ],
+80 silly audit   depd: [ '2.0.0' ],
+80 silly audit   'detect-libc': [ '2.1.2' ],
+80 silly audit   dotenv: [ '17.4.2' ],
+80 silly audit   'dunder-proto': [ '1.0.1' ],
+80 silly audit   duplexify: [ '4.1.3' ],
+80 silly audit   eastasianwidth: [ '0.2.0' ],
+80 silly audit   'ecdsa-sig-formatter': [ '1.0.11' ],
+80 silly audit   'ee-first': [ '1.1.1' ],
+80 silly audit   encodeurl: [ '2.0.0' ],
+80 silly audit   'end-of-stream': [ '1.4.5' ],
+80 silly audit   'enhanced-resolve': [ '5.21.3' ],
+80 silly audit   'es-define-property': [ '1.0.1' ],
+80 silly audit   'es-errors': [ '1.3.0' ],
+80 silly audit   'es-object-atoms': [ '1.1.1' ],
+80 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+80 silly audit   escalade: [ '3.2.0' ],
+80 silly audit   'escape-html': [ '1.0.3' ],
+80 silly audit   etag: [ '1.8.1' ],
+80 silly audit   'event-target-shim': [ '5.0.1' ],
+80 silly audit   express: [ '5.2.1' ],
+80 silly audit   extend: [ '3.0.2' ],
+80 silly audit   'farmhash-modern': [ '1.1.0' ],
+80 silly audit   'fast-deep-equal': [ '3.1.3' ],
+80 silly audit   'fast-xml-builder': [ '1.2.0' ],
+80 silly audit   'fast-xml-parser': [ '5.8.0' ],
+80 silly audit   'faye-websocket': [ '0.11.4' ],
+80 silly audit   fdir: [ '6.5.0' ],
+80 silly audit   'fetch-blob': [ '3.2.0' ],
+80 silly audit   finalhandler: [ '2.1.1' ],
+80 silly audit   firebase: [ '12.13.0' ],
+80 silly audit   'firebase-admin': [ '14.1.0' ],
+80 silly audit   'follow-redirects': [ '1.16.0' ],
+80 silly audit   'foreground-child': [ '3.3.1' ],
+80 silly audit   'formdata-polyfill': [ '4.0.10' ],
+80 silly audit   forwarded: [ '0.2.0' ],
+80 silly audit   'framer-motion': [ '12.38.0' ],
+80 silly audit   fresh: [ '2.0.0' ],
+80 silly audit   fsevents: [ '2.3.3' ],
+80 silly audit   'function-bind': [ '1.1.2' ],
+80 silly audit   'functional-red-black-tree': [ '1.0.1' ],
+80 silly audit   gaxios: [ '7.1.5' ],
+80 silly audit   'https-proxy-agent': [ '5.0.1', '7.0.6' ],
+80 silly audit   'node-fetch': [ '3.3.2' ],
+80 silly audit   'get-caller-file': [ '2.0.5' ],
+80 silly audit   'get-intrinsic': [ '1.3.0' ],
+80 silly audit   'get-proto': [ '1.0.1' ],
+80 silly audit   glob: [ '10.5.0' ],
+80 silly audit   'google-gax': [ '5.0.7' ],
+80 silly audit   gtoken: [ '8.0.0', '7.1.0' ],
+80 silly audit   'retry-request': [ '8.0.3', '7.0.2' ],
+80 silly audit   'teeny-request': [ '10.1.3' ],
+80 silly audit   gopd: [ '1.2.0' ],
+80 silly audit   'graceful-fs': [ '4.2.11' ],
+80 silly audit   'has-symbols': [ '1.1.0' ],
+80 silly audit   'has-tostringtag': [ '1.0.2' ],
+80 silly audit   hasown: [ '2.0.4' ],
+80 silly audit   'html-entities': [ '2.6.0' ],
+80 silly audit   'http-errors': [ '2.0.1' ],
+80 silly audit   'http-parser-js': [ '0.5.10' ],
+80 silly audit   'iconv-lite': [ '0.7.2' ],
+80 silly audit   idb: [ '7.1.1' ],
+80 silly audit   inherits: [ '2.0.4' ],
+80 silly audit   'ipaddr.js': [ '1.9.1' ],
+80 silly audit   'is-fullwidth-code-point': [ '3.0.0' ],
+80 silly audit   'is-promise': [ '4.0.0' ],
+80 silly audit   isexe: [ '2.0.0' ],
+80 silly audit   jackspeak: [ '3.4.3' ],
+80 silly audit   jiti: [ '2.6.1' ],
+80 silly audit   jose: [ '6.2.3' ],
+80 silly audit   'json-bigint': [ '1.0.0' ],
+80 silly audit   jsonwebtoken: [ '9.0.3' ],
+80 silly audit   jwa: [ '2.0.1' ],
+80 silly audit   'jwks-rsa': [ '4.1.0' ],
+80 silly audit   jws: [ '4.0.1' ],
+80 silly audit   lightningcss: [ '1.32.0' ],
+80 silly audit   'lightningcss-android-arm64': [ '1.32.0' ],
+80 silly audit   'lightningcss-darwin-arm64': [ '1.32.0' ],
+80 silly audit   'lightningcss-darwin-x64': [ '1.32.0' ],
+80 silly audit   'lightningcss-freebsd-x64': [ '1.32.0' ],
+80 silly audit   'lightningcss-linux-arm-gnueabihf': [ '1.32.0' ],
+80 silly audit   'lightningcss-linux-arm64-gnu': [ '1.32.0' ],
+80 silly audit   'lightningcss-linux-arm64-musl': [ '1.32.0' ],
+80 silly audit   'lightningcss-linux-x64-gnu': [ '1.32.0' ],
+80 silly audit   'lightningcss-linux-x64-musl': [ '1.32.0' ],
+80 silly audit   'lightningcss-win32-arm64-msvc': [ '1.32.0' ],
+80 silly audit   'lightningcss-win32-x64-msvc': [ '1.32.0' ],
+80 silly audit   limiter: [ '1.1.5' ],
+80 silly audit   'lodash.camelcase': [ '4.3.0' ],
+80 silly audit   'lodash.clonedeep': [ '4.5.0' ],
+80 silly audit   'lodash.includes': [ '4.3.0' ],
+80 silly audit   'lodash.isboolean': [ '3.0.3' ],
+80 silly audit   'lodash.isinteger': [ '4.0.4' ],
+80 silly audit   'lodash.isnumber': [ '3.0.3' ],
+80 silly audit   'lodash.isplainobject': [ '4.0.6' ],
+80 silly audit   'lodash.isstring': [ '4.0.1' ],
+80 silly audit   'lodash.once': [ '4.1.1' ],
+80 silly audit   long: [ '5.3.2' ],
+80 silly audit   'lru-cache': [ '11.5.1', '10.4.3' ],
+80 silly audit   'lru-memoizer': [ '3.0.0' ],
+80 silly audit   'lucide-react': [ '1.8.0' ],
+80 silly audit   'magic-string': [ '0.30.21' ],
+80 silly audit   'math-intrinsics': [ '1.1.0' ],
+80 silly audit   'media-typer': [ '1.1.0' ],
+80 silly audit   'merge-descriptors': [ '2.0.0' ],
+80 silly audit   mime: [ '3.0.0' ],
+80 silly audit   minimatch: [ '9.0.9' ],
+80 silly audit   minipass: [ '7.1.3' ],
+80 silly audit   motion: [ '12.38.0' ],
+80 silly audit   'motion-dom': [ '12.38.0' ],
+80 silly audit   'motion-utils': [ '12.36.0' ],
+80 silly audit   ms: [ '2.1.3' ],
+80 silly audit   nanoid: [ '3.3.15' ],
+80 silly audit   negotiator: [ '1.0.0' ],
+80 silly audit   'node-domexception': [ '1.0.0' ],
+80 silly audit   nodemailer: [ '9.0.3' ],
+80 silly audit   'object-assign': [ '4.1.1' ],
+80 silly audit   'object-hash': [ '3.0.0' ],
+80 silly audit   'object-inspect': [ '1.13.4' ],
+80 silly audit   'on-finished': [ '2.4.1' ],
+80 silly audit   once: [ '1.4.0' ],
+80 silly audit   'p-limit': [ '3.1.0' ],
+80 silly audit   'package-json-from-dist': [ '1.0.1' ],
+80 silly audit   parseurl: [ '1.3.3' ],
+80 silly audit   'path-expression-matcher': [ '1.5.0' ],
+80 silly audit   'path-key': [ '3.1.1' ],
+80 silly audit   'path-scurry': [ '1.11.1' ],
+80 silly audit   'path-to-regexp': [ '8.4.2' ],
+80 silly audit   picocolors: [ '1.1.1' ],
+80 silly audit   picomatch: [ '4.0.5' ],
+80 silly audit   postcss: [ '8.5.16' ],
+80 silly audit   'proto3-json-serializer': [ '3.0.4' ],
+80 silly audit   protobufjs: [ '7.6.5' ],
+80 silly audit   'proxy-addr': [ '2.0.7' ],
+80 silly audit   'proxy-from-env': [ '2.1.0' ],
+80 silly audit   qs: [ '6.15.3' ],
+80 silly audit   'range-parser': [ '1.2.1' ],
+80 silly audit   'raw-body': [ '3.0.2' ],
+80 silly audit   react: [ '19.2.5' ],
+80 silly audit   'react-dom': [ '19.2.5' ],
+80 silly audit   'react-router': [ '7.18.1' ],
+80 silly audit   'react-router-dom': [ '7.18.1' ],
+80 silly audit   'readable-stream': [ '3.6.2' ],
+80 silly audit   'require-directory': [ '2.1.1' ],
+80 silly audit   retry: [ '0.13.1' ],
+80 silly audit   rimraf: [ '5.0.10' ],
+80 silly audit   rolldown: [ '1.1.4' ],
+80 silly audit   router: [ '2.2.0' ],
+80 silly audit   'safe-buffer': [ '5.2.1' ],
+80 silly audit   'safer-buffer': [ '2.1.2' ],
+80 silly audit   scheduler: [ '0.27.0' ],
+80 silly audit   semver: [ '7.8.0' ],
+80 silly audit   send: [ '1.2.1' ],
+80 silly audit   'serve-static': [ '2.2.1' ],
+80 silly audit   'set-cookie-parser': [ '2.7.2' ],
+80 silly audit   setprototypeof: [ '1.2.0' ],
+80 silly audit   'shebang-command': [ '2.0.0' ],
+80 silly audit   'shebang-regex': [ '3.0.0' ],
+80 silly audit   'side-channel': [ '1.1.1' ],
+80 silly audit   'side-channel-list': [ '1.0.1' ],
+80 silly audit   'side-channel-map': [ '1.0.1' ],
+80 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+80 silly audit   'signal-exit': [ '4.1.0' ],
+80 silly audit   'source-map-js': [ '1.2.1' ],
+80 silly audit   statuses: [ '2.0.2' ],
+80 silly audit   'stream-events': [ '1.0.5' ],
+80 silly audit   'stream-shift': [ '1.0.3' ],
+80 silly audit   string_decoder: [ '1.3.0' ],
+80 silly audit   strnum: [ '2.3.0' ],
+80 silly audit   stubs: [ '3.0.0' ],
+80 silly audit   tailwindcss: [ '4.3.0' ],
+80 silly audit   tapable: [ '2.3.3' ],
+80 silly audit   tinyglobby: [ '0.2.17' ],
+80 silly audit   toidentifier: [ '1.0.1' ],
+80 silly audit   tslib: [ '2.8.1' ],
+80 silly audit   'tw-animate-css': [ '1.4.0' ],
+80 silly audit   'type-is': [ '2.0.1' ],
+80 silly audit   'undici-types': [ '7.24.6' ],
+80 silly audit   unpipe: [ '1.0.0' ],
+80 silly audit   'util-deprecate': [ '1.0.2' ],
+80 silly audit   vary: [ '1.1.2' ],
+80 silly audit   vite: [ '8.1.3' ],
+80 silly audit   'web-streams-polyfill': [ '3.3.3' ],
+80 silly audit   'web-vitals': [ '4.2.4' ],
+80 silly audit   'websocket-driver': [ '0.7.4' ],
+80 silly audit   'websocket-extensions': [ '0.1.4' ],
+80 silly audit   which: [ '2.0.2' ],
+80 silly audit   wrappy: [ '1.0.2' ],
+80 silly audit   'xml-naming': [ '0.1.0' ],
+80 silly audit   y18n: [ '5.0.8' ],
+80 silly audit   yargs: [ '17.7.2' ],
+80 silly audit   'yargs-parser': [ '21.1.1' ],
+80 silly audit   'yocto-queue': [ '0.1.0' ],
+80 silly audit   'http-proxy-agent': [ '7.0.2' ]
+80 silly audit }
+81 http cache teeny-request@https://registry.npmjs.org/teeny-request/-/teeny-request-10.1.3.tgz 0ms (cache hit)
+82 http cache node-fetch@https://registry.npmjs.org/node-fetch/-/node-fetch-3.3.2.tgz 0ms (cache hit)
+83 http cache gaxios@https://registry.npmjs.org/gaxios/-/gaxios-7.1.5.tgz 0ms (cache hit)
+84 http cache http-proxy-agent@https://registry.npmjs.org/http-proxy-agent/-/http-proxy-agent-7.0.2.tgz 0ms (cache hit)
+85 http cache agent-base@https://registry.npmjs.org/agent-base/-/agent-base-7.1.4.tgz 0ms (cache hit)
+86 http cache agent-base@https://registry.npmjs.org/agent-base/-/agent-base-7.1.4.tgz 0ms (cache hit)
+87 http cache https-proxy-agent@https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-7.0.6.tgz 0ms (cache hit)
+88 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 537ms
+89 silly audit report {}
+90 silly REMOVE node_modules/whatwg-url
+91 silly REMOVE node_modules/webidl-conversions
+92 silly REMOVE node_modules/uuid
+93 silly REMOVE node_modules/tr46
+94 silly CHANGE node_modules/teeny-request
+95 silly ADD node_modules/teeny-request/node_modules/agent-base
+96 silly ADD node_modules/teeny-request/node_modules/https-proxy-agent
+97 silly CHANGE node_modules/node-fetch
+98 silly REMOVE node_modules/is-stream
+99 silly CHANGE node_modules/http-proxy-agent
+100 silly ADD node_modules/http-proxy-agent/node_modules/agent-base
+101 silly REMOVE node_modules/google-gax/node_modules/teeny-request
+102 silly REMOVE node_modules/google-gax/node_modules/node-fetch
+103 silly REMOVE node_modules/google-gax/node_modules/https-proxy-agent
+104 silly REMOVE node_modules/google-gax/node_modules/http-proxy-agent
+105 silly REMOVE node_modules/google-gax/node_modules/gaxios
+106 silly REMOVE node_modules/google-gax/node_modules/agent-base
+107 silly REMOVE node_modules/google-auth-library/node_modules/node-fetch
+108 silly REMOVE node_modules/google-auth-library/node_modules/https-proxy-agent
+109 silly REMOVE node_modules/google-auth-library/node_modules/gaxios
+110 silly REMOVE node_modules/google-auth-library/node_modules/agent-base
+111 silly REMOVE node_modules/gcp-metadata/node_modules/node-fetch
+112 silly REMOVE node_modules/gcp-metadata/node_modules/https-proxy-agent
+113 silly REMOVE node_modules/gcp-metadata/node_modules/gaxios
+114 silly REMOVE node_modules/gcp-metadata/node_modules/agent-base
+115 silly CHANGE node_modules/gaxios
+116 silly REMOVE node_modules/@tootallnate/once
+117 verbose cwd C:\Users\resar\OneDrive\Desktop\Capstone_Project
+118 verbose os Windows_NT 10.0.26200
+119 verbose node v24.14.1
+120 verbose npm  v11.15.0
+121 verbose exit 0
+122 info ok

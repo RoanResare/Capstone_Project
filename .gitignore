@@ -1,0 +1,3 @@
+server/config/*.json
+server/config.bak
+server/.env

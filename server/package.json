@@ -1,0 +1,32 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Backend API for Charming Fur-fection Pet Care",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node ../scripts/dev-server.mjs",
+    "start": "node server.js",
+    "repair:profiles": "node scripts/repairUserProfiles.js",
+    "repair:usernames": "node scripts/backfillUsernames.js",
+    "test": "echo \"No backend tests configured yet\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "firebase-admin": "^14.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^9.0.3",
+    "nodemon": "^3.1.14"
+  },
+  "overrides": {
+    "gaxios": "^7.1.5",
+    "teeny-request": "^10.1.3"
+  }
+}

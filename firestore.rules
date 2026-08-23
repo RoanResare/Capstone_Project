@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // USERS COLLECTION
+    match /users/{userId} {
+
+      // logged in user can access own profile
+      allow read, write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // OTHER COLLECTIONS
+    match /appointments/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /pets/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /availabilitySlots/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /services/{document=**} {
+      allow read: if true;
+    }
+
+    // BLOCK EVERYTHING ELSE
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

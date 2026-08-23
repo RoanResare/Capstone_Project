@@ -1,0 +1,83 @@
+<svg width="358" height="346" viewBox="0 0 358 346" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">Charming Fur-fection Pet Care Services</title>
+  <defs>
+    <path id="brand-arc" d="M45 166C48 72 104 16 179 16C254 16 310 72 313 166" />
+  </defs>
+  <circle cx="179" cy="174" r="163" fill="#8CE4E1" stroke="#0B0B0B" stroke-width="7" />
+  <circle cx="179" cy="174" r="111" fill="#FFFFFF" stroke="#0B0B0B" stroke-width="4" />
+  <text fill="#0B0B0B" font-family="Arial Black, Arial, sans-serif" font-size="29" font-weight="900" letter-spacing="3">
+    <textPath href="#brand-arc" startOffset="50%" text-anchor="middle">CHARMING FUR-FECTION</textPath>
+  </text>
+  <g stroke="#0B0B0B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(78 122)" fill="#17191D">
+      <ellipse cx="22" cy="33" rx="17" ry="34" />
+      <circle cx="23" cy="10" r="15" />
+      <path d="M8 4L18-8L23 8Z" />
+      <path d="M34 4L43-7L40 9Z" />
+      <path d="M9 62L4 91M28 63L31 93" />
+      <circle cx="17" cy="11" r="2" fill="#FFFFFF" stroke="none" />
+      <circle cx="29" cy="11" r="2" fill="#FFFFFF" stroke="none" />
+      <path d="M19 20C22 23 26 23 29 20" />
+      <path d="M14 23L2 31" />
+      <path d="M36 24L49 31" />
+    </g>
+    <g transform="translate(122 132)" fill="#D9BB83">
+      <ellipse cx="50" cy="53" rx="39" ry="50" />
+      <circle cx="49" cy="20" r="27" />
+      <path d="M25 11C10 13 5 29 16 43C20 32 24 22 32 16Z" />
+      <path d="M73 11C88 13 93 29 82 43C78 32 73 22 66 16Z" />
+      <circle cx="39" cy="20" r="3" fill="#111111" stroke="none" />
+      <circle cx="58" cy="20" r="3" fill="#111111" stroke="none" />
+      <ellipse cx="49" cy="32" rx="10" ry="7" fill="#8D663A" />
+      <path d="M49 38V59" />
+      <path d="M28 91L26 125M43 96L42 128M59 96L60 128M72 91L77 123" />
+    </g>
+    <g transform="translate(196 145)" fill="#F8F8F8">
+      <ellipse cx="25" cy="35" rx="18" ry="32" />
+      <circle cx="25" cy="14" r="16" />
+      <circle cx="15" cy="8" r="6" />
+      <circle cx="35" cy="8" r="6" />
+      <circle cx="14" cy="22" r="6" />
+      <circle cx="36" cy="22" r="6" />
+      <circle cx="20" cy="14" r="1.8" fill="#111111" stroke="none" />
+      <circle cx="30" cy="14" r="1.8" fill="#111111" stroke="none" />
+      <path d="M22 22C25 24 27 24 30 22" />
+      <path d="M15 62L15 90M34 62L36 90" />
+    </g>
+    <g transform="translate(224 91)" fill="#382F2A">
+      <ellipse cx="43" cy="66" rx="34" ry="58" />
+      <circle cx="37" cy="28" r="25" />
+      <path d="M18 15C8 27 13 45 25 51L31 28Z" />
+      <path d="M55 16C72 28 73 47 61 54L53 30Z" />
+      <circle cx="30" cy="28" r="2.6" fill="#111111" stroke="none" />
+      <circle cx="47" cy="28" r="2.6" fill="#111111" stroke="none" />
+      <path d="M35 40C39 43 44 43 48 39" />
+      <path d="M72 104L117 122" />
+      <path d="M25 117L23 157M49 117L51 158" />
+    </g>
+  </g>
+  <g fill="#FFC51C" stroke="#0B0B0B" stroke-width="5" stroke-linejoin="round">
+    <circle cx="45" cy="223" r="31" />
+    <circle cx="45" cy="281" r="31" />
+    <circle cx="313" cy="223" r="31" />
+    <circle cx="313" cy="281" r="31" />
+    <rect x="45" y="197" width="268" height="110" rx="30" />
+  </g>
+  <g fill="#0B0B0B">
+    <g transform="translate(29 239)">
+      <circle cx="17" cy="19" r="8" />
+      <circle cx="3" cy="7" r="5" />
+      <circle cx="15" cy="1" r="5" />
+      <circle cx="28" cy="3" r="5" />
+      <circle cx="38" cy="13" r="5" />
+    </g>
+    <g transform="translate(286 239)">
+      <circle cx="17" cy="19" r="8" />
+      <circle cx="3" cy="7" r="5" />
+      <circle cx="15" cy="1" r="5" />
+      <circle cx="28" cy="3" r="5" />
+      <circle cx="38" cy="13" r="5" />
+    </g>
+  </g>
+  <text x="179" y="263" fill="#0B0B0B" font-family="Arial Black, Arial, sans-serif" font-size="24" font-weight="900" text-anchor="middle" letter-spacing="1.2">PET CARE SERVICES</text>
+</svg>

@@ -145,6 +145,8 @@ function loadServiceAccount() {
 }
 
 const serviceAccount = loadServiceAccount();
+const mailUser = readRequired("SMTP_USER", readOptional("EMAIL_USER")).toLowerCase();
+const mailPass = normalizeMailPassword(readRequired("SMTP_PASS", readOptional("EMAIL_PASS")));
 
 const env = {
   nodeEnv: readOptional("NODE_ENV", "development"),
@@ -191,16 +193,13 @@ const env = {
     host: readOptional("SMTP_HOST", "smtp.gmail.com"),
     port: readNumber("SMTP_PORT", 587),
     secure: readBoolean("SMTP_SECURE", false),
-    user: readRequired("SMTP_USER", readOptional("EMAIL_USER")).toLowerCase(),
-    pass: normalizeMailPassword(readRequired("SMTP_PASS", readOptional("EMAIL_PASS"))),
+    user: mailUser,
+    pass: mailPass,
     fromName: readOptional(
       "SMTP_FROM_NAME",
       readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
     ),
-    fromEmail: readRequired(
-      "SMTP_FROM_EMAIL",
-      readOptional("EMAIL_FROM", readOptional("EMAIL_USER")),
-    ),
+    fromEmail: readOptional("SMTP_FROM_EMAIL", mailUser).toLowerCase(),
   },
 };
 

@@ -1,4 +1,5 @@
 const { USER_ROLES, USER_STATUSES } = require("../constants/auth");
+const { env } = require("../config/env");
 const {
   createPortalUser,
   deletePortalUser,
@@ -32,9 +33,23 @@ function normalizeAccountStatus(status = "") {
   return value;
 }
 
-async function listUsers(_req, res) {
+function logAdminUserRequest(req, action, details = {}) {
+  if (env.nodeEnv === "production") {
+    return;
+  }
+
+  console.info(`[admin-users] ${action} request received`, {
+    actorUid: req.auth?.user?.uid || "",
+    actorEmail: req.auth?.user?.email || "",
+    ...details,
+  });
+}
+
+async function listUsers(req, res) {
   assertAuthSetupReady();
-  const users = await listPortalUsers();
+  const shouldRepair = req.auth?.user?.role === USER_ROLES.ADMIN;
+  logAdminUserRequest(req, "list", { repair: shouldRepair });
+  const users = await listPortalUsers({ repair: shouldRepair });
 
   return res.status(200).json({
     success: true,
@@ -49,15 +64,14 @@ async function createUser(req, res) {
   const password = typeof req.body?.password === "string" ? req.body.password.trim() : "";
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
   const role = normalizePortalRole(req.body?.role);
-  const accountStatus = normalizeAccountStatus(
-    req.body?.accountStatus || req.body?.status || USER_STATUSES.ACTIVE,
-  );
+  const accountStatus = USER_STATUSES.ACTIVE;
 
   if (!fullName || !email || !password) {
-    throw new ApiError(400, "Full name, email, password, role, and account status are required.");
+    throw new ApiError(400, "Full name, email, password, and role are required.");
   }
 
   assertStrongPassword(password);
+  logAdminUserRequest(req, "create", { email, role, accountStatus });
 
   const user = await createPortalUser({
     fullName,
@@ -91,6 +105,13 @@ async function updateUser(req, res) {
     assertStrongPassword(nextPassword);
   }
 
+  logAdminUserRequest(req, "update", {
+    targetUid,
+    roleChanged: Boolean(nextRole),
+    statusChanged: Boolean(nextAccountStatus),
+    passwordChanged: Boolean(nextPassword),
+  });
+
   await ensureAdminCanMutateTarget(
     req.auth.user,
     targetUid,
@@ -119,6 +140,7 @@ async function updateUser(req, res) {
 async function removeUser(req, res) {
   assertAuthSetupReady();
   const targetUid = req.params.uid;
+  logAdminUserRequest(req, "delete", { targetUid });
   await ensureAdminCanMutateTarget(req.auth.user, targetUid, "", "", true);
   await deletePortalUser(targetUid);
 

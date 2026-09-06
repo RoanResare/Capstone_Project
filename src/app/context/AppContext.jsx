@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer } from "react";
 import {
   buildSeedAvailabilitySlots,
   portalModules,
@@ -27,6 +27,7 @@ const NOTIFICATION_TARGET_ROLES = ["admin", "staff", "customer"];
 const PORTAL_USER_STATUSES = ["active", "inactive", "suspended"];
 const PASSWORD_HASH_VERSION = 1;
 const FORECAST_AVAILABILITY_DAYS = 120;
+const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -141,6 +142,12 @@ async function doesPasswordMatch(user, password) {
 
 function normalizePortalUser(user) {
   const current = user && typeof user === "object" ? user : {};
+  const id =
+    typeof current.uid === "string" && current.uid.trim()
+      ? current.uid.trim()
+      : typeof current.id === "string"
+        ? current.id.trim()
+        : "";
   const name = typeof current.name === "string" ? current.name.trim() : "";
   const role = normalizePortalRole(current.role);
   const hasSecurePassword =
@@ -151,6 +158,8 @@ function normalizePortalUser(user) {
 
   return {
     ...current,
+    id,
+    uid: id,
     name,
     username: normalizeUsername(current.username || deriveUsernameFromEmail(current.email || "")),
     email: normalizeEmail(current.email || ""),
@@ -178,7 +187,33 @@ function normalizePortalUser(user) {
         : hasSecurePassword
           ? PASSWORD_HASH_VERSION
           : 0,
+    statusChangedAt:
+      typeof current.statusChangedAt === "string" && current.statusChangedAt
+        ? current.statusChangedAt
+        : typeof current.updatedAt === "string" && current.updatedAt
+          ? current.updatedAt
+          : typeof current.createdAt === "string" && current.createdAt
+            ? current.createdAt
+            : new Date().toISOString(),
     };
+}
+
+function isExpiredInactiveUser(user) {
+  if (!["inactive", "suspended"].includes(user.status)) {
+    return false;
+  }
+
+  const parsed = new Date(user.statusChangedAt || user.updatedAt || user.createdAt || "");
+  const referenceTime = Number.isNaN(parsed.getTime()) ? Date.now() : parsed.getTime();
+  return Date.now() - referenceTime > INACTIVE_RETENTION_MS;
+}
+
+function normalizeApiPortalUser(user) {
+  return {
+    ...user,
+    id: user.uid || user.id,
+    name: user.fullName || user.name,
+  };
 }
 
 function normalizeSessionUser(user) {
@@ -844,9 +879,9 @@ function normalizeStoredState(parsed) {
     return seed;
   }
 
-  const users = (Array.isArray(parsed.users) ? parsed.users : seed.users).map((user) =>
-    normalizePortalUser(user),
-  );
+  const users = (Array.isArray(parsed.users) ? parsed.users : seed.users)
+    .map((user) => normalizePortalUser(user))
+    .filter((user) => !isExpiredInactiveUser(user));
   const notifications = Array.isArray(parsed.notifications)
     ? mergeNotifications(parsed.notifications, seed.notifications)
     : seed.notifications;
@@ -957,6 +992,7 @@ function appReducer(state, action) {
         id: action.payload.id || createId("user"),
         role: "staff",
         status: action.payload.status || "active",
+        statusChangedAt: action.payload.statusChangedAt || new Date().toISOString(),
         avatar: createAvatar(action.payload.name),
         bio: action.payload.bio || "Staff account",
         ...action.payload,
@@ -991,11 +1027,18 @@ function appReducer(state, action) {
     case "UPDATE_USER": {
       const users = state.users.map((user) =>
         user.id === action.payload.id
-          ? normalizePortalUser({
-              ...user,
-              ...action.payload.updates,
-              avatar: createAvatar(action.payload.updates.name || user.name),
-            })
+          ? (() => {
+              const nextStatus = action.payload.updates.status || user.status;
+              return normalizePortalUser({
+                ...user,
+                ...action.payload.updates,
+                statusChangedAt:
+                  nextStatus !== user.status
+                    ? new Date().toISOString()
+                    : action.payload.updates.statusChangedAt || user.statusChangedAt,
+                avatar: createAvatar(action.payload.updates.name || user.name),
+              });
+            })()
           : user,
       );
       const nextState = {
@@ -1174,13 +1217,14 @@ function appReducer(state, action) {
               subjectRole: "pet",
               targetType: "appointment",
               targetId: updatedAppointment?.id || action.payload.id,
+              targetUserId: updatedAppointment?.customerId || targetAppointment?.customerId || "",
               relatedAppointmentId: updatedAppointment?.id || action.payload.id,
               appointmentDate: updatedAppointment?.scheduleDate || "",
               appointmentTime: updatedAppointment?.scheduleTime || "",
               serviceName: updatedAppointment?.service || targetAppointment?.service || "",
               petName: updatedAppointment?.petName || targetAppointment?.petName || "",
               email: updatedAppointment?.customerEmail || targetAppointment?.customerEmail || "",
-              targetRoles: ["admin", "staff"],
+              targetRoles: ["admin", "staff", "customer"],
               level:
                 action.payload.updates.status === "Completed" ? "success" : "info",
             }
@@ -1343,15 +1387,11 @@ export function AppProvider({ children }) {
           return;
         }
 
+        const users = response.users.map(normalizeApiPortalUser);
+
         dispatch({
           type: "SYNC_PORTAL_USERS",
-          payload: {
-            users: response.users.map((user) => ({
-              ...user,
-              id: user.uid || user.id,
-              name: user.fullName || user.name,
-            })),
-          },
+          payload: { users },
         });
       } catch (error) {
         console.error("Unable to synchronize portal users from the backend.", error);
@@ -1460,6 +1500,22 @@ export function AppProvider({ children }) {
             (parseDateValue(left.createdAt)?.getTime() || 0),
         )
     : [];
+
+  const refreshPortalUsers = useCallback(async () => {
+    if (!accessToken || !currentUser || !["admin", "staff"].includes(currentUser.role)) {
+      return [];
+    }
+
+    const response = await userApi.listUsers(accessToken, currentUser.role);
+    const users = response.users.map(normalizeApiPortalUser);
+
+    dispatch({
+      type: "SYNC_PORTAL_USERS",
+      payload: { users },
+    });
+
+    return users;
+  }, [accessToken, currentUser?.role, currentUser?.uid]);
 
   async function validateCredentials(email, password, expectedRole) {
     const user = state.users.find(
@@ -1570,14 +1626,6 @@ export function AppProvider({ children }) {
         };
       }
 
-      if (state.users.some((user) => normalizeEmail(user.email) === email)) {
-        return { ok: false, error: "That email is already used by another employee account." };
-      }
-
-      if (state.users.some((user) => normalizeUsername(user.username) === username)) {
-        return { ok: false, error: "That username is already used by another employee account." };
-      }
-
       try {
         const response = await userApi.createUser(accessToken, {
           fullName: name,
@@ -1603,6 +1651,7 @@ export function AppProvider({ children }) {
             actorRole: currentUser?.role || "admin",
           },
         });
+        await refreshPortalUsers();
 
         return {
           ok: true,
@@ -1662,22 +1711,6 @@ export function AppProvider({ children }) {
         };
       }
 
-      if (
-        state.users.some(
-          (user) => user.id !== id && normalizeEmail(user.email) === normalizedEmail,
-        )
-      ) {
-        return { ok: false, error: "That email is already used by another employee account." };
-      }
-
-      if (
-        state.users.some(
-          (user) => user.id !== id && normalizeUsername(user.username) === normalizedUsername,
-        )
-      ) {
-        return { ok: false, error: "That username is already used by another employee account." };
-      }
-
       if (currentUser.id === id) {
         if (normalizedStatus !== "active") {
           return { ok: false, error: "You cannot deactivate or suspend your own active admin session." };
@@ -1687,15 +1720,6 @@ export function AppProvider({ children }) {
           return { ok: false, error: "You cannot remove admin access from your current session." };
         }
       }
-
-      const nextUpdates = {
-        ...updates,
-        name: nextName,
-        email: normalizedEmail,
-        username: normalizedUsername,
-        role: normalizedRole,
-        status: normalizedStatus,
-      };
 
       if (nextPassword && !isStrongPassword(nextPassword)) {
         return {
@@ -1733,6 +1757,7 @@ export function AppProvider({ children }) {
           },
           meta: { actorName: currentUser?.name || "Admin" },
         });
+        await refreshPortalUsers();
 
         return {
           ok: true,
@@ -1767,13 +1792,6 @@ export function AppProvider({ children }) {
         return { ok: false, error: "You cannot delete the account you are currently using." };
       }
 
-      const activeAdminCount = state.users.filter(
-        (user) => user.role === "admin" && user.status === "active",
-      ).length;
-      if (targetUser.role === "admin" && activeAdminCount <= 1) {
-        return { ok: false, error: "At least one active admin account must remain in the system." };
-      }
-
       try {
         await userApi.deleteUser(accessToken, id);
         dispatch({
@@ -1781,6 +1799,7 @@ export function AppProvider({ children }) {
           payload: { id },
           meta: { actorName: currentUser?.name || "Admin" },
         });
+        await refreshPortalUsers();
       } catch (error) {
         return {
           ok: false,
@@ -1844,7 +1863,7 @@ export function AppProvider({ children }) {
           actorRole: currentUser?.role || "customer",
         },
       });
-      saveAppointmentDocument(nextAppointment);
+      return saveAppointmentDocument(nextAppointment);
     },
     updateAppointment(id, updates, actorName) {
       const existingAppointment = state.appointments.find((appointment) => appointment.id === id);
@@ -1862,8 +1881,10 @@ export function AppProvider({ children }) {
       });
 
       if (nextAppointment) {
-        saveAppointmentDocument(nextAppointment);
+        return saveAppointmentDocument(nextAppointment);
       }
+
+      return Promise.resolve(false);
     },
     savePetRecord(payload, actorName) {
       const nextRecord = {
@@ -1879,7 +1900,7 @@ export function AppProvider({ children }) {
         payload: nextRecord,
         meta: { actorName: actorName || currentUser?.name || "Customer" },
       });
-      savePetRecordDocument(nextRecord);
+      return savePetRecordDocument(nextRecord);
     },
     deletePetRecord(id, actorName) {
       dispatch({
@@ -1887,7 +1908,7 @@ export function AppProvider({ children }) {
         payload: { id },
         meta: { actorName: actorName || currentUser?.name || "System User" },
       });
-      deletePetRecordDocument(id);
+      return deletePetRecordDocument(id);
     },
     saveAvailabilitySlot(payload) {
       const nextSlot = {
@@ -1902,7 +1923,7 @@ export function AppProvider({ children }) {
         payload: nextSlot,
         meta: { actorName: currentUser?.name || "Staff" },
       });
-      saveAvailabilitySlotDocument(nextSlot);
+      return saveAvailabilitySlotDocument(nextSlot);
     },
     deleteAvailabilitySlot(id) {
       dispatch({
@@ -1910,7 +1931,7 @@ export function AppProvider({ children }) {
         payload: { id },
         meta: { actorName: currentUser?.name || "Staff" },
       });
-      deleteAvailabilitySlotDocument(id);
+      return deleteAvailabilitySlotDocument(id);
     },
     logChatbotInquiry(payload) {
       dispatch({

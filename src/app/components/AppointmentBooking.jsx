@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   Bell,
@@ -7,29 +8,77 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Info,
   PawPrint,
 } from "lucide-react";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import { buildSeedAvailabilitySlots, serviceCatalog } from "../data/systemData.js";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DOG_BREEDS = [
+  "Aspin (Asong Pinoy)",
+  "Shih Tzu",
+  "Siberian Husky",
+  "Chihuahua",
+  "Labrador Retriever",
+  "Beagle",
+  "Golden Retriever",
+  "Poodle",
+  "Dachshund",
+  "Rottweiler",
+  "Other",
+];
+const CAT_BREEDS = [
+  "Puspin (Philippine Shorthair)",
+  "Siamese",
+  "Persian",
+  "Maine Coon",
+  "British Shorthair",
+  "Bengal",
+  "Abyssinian",
+  "Egyptian Mau",
+  "Toyger",
+  "Other",
+];
+const BREEDS_BY_PET_TYPE = {
+  Dog: DOG_BREEDS,
+  Cat: CAT_BREEDS,
+};
 
 function createInitialFormData(customer, selectedDate = "") {
   return {
     fullName: customer?.name || "",
     email: customer?.email || "",
-    contactNumber: customer?.phone || "",
+    contactNumber: toPhilippineMobileLocal(customer?.phone || ""),
     selectedServiceId: "",
     selectedDate,
     selectedSlotId: "",
     petName: "",
     petType: "",
     breed: "",
+    customBreed: "",
     petInformation: "",
     reminderEnabled: true,
   };
+}
+
+function toPhilippineMobileLocal(value = "") {
+  const digits = String(value || "").replace(/\D/g, "");
+  const withoutCountryCode = digits.startsWith("63") ? digits.slice(2) : digits;
+  const withoutLeadingZero = withoutCountryCode.startsWith("0")
+    ? withoutCountryCode.slice(1)
+    : withoutCountryCode;
+
+  return withoutLeadingZero.slice(0, 10);
+}
+
+function formatPhilippineMobile(value = "") {
+  return `+63${toPhilippineMobileLocal(value)}`;
+}
+
+function isValidPhilippineMobile(value = "") {
+  return /^9\d{9}$/.test(toPhilippineMobileLocal(value));
 }
 
 function parseLocalDate(dateValue) {
@@ -110,6 +159,31 @@ function isBookableFutureSlot(slot) {
   const parsed = new Date(`${slot.date}T${normalizedTime}:00`);
 
   return !Number.isNaN(parsed.getTime()) && parsed.getTime() > Date.now();
+}
+
+function isTodayDateKey(dateKey = "") {
+  return dateKey === formatDateKey(new Date());
+}
+
+function getSlotHour(slot) {
+  const time = typeof slot?.time === "string" ? slot.time.trim() : "";
+  const match = time.match(/^(\d{1,2}):(\d{2})/);
+  return match ? Number(match[1]) : null;
+}
+
+function passesSameDayBookingWindow(slot) {
+  const now = new Date();
+
+  if (!isTodayDateKey(slot?.date)) {
+    return true;
+  }
+
+  const hour = getSlotHour(slot);
+  if (hour === null) {
+    return false;
+  }
+
+  return now.getHours() < 12 ? hour >= 12 : true;
 }
 
 function buildCalendarDays(visibleMonth, availableSlotsByDate, selectedDate) {
@@ -215,8 +289,11 @@ function formatTimeLabel(time) {
 
 export function AppointmentBooking({ embedded = false }) {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
   const currentCustomer = currentUser?.role === "customer" ? currentUser : null;
   const { state, createAppointment, savePetRecord } = useApp();
+  const fieldRefs = useRef({});
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -255,6 +332,7 @@ export function AppointmentBooking({ embedded = false }) {
           };
         })
         .filter((slot) => isBookableFutureSlot(slot))
+        .filter((slot) => passesSameDayBookingWindow(slot))
         .filter((slot) => slot.isOpen)
         .sort((left, right) =>
           `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`),
@@ -289,10 +367,12 @@ export function AppointmentBooking({ embedded = false }) {
   );
   const firstVisibleAvailableDate = visibleMonthAvailableDateKeys[0] || "";
   const [formData, setFormData] = useState(() =>
-    createInitialFormData(currentCustomer, firstAvailableDate),
+    createInitialFormData(currentCustomer),
   );
   const [errors, setErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeStep, setActiveStep] = useState(1);
   const firstAvailableMonthDate = firstAvailableDate ? parseLocalDate(firstAvailableDate) : null;
 
   const selectedService = serviceCatalog.find(
@@ -329,9 +409,7 @@ export function AppointmentBooking({ embedded = false }) {
         current.selectedDate &&
         availableSlotsByDate[current.selectedDate]?.length &&
         isSameMonth(current.selectedDate, visibleMonth);
-      const nextSelectedDate = keepSelectedDate
-        ? current.selectedDate
-        : firstVisibleAvailableDate || firstAvailableDate;
+      const nextSelectedDate = keepSelectedDate ? current.selectedDate : "";
       const selectedSlotStillAvailable = nextSelectedDate
         ? availableSlotsByDate[nextSelectedDate]?.some((slot) => slot.id === current.selectedSlotId)
         : false;
@@ -349,12 +427,16 @@ export function AppointmentBooking({ embedded = false }) {
         selectedSlotId: selectedSlotStillAvailable ? current.selectedSlotId : "",
       };
     });
-  }, [
-    availableSlotsByDate,
-    firstAvailableDate,
-    firstVisibleAvailableDate,
-    visibleMonth,
-  ]);
+  }, [availableSlotsByDate, visibleMonth]);
+
+  useEffect(() => {
+    setFormData((current) => ({
+      ...current,
+      fullName: currentCustomer?.name || currentCustomer?.fullName || current.fullName,
+      email: currentCustomer?.email || current.email,
+      contactNumber: toPhilippineMobileLocal(currentCustomer?.phone || current.contactNumber),
+    }));
+  }, [currentCustomer]);
 
   const handleMonthChange = useCallback(
     (amount) => {
@@ -400,6 +482,43 @@ export function AppointmentBooking({ embedded = false }) {
     }
   };
 
+  const handlePhoneChange = (event) => {
+    const value = toPhilippineMobileLocal(event.target.value);
+    setFormData((current) => ({ ...current, contactNumber: value }));
+    if (feedback.message) {
+      setFeedback({ type: "", message: "" });
+    }
+    if (errors.contactNumber) {
+      setErrors((current) => ({ ...current, contactNumber: "" }));
+    }
+  };
+
+  const handlePetTypeChange = (event) => {
+    const value = event.target.value;
+    setFormData((current) => ({
+      ...current,
+      petType: value,
+      breed: "",
+      customBreed: "",
+    }));
+    if (feedback.message) {
+      setFeedback({ type: "", message: "" });
+    }
+    setErrors((current) => ({ ...current, petType: "", breed: "" }));
+  };
+
+  const handleBreedChange = (event) => {
+    const value = event.target.value;
+    setFormData((current) => ({
+      ...current,
+      breed: value,
+      customBreed: value === "Other" ? current.customBreed : "",
+    }));
+    if (errors.breed) {
+      setErrors((current) => ({ ...current, breed: "" }));
+    }
+  };
+
   const handleServiceSelect = (serviceId) => {
     setFormData((current) => ({ ...current, selectedServiceId: serviceId }));
     if (feedback.message) {
@@ -440,6 +559,9 @@ export function AppointmentBooking({ embedded = false }) {
     if (errors.selectedSlotId) {
       setErrors((current) => ({ ...current, selectedSlotId: "" }));
     }
+    if (errors.selectedDate) {
+      setErrors((current) => ({ ...current, selectedDate: "" }));
+    }
   };
 
   const handleSlotSelect = (slotId, dateKey) => {
@@ -466,6 +588,9 @@ export function AppointmentBooking({ embedded = false }) {
     if (errors.selectedSlotId) {
       setErrors((current) => ({ ...current, selectedSlotId: "" }));
     }
+    if (errors.selectedDate) {
+      setErrors((current) => ({ ...current, selectedDate: "" }));
+    }
   };
 
   const validateForm = () => {
@@ -483,14 +608,20 @@ export function AppointmentBooking({ embedded = false }) {
 
     if (!formData.contactNumber.trim()) {
       nextErrors.contactNumber = "Contact number is required.";
+    } else if (!isValidPhilippineMobile(formData.contactNumber)) {
+      nextErrors.contactNumber = "Enter a valid Philippine mobile number starting with 9.";
     }
 
     if (!formData.selectedServiceId) {
       nextErrors.selectedServiceId = "Choose a service first.";
     }
 
+    if (!formData.selectedDate) {
+      nextErrors.selectedDate = "Choose an available date.";
+    }
+
     if (!formData.selectedSlotId) {
-      nextErrors.selectedSlotId = "Select an available date and time.";
+      nextErrors.selectedSlotId = "Choose an available time slot.";
     }
 
     if (!formData.petName.trim()) {
@@ -499,6 +630,12 @@ export function AppointmentBooking({ embedded = false }) {
 
     if (!formData.petType.trim()) {
       nextErrors.petType = "Pet type is required.";
+    }
+
+    if (!formData.breed.trim()) {
+      nextErrors.breed = "Pet breed is required.";
+    } else if (formData.breed === "Other" && !formData.customBreed.trim()) {
+      nextErrors.breed = "Specify the custom breed.";
     }
 
     if (
@@ -510,67 +647,224 @@ export function AppointmentBooking({ embedded = false }) {
     }
 
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    const missingFields = Object.keys(nextErrors);
+
+    if (missingFields.length > 0) {
+      const message = "Missing items. Please complete all required fields.";
+      setActiveStep(fieldStepMap[missingFields[0]] || 1);
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      window.requestAnimationFrame(() => {
+        const firstField = missingFields[0];
+        const target = fieldRefs.current[firstField];
+        if (target?.scrollIntoView) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        if (target?.focus) {
+          target.focus({ preventScroll: true });
+        }
+      });
+    }
+
+    return missingFields.length === 0;
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!validateForm() || !selectedService || !selectedSlot) {
+    if (!currentCustomer) {
+      navigate("/login", { state: { from: "/customer/dashboard?tab=booking" } });
       return;
     }
+
+    if (isSubmitting || !validateForm() || !selectedService || !selectedSlot) {
+      return;
+    }
+
+    setIsSubmitting(true);
 
     const existingPetRecord = petRecords.find(
       (record) =>
         record.customerEmail?.toLowerCase() === formData.email.trim().toLowerCase() &&
         record.petName.trim().toLowerCase() === formData.petName.trim().toLowerCase(),
     );
+    const now = new Date().toISOString();
+    const resolvedBreed =
+      formData.breed === "Other" ? formData.customBreed.trim() : formData.breed.trim();
+    const resolvedContactNumber = formatPhilippineMobile(formData.contactNumber);
+    const petRecordId =
+      existingPetRecord?.id || `pet-${currentCustomer.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const nextPetRecordPayload = {
-      id: existingPetRecord?.id,
-      customerId: currentCustomer?.uid || existingPetRecord?.customerId || "",
+      id: petRecordId,
+      customerId: currentCustomer.uid,
       customerEmail: formData.email.trim().toLowerCase(),
       ownerName: formData.fullName.trim(),
       petName: formData.petName.trim(),
       petType: formData.petType.trim(),
-      breed: formData.breed.trim(),
+      breed: resolvedBreed,
       lastVisit: existingPetRecord?.lastVisit || "",
       visitRecords: existingPetRecord?.visitRecords || [],
       medicalRecords: existingPetRecord?.medicalRecords || [],
       notes: formData.petInformation.trim() || existingPetRecord?.notes || "",
+      createdAt: existingPetRecord?.createdAt || now,
+      updatedAt: now,
     };
 
-    savePetRecord(nextPetRecordPayload, formData.fullName.trim());
+    try {
+      const petSaved = await Promise.resolve(
+        savePetRecord(nextPetRecordPayload, formData.fullName.trim()),
+      );
 
-    createAppointment(
-      {
-        customerId: currentCustomer?.uid || "",
-        customerEmail: formData.email.trim().toLowerCase(),
-        contactNumber: formData.contactNumber.trim(),
-        ownerName: formData.fullName.trim(),
-        petRecordId: existingPetRecord?.id || undefined,
-        petName: formData.petName.trim(),
-        petType: formData.petType.trim(),
-        breed: formData.breed.trim(),
-        service: selectedService.name,
-        slotId: selectedSlot.id,
-        scheduleDate: selectedSlot.date,
-        scheduleTime: selectedSlot.time,
-        status: "Pending",
-        reminderEnabled: formData.reminderEnabled,
-        notes: formData.petInformation.trim(),
-      },
-      formData.fullName.trim(),
-    );
+      const appointmentSaved = await Promise.resolve(
+        createAppointment(
+          {
+            customerId: currentCustomer.uid,
+            customerEmail: formData.email.trim().toLowerCase(),
+            customerName: formData.fullName.trim(),
+            contactNumber: resolvedContactNumber,
+            ownerName: formData.fullName.trim(),
+            petRecordId,
+            petSnapshot: {
+              id: petRecordId,
+              petName: formData.petName.trim(),
+              petType: formData.petType.trim(),
+              breed: resolvedBreed,
+              notes: formData.petInformation.trim(),
+            },
+            petName: formData.petName.trim(),
+            petType: formData.petType.trim(),
+            breed: resolvedBreed,
+            serviceId: selectedService.id,
+            service: selectedService.name,
+            servicePrice: selectedService.priceLabel,
+            slotId: selectedSlot.id,
+            scheduleDate: selectedSlot.date,
+            scheduleTime: selectedSlot.time,
+            status: "Pending",
+            reminderEnabled: formData.reminderEnabled,
+            notes: formData.petInformation.trim(),
+            updatedAt: now,
+          },
+          formData.fullName.trim(),
+        ),
+      );
 
-    setFeedback({
-      type: "success",
-      message:
-        "Appointment booked successfully. A booking notification is now available in Notifications.",
-    });
-    setFormData(createInitialFormData(currentCustomer, firstAvailableDate));
-    setErrors({});
+      if (!petSaved || !appointmentSaved) {
+        throw new Error("The booking could not be synchronized.");
+      }
+
+      const message = "Appointment booked successfully.";
+      setFeedback({ type: "success", message });
+      toast.success(message);
+      setFormData(createInitialFormData(currentCustomer));
+      setErrors({});
+      setActiveStep(1);
+    } catch (error) {
+      console.error("Unable to save appointment booking.", error);
+      const message = "Unable to save your appointment. Please try again.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const setFieldRef = (field) => (element) => {
+    fieldRefs.current[field] = element;
+  };
+
+  const fieldClassName = (field, baseClassName) =>
+    `${baseClassName} ${
+      errors[field] ? "border-[#B23949] bg-[#FFF7F8] ring-2 ring-[#F4B7BE]/50" : ""
+    }`;
+  const fieldStepMap = {
+    selectedServiceId: 1,
+    selectedDate: 2,
+    selectedSlotId: 2,
+    fullName: 3,
+    email: 3,
+    contactNumber: 3,
+    petName: 3,
+    petType: 3,
+    breed: 3,
+  };
+  const bookingSteps = [
+    { id: 1, label: "Select Service" },
+    { id: 2, label: "Date & Time" },
+    { id: 3, label: "Pet Details" },
+  ];
+  const validateStep = (step) => {
+    const nextErrors = {};
+
+    if (step === 1 && !formData.selectedServiceId) {
+      nextErrors.selectedServiceId = "Choose a service first.";
+    }
+
+    if (step === 2) {
+      if (!formData.selectedDate) {
+        nextErrors.selectedDate = "Choose an available date.";
+      }
+      if (!formData.selectedSlotId) {
+        nextErrors.selectedSlotId = "Choose an available time slot.";
+      }
+    }
+
+    if (step === 3) {
+      if (!formData.fullName.trim()) {
+        nextErrors.fullName = "Full name is required.";
+      }
+      if (!formData.email.trim()) {
+        nextErrors.email = "Email is required.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        nextErrors.email = "Please enter a valid email address.";
+      }
+      if (!formData.contactNumber.trim()) {
+        nextErrors.contactNumber = "Contact number is required.";
+      } else if (!isValidPhilippineMobile(formData.contactNumber)) {
+        nextErrors.contactNumber = "Enter a valid Philippine mobile number starting with 9.";
+      }
+      if (!formData.petName.trim()) {
+        nextErrors.petName = "Pet name is required.";
+      }
+      if (!formData.petType.trim()) {
+        nextErrors.petType = "Pet type is required.";
+      }
+      if (!formData.breed.trim()) {
+        nextErrors.breed = "Pet breed is required.";
+      } else if (formData.breed === "Other" && !formData.customBreed.trim()) {
+        nextErrors.breed = "Specify the custom breed.";
+      }
+    }
+
+    setErrors((current) => ({
+      ...current,
+      ...nextErrors,
+    }));
+
+    if (Object.keys(nextErrors).length > 0) {
+      const message = "Missing items. Please complete all required fields.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return false;
+    }
+
+    setFeedback({ type: "", message: "" });
+    return true;
+  };
+  const goToNextStep = () => {
+    if (!validateStep(activeStep)) {
+      return;
+    }
+
+    setActiveStep((current) => Math.min(current + 1, 3));
+  };
+  const goToPreviousStep = () => {
+    setFeedback({ type: "", message: "" });
+    setActiveStep((current) => Math.max(current - 1, 1));
+  };
+  const useTwoColumnStepLayout = !embedded && activeStep !== 3;
+  const availableBreedOptions = BREEDS_BY_PET_TYPE[formData.petType] || [];
 
   const content = (
     <div className="mx-auto max-w-[1180px] space-y-4">
@@ -601,8 +895,54 @@ export function AppointmentBooking({ embedded = false }) {
         </motion.section>
       )}
 
-      <form onSubmit={handleSubmit} className="grid items-start gap-4 xl:grid-cols-[1.12fr_0.88fr]">
-        <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-lg bg-white p-3 shadow-[0_10px_24px_rgba(94,81,60,0.1)] md:p-4">
+          <div className="grid gap-2 md:grid-cols-3">
+            {bookingSteps.map((step) => {
+              const isActive = activeStep === step.id;
+              const isComplete =
+                step.id === 1
+                  ? Boolean(formData.selectedServiceId)
+                  : step.id === 2
+                    ? Boolean(formData.selectedDate && formData.selectedSlotId)
+                    : Boolean(formData.fullName && formData.email && formData.petName && formData.petType);
+
+              return (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => setActiveStep(step.id)}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                    isActive
+                      ? "border-[#2D9B9B] bg-[#F3FBFB]"
+                      : isComplete
+                        ? "border-[#DCEFEA] bg-[#F8FCFC]"
+                        : "border-[#E6EFEE] bg-white"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+                      isActive || isComplete ? "bg-[#2D9B9B] text-white" : "bg-[#EEF6F6] text-[#607277]"
+                    }`}
+                  >
+                    {step.id}
+                  </span>
+                  <span>
+                    <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#7A979C]">
+                      Step {step.id}
+                    </span>
+                    <span className="block text-sm font-semibold text-[#20343B]">{step.label}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className={`grid items-start gap-4 ${useTwoColumnStepLayout ? "xl:grid-cols-[1.12fr_0.88fr]" : ""}`}>
+          {activeStep !== 3 && (
+          <div className="space-y-4">
+            {activeStep === 1 && (
           <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -617,14 +957,17 @@ export function AppointmentBooking({ embedded = false }) {
             </div>
 
             <div className="mt-4 grid gap-2.5 md:grid-cols-2">
-              {serviceCatalog.map((service) => (
+              {serviceCatalog.map((service, index) => (
                 <button
                   key={service.id}
                   type="button"
+                  ref={index === 0 ? setFieldRef("selectedServiceId") : undefined}
                   onClick={() => handleServiceSelect(service.id)}
                   className={`rounded-lg border px-3.5 py-3 text-left transition ${
                     formData.selectedServiceId === service.id
                       ? "border-[#2D9B9B] bg-[#F3FBFB]"
+                      : errors.selectedServiceId
+                        ? "border-[#B23949] bg-[#FFF7F8]"
                       : "border-[#E6EFEE] bg-[#FCFEFE]"
                   }`}
                 >
@@ -643,8 +986,19 @@ export function AppointmentBooking({ embedded = false }) {
             {errors.selectedServiceId && (
               <p className="mt-3 text-sm text-[#B23949]">{errors.selectedServiceId}</p>
             )}
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={goToNextStep}
+                className="rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+              >
+                Continue
+              </button>
+            </div>
           </section>
+            )}
 
+            {activeStep === 2 && (
           <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -706,6 +1060,7 @@ export function AppointmentBooking({ embedded = false }) {
                     <button
                       key={day.dateKey}
                       type="button"
+                      ref={!formData.selectedDate && day.hasAvailability ? setFieldRef("selectedDate") : undefined}
                       onClick={() => day.hasAvailability && handleDateSelect(day.dateKey)}
                       disabled={!day.hasAvailability}
                       className={`min-h-[46px] rounded-lg border px-1 py-1.5 transition ${
@@ -763,14 +1118,17 @@ export function AppointmentBooking({ embedded = false }) {
 
                 {selectedDateSlots.length > 0 ? (
                   <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-                    {selectedDateSlots.map((slot) => (
+                    {selectedDateSlots.map((slot, index) => (
                       <button
                         key={slot.id}
                         type="button"
+                        ref={index === 0 ? setFieldRef("selectedSlotId") : undefined}
                         onClick={() => handleSlotSelect(slot.id, slot.date)}
                       className={`rounded-lg border px-3.5 py-2.5 text-left transition ${
                           formData.selectedSlotId === slot.id
                             ? "border-[#2D9B9B] bg-[#2D9B9B] text-white shadow-[0_18px_34px_rgba(45,155,155,0.22)]"
+                            : errors.selectedSlotId
+                              ? "border-[#B23949] bg-[#FFF7F8] text-[#20343B]"
                             : "border-[#DDEAEA] bg-white text-[#20343B] hover:border-[#BFDCDC] hover:bg-[#F5FBFB]"
                         }`}
                       >
@@ -794,20 +1152,8 @@ export function AppointmentBooking({ embedded = false }) {
                   </p>
                 )}
 
-                <div className="mt-3 rounded-lg bg-[#F4FAFA] px-4 py-3 text-sm text-[#33545A]">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#2D6B73]">
-                      <Info size={18} />
-                    </div>
-                    <div>
-                      <p className="font-semibold">
-                        Estimated session duration: {selectedService?.duration || "Choose a service first"}
-                      </p>
-                      <p className="mt-1 text-[#607277]">
-                        Please arrive 10 minutes before your appointment time and bring any previous medical notes when available.
-                      </p>
-                    </div>
-                  </div>
+                <div className="mt-3 rounded-lg bg-[#F4FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                  Estimated session duration: {selectedService?.duration || "Choose a service first"}
                 </div>
               </div>
               {availableSlots.length === 0 && (
@@ -818,10 +1164,32 @@ export function AppointmentBooking({ embedded = false }) {
               {errors.selectedSlotId && (
                 <p className="text-sm text-[#B23949]">{errors.selectedSlotId}</p>
               )}
+              {errors.selectedDate && (
+                <p className="text-sm text-[#B23949]">{errors.selectedDate}</p>
+              )}
+            </div>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <button
+                type="button"
+                onClick={goToPreviousStep}
+                className="rounded-lg bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={goToNextStep}
+                className="rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+              >
+                Continue
+              </button>
             </div>
           </section>
-        </div>
+            )}
+          </div>
+          )}
 
+        {activeStep === 3 && (
         <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -837,40 +1205,69 @@ export function AppointmentBooking({ embedded = false }) {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2.5">
+          <div className="mt-5 grid gap-4">
+            <label className="block text-sm font-medium text-[#425A60]">
+              Full name
+            </label>
             <input
+              ref={setFieldRef("fullName")}
               value={formData.fullName}
               onChange={handleChange("fullName")}
-              className="rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-              placeholder="Full name"
+              className={fieldClassName("fullName", "rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
+              placeholder="Customer name"
             />
-            {errors.fullName && <p className="-mt-1 text-sm text-[#B23949]">{errors.fullName}</p>}
+            {errors.fullName && <p className="-mt-2 text-sm text-[#B23949]">{errors.fullName}</p>}
 
+            <label className="block text-sm font-medium text-[#425A60]">
+              Email
+            </label>
             <input
+              ref={setFieldRef("email")}
               type="email"
               value={formData.email}
               onChange={handleChange("email")}
-              className="rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-              placeholder="Email address"
+              className={fieldClassName("email", "rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
+              placeholder="customer@email.com"
             />
-            {errors.email && <p className="-mt-1 text-sm text-[#B23949]">{errors.email}</p>}
+            {errors.email && <p className="-mt-2 text-sm text-[#B23949]">{errors.email}</p>}
 
-            <input
-              value={formData.contactNumber}
-              onChange={handleChange("contactNumber")}
-              className="rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-              placeholder="Contact number"
-            />
+            <label className="block text-sm font-medium text-[#425A60]">
+              Contact number
+            </label>
+            <label
+              className={fieldClassName(
+                "contactNumber",
+                "flex items-center overflow-hidden rounded-lg border border-[#D9E7E7] bg-white outline-none transition focus-within:border-[#2D9B9B]",
+              )}
+            >
+              <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                +63 🇵🇭
+              </span>
+              <input
+                ref={setFieldRef("contactNumber")}
+                value={formData.contactNumber}
+                onChange={handlePhoneChange}
+                inputMode="numeric"
+                pattern="9[0-9]{9}"
+                maxLength={10}
+                className="min-w-0 flex-1 px-4 py-3 outline-none"
+                placeholder="9171234567"
+              />
+            </label>
             {errors.contactNumber && (
-              <p className="-mt-1 text-sm text-[#B23949]">{errors.contactNumber}</p>
+              <p className="-mt-2 text-sm text-[#B23949]">{errors.contactNumber}</p>
             )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
+                <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                  Pet name
+                </label>
                 <input
+                  ref={setFieldRef("petName")}
                   value={formData.petName}
                   onChange={handleChange("petName")}
-                  className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                  className={fieldClassName("petName", "w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
                   placeholder="Pet name"
                 />
                 {errors.petName && (
@@ -878,25 +1275,56 @@ export function AppointmentBooking({ embedded = false }) {
                 )}
               </div>
               <div>
-                <input
+                <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                  Pet type
+                </label>
+                <select
+                  ref={setFieldRef("petType")}
                   value={formData.petType}
-                  onChange={handleChange("petType")}
-                  className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                  placeholder="Pet type"
-                />
+                  onChange={handlePetTypeChange}
+                  className={fieldClassName("petType", "w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
+                >
+                  <option value="">Select pet type</option>
+                  <option value="Dog">Dog</option>
+                  <option value="Cat">Cat</option>
+                </select>
                 {errors.petType && (
                   <p className="mt-2 text-sm text-[#B23949]">{errors.petType}</p>
                 )}
               </div>
             </div>
 
-            <input
+            <label className="block text-sm font-medium text-[#425A60]">
+              Breed
+            </label>
+            <select
               value={formData.breed}
-              onChange={handleChange("breed")}
-              className="rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-              placeholder="Breed"
-            />
+              onChange={handleBreedChange}
+              disabled={!formData.petType}
+              className={fieldClassName("breed", "rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]")}
+            >
+              <option value="">
+                {formData.petType ? "Select breed" : "Select pet type first"}
+              </option>
+              {availableBreedOptions.map((breed) => (
+                <option key={breed} value={breed}>
+                  {breed}
+                </option>
+              ))}
+            </select>
+            {formData.breed === "Other" && (
+              <input
+                value={formData.customBreed}
+                onChange={handleChange("customBreed")}
+                className={fieldClassName("breed", "rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
+                placeholder="Specify Custom Breed"
+              />
+            )}
+            {errors.breed && <p className="-mt-2 text-sm text-[#B23949]">{errors.breed}</p>}
 
+            <label className="block text-sm font-medium text-[#425A60]">
+              Visit notes
+            </label>
             <textarea
               value={formData.petInformation}
               onChange={handleChange("petInformation")}
@@ -945,17 +1373,26 @@ export function AppointmentBooking({ embedded = false }) {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={currentCustomer?.status !== "active" && Boolean(currentCustomer)}
-            className={`mt-4 w-full rounded-lg px-5 py-3 text-sm font-semibold text-white transition ${
-              currentCustomer?.status !== "active" && currentCustomer
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={goToPreviousStep}
+              className="rounded-lg bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A] sm:w-auto"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+            disabled={isSubmitting || (currentCustomer?.status !== "active" && Boolean(currentCustomer))}
+            className={`flex-1 rounded-lg px-5 py-3 text-sm font-semibold text-white transition ${
+              isSubmitting || (currentCustomer?.status !== "active" && currentCustomer)
                 ? "cursor-not-allowed bg-[#9CB5B8]"
                 : "bg-[#2D9B9B] hover:bg-[#288A8A]"
             }`}
           >
-            Confirm appointment booking
+            {isSubmitting ? "Saving appointment..." : "Confirm appointment booking"}
           </button>
+          </div>
 
           {feedback.message && (
             <p
@@ -969,6 +1406,8 @@ export function AppointmentBooking({ embedded = false }) {
             </p>
           )}
         </section>
+        )}
+        </div>
       </form>
     </div>
   );

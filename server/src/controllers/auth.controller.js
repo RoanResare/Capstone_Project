@@ -14,9 +14,12 @@ const {
   verifyOtpCode,
 } = require("../services/otp.service");
 const {
+  findUserByEmailCaseInsensitive,
   getUserByEmail,
   getUserByUid,
+  getUserByUsername,
   getUsernameOwner,
+  relinkUserProfileToUid,
   toPublicUser,
   touchLastLogin,
   updateStoredPasswordHash,
@@ -150,6 +153,42 @@ async function resolveEmailFromIdentifier(identifier = "") {
   }
 
   return resolvedEmail;
+}
+
+async function resolveAuthenticatedFirestoreUser({ identifier, email, firebaseUid }) {
+  const normalizedIdentifier = normalizeString(identifier).toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedUid = normalizeString(firebaseUid);
+  const candidates = [];
+
+  const addCandidate = (user) => {
+    if (user && !candidates.some((candidate) => candidate.uid === user.uid)) {
+      candidates.push(user);
+    }
+  };
+
+  addCandidate(await getUserByUid(normalizedUid));
+  addCandidate(await findUserByEmailCaseInsensitive(normalizedEmail));
+
+  if (normalizedIdentifier && !isEmailLike(normalizedIdentifier)) {
+    addCandidate(await getUserByUsername(normalizedIdentifier));
+  }
+
+  const matchingUser =
+    candidates.find((user) => user.uid === normalizedUid) ||
+    candidates.find((user) => normalizeEmail(user.email) === normalizedEmail) ||
+    candidates[0] ||
+    null;
+
+  if (!matchingUser) {
+    return null;
+  }
+
+  if (matchingUser.uid !== normalizedUid || matchingUser.profileDocId !== normalizedUid) {
+    return relinkUserProfileToUid(matchingUser, normalizedUid);
+  }
+
+  return matchingUser;
 }
 
 function validateLoginPayload(payload = {}) {
@@ -349,13 +388,25 @@ async function createOtpChallengeResponse(user, message, options = {}) {
   const otp = await createOtpVerification(user, {
     enforceCooldown: Boolean(options.enforceCooldown),
   });
-  const delivery = await sendOtpEmail({
-    to: user.email,
-    fullName: user.fullName,
-    otpCode: otp.otpCode,
-    role: user.role,
-    expiresInMinutes: env.otp.ttlMinutes,
-  });
+  let delivery = { deliveryMode: "smtp-unavailable" };
+
+  try {
+    delivery = await sendOtpEmail({
+      to: user.email,
+      fullName: user.fullName,
+      otpCode: otp.otpCode,
+      role: user.role,
+      expiresInMinutes: env.otp.ttlMinutes,
+    });
+  } catch (error) {
+    console.error("[auth] OTP email delivery failed; login challenge remains active.", {
+      uid: user.uid,
+      role: user.role,
+      email: maskEmail(user.email),
+      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+      code: error?.code || "",
+    });
+  }
 
   console.info("[auth] OTP challenge created.", {
     uid: user.uid,
@@ -393,17 +444,17 @@ function createRoleBoundLoginHandler(expectedRole) {
     }
 
     const signInPayload = await signInWithEmailAndPassword(email, password);
-    const user = existingUser || (await getUserByUid(signInPayload.localId));
+    const user = await resolveAuthenticatedFirestoreUser({
+      identifier,
+      email,
+      firebaseUid: signInPayload.localId,
+    });
 
     if (!user) {
       throw new ApiError(
         403,
         "This account exists in Firebase Authentication but has no user profile in Firestore.",
       );
-    }
-
-    if (user.uid !== signInPayload.localId) {
-      throw new ApiError(409, "The user profile does not match the Firebase Authentication record.");
     }
 
     await synchronizePasswordHash(user, password);
@@ -516,17 +567,17 @@ async function loginUnified(req, res) {
   }
 
   const signInPayload = await signInWithEmailAndPassword(email, password);
-  const user = existingUser || (await getUserByUid(signInPayload.localId));
+  const user = await resolveAuthenticatedFirestoreUser({
+    identifier,
+    email,
+    firebaseUid: signInPayload.localId,
+  });
 
   if (!user) {
     throw new ApiError(
       403,
       "This account exists in Firebase Authentication but has no user profile in Firestore.",
     );
-  }
-
-  if (user.uid !== signInPayload.localId) {
-    throw new ApiError(409, "The user profile does not match the Firebase Authentication record.");
   }
 
   await synchronizePasswordHash(user, password);
@@ -589,11 +640,22 @@ async function forgotPassword(req, res) {
 
   const providerLink = await generatePasswordResetLink(firebaseUser.email);
   const resetLink = buildAppPasswordResetLink(req, providerLink);
-  const delivery = await sendPasswordResetEmail({
-    to: firebaseUser.email,
-    fullName: storedUser?.fullName || firebaseUser.displayName || "",
-    resetLink,
-  });
+  let delivery = { deliveryMode: "smtp-unavailable" };
+
+  try {
+    delivery = await sendPasswordResetEmail({
+      to: firebaseUser.email,
+      fullName: storedUser?.fullName || firebaseUser.displayName || "",
+      resetLink,
+    });
+  } catch (error) {
+    console.error("[auth] Password reset email delivery failed.", {
+      uid: firebaseUser.uid,
+      email: maskEmail(firebaseUser.email),
+      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+      code: error?.code || "",
+    });
+  }
 
   console.info("[auth] Password reset link generated.", {
     uid: firebaseUser.uid,

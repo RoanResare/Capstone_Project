@@ -10,6 +10,8 @@ import { ResetPassword } from "./components/ResetPassword.jsx";
 import { RouteErrorScreen } from "./components/RouteErrorScreen.jsx";
 import { UnauthorizedPage } from "./components/UnauthorizedPage.jsx";
 import { RequireAuth } from "./components/portal/RequireAuth.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
+import { resolveHomePath } from "./utils/roleUtils.js";
 
 const About = lazy(async () => {
   const module = await import("./components/About.jsx");
@@ -73,6 +75,25 @@ function RouteLoader({ Component }) {
   );
 }
 
+function DashboardRedirect() {
+  const { currentUser, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 text-[#20343B]">
+        <div className="mx-auto max-w-[960px] rounded-[32px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)]">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+            Loading Account
+          </p>
+          <h1 className="mt-3 text-2xl font-semibold">Finding your dashboard...</h1>
+        </div>
+      </div>
+    );
+  }
+
+  return <Navigate to={currentUser ? resolveHomePath(currentUser.role) : "/login"} replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -81,9 +102,17 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "about", element: <RouteLoader Component={About} /> },
-      { path: "services", element: <Navigate to="/#services" replace /> },
-      { path: "las-pinas-city-branch", element: <Navigate to="/#services" replace /> },
-      { path: "las-pinas-branch", element: <Navigate to="/#services" replace /> },
+      { path: "dashboard", element: <DashboardRedirect /> },
+      {
+        path: "services",
+        element: (
+          <RequireAuth allowedRoles={["customer"]}>
+            <Navigate to="/customer/dashboard?tab=services" replace />
+          </RequireAuth>
+        ),
+      },
+      { path: "las-pinas-city-branch", element: <Navigate to="/#visit-info" replace /> },
+      { path: "las-pinas-branch", element: <Navigate to="/#visit-info" replace /> },
       { path: "login", element: <RouteLoader Component={Login} /> },
       { path: "customer/login", element: <Navigate to="/login" replace /> },
       { path: "customer/signup", element: <RouteLoader Component={CustomerSignup} /> },
@@ -106,7 +135,14 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      { path: "appointment", element: <Navigate to="/#book-appointment" replace /> },
+      {
+        path: "appointment",
+        element: (
+          <RequireAuth allowedRoles={["customer"]}>
+            <Navigate to="/customer/dashboard?tab=booking" replace />
+          </RequireAuth>
+        ),
+      },
       { path: "products", element: <RouteLoader Component={Products} /> },
     ],
   },

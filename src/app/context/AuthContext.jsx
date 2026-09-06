@@ -1018,15 +1018,22 @@ export function AuthProvider({ children }) {
 
       return await finalizePortalLogin(response, activePendingOtp);
     } catch (error) {
+      const statusCode = Number(error?.statusCode || 0);
+      const rawMessage = error instanceof Error ? error.message : "";
+      const isExpectedOtpFailure = [400, 401, 404, 409, 429].includes(statusCode);
+      const safeMessage = isExpectedOtpFailure
+        ? "Invalid or expired OTP code. Please try again."
+        : "Unable to verify the OTP code right now. Please try again.";
+
       console.warn("[portal-auth] OTP verification failed.", {
         role: activePendingOtp.role,
         email: maskEmail(activePendingOtp.email),
-        error: error instanceof Error ? error.message : error,
+        error: rawMessage || error,
+        statusCode,
       });
       return {
         ok: false,
-        error:
-          error instanceof Error ? error.message : "Unable to verify the one-time password.",
+        error: safeMessage,
       };
     }
   }

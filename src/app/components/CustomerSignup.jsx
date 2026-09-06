@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
+import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 
@@ -195,6 +196,7 @@ export function CustomerSignup() {
                   className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Create a password"
                 />
+                <PasswordStrengthMeter password={form.password} />
               </div>
 
               <div>

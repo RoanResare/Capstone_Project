@@ -21,23 +21,83 @@ function getResendAvailableAt(createdAt) {
   return new Date(createdAt.getTime() + env.otp.resendCooldownSeconds * 1000);
 }
 
+function isFirestoreIndexError(error) {
+  const code = String(error?.code || "");
+  const message = String(error?.message || "");
+
+  return code === "9" || code === "failed-precondition" || message.includes("FAILED_PRECONDITION");
+}
+
+async function getLatestOtpRecordForUser(userId) {
+  try {
+    const snapshot = await db
+      .collection(OTP_COLLECTION)
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .limit(1)
+      .get();
+
+    return snapshot.empty ? null : snapshot.docs[0].data();
+  } catch (error) {
+    if (!isFirestoreIndexError(error)) {
+      throw error;
+    }
+
+    console.warn("[otp] Firestore OTP index missing; falling back to in-memory cooldown sort.", {
+      userId,
+      code: error?.code || "",
+      message: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
+
+    const snapshot = await db.collection(OTP_COLLECTION).where("userId", "==", userId).get();
+    const records = snapshot.docs
+      .map((doc) => doc.data())
+      .sort((left, right) => {
+        const leftCreatedAt = toDate(left.createdAt)?.getTime() || 0;
+        const rightCreatedAt = toDate(right.createdAt)?.getTime() || 0;
+        return rightCreatedAt - leftCreatedAt;
+      });
+
+    return records[0] || null;
+  }
+}
+
+async function getOpenOtpDocumentsForUser(userId) {
+  try {
+    const snapshot = await db
+      .collection(OTP_COLLECTION)
+      .where("userId", "==", userId)
+      .where("isUsed", "==", false)
+      .get();
+
+    return snapshot.docs;
+  } catch (error) {
+    if (!isFirestoreIndexError(error)) {
+      throw error;
+    }
+
+    console.warn("[otp] Firestore OTP index missing; falling back to in-memory open-code filter.", {
+      userId,
+      code: error?.code || "",
+      message: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
+
+    const snapshot = await db.collection(OTP_COLLECTION).where("userId", "==", userId).get();
+    return snapshot.docs.filter((doc) => doc.data()?.isUsed === false);
+  }
+}
+
 async function assertOtpResendAllowed(userId) {
   if (!env.otp.resendCooldownSeconds) {
     return;
   }
 
-  const snapshot = await db
-    .collection(OTP_COLLECTION)
-    .where("userId", "==", userId)
-    .orderBy("createdAt", "desc")
-    .limit(1)
-    .get();
+  const latestRecord = await getLatestOtpRecordForUser(userId);
 
-  if (snapshot.empty) {
+  if (!latestRecord) {
     return;
   }
 
-  const latestRecord = snapshot.docs[0].data();
   const createdAt = toDate(latestRecord.createdAt);
 
   if (!(createdAt instanceof Date)) {
@@ -60,18 +120,14 @@ async function assertOtpResendAllowed(userId) {
 }
 
 async function invalidateOpenOtpsForUser(userId) {
-  const snapshot = await db
-    .collection(OTP_COLLECTION)
-    .where("userId", "==", userId)
-    .where("isUsed", "==", false)
-    .get();
+  const openOtpDocuments = await getOpenOtpDocumentsForUser(userId);
 
-  if (snapshot.empty) {
+  if (openOtpDocuments.length === 0) {
     return;
   }
 
   const batch = db.batch();
-  snapshot.docs.forEach((doc) => {
+  openOtpDocuments.forEach((doc) => {
     batch.update(doc.ref, {
       isUsed: true,
       invalidatedAt: admin.firestore.Timestamp.now(),

@@ -1,264 +1,41 @@
-import { chatbotKnowledgeBase, chatbotSuggestionChips, serviceCatalog } from "../app/data/systemData.js";
+import { chatbotSuggestionChips } from "../app/data/systemData.js";
 
 const DEFAULT_PROXY_URL = "/api/groq-chat";
 const DEFAULT_STATUS_URL = "/api/groq-status";
-const MAX_HISTORY_MESSAGES = 6;
-const GROQ_REQUEST_TIMEOUT_MS = 8000;
-const BLOCKED_TERMS = [
-  "abuse",
-  "abusive",
-  "bomb",
-  "fraud",
-  "hack",
-  "hacking",
-  "harass",
-  "hate",
-  "kill",
-  "murder",
-  "porn",
-  "scam",
-  "self-harm",
-  "sex",
-  "sexual",
-  "suicide",
-  "violent",
-  "violence",
-  "weapon",
-];
+export const GROQ_MODEL = "llama-3.3-70b-versatile";
+export const GROQ_MODELS = [GROQ_MODEL, "llama-3.1-8b-instant"];
+const MAX_HISTORY_MESSAGES = 2;
+const GROQ_REQUEST_TIMEOUT_MS = 12000;
+const INAPPROPRIATE_PATTERN =
+  /\b(fuck|shit|bitch|asshole|bastard|tangina|putangina|puta|gago|gaga|ulol|tarantado|hayop|pakyu|kantot|sex|porn)\b/i;
+
 export const BLOCKED_CUSTOMER_MESSAGE =
-  "I'm here to help with Charming Fur-fection's services, appointments, pet care, orders, and other customer concerns. How can I assist you?";
-const PRICE_KEYWORDS = [
-  "price",
-  "pricing",
-  "cost",
-  "rates",
-  "rate",
-  "fee",
-  "how much",
-  "magkano",
-  "bayad",
-  "presyo",
-];
-const SERVICE_ALIASES = [
-  { id: "vaccination", keywords: ["vaccination", "vaccine", "vaccines", "shot", "bakuna"] },
-  { id: "deworming", keywords: ["deworming", "deworm", "parasite"] },
-  { id: "consultation", keywords: ["consultation", "consult", "checkup", "check up"] },
-  {
-    id: "laboratory-testing",
-    keywords: ["laboratory", "laboratory testing", "lab", "blood work", "screening"],
-  },
-  { id: "low-cost-kapon", keywords: ["kapon", "spay", "neuter", "low cost kapon"] },
-  { id: "pet-grooming", keywords: ["grooming", "pet grooming", "bath", "trim", "nail care"] },
-];
+  "I'm sorry, but I can only assist with polite questions regarding our pet care services, clinic hours, and appointments.";
+
+const GROQ_SYSTEM_PROMPT = `
+You are Charming Fur-fection Assistant, an intelligent, helpful, and polite customer support AI for Charming Fur-fection Pet Care Services.
+
+Business Knowledge Base:
+- Store Hours: Monday to Sunday, 8:00 AM - 6:00 PM.
+- Location: Charming Fur-fection Pet Clinic.
+- Services: Grooming, Vaccination, Deworming, Consultation, Laboratory Testing, Low-Cost Kapon.
+- Allowed Pets for Appointments: Dogs and Cats.
+- Booking Process: Customers can book visits via the "Book Appointment" tab in their Customer Dashboard.
+
+Safety & Inappropriate Words Guardrails:
+- Strictly decline to respond to profane, abusive, explicit, violent, or inappropriate words/content in Tagalog, English, or Taglish.
+- If the user inputs inappropriate words, reply strictly with: "${BLOCKED_CUSTOMER_MESSAGE}"
+
+Conversational Rules:
+- Answer legitimate user questions dynamically, naturally, and contextually.
+- Seamlessly adapt to the user's language: English, Tagalog, or Taglish.
+- Keep answers concise, with 2-3 sentences maximum to minimize response latency.
+- Do not invent services, prices, schedules, locations, booking rules, or appointment eligibility beyond the business knowledge base.
+- If details are unavailable, say so briefly and guide the customer to the Book Appointment tab or clinic staff.
+`.trim();
 
 function normalizeValue(value = "") {
   return String(value || "").trim();
-}
-
-function containsPricingIntent(message) {
-  const lookup = normalizeValue(message).toLowerCase();
-  return PRICE_KEYWORDS.some((keyword) => lookup.includes(keyword));
-}
-
-function detectLanguage(message) {
-  const lookup = normalizeValue(message).toLowerCase();
-  const tagalogHints = [
-    "ano",
-    "magkano",
-    "oras",
-    "paano",
-    "kailan",
-    "serbisyo",
-    "pwede",
-    "appointment ba",
-    "ba ",
-    "po",
-    "opo",
-    "saan",
-    "dito",
-    "kayo",
-    "niyo",
-    "nyo",
-    "ako",
-    "kailangan",
-    "puwede",
-    "available ba",
-    "open ba",
-  ];
-
-  return tagalogHints.some((word) => lookup.includes(word)) ? "tl" : "en";
-}
-
-export function isBlockedCustomerMessage(message) {
-  const lookup = normalizeValue(message).toLowerCase();
-  return BLOCKED_TERMS.some((term) => lookup.includes(term));
-}
-
-function classifyTopic(message) {
-  const lookup = normalizeValue(message).toLowerCase();
-  const topic = chatbotKnowledgeBase.find((entry) =>
-    entry.keywords.some((keyword) => lookup.includes(keyword)),
-  );
-
-  return topic?.id || "unrecognized";
-}
-
-function getTopicAnswer(topicId, language) {
-  const topic = chatbotKnowledgeBase.find((entry) => entry.id === topicId);
-  if (!topic) {
-    return language === "tl"
-      ? "Maaari kitang tulungan sa services, presyo, appointments, at clinic hours ng Charming Fur-fection Pet Care Services."
-      : "I can help with services, prices, appointments, clinic hours, and general pet care information for Charming Fur-fection Pet Care Services.";
-  }
-
-  return language === "tl" ? topic.answerTl : topic.answerEn;
-}
-
-function buildInstantBusinessResponse(message) {
-  const language = detectLanguage(message);
-
-  if (isBlockedCustomerMessage(message)) {
-    return buildBlockedResponse(language);
-  }
-
-  const servicePricingFallback = buildServicePricingFallback(message, language);
-  if (servicePricingFallback) {
-    return {
-      ...servicePricingFallback,
-      provider: "local",
-    };
-  }
-
-  const topic = classifyTopic(message);
-  if (topic === "unrecognized") {
-    return null;
-  }
-
-  return {
-    answer: getTopicAnswer(topic, language),
-    recognized: true,
-    language,
-    topic,
-    provider: "local",
-    warning: "",
-  };
-}
-
-function buildBlockedResponse(language = "en") {
-  return {
-    answer:
-      language === "tl"
-        ? "Nandito ako para tumulong sa services, appointments, pet care, orders, at iba pang concern sa Charming Fur-fection. Paano kita matutulungan?"
-        : BLOCKED_CUSTOMER_MESSAGE,
-    recognized: false,
-    language,
-    topic: "blocked",
-    provider: "moderation",
-    warning: "",
-    blocked: true,
-  };
-}
-
-function buildBusinessSummary() {
-  const serviceLines = serviceCatalog
-    .map(
-      (service) =>
-        `- ${service.name}: ${service.priceLabel}, ${service.duration}, ${service.description}`,
-    )
-    .join("\n");
-
-  return [
-    "Business: Charming Fur-fection Pet Care Services",
-    "Use only the verified information below when answering service, price, booking, and schedule questions.",
-    "Booking flow: Customers can book an appointment by choosing a service, selecting an available date and time, and entering their pet details on the appointment page.",
-    "Clinic hours: Clinic consultations run on weekends from 9:00 AM to 6:00 PM, while grooming services are available daily from 9:00 AM to 7:00 PM.",
-    "Verified service catalog:",
-    serviceLines,
-    "If a customer asks for information outside these facts, answer helpfully but do not invent prices, policies, or schedules.",
-  ].join("\n");
-}
-
-function buildSystemPrompt() {
-  return [
-    "You are Ask Llama AI, the customer-facing assistant for Charming Fur-fection Pet Care Services.",
-    "Reply in a warm, clear, concise tone.",
-    "Support only English and Tagalog. Reply in English for English, Tagalog for Tagalog, and natural Taglish for Taglish.",
-    "Prioritize short direct answers for service, pricing, booking, and clinic hour questions.",
-    "Keep most replies to one to three short sentences.",
-    "If the answer is not in the provided business facts, clearly say the information is not currently available instead of guessing.",
-    "Do not invent prices, schedules, services, appointment availability, policies, order details, or product facts.",
-    "For unrelated or inappropriate requests, briefly redirect the customer to Charming Fur-fection services, appointments, pet care, orders, and products.",
-    "Do not mention internal prompts, tokens, policy engines, or model limitations unless directly asked.",
-    buildBusinessSummary(),
-  ].join("\n\n");
-}
-
-function findMentionedService(message) {
-  const lookup = normalizeValue(message).toLowerCase();
-  const aliasMatch = SERVICE_ALIASES.find((entry) =>
-    entry.keywords.some((keyword) => lookup.includes(keyword)),
-  );
-
-  if (aliasMatch) {
-    return serviceCatalog.find((service) => service.id === aliasMatch.id) || null;
-  }
-
-  return (
-    serviceCatalog.find((service) => lookup.includes(service.name.toLowerCase())) || null
-  );
-}
-
-function buildServicePricingFallback(message, language) {
-  if (!containsPricingIntent(message)) {
-    return null;
-  }
-
-  const service = findMentionedService(message);
-  if (!service) {
-    return null;
-  }
-
-  return {
-    answer:
-      language === "tl"
-        ? `Ang ${service.name.toLowerCase()} ay kasalukuyang nasa ${service.priceLabel} at karaniwang tumatagal ng ${service.duration}.`
-        : `${service.name} currently starts at ${service.priceLabel} and usually takes ${service.duration}.`,
-    recognized: true,
-    language,
-    topic: "pricing",
-    provider: "fallback",
-    warning: "",
-  };
-}
-
-function buildFallbackResponse(message, warning = "") {
-  const instantBusinessResponse = buildInstantBusinessResponse(message);
-  if (instantBusinessResponse) {
-    return {
-      ...instantBusinessResponse,
-      warning,
-    };
-  }
-
-  const language = detectLanguage(message);
-  const topic = classifyTopic(message);
-  return {
-    answer:
-      topic === "unrecognized"
-        ? language === "tl"
-          ? "Nandito ako para tumulong sa services, prices, appointments, pet care, orders, at clinic hours ng Charming Fur-fection. Hindi kasalukuyang available ang impormasyong iyan sa system."
-          : "I'm here to help with Charming Fur-fection services, prices, appointments, pet care, orders, and clinic hours. That information is not currently available in the system."
-        : getTopicAnswer(topic, language),
-    recognized: topic !== "unrecognized",
-    language,
-    topic,
-    provider: "fallback",
-    warning,
-  };
-}
-
-function trimResponse(value = "") {
-  return normalizeValue(value).replace(/\n{3,}/g, "\n\n");
 }
 
 function getConfiguredProxyUrl() {
@@ -273,52 +50,6 @@ function getGroqStatusUrl() {
   return getConfiguredProxyUrl() ? "" : DEFAULT_STATUS_URL;
 }
 
-async function parseJsonSafely(response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
-function describeGroqWarning(message = "") {
-  const lookup = normalizeValue(message).toLowerCase();
-
-  if (!lookup) {
-    return "";
-  }
-
-  if (lookup.includes("invalid api key") || lookup.includes("unauthorized") || lookup.includes("401")) {
-    return "The configured Groq API key was rejected. Update the key and restart npm run dev.";
-  }
-
-  if (lookup.includes("groq api key") || lookup.includes("started without a groq api key")) {
-    return "The running app still does not have a Groq API key. Add GROQ_API_KEY to .env or configure VITE_GROQ_PROXY_URL, then restart npm run dev.";
-  }
-
-  if (lookup.includes("save .env and restart npm run dev")) {
-    return "The running app needs to be restarted after the Groq settings change.";
-  }
-
-  if (lookup.includes("rate limit") || lookup.includes("429")) {
-    return "Groq is temporarily rate limited. The assistant used the built-in answers for now.";
-  }
-
-  if (lookup.includes("failed to fetch") || lookup.includes("network")) {
-    return "The live Groq service could not be reached from this browser session.";
-  }
-
-  if (lookup.includes("proxy request failed") || lookup.includes("404") || lookup.includes("405")) {
-    return "The local Groq proxy is unavailable. Restart npm run dev after saving your Groq settings.";
-  }
-
-  if (lookup.includes("empty response")) {
-    return "Groq returned an empty reply, so the assistant used the built-in answers instead.";
-  }
-
-  return normalizeValue(message);
-}
-
 function buildRecentHistory(history = []) {
   return history
     .filter((entry) => entry?.role && entry?.content)
@@ -330,21 +61,66 @@ function buildRecentHistory(history = []) {
     .slice(-MAX_HISTORY_MESSAGES);
 }
 
+async function parseJsonSafely(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function buildErrorMessage(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const lookup = message.toLowerCase();
+
+  if (lookup.includes("api key") || lookup.includes("unauthorized") || lookup.includes("401")) {
+    return "Live chat is not configured correctly yet. Please try again shortly.";
+  }
+
+  if (lookup.includes("rate limit") || lookup.includes("429")) {
+    return "Live chat is busy right now. Please try again in a moment.";
+  }
+
+  if (lookup.includes("timed out") || lookup.includes("abort")) {
+    return "Live chat took too long to answer. Please try again.";
+  }
+
+  return "Sorry, I could not connect to live chat right now. Please try again in a moment.";
+}
+
+function detectLanguage(message) {
+  return /\b(ano|oras|paano|kailan|kelan|magkano|serbisyo|pwede|puwede|po|opo|kayo|nyo|niyo|appointment ba)\b/i.test(
+    normalizeValue(message),
+  )
+    ? "tl"
+    : "en";
+}
+
+function trimResponse(value = "") {
+  return normalizeValue(value).replace(/\n{3,}/g, "\n\n");
+}
+
+function containsInappropriateLanguage(message = "") {
+  return INAPPROPRIATE_PATTERN.test(normalizeValue(message));
+}
+
 async function callGroqProxy(message, history) {
-  const proxyUrl = getProxyUrl();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GROQ_REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(proxyUrl, {
+    const response = await fetch(getProxyUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        model: GROQ_MODEL,
+        models: GROQ_MODELS,
         message,
         history: buildRecentHistory(history),
-        systemPrompt: buildSystemPrompt(),
+        systemPrompt: GROQ_SYSTEM_PROMPT,
+        stream: false,
       }),
       signal: controller.signal,
     });
@@ -366,6 +142,99 @@ async function callGroqProxy(message, history) {
       answer,
       model: data?.model || "proxy",
     };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Groq request timed out.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function parseGroqStream(response, onToken) {
+  if (!response.body) {
+    throw new Error("Proxy returned an empty response.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let answer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() || "";
+
+    for (const event of events) {
+      const dataLines = event
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.replace(/^data:\s*/, "").trim());
+
+      for (const dataLine of dataLines) {
+        if (!dataLine || dataLine === "[DONE]") {
+          continue;
+        }
+
+        let data = null;
+        try {
+          data = JSON.parse(dataLine);
+        } catch {
+          continue;
+        }
+
+        const token = data?.choices?.[0]?.delta?.content || "";
+        if (token) {
+          answer += token;
+          onToken?.(token);
+        }
+      }
+    }
+  }
+
+  return trimResponse(answer);
+}
+
+async function callGroqProxyStream(message, history, onToken) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GROQ_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(getProxyUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        models: GROQ_MODELS,
+        message,
+        history: buildRecentHistory(history),
+        systemPrompt: GROQ_SYSTEM_PROMPT,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const data = await parseJsonSafely(response);
+      throw new Error(data?.error || `Proxy request failed with status ${response.status}.`);
+    }
+
+    const answer = await parseGroqStream(response, onToken);
+    if (!answer) {
+      throw new Error("Proxy returned an empty response.");
+    }
+
+    return answer;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("Groq request timed out.");
@@ -411,19 +280,19 @@ export async function getGroqRuntimeStatus() {
       mode: data?.mode || "unknown",
       summary: data?.ready
         ? data?.message || "Live Groq replies are active."
-        : "Built-in business answers are active.",
+        : "Live Groq replies are not configured.",
       helpText: data?.ready
         ? ""
         : data?.message ||
-          "The running server does not have a Groq API key yet. Add GROQ_API_KEY to .env or configure VITE_GROQ_PROXY_URL, then restart npm run dev.",
+          "The running server does not have a Groq API key yet. Add GROQ_API_KEY, then restart npm run dev.",
     };
   } catch {
     return {
       ready: false,
       mode: "status-unavailable",
-      summary: "Built-in business answers are active.",
+      summary: "Live Groq status could not be checked.",
       helpText:
-        "Live Groq status could not be checked. If you just changed .env or vite.config.js, restart npm run dev. For deployed sites, use a backend proxy endpoint.",
+        "Live Groq status could not be checked. Restart npm run dev after changing Groq settings.",
     };
   }
 }
@@ -434,40 +303,82 @@ export async function askGroqAssistant({ message, history = [] }) {
     throw new Error("Message is required.");
   }
 
-  const fallback = buildFallbackResponse(cleanMessage);
-
-  if (isBlockedCustomerMessage(cleanMessage)) {
-    return buildBlockedResponse(detectLanguage(cleanMessage));
-  }
-
-  if (!fallback.recognized) {
-    return fallback;
+  if (containsInappropriateLanguage(cleanMessage)) {
+    return {
+      answer: BLOCKED_CUSTOMER_MESSAGE,
+      recognized: false,
+      language: detectLanguage(cleanMessage),
+      topic: "safety",
+      provider: "guardrail",
+      model: "",
+      warning: "Message blocked by local safety guardrail.",
+    };
   }
 
   try {
-    const proxyResponse = await callGroqProxy(cleanMessage, history);
+    const answer = await callGroqProxyStream(cleanMessage, history);
     return {
-      ...fallback,
-      answer: proxyResponse.answer,
+      answer,
+      recognized: true,
+      language: detectLanguage(cleanMessage),
+      topic: "dynamic",
       provider: "groq",
-      model: proxyResponse.model,
+      model: GROQ_MODEL,
       warning: "",
     };
   } catch (error) {
-    const warning =
-      error instanceof Error ? describeGroqWarning(error.message) : "Groq request failed.";
-
-    return buildFallbackResponse(cleanMessage, warning);
+    const answer = buildErrorMessage(error);
+    return {
+      answer,
+      recognized: false,
+      language: detectLanguage(cleanMessage),
+      topic: "error",
+      provider: "fallback",
+      warning: error instanceof Error ? error.message : "Groq request failed.",
+    };
   }
 }
 
-export function getInstantAssistantReply(message) {
+export async function askGroqAssistantStream({ message, history = [], onToken }) {
   const cleanMessage = normalizeValue(message);
   if (!cleanMessage) {
-    return null;
+    throw new Error("Message is required.");
   }
 
-  return buildInstantBusinessResponse(cleanMessage);
+  if (containsInappropriateLanguage(cleanMessage)) {
+    onToken?.(BLOCKED_CUSTOMER_MESSAGE);
+    return {
+      answer: BLOCKED_CUSTOMER_MESSAGE,
+      recognized: false,
+      language: detectLanguage(cleanMessage),
+      topic: "safety",
+      provider: "guardrail",
+      warning: "Message blocked by local safety guardrail.",
+    };
+  }
+
+  try {
+    const answer = await callGroqProxyStream(cleanMessage, history, onToken);
+    return {
+      answer,
+      recognized: true,
+      language: detectLanguage(cleanMessage),
+      topic: "dynamic",
+      provider: "groq",
+      warning: "",
+    };
+  } catch (error) {
+    const answer = buildErrorMessage(error);
+    onToken?.(answer);
+    return {
+      answer,
+      recognized: false,
+      language: detectLanguage(cleanMessage),
+      topic: "error",
+      provider: "fallback",
+      warning: error instanceof Error ? error.message : "Groq request failed.",
+    };
+  }
 }
 
 export { chatbotSuggestionChips as groqSuggestionChips };

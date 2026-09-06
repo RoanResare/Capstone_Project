@@ -127,9 +127,12 @@ async function deliverMail({ type, to, subject, html, text }) {
     throw buildMailConfigurationError();
   }
 
+  const senderEmail = env.mail.user || env.mail.fromEmail;
+  const senderLabel = `"${env.mail.fromName}" <${senderEmail}>`;
+
   console.info(`[mail:${type}] Attempting SMTP delivery.`, {
     to: maskEmail(to),
-    from: env.mail.fromEmail,
+    from: senderEmail,
     host: env.mail.host,
     port: env.mail.port,
   });
@@ -137,7 +140,7 @@ async function deliverMail({ type, to, subject, html, text }) {
   try {
     await verifyMailerConnection();
     const result = await transporter.sendMail({
-      from: `"${env.mail.fromName}" <${env.mail.fromEmail}>`,
+      from: senderLabel,
       to,
       subject,
       html,

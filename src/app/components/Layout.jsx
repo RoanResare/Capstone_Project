@@ -1,30 +1,52 @@
 import { useEffect, useState } from "react";
 import { Outlet, Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Menu, UserRound, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { BrandMark } from "./BrandMark.jsx";
 import { AskLlamaAI } from "./AskLlamaAI.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { resolveHomePath } from "../utils/roleUtils.js";
 
-const landingNavItems = [
-  { id: "home", label: "Home" },
-  { id: "services", label: "Services" },
-  { id: "book-appointment", label: "Book Appointment" },
-];
+const landingNavItems = [{ id: "home", label: "Home" }];
+
+function getDisplayName(user) {
+  return user?.fullName || user?.name || user?.email || "Account";
+}
+
+function getInitials(user) {
+  return getDisplayName(user)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 export function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
-  const customerAccountPath =
-    currentUser?.role === "customer" ? "/customer/dashboard" : "/customer/signup";
-  const routeNavItems = [
-    { to: customerAccountPath, label: currentUser?.role === "customer" ? "Dashboard" : "Create Account" },
-    { to: "/login", label: "Log In" },
-  ];
+  const { currentUser, signOut } = useAuth();
+  const dashboardPath = currentUser ? resolveHomePath(currentUser.role) : "/login";
+  const accountName = getDisplayName(currentUser);
+  const accountItems =
+    currentUser?.role === "customer"
+      ? [
+          { to: "/customer/dashboard", label: "Customer Dashboard", icon: LayoutDashboard },
+          { to: "/customer/dashboard?tab=services", label: "Services", icon: LayoutDashboard },
+          { to: "/customer/dashboard?tab=booking", label: "Book Appointment", icon: LayoutDashboard },
+          { to: "/customer/dashboard?tab=appointments", label: "My Appointments", icon: LayoutDashboard },
+          { to: "/customer/dashboard?tab=profile", label: "Manage Account", icon: UserRound },
+        ]
+      : [
+          { to: dashboardPath, label: "Dashboard", icon: LayoutDashboard },
+          { to: dashboardPath, label: "Manage Account", icon: UserRound },
+        ];
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+  const closeAccountMenu = () => setAccountMenuOpen(false);
 
   const scrollToSection = (sectionId) => {
     const section = document.getElementById(sectionId);
@@ -56,8 +78,14 @@ export function Layout() {
     return () => window.cancelAnimationFrame(frameId);
   }, [location.hash, location.pathname, location.search, location.state, navigate]);
 
+  useEffect(() => {
+    setAccountMenuOpen(false);
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.hash, location.search]);
+
   const handleLandingNavClick = (sectionId) => {
     closeMobileMenu();
+    closeAccountMenu();
 
     if (location.pathname === "/") {
       scrollToSection(sectionId);
@@ -65,6 +93,19 @@ export function Layout() {
     }
 
     navigate("/", { state: { scrollTo: sectionId } });
+  };
+
+  const handleDashboardClick = () => {
+    closeMobileMenu();
+    closeAccountMenu();
+    navigate(dashboardPath);
+  };
+
+  const handleSignOut = async () => {
+    closeMobileMenu();
+    closeAccountMenu();
+    await signOut();
+    navigate("/");
   };
 
   const desktopScrollButtonClassName =
@@ -101,15 +142,81 @@ export function Layout() {
                   {item.label}
                 </button>
               ))}
-              {routeNavItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={desktopRouteLinkClassName}
-                >
-                  {item.label}
+              <button
+                type="button"
+                onClick={handleDashboardClick}
+                className={desktopScrollButtonClassName}
+              >
+                Dashboard
+              </button>
+              {!currentUser ? (
+                <NavLink to="/login" className={desktopRouteLinkClassName}>
+                  Log In
                 </NavLink>
-              ))}
+              ) : (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAccountMenuOpen((open) => !open)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-white/12 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/18"
+                    aria-expanded={accountMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#F4C16A] text-xs font-bold text-[#173E44]">
+                      {currentUser.photoURL ? (
+                        <img
+                          src={currentUser.photoURL}
+                          alt={`${accountName} profile`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        getInitials(currentUser)
+                      )}
+                    </span>
+                    <span className="max-w-36 truncate">{accountName}</span>
+                    <ChevronDown size={16} />
+                  </button>
+
+                  {accountMenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-72 rounded-[24px] border border-[#DCEAEA] bg-white p-3 text-[#20343B] shadow-[0_22px_52px_rgba(20,43,46,0.2)]"
+                    >
+                      <div className="border-b border-[#EEF3F3] px-3 py-3">
+                        <p className="font-semibold">{accountName}</p>
+                        <p className="mt-1 truncate text-sm text-[#607277]">{currentUser.email}</p>
+                      </div>
+                      <div className="mt-2 grid gap-1">
+                        {accountItems.map((item) => {
+                          const Icon = item.icon;
+
+                          return (
+                            <Link
+                              key={`${item.to}-${item.label}`}
+                              to={item.to}
+                              onClick={closeAccountMenu}
+                              className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-[#31565D] transition hover:bg-[#EEF6F6]"
+                              role="menuitem"
+                            >
+                              <Icon size={16} />
+                              {item.label}
+                            </Link>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={handleSignOut}
+                          className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-[#B23949] transition hover:bg-[#FBECEF]"
+                          role="menuitem"
+                        >
+                          <LogOut size={16} />
+                          Log Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
@@ -143,16 +250,57 @@ export function Layout() {
                     {item.label}
                   </button>
                 ))}
-                {routeNavItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileMenu}
-                    className={mobileLinkClassName}
-                  >
-                    {item.label}
+                <button
+                  type="button"
+                  onClick={handleDashboardClick}
+                  className="block w-full rounded-xl px-4 py-3 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
+                >
+                  Dashboard
+                </button>
+                {!currentUser ? (
+                  <NavLink to="/login" onClick={closeMobileMenu} className={mobileLinkClassName}>
+                    Log In
                   </NavLink>
-                ))}
+                ) : (
+                  <div className="rounded-2xl bg-white/10 p-3 text-white">
+                    <div className="flex items-center gap-3 px-1 py-2">
+                      <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#F4C16A] text-sm font-bold text-[#173E44]">
+                        {currentUser.photoURL ? (
+                          <img
+                            src={currentUser.photoURL}
+                            alt={`${accountName} profile`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          getInitials(currentUser)
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{accountName}</p>
+                        <p className="truncate text-sm text-white/70">{currentUser.email}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 grid gap-1">
+                      {accountItems.map((item) => (
+                        <NavLink
+                          key={`${item.to}-${item.label}`}
+                          to={item.to}
+                          onClick={closeMobileMenu}
+                          className="rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                        >
+                          {item.label}
+                        </NavLink>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="rounded-xl px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/10"
+                      >
+                        Log Out
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

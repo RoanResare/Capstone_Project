@@ -2,9 +2,31 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import Groq from "groq-sdk";
 
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const DEFAULT_MODELS = ["llama3-8b-8192", "llama-3.3-70b-versatile", "llama3-70b-8192"];
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODELS = [GROQ_MODEL, "llama-3.1-8b-instant"];
+const GROQ_SYSTEM_PROMPT = `
+You are Charming Fur-fection Assistant, an intelligent, helpful, and polite customer support AI for Charming Fur-fection Pet Care Services.
+
+Business Knowledge Base:
+- Store Hours: Monday to Sunday, 8:00 AM - 6:00 PM.
+- Location: Charming Fur-fection Pet Clinic.
+- Services: Grooming, Vaccination, Deworming, Consultation, Laboratory Testing, Low-Cost Kapon.
+- Allowed Pets for Appointments: Dogs and Cats.
+- Booking Process: Customers can book visits via the "Book Appointment" tab in their Customer Dashboard.
+
+Safety & Inappropriate Words Guardrails:
+- Strictly decline to respond to profane, abusive, explicit, violent, or inappropriate words/content in Tagalog, English, or Taglish.
+- If the user inputs inappropriate words, reply strictly with: "I'm sorry, but I can only assist with polite questions regarding our pet care services, clinic hours, and appointments."
+
+Conversational Rules:
+- Answer legitimate user questions dynamically, naturally, and contextually.
+- Seamlessly adapt to the user's language: English, Tagalog, or Taglish.
+- Keep answers concise, with 2-3 sentences maximum to minimize response latency.
+- Do not invent services, prices, schedules, locations, booking rules, or appointment eligibility beyond the business knowledge base.
+- If details are unavailable, say so briefly and guide the customer to the Book Appointment tab or clinic staff.
+`.trim();
 
 function normalizeModuleId(id = "") {
   return String(id).replace(/\\/g, "/");
@@ -79,11 +101,22 @@ function getServerGroqApiKey(env) {
   return getEnvValue(env, "GROQ_API_KEY", "VITE_GROQ_API_KEY");
 }
 
-function getServerGroqModelCandidates(env) {
+function getServerGroqModelCandidates(env, payload = {}) {
   const configuredModel = getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL");
-  return [configuredModel, ...DEFAULT_MODELS].filter(
+  const requestedModels = [
+    normalizeValue(payload.model),
+    ...(Array.isArray(payload.models) ? payload.models.map((model) => normalizeValue(model)) : []),
+  ].filter((model) => GROQ_MODELS.includes(model));
+  const configuredFallback =
+    configuredModel && GROQ_MODELS.includes(configuredModel) ? configuredModel : "";
+  return [GROQ_MODEL, ...requestedModels, configuredFallback, ...GROQ_MODELS].filter(
     (model, index, values) => Boolean(model) && values.indexOf(model) === index,
   );
+}
+
+function getIgnoredGroqModel(env) {
+  const configuredModel = getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL");
+  return configuredModel && !GROQ_MODELS.includes(configuredModel) ? configuredModel : "";
 }
 
 function describeGroqStatus(env) {
@@ -97,7 +130,7 @@ function describeGroqStatus(env) {
       message: "Using the configured external Groq proxy.",
       hasServerKey: false,
       hasCustomProxy: true,
-      model: getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL") || DEFAULT_MODELS[0],
+      model: getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL") || GROQ_MODEL,
     };
   }
 
@@ -108,7 +141,7 @@ function describeGroqStatus(env) {
       message: "The local Groq proxy is ready.",
       hasServerKey: true,
       hasCustomProxy: false,
-      model: getServerGroqModelCandidates(env)[0] || DEFAULT_MODELS[0],
+      model: getServerGroqModelCandidates(env)[0] || GROQ_MODEL,
     };
   }
 
@@ -127,6 +160,13 @@ function jsonResponse(res, statusCode, payload) {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
+}
+
+function sseHeaders(res) {
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
 }
 
 async function readJsonBody(req) {
@@ -174,6 +214,7 @@ function createGroqProxyPlugin(env) {
 
     const apiKey = getServerGroqApiKey(env);
     if (!apiKey) {
+      console.error("[groq-proxy] Missing GROQ_API_KEY. Local Groq proxy cannot send request.");
       jsonResponse(res, 503, {
         error:
           "The running Vite server does not have a Groq API key yet. Add GROQ_API_KEY to .env or configure VITE_GROQ_PROXY_URL, then restart npm run dev.",
@@ -199,12 +240,10 @@ function createGroqProxyPlugin(env) {
       }))
       .filter((entry) => entry.content);
 
-    if (payload.systemPrompt) {
-      messages.unshift({
-        role: "system",
-        content: String(payload.systemPrompt).trim(),
-      });
-    }
+    messages.unshift({
+      role: "system",
+      content: GROQ_SYSTEM_PROMPT,
+    });
 
     if (payload.message) {
       messages.push({
@@ -218,33 +257,47 @@ function createGroqProxyPlugin(env) {
       return;
     }
 
+    const wantsStream = payload.stream === true;
+    const groq = new Groq({ apiKey });
     let lastError = null;
+    const ignoredModel = getIgnoredGroqModel(env);
+
+    if (ignoredModel) {
+      console.warn("[groq-proxy] Ignoring unsupported GROQ_MODEL value.", {
+        configuredModel: ignoredModel,
+        fallbackModels: GROQ_MODELS,
+      });
+    }
 
     for (const model of getServerGroqModelCandidates(env)) {
       try {
-        const response = await fetch(GROQ_API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            temperature: 0.2,
-            max_tokens: 140,
-            messages,
-          }),
+        console.info("[groq-proxy] Sending chat completion request to Groq.", {
+          model,
+          messageCount: messages.length,
+          stream: wantsStream,
+        });
+
+        const completion = await groq.chat.completions.create({
+          model,
+          temperature: 0.2,
+          max_tokens: 250,
+          stream: wantsStream,
+          messages,
+        }, {
           signal: AbortSignal.timeout(9000),
         });
-        const data = await parseJsonSafely(response);
 
-        if (!response.ok) {
-          lastError =
-            data?.error?.message || `Groq request failed with status ${response.status}.`;
-          continue;
+        if (wantsStream) {
+          sseHeaders(res);
+          for await (const chunk of completion) {
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          }
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
         }
 
-        const answer = String(data?.choices?.[0]?.message?.content || "")
+        const answer = String(completion?.choices?.[0]?.message?.content || "")
           .replace(/\n{3,}/g, "\n\n")
           .trim();
 
@@ -261,6 +314,13 @@ function createGroqProxyPlugin(env) {
         return;
       } catch (error) {
         lastError = error instanceof Error ? error.message : "Groq request failed.";
+        console.error("[groq-proxy] Groq chat completion request failed.", {
+          model,
+          error: lastError,
+          name: error instanceof Error ? error.name : "UnknownError",
+          status: error?.status || error?.response?.status || null,
+          code: error?.code || null,
+        });
       }
     }
 

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import { PasswordStrengthMeter } from "../PasswordStrengthMeter.jsx";
 import {
   appointmentFilters,
   appointmentStatusOptions,
@@ -19,7 +20,6 @@ import {
   portalUserStatuses,
 } from "../../data/systemData.js";
 
-const NEW_PET_RECORD_ID = "__new-pet-record__";
 const NEW_PORTAL_USER_ID = "__new-portal-user__";
 
 function isValidDateInstance(value) {
@@ -285,8 +285,23 @@ function buildPortalUserForm(user = null) {
     username: typeof current.username === "string" ? current.username : "",
     password: "",
     role: typeof current.role === "string" ? current.role : "staff",
-    status: typeof current.status === "string" ? current.status : "active",
   };
+}
+
+function buildChangedPortalUserPayload(form, originalForm) {
+  const payload = {};
+
+  ["name", "email", "username", "role"].forEach((field) => {
+    if (form[field] !== originalForm[field]) {
+      payload[field] = form[field];
+    }
+  });
+
+  if (form.password.trim()) {
+    payload.password = form.password.trim();
+  }
+
+  return payload;
 }
 
 function describeNotification(notification) {
@@ -304,21 +319,21 @@ function describeNotification(notification) {
   return `${subject} | ${role}`;
 }
 
-function PanelCard({ title, description, children }) {
+function PanelCard({ title, description, children, className = "", bodyClassName = "" }) {
   return (
-    <section className="rounded-[28px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
-      <div className="border-b border-[#EFE7DC] pb-4">
+    <section className={`rounded-2xl bg-white p-4 shadow-[0_14px_30px_rgba(102,91,72,0.1)] md:p-5 ${className}`}>
+      <div className="border-b border-[#EFE7DC] pb-3">
         <h3 className="text-xl font-semibold text-[#20343B]">{title}</h3>
         {description && <p className="mt-1 text-sm text-[#607277]">{description}</p>}
       </div>
-        <div className="mt-4">{children}</div>
+        <div className={`mt-4 ${bodyClassName}`}>{children}</div>
     </section>
   );
 }
 
 function EmptyState({ title, message }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-[#D8E5E5] bg-[#F8FBFB] px-6 py-10 text-center">
+    <div className="rounded-2xl border border-dashed border-[#D8E5E5] bg-[#F8FBFB] px-5 py-8 text-center">
       <h4 className="text-lg font-semibold text-[#20343B]">{title}</h4>
       <p className="mt-2 text-sm text-[#607277]">{message}</p>
     </div>
@@ -352,9 +367,9 @@ function MetricCard({ label, value, tone = "teal" }) {
   };
 
   return (
-    <div className={`rounded-[24px] px-5 py-4 ${toneClasses[tone]}`}>
-      <p className="text-sm font-semibold uppercase tracking-[0.16em] opacity-80">{label}</p>
-      <p className="mt-3 text-3xl font-bold">{value}</p>
+    <div className={`rounded-2xl px-4 py-3.5 ${toneClasses[tone]}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-80">{label}</p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
     </div>
   );
 }
@@ -679,20 +694,22 @@ function AppointmentsWorkspace({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Pending" value={pendingCount} tone="gold" />
         <MetricCard label="Confirmed" value={confirmedCount} />
         <MetricCard label="Completed" value={completedCount} tone="slate" />
         <MetricCard label="Rejected / Cancelled" value={blockedCount} tone="rose" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[1.05fr_0.95fr]">
         <PanelCard
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
+          className="xl:flex xl:min-h-0 xl:flex-col"
+          bodyClassName="xl:min-h-0 xl:flex-1"
         >
-          <div className="space-y-3">
+          <div className="space-y-3 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <select
                 value={statusFilter}
@@ -721,13 +738,13 @@ function AppointmentsWorkspace({
                 message="Try another filter or wait for new customer bookings to reach the queue."
               />
             ) : (
-              <div className="space-y-3">
-                {filteredAppointments.slice(0, 3).map((appointment) => (
+              <div className="max-h-[430px] space-y-2.5 overflow-y-auto pr-1 xl:min-h-0 xl:flex-1">
+                {filteredAppointments.map((appointment) => (
                   <button
                     key={appointment.id}
                     type="button"
                     onClick={() => openAppointment(appointment.id)}
-                    className={`w-full rounded-[22px] border px-4 py-3.5 text-left transition ${
+                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
                       selectedAppointment?.id === appointment.id
                         ? "border-[#BFE1E1] bg-[#F8FCFC]"
                         : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
@@ -787,7 +804,7 @@ function AppointmentsWorkspace({
   );
 }
 
-function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecord }) {
+function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   const [searchValue, setSearchValue] = useState("");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
@@ -800,13 +817,11 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
   const filteredPetRecords = petRecords.filter((record) =>
     matchesPetRecordSearch(record, searchValue),
   );
-  const isCreatingNew = selectedRecordId === NEW_PET_RECORD_ID;
-  const selectedRecord = isCreatingNew
-    ? null
-    : petRecords.find((record) => record.id === selectedRecordId) ||
-      filteredPetRecords[0] ||
-      petRecords[0] ||
-      null;
+  const selectedRecord =
+    petRecords.find((record) => record.id === selectedRecordId) ||
+    filteredPetRecords[0] ||
+    petRecords[0] ||
+    null;
   const customersWithPets = new Set(
     petRecords
       .map((record) => record.customerEmail || record.customerId || record.ownerName)
@@ -822,10 +837,6 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
     ).length;
 
   useEffect(() => {
-    if (selectedRecordId === NEW_PET_RECORD_ID) {
-      return;
-    }
-
     if (!selectedRecordId && filteredPetRecords[0]) {
       setSelectedRecordId(filteredPetRecords[0].id);
       return;
@@ -837,10 +848,6 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
   }, [filteredPetRecords, petRecords, selectedRecordId]);
 
   useEffect(() => {
-    if (selectedRecordId === NEW_PET_RECORD_ID) {
-      return;
-    }
-
     setForm(buildPetRecordForm(selectedRecord));
   }, [selectedRecord, selectedRecordId]);
 
@@ -849,14 +856,16 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const startNewRecord = () => {
-    setSelectedRecordId(NEW_PET_RECORD_ID);
-    setForm(buildPetRecordForm());
-    setFeedback({ type: "", message: "" });
-  };
-
   const saveRecord = (event) => {
     event.preventDefault();
+
+    if (!selectedRecord?.id) {
+      setFeedback({
+        type: "error",
+        message: "Select an existing booking-created pet record before saving changes.",
+      });
+      return;
+    }
 
     if (!form.ownerName.trim() || !form.petName.trim() || !form.petType.trim()) {
       setFeedback({
@@ -866,12 +875,9 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
       return;
     }
 
-    const nextId =
-      form.id || `pet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
     savePetRecord(
       {
-        id: nextId,
+        id: selectedRecord.id,
         customerId: form.customerId.trim(),
         ownerName: form.ownerName.trim(),
         customerEmail: form.customerEmail.trim().toLowerCase(),
@@ -882,46 +888,32 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
         notes: form.notes.trim(),
         visitRecords: normalizeLineItems(form.visitRecordsText),
         medicalRecords: normalizeLineItems(form.medicalRecordsText),
+        updatedAt: new Date().toISOString(),
       },
       currentUser.name,
     );
 
-    setSelectedRecordId(nextId);
     setFeedback({
       type: "success",
       message: `${form.petName.trim()} was saved successfully.`,
     });
   };
 
-  const removeRecord = () => {
-    if (!selectedRecord?.id) {
-      return;
-    }
-
-    deletePetRecord(selectedRecord.id, currentUser.name);
-    setSelectedRecordId("");
-    setForm(buildPetRecordForm());
-    setFeedback({
-      type: "success",
-      message: `${selectedRecord.petName} was removed from the records list.`,
-    });
-  };
-
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 md:grid-cols-3">
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
         <MetricCard label="Total Pet Records" value={petRecords.length} />
         <MetricCard label="Customers With Pets" value={customersWithPets} tone="slate" />
         <MetricCard label="Records With Notes" value={petsWithNotes} tone="gold" />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.96fr_1.04fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
         <PanelCard
           title="Manage pet records"
-          description="Review customer pets, keep medical notes current, and prepare future appointments faster."
+          description="Review booking-created customer pets, keep medical notes current, and prepare future appointments faster."
         >
           <div className="space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row">
+            <div className="flex flex-col gap-3">
               <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
                 <Search size={16} />
                 <input
@@ -931,14 +923,9 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
                   placeholder="Search by owner, pet, breed, type, or email"
                 />
               </label>
-
-              <button
-                type="button"
-                onClick={startNewRecord}
-                className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
-              >
-                Add pet record
-              </button>
+              <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-3 text-sm leading-6 text-[#607277]">
+                New pet records are now created automatically when a customer books an appointment.
+              </div>
             </div>
 
             {filteredPetRecords.length === 0 ? (
@@ -947,7 +934,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
                 message="Customer pet profiles will appear here as soon as they are created or booked."
               />
             ) : (
-              <div className="space-y-3">
+              <div className="max-h-[460px] space-y-2.5 overflow-y-auto pr-1">
                 {filteredPetRecords.map((record) => {
                   const appointmentCount = linkedAppointmentCount(record);
 
@@ -959,14 +946,14 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
                         setSelectedRecordId(record.id);
                         setFeedback({ type: "", message: "" });
                       }}
-                      className={`w-full rounded-[24px] border px-5 py-4 text-left transition ${
-                        selectedRecord?.id === record.id && !isCreatingNew
+                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      selectedRecord?.id === record.id
                           ? "border-[#BFE1E1] bg-[#F8FCFC]"
                           : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
                       }`}
                     >
                       <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6A73]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6A73]">
                           <PawPrint size={18} />
                         </div>
                         <div>
@@ -1000,10 +987,10 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
         </PanelCard>
 
         <PanelCard
-          title={isCreatingNew ? "New pet record" : "Pet record details"}
+          title="Pet record details"
           description="Update pet profile information, visit history, and medical notes for staff visibility."
         >
-          {isCreatingNew || selectedRecord ? (
+          {selectedRecord ? (
             <form onSubmit={saveRecord} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -1118,7 +1105,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
                 </div>
               </div>
 
-              {selectedRecord && !isCreatingNew && (
+              {selectedRecord && (
                 <div className="rounded-[24px] bg-[#F6FAFA] px-5 py-4 text-sm text-[#607277]">
                   <p className="font-semibold text-[#20343B]">
                     Linked appointments: {linkedAppointmentCount(selectedRecord)}
@@ -1139,22 +1126,11 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
 
                 <button
                   type="button"
-                  onClick={startNewRecord}
+                  onClick={() => setForm(buildPetRecordForm(selectedRecord))}
                   className="rounded-2xl bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
                 >
-                  Clear form
+                  Reset changes
                 </button>
-
-                {selectedRecord && !isCreatingNew && (
-                  <button
-                    type="button"
-                    onClick={removeRecord}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FBECEF] px-5 py-3 text-sm font-semibold text-[#B23949]"
-                  >
-                    <Trash2 size={16} />
-                    Delete record
-                  </button>
-                )}
               </div>
 
               {feedback.message && (
@@ -1172,7 +1148,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord, deletePetRecor
           ) : (
             <EmptyState
               title="No pet record selected"
-              message="Choose a pet record from the list or create a new one for a customer."
+              message="Customer pet records will appear here after a booking is submitted."
             />
           )}
         </PanelCard>
@@ -1189,6 +1165,7 @@ function ManageUsersWorkspace({
   updateUser,
   deleteUser,
 }) {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchValue, setSearchValue] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
@@ -1220,6 +1197,32 @@ function ManageUsersWorkspace({
         filteredUsers[0] ||
         portalUsers[0] ||
         null;
+
+  const changeUserStatus = async (user, status) => {
+    if (isSaving || !user?.id || user.status === status) {
+      return;
+    }
+
+    setIsSaving(true);
+    setFeedback({ type: "", message: "" });
+
+    try {
+      const result = await updateUser(user.id, { status });
+      if (!result?.ok) {
+        setFeedback({
+          type: "error",
+          message: result?.error || "Unable to update employee status.",
+        });
+        return;
+      }
+
+      const message = `${user.name} is now ${formatUserStatusLabel(status)}.`;
+      setFeedback({ type: "success", message });
+      toast.success(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const nextForm = buildPortalUserForm(isCreatingNew ? null : selectedUser);
@@ -1264,24 +1267,23 @@ function ManageUsersWorkspace({
       return;
     }
 
-    const payload = {
+    const fullPayload = {
       name: form.name.trim(),
       email: form.email.trim(),
       username: form.username.trim(),
       role: form.role,
-      status: form.status,
       password: form.password.trim(),
     };
 
-    if (!payload.name || !payload.email || !payload.username || !payload.role) {
+    if (!fullPayload.name || !fullPayload.email || !fullPayload.username || !fullPayload.role) {
       setFeedback({
         type: "error",
-        message: "Name, email, username, role, and status are required.",
+        message: "Name, email, username, and role are required.",
       });
       return;
     }
 
-    if (isCreatingNew && !payload.password) {
+    if (isCreatingNew && !fullPayload.password) {
       setFeedback({
         type: "error",
         message: "A password is required when creating a new employee account.",
@@ -1289,7 +1291,18 @@ function ManageUsersWorkspace({
       return;
     }
 
+    const payload = isCreatingNew ? fullPayload : buildChangedPortalUserPayload(fullPayload, originalForm);
+
+    if (!isCreatingNew && Object.keys(payload).length === 0) {
+      setFeedback({
+        type: "success",
+        message: "No employee changes to save.",
+      });
+      return;
+    }
+
     setIsSaving(true);
+    setFeedback({ type: "", message: "" });
 
     try {
       const result = isCreatingNew
@@ -1313,20 +1326,22 @@ function ManageUsersWorkspace({
           ? { ...result.user, password: "" }
           : {
               ...selectedUser,
-              ...payload,
+              ...fullPayload,
               id: selectedUser?.id || result.id || "",
               password: "",
             },
       );
+      const successMessage = isCreatingNew
+        ? "Employee account created successfully."
+        : "Employee account updated successfully.";
 
       setForm(savedForm);
       setOriginalForm(savedForm);
       setFeedback({
         type: "success",
-        message: isCreatingNew
-          ? `${payload.name} was added successfully.`
-          : `${payload.name} was updated successfully.`,
+        message: successMessage,
       });
+      toast.success(successMessage);
     } finally {
       setIsSaving(false);
     }
@@ -1357,8 +1372,9 @@ function ManageUsersWorkspace({
       setConfirmDelete(false);
       setFeedback({
         type: "success",
-        message: `${selectedUser.name} was permanently removed.`,
+        message: "Employee account deleted successfully.",
       });
+      toast.success("Employee account deleted successfully.");
 
       const fallbackUser = filteredUsers.find((user) => user.id !== selectedUser.id) || null;
       openUser(fallbackUser?.id || "");
@@ -1383,21 +1399,21 @@ function ManageUsersWorkspace({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-5 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <MetricCard label="Employee Accounts" value={portalUsers.length} />
         <MetricCard label="Active" value={activeCount} tone="teal" />
         <MetricCard label="Suspended" value={suspendedCount} tone="gold" />
         <MetricCard label="Inactive" value={inactiveCount} tone="rose" />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
+      <div className="grid gap-5 xl:grid-cols-[0.96fr_1.04fr]">
         <PanelCard
           title="Employee accounts"
-          description="Create, review, and control staff and admin access from one place."
+          description="Create employees here; change account status from the list below."
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 md:flex-row">
-              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
+              <label className="flex items-center gap-3 rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
                 <Search size={16} />
                 <input
                   value={searchValue}
@@ -1410,7 +1426,7 @@ function ManageUsersWorkspace({
               <button
                 type="button"
                 onClick={startNewUser}
-                className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
+                className="rounded-lg bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
               >
                 Add employee
               </button>
@@ -1429,20 +1445,27 @@ function ManageUsersWorkspace({
                 message="Create a staff or admin account to start managing access."
               />
             ) : (
-              <div className="space-y-3">
+              <div className="max-h-[480px] space-y-3 overflow-y-auto pr-1">
                 {filteredUsers.map((user) => (
-                  <button
+                  <div
                     key={user.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => openUser(user.id, selectedNotificationId)}
-                    className={`w-full rounded-[24px] border px-5 py-4 text-left transition ${
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openUser(user.id, selectedNotificationId);
+                      }
+                    }}
+                    className={`w-full rounded-lg border px-4 py-3 text-left transition ${
                       selectedUser?.id === user.id && !isCreatingNew
                         ? "border-[#BFE1E1] bg-[#F8FCFC]"
                         : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
                     }`}
                   >
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6A73]">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6A73]">
                         <UserRound size={18} />
                       </div>
                       <div className="min-w-0">
@@ -1456,13 +1479,30 @@ function ManageUsersWorkspace({
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
                         {formatRoleLabel(user.role)}
                       </span>
                       <EmployeeStatusBadge status={user.status} />
+                      <select
+                        value={user.status}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => {
+                          event.stopPropagation();
+                          changeUserStatus(user, event.target.value);
+                        }}
+                        disabled={isSaving || user.id === currentUser.id}
+                        className="rounded-full border border-[#D9E7E7] bg-white px-3 py-1.5 text-xs font-semibold text-[#365057] outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={`Change status for ${user.name}`}
+                      >
+                        {portalUserStatuses.map((status) => (
+                          <option key={status.value} value={status.value}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -1471,7 +1511,11 @@ function ManageUsersWorkspace({
 
         <PanelCard
           title={isCreatingNew ? "Create employee account" : "Employee account details"}
-          description="Save employee credentials, role assignment, and access status with immediate portal updates."
+          description={
+            isCreatingNew
+              ? "New employee accounts start Active. Manage status from the employee list."
+              : "Edit identity, credentials, and role assignment."
+          }
         >
           {isCreatingNew || selectedUser ? (
             <form onSubmit={saveUser} className="space-y-5">
@@ -1482,7 +1526,7 @@ function ManageUsersWorkspace({
                     value={form.name}
                     onChange={updateField("name")}
                     disabled={isSaving}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Employee full name"
                   />
                 </div>
@@ -1494,7 +1538,7 @@ function ManageUsersWorkspace({
                     value={form.email}
                     onChange={updateField("email")}
                     disabled={isSaving}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee@furfection.local"
                   />
                 </div>
@@ -1505,7 +1549,7 @@ function ManageUsersWorkspace({
                     value={form.username}
                     onChange={updateField("username")}
                     disabled={isSaving}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee username"
                   />
                 </div>
@@ -1516,7 +1560,7 @@ function ManageUsersWorkspace({
                     value={form.role}
                     onChange={updateField("role")}
                     disabled={isSaving || selectedUserIsCurrentAdmin}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                   >
                     {portalUserRoles.map((role) => (
                       <option key={role.value} value={role.value}>
@@ -1526,23 +1570,6 @@ function ManageUsersWorkspace({
                   </select>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
-                    Account status
-                  </label>
-                  <select
-                    value={form.status}
-                    onChange={updateField("status")}
-                    disabled={isSaving || selectedUserIsCurrentAdmin}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                  >
-                    {portalUserStatuses.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
               <div>
@@ -1554,20 +1581,18 @@ function ManageUsersWorkspace({
                   value={form.password}
                   onChange={updateField("password")}
                   disabled={isSaving}
-                  className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                   placeholder={
                     isCreatingNew
                       ? "Set an employee password"
-                      : "Leave blank to keep the current password"
+                    : "Leave blank to keep the current password"
                   }
                 />
-                <p className="mt-2 text-xs text-[#7A9297]">
-                  Use at least 8 characters with uppercase, lowercase, number, and special character.
-                </p>
+                <PasswordStrengthMeter password={form.password} />
               </div>
 
               {!isCreatingNew && selectedUser && (
-                <div className="rounded-[24px] bg-[#F6FAFA] px-5 py-4 text-sm text-[#607277]">
+                <div className="rounded-lg bg-[#F6FAFA] px-4 py-4 text-sm text-[#607277]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#365057]">
                       {formatRoleLabel(selectedUser.role)}
@@ -1589,7 +1614,7 @@ function ManageUsersWorkspace({
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="rounded-2xl bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+                className="rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
                 >
                   {isSaving
                     ? isCreatingNew
@@ -1604,7 +1629,7 @@ function ManageUsersWorkspace({
                   type="button"
                   onClick={resetForm}
                   disabled={isSaving}
-                  className="rounded-2xl bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+                  className="rounded-lg bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
                 >
                   {isCreatingNew ? "Clear form" : "Reset changes"}
                 </button>
@@ -1612,19 +1637,57 @@ function ManageUsersWorkspace({
                 {!isCreatingNew && selectedUser && (
                   <button
                     type="button"
-                    onClick={handleDelete}
-                    disabled={isSaving}
-                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold ${
+                  onClick={handleDelete}
+                  disabled={isSaving}
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold ${
                       confirmDelete
                         ? "bg-[#B23949] text-white"
                         : "bg-[#FBECEF] text-[#B23949]"
                     }`}
                   >
                     <Trash2 size={16} />
-                    {confirmDelete ? "Confirm permanent delete" : "Delete account"}
+                    {isSaving && confirmDelete
+                      ? "Deleting..."
+                      : confirmDelete
+                        ? "Confirm permanent delete"
+                        : "Delete account"}
                   </button>
                 )}
               </div>
+
+              {confirmDelete && selectedUser && (
+                <div
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-labelledby="delete-employee-title"
+                  className="rounded-[22px] border border-[#F4B7BE] bg-[#FFF6F7] px-4 py-4"
+                >
+                  <h4 id="delete-employee-title" className="font-semibold text-[#8A3240]">
+                    Are you sure you want to permanently delete this employee account?
+                  </h4>
+                  <p className="mt-2 text-sm text-[#8A5660]">
+                    {selectedUser.name} will lose portal access and their username index will be removed.
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={isSaving}
+                      className="rounded-2xl border border-[#E8C3C8] bg-white px-4 py-2.5 text-sm font-semibold text-[#8A3240]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={isSaving}
+                      className="rounded-2xl bg-[#B23949] px-4 py-2.5 text-sm font-semibold text-white"
+                    >
+                      {isSaving ? "Deleting..." : "Delete account"}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {feedback.message && (
                 <p
@@ -1658,7 +1721,6 @@ export function PortalPage() {
     visibleNotifications,
     updateAppointment,
     savePetRecord,
-    deletePetRecord,
     createStaff,
     updateUser,
     deleteUser,
@@ -1675,7 +1737,6 @@ export function PortalPage() {
         currentUser={currentUser}
         state={state}
         savePetRecord={savePetRecord}
-        deletePetRecord={deletePetRecord}
       />
     );
   }

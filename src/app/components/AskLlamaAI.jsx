@@ -11,12 +11,9 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext.jsx";
 import {
-  BLOCKED_CUSTOMER_MESSAGE,
-  askGroqAssistant,
-  getInstantAssistantReply,
+  askGroqAssistantStream,
   getGroqRuntimeStatus,
   groqSuggestionChips,
-  isBlockedCustomerMessage,
 } from "../../services/groq.js";
 
 const INTRO_MESSAGE = {
@@ -196,61 +193,23 @@ export function AskLlamaAI() {
       return;
     }
 
-    if (isBlockedCustomerMessage(cleanMessage)) {
-      const moderationReply = getInstantAssistantReply(cleanMessage);
-      setDraft("");
-      setIsOpen(true);
-      setLastWarning("");
-      setMessages((current) => [
-        ...current,
-        createMessage(
-          "assistant",
-          moderationReply?.answer || BLOCKED_CUSTOMER_MESSAGE,
-          {
-            provider: "moderation",
-            topic: "blocked",
-          },
-        ),
-      ]);
-      return;
-    }
-
     requestInFlightRef.current = true;
     activeRequestIdRef.current += 1;
     const requestId = activeRequestIdRef.current;
 
     const userMessage = createMessage("user", cleanMessage);
-    const instantResult = getInstantAssistantReply(cleanMessage);
-    if (instantResult) {
-      const assistantMessage = createMessage("assistant", instantResult.answer, {
-        provider: instantResult.provider,
-        topic: instantResult.topic,
-      });
-
-      setMessages((current) => [...current, userMessage, assistantMessage]);
-      setDraft("");
-      setIsOpen(true);
-      setLastWarning("");
-      logChatbotInquiry({
-        question: cleanMessage,
-        response: instantResult.answer,
-        recognized: instantResult.recognized,
-        language: instantResult.language,
-        topic: instantResult.topic,
-        provider: instantResult.provider,
-        model: null,
-        source: resolveSource(pathname),
-      });
-      requestInFlightRef.current = false;
-      return;
-    }
+    const assistantMessage = createMessage("assistant", "", {
+      provider: "groq",
+      topic: "dynamic",
+    });
+    const assistantId = assistantMessage.id;
 
     const history = messages.map((message) => ({
       role: message.from === "assistant" ? "assistant" : "user",
       content: message.content,
     }));
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [...current, userMessage, assistantMessage]);
     setDraft("");
     setIsOpen(true);
     setIsLoading(true);
@@ -264,21 +223,40 @@ export function AskLlamaAI() {
     }, 180);
 
     try {
-      const result = await askGroqAssistant({
+      const result = await askGroqAssistantStream({
         message: cleanMessage,
         history,
+        onToken: (token) => {
+          if (!mountedRef.current || requestId !== activeRequestIdRef.current) {
+            return;
+          }
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantId
+                ? { ...message, content: `${message.content}${token}` }
+                : message,
+            ),
+          );
+        },
       });
 
       if (!mountedRef.current || requestId !== activeRequestIdRef.current) {
         return;
       }
 
-      const assistantMessage = createMessage("assistant", result.answer, {
-        provider: result.provider,
-        topic: result.topic,
-      });
-
-      setMessages((current) => [...current, assistantMessage]);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                content: result.answer,
+                provider: result.provider,
+                topic: result.topic,
+              }
+            : message,
+        ),
+      );
       setLastWarning(result.warning || "");
       logChatbotInquiry({
         question: cleanMessage,
@@ -312,12 +290,16 @@ export function AskLlamaAI() {
         return;
       }
 
-      setMessages((current) => [...current, createMessage("assistant", fallbackMessage)]);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === assistantId ? { ...message, content: fallbackMessage } : message,
+        ),
+      );
       setLastWarning(error instanceof Error ? error.message : "Unknown chat error.");
     } finally {
       clearLoadingIndicatorTimer();
       requestInFlightRef.current = false;
-      if (mountedRef.current && requestId === activeRequestIdRef.current) {
+      if (mountedRef.current) {
         setIsLoading(false);
         setShowLoadingIndicator(false);
       }
@@ -367,7 +349,7 @@ export function AskLlamaAI() {
                     : "bg-[#FFF6E6] text-[#8A6330]"
                 }`}
               >
-                {groqStatus.ready ? "Live Groq + Llama" : "Built-in business answers"}
+                {groqStatus.ready ? "Live Groq + Llama" : "Live Groq unavailable"}
               </div>
             </div>
 
@@ -416,8 +398,7 @@ export function AskLlamaAI() {
 
                 {lastWarning && (
                   <div className="rounded-[22px] border border-[#F4DFC0] bg-[#FFF8EE] px-4 py-3 text-xs leading-5 text-[#8A6330]">
-                    Live Groq reply is unavailable right now. The assistant used the built-in
-                    business answers instead. Details: {lastWarning}
+                    Live Groq reply is unavailable right now. Details: {lastWarning}
                   </div>
                 )}
 

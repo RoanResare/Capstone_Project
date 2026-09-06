@@ -1,62 +1,8 @@
 import { useRef, useState } from "react";
-import { Bot, Languages, SendHorizontal } from "lucide-react";
-import {
-  chatbotKnowledgeBase,
-  chatbotSuggestionChips,
-} from "../data/systemData.js";
+import { Bot, Languages, LoaderCircle, SendHorizontal } from "lucide-react";
+import { chatbotSuggestionChips } from "../data/systemData.js";
 import { useApp } from "../context/AppContext.jsx";
-import {
-  BLOCKED_CUSTOMER_MESSAGE,
-  isBlockedCustomerMessage,
-} from "../../services/groq.js";
-
-function normalizeValue(value = "") {
-  return value.trim().toLowerCase();
-}
-
-function detectLanguage(message) {
-  const lookup = normalizeValue(message);
-  const tagalogHints = [
-    "ano",
-    "magkano",
-    "oras",
-    "paano",
-    "kailan",
-    "serbisyo",
-    "bukas",
-    "pwede",
-  ];
-
-  return tagalogHints.some((word) => lookup.includes(word)) ? "tl" : "en";
-}
-
-function resolveChatReply(message) {
-  const language = detectLanguage(message);
-
-  const lookup = normalizeValue(message);
-  const topic = chatbotKnowledgeBase.find((entry) =>
-    entry.keywords.some((keyword) => lookup.includes(keyword)),
-  );
-
-  if (!topic) {
-    return {
-      recognized: false,
-      language,
-      topic: "unrecognized",
-      answer:
-        language === "tl"
-          ? "Hindi ko pa maintindihan ang tanong na iyon. Subukang magtanong tungkol sa services, presyo, appointments, policies, o clinic hours."
-          : "I could not understand that question yet. Try asking about services, pricing, appointments, policies, or clinic hours.",
-    };
-  }
-
-  return {
-    recognized: true,
-    language,
-    topic: topic.id,
-    answer: language === "tl" ? topic.answerTl : topic.answerEn,
-  };
-}
+import { askGroqAssistantStream } from "../../services/groq.js";
 
 function ChatBubble({ from, children }) {
   const isUser = from === "user";
@@ -79,6 +25,7 @@ function ChatBubble({ from, children }) {
 export function ChatbotWidget({ surface = "home" }) {
   const { logChatbotInquiry } = useApp();
   const [draft, setDraft] = useState("");
+  const [isReplying, setIsReplying] = useState(false);
   const lastSubmissionRef = useRef({ message: "", at: 0 });
   const [messages, setMessages] = useState([
     {
@@ -89,7 +36,7 @@ export function ChatbotWidget({ surface = "home" }) {
     },
   ]);
 
-  const isSubmitDisabled = !draft.trim();
+  const isSubmitDisabled = !draft.trim() || isReplying;
 
   const isDuplicateSubmission = (message) => {
     const now = Date.now();
@@ -104,7 +51,15 @@ export function ChatbotWidget({ surface = "home" }) {
     return false;
   };
 
-  const submitInquiry = (message) => {
+  const buildHistoryForGroq = (items) =>
+    items
+      .filter((message) => message.from === "user" || message.from === "assistant")
+      .map((message) => ({
+        role: message.from === "assistant" ? "assistant" : "user",
+        content: message.content,
+      }));
+
+  const submitInquiry = async (message) => {
     const cleanMessage = message.trim();
     if (!cleanMessage) {
       return;
@@ -114,41 +69,71 @@ export function ChatbotWidget({ surface = "home" }) {
       return;
     }
 
-    if (isBlockedCustomerMessage(cleanMessage)) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          from: "assistant",
-          content: BLOCKED_CUSTOMER_MESSAGE,
-        },
-      ]);
-      setDraft("");
-      return;
-    }
-
-    const reply = resolveChatReply(cleanMessage);
     const userMessage = {
       id: `user-${Date.now()}`,
       from: "user",
       content: cleanMessage,
     };
+
+    const assistantId = `assistant-${Date.now() + 1}`;
     const assistantMessage = {
-      id: `assistant-${Date.now() + 1}`,
+      id: assistantId,
       from: "assistant",
-      content: reply.answer,
+      content: "",
     };
+    const history = buildHistoryForGroq(messages);
 
     setMessages((current) => [...current, userMessage, assistantMessage]);
     setDraft("");
-    logChatbotInquiry({
-      question: cleanMessage,
-      response: reply.answer,
-      recognized: reply.recognized,
-      language: reply.language,
-      topic: reply.topic,
-      source: surface,
-    });
+    setIsReplying(true);
+
+    try {
+      const reply = await askGroqAssistantStream({
+        message: cleanMessage,
+        history,
+        onToken: (token) => {
+          setMessages((current) =>
+            current.map((entry) =>
+              entry.id === assistantId
+                ? { ...entry, content: `${entry.content}${token}` }
+                : entry,
+            ),
+          );
+        },
+      });
+
+      setMessages((current) =>
+        current.map((entry) =>
+          entry.id === assistantId ? { ...entry, content: reply.answer } : entry,
+        ),
+      );
+      logChatbotInquiry({
+        question: cleanMessage,
+        response: reply.answer,
+        recognized: reply.recognized,
+        language: reply.language,
+        topic: reply.topic,
+        source: surface,
+      });
+    } catch (error) {
+      const answer = "Sorry, I could not connect to live chat right now. Please try again in a moment.";
+      console.error("[chatbot] Unable to resolve chatbot reply.", error);
+      setMessages((current) =>
+        current.map((entry) =>
+          entry.id === assistantId ? { ...entry, content: answer } : entry,
+        ),
+      );
+      logChatbotInquiry({
+        question: cleanMessage,
+        response: answer,
+        recognized: false,
+        language: "en",
+        topic: "error",
+        source: surface,
+      });
+    } finally {
+      setIsReplying(false);
+    }
   };
 
   return (
@@ -183,6 +168,7 @@ export function ChatbotWidget({ surface = "home" }) {
             key={chip}
             type="button"
             onClick={() => submitInquiry(chip)}
+            disabled={isReplying}
             className="rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-4 py-2 text-sm text-[#36555B] transition hover:border-[#2D9B9B] hover:text-[#2D6B73]"
           >
             {chip}
@@ -206,10 +192,14 @@ export function ChatbotWidget({ surface = "home" }) {
         <button
           type="submit"
           disabled={isSubmitDisabled}
-          className="inline-flex items-center justify-center gap-2 rounded-[22px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1F5159]"
+          className="inline-flex items-center justify-center gap-2 rounded-[22px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1F5159] disabled:cursor-not-allowed disabled:bg-[#8FA8AB]"
         >
-          Ask chatbot
-          <SendHorizontal size={16} />
+          {isReplying ? "Answering..." : "Ask chatbot"}
+          {isReplying ? (
+            <LoaderCircle size={16} className="animate-spin" />
+          ) : (
+            <SendHorizontal size={16} />
+          )}
         </button>
       </form>
     </section>

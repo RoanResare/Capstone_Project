@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRound } from "lucide-react";
+import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 
@@ -193,6 +194,7 @@ export function ResetPassword() {
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your new password"
               />
+              <PasswordStrengthMeter password={form.newPassword} />
             </div>
 
             <div>

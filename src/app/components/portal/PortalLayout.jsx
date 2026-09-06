@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, LogOut, PawPrint, Users } from "lucide-react";
+import { Bell, CalendarDays, LogOut, PawPrint, Users, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { BrandMark } from "../BrandMark.jsx";
 
@@ -102,13 +102,13 @@ function NotificationPanel({
   };
 
   return (
-    <div className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[min(28rem,calc(100vw-3rem))] rounded-[28px] border border-[#E2EBEB] bg-white p-5 shadow-[0_24px_54px_rgba(68,78,79,0.18)]">
-      <div className="flex items-start justify-between gap-3 border-b border-[#EEF2F2] pb-4">
+    <div className="fixed right-3 top-20 z-30 w-[calc(100vw-1.5rem)] max-w-[380px] rounded-2xl border border-[#E2EBEB] bg-white p-4 shadow-[0_20px_44px_rgba(68,78,79,0.18)] sm:absolute sm:right-0 sm:top-[calc(100%+0.5rem)]">
+      <div className="flex items-start justify-between gap-3 border-b border-[#EEF2F2] pb-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
             Notifications
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-[#20343B]">
+          <h3 className="mt-1 text-base font-semibold text-[#20343B]">
             Appointment and account updates
           </h3>
           <p className="mt-1 text-sm text-[#607277]">
@@ -120,18 +120,26 @@ function NotificationPanel({
         <button
           type="button"
           onClick={markAllNotificationsRead}
-          className="rounded-full bg-[#EEF6F6] px-3 py-2 text-xs font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
+          className="rounded-lg bg-[#EEF6F6] px-3 py-2 text-xs font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
         >
-          Mark all read
+          Mark read
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#F6FAFA] text-[#365057] transition hover:bg-[#E9F3F3] sm:hidden"
+          aria-label="Close notifications"
+        >
+          <X size={16} />
         </button>
       </div>
 
       {notifications.length === 0 ? (
-        <div className="mt-4 rounded-[24px] bg-[#F7FBFB] px-4 py-5 text-sm text-[#607277]">
+        <div className="mt-3 rounded-lg bg-[#F7FBFB] px-4 py-4 text-sm text-[#607277]">
           No notifications yet. Customer registrations and appointment bookings will appear here.
         </div>
       ) : (
-        <div className="mt-4 max-h-[26rem] space-y-3 overflow-y-auto pr-1">
+        <div className="mt-3 max-h-[min(420px,calc(100vh-9rem))] space-y-2.5 overflow-y-auto pr-1">
           {notifications.map((notification) => {
             const isUnread = !notification.readBy.includes(currentUser.id);
 
@@ -140,7 +148,7 @@ function NotificationPanel({
                 key={notification.id}
                 type="button"
                 onClick={() => openNotification(notification)}
-                className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${
+                className={`w-full rounded-xl border px-3.5 py-3 text-left transition ${
                   isUnread
                     ? "border-[#D7ECEC] bg-[#F8FCFC] hover:border-[#BFE1E1]"
                     : "border-[#EDF2F2] bg-white hover:border-[#D7E8E8]"
@@ -148,11 +156,11 @@ function NotificationPanel({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-[#20343B]">{notification.title}</p>
-                    <p className="mt-1 text-sm text-[#607277]">{notification.message}</p>
+                    <p className="text-sm font-semibold text-[#20343B]">{notification.title}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#607277]">{notification.message}</p>
                   </div>
                   <span
-                    className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                       isUnread ? "bg-[#173E44] text-white" : "bg-[#EEF3F5] text-[#4C6368]"
                     }`}
                   >
@@ -160,16 +168,16 @@ function NotificationPanel({
                   </span>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#607277]">
-                  <span className="rounded-full bg-[#F2F6F6] px-3 py-1 font-semibold text-[#365057]">
+                <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-[#607277]">
+                  <span className="rounded-full bg-[#F2F6F6] px-2.5 py-1 font-semibold text-[#365057]">
                     {notification.actorName} | {notification.actorRole}
                   </span>
-                  <span className={`rounded-full px-3 py-1 font-semibold ${notificationTone(notification.level)}`}>
+                  <span className={`rounded-full px-2.5 py-1 font-semibold ${notificationTone(notification.level)}`}>
                     {notification.actionLabel}
                   </span>
                 </div>
 
-                <p className="mt-3 text-sm text-[#4E686E]">{describeNotificationSubject(notification)}</p>
+                <p className="mt-2 text-xs text-[#4E686E]">{describeNotificationSubject(notification)}</p>
                 <p className="mt-2 text-xs text-[#7A9297]">{formatDateTime(notification.createdAt)}</p>
               </button>
             );
@@ -202,8 +210,8 @@ export function PortalLayout() {
 
   return (
     <div className="min-h-screen bg-[#F7F1E8] px-4 py-5 md:px-6">
-      <div className="mx-auto grid max-w-[1440px] gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-[30px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+      <div className="mx-auto grid max-w-[1440px] gap-5 xl:h-[calc(100vh-2.5rem)] xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="rounded-[30px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] xl:sticky xl:top-5 xl:h-[calc(100vh-2.5rem)]">
           <div className="flex items-center gap-3 border-b border-[#EAE5DC] pb-5">
             <BrandMark className="h-14 w-14 flex-shrink-0" />
             <div>
@@ -238,7 +246,7 @@ export function PortalLayout() {
           </button>
         </aside>
 
-        <section className="space-y-5">
+        <section className="min-w-0 space-y-5 xl:flex xl:min-h-0 xl:flex-col">
           <header className="flex flex-col gap-4 rounded-[30px] bg-white px-6 py-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#789AA0]">
@@ -289,7 +297,9 @@ export function PortalLayout() {
             </div>
           </header>
 
-          <Outlet />
+          <div className="min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
+            <Outlet />
+          </div>
         </section>
       </div>
     </div>

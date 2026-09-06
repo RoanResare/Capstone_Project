@@ -2,3 +2,4 @@ server/config/*.json
 server/config.bak
 /.env
 server/.env
+node_modules

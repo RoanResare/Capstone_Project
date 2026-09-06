@@ -6,6 +6,7 @@ const { buildSetupMessage } = require("./utils/setupGuard");
 const adminRoutes = require("./routes/admin.routes");
 const authRoutes = require("./routes/auth.routes");
 const customerRoutes = require("./routes/customer.routes");
+const groqRoutes = require("./routes/groq.routes");
 const staffRoutes = require("./routes/staff.routes");
 const { errorHandler } = require("./middlewares/errorHandler");
 
@@ -56,6 +57,7 @@ app.get("/", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api", groqRoutes);
 app.use("/api/staff", staffRoutes);
 
 app.use(errorHandler);

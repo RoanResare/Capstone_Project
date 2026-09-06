@@ -275,13 +275,15 @@ export async function getGroqRuntimeStatus() {
       throw new Error(data?.error || `Status request failed with status ${response.status}.`);
     }
 
+    const ready = Boolean(data?.ready || data?.status === "live");
+
     return {
-      ready: Boolean(data?.ready),
+      ready,
       mode: data?.mode || "unknown",
-      summary: data?.ready
+      summary: ready
         ? data?.message || "Live Groq replies are active."
         : "Live Groq replies are not configured.",
-      helpText: data?.ready
+      helpText: ready
         ? ""
         : data?.message ||
           "The running server does not have a Groq API key yet. Add GROQ_API_KEY, then restart npm run dev.",

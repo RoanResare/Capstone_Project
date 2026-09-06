@@ -125,6 +125,7 @@ function describeGroqStatus(env) {
 
   if (proxyUrl) {
     return {
+      status: "live",
       ready: true,
       mode: "custom-proxy",
       message: "Using the configured external Groq proxy.",
@@ -136,6 +137,7 @@ function describeGroqStatus(env) {
 
   if (apiKey) {
     return {
+      status: "live",
       ready: true,
       mode: "local-proxy",
       message: "The local Groq proxy is ready.",
@@ -146,9 +148,12 @@ function describeGroqStatus(env) {
   }
 
   return {
+    status: "missing-config",
     ready: false,
     mode: "missing-config",
     message:
+      "The running Vite server started without a Groq API key. Add GROQ_API_KEY to .env or configure VITE_GROQ_PROXY_URL, then restart npm run dev.",
+    error:
       "The running Vite server started without a Groq API key. Add GROQ_API_KEY to .env or configure VITE_GROQ_PROXY_URL, then restart npm run dev.",
     hasServerKey: false,
     hasCustomProxy: false,
@@ -194,7 +199,8 @@ async function parseJsonSafely(response) {
 
 function createGroqProxyPlugin(env) {
   async function handleGroqStatus(req, res) {
-    jsonResponse(res, 200, describeGroqStatus(env));
+    const status = describeGroqStatus(env);
+    jsonResponse(res, status.ready ? 200 : 500, status);
   }
 
   async function handleGroqChat(req, res) {

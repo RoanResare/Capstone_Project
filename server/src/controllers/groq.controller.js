@@ -21,7 +21,8 @@ function startSseResponse(res) {
 }
 
 async function getGroqRuntimeStatus(_req, res) {
-  res.status(200).json(getGroqStatus());
+  const status = getGroqStatus();
+  res.status(status.ready ? 200 : 500).json(status);
 }
 
 async function createGroqChat(req, res) {

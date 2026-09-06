@@ -95,11 +95,13 @@ function getGroqStatus() {
   const apiKey = getGroqApiKey();
 
   return {
+    status: apiKey ? "live" : "missing-config",
     ready: Boolean(apiKey),
     mode: apiKey ? "express-proxy" : "missing-config",
     message: apiKey
       ? "The Express Groq proxy is ready."
       : "The backend is missing GROQ_API_KEY.",
+    error: apiKey ? null : "The backend is missing GROQ_API_KEY.",
     hasServerKey: Boolean(apiKey),
     hasCustomProxy: false,
     model: getModelCandidates()[0] || DEFAULT_GROQ_MODEL,

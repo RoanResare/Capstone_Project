@@ -32,6 +32,19 @@ function getTransporter() {
   return transporter;
 }
 
+function getMailTransportSettings() {
+  const options = buildTransportOptions();
+
+  return {
+    provider: env.mail.provider,
+    service: options.service,
+    host: options.host,
+    port: options.port,
+    secure: options.secure,
+    family: options.family,
+  };
+}
+
 async function verifyMailerConnection(options = {}) {
   if (!env.runtime.smtpReady) {
     return false;
@@ -55,6 +68,7 @@ async function verifyMailerConnection(options = {}) {
 }
 
 module.exports = {
+  getMailTransportSettings,
   getTransporter,
   verifyMailerConnection,
 };

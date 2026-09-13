@@ -147,6 +147,10 @@ function loadServiceAccount() {
 const serviceAccount = loadServiceAccount();
 const mailUser = readRequired("SMTP_USER", readOptional("EMAIL_USER")).toLowerCase();
 const mailPass = normalizeMailPassword(readRequired("SMTP_PASS", readOptional("EMAIL_PASS")));
+const mailProvider = readOptional("MAIL_PROVIDER", "gmail").toLowerCase();
+const mailHost = readOptional("SMTP_HOST", "smtp.gmail.com");
+const mailPort = mailProvider === "gmail" ? 465 : readNumber("SMTP_PORT", 465);
+const mailSecure = mailProvider === "gmail" ? true : readBoolean("SMTP_SECURE", true);
 
 const env = {
   nodeEnv: readOptional("NODE_ENV", "development"),
@@ -189,10 +193,10 @@ const env = {
   },
   mail: {
     deliveryMode: readOptional("MAIL_DELIVERY_MODE", "smtp").toLowerCase(),
-    provider: readOptional("MAIL_PROVIDER", "gmail").toLowerCase(),
-    host: readOptional("SMTP_HOST", "smtp.gmail.com"),
-    port: readNumber("SMTP_PORT", 587),
-    secure: readBoolean("SMTP_SECURE", false),
+    provider: mailProvider,
+    host: mailHost,
+    port: mailPort,
+    secure: mailSecure,
     user: mailUser,
     pass: mailPass,
     fromName: readOptional(

@@ -1,4 +1,8 @@
-const { getTransporter, verifyMailerConnection } = require("../config/mailer");
+const {
+  getMailTransportSettings,
+  getTransporter,
+  verifyMailerConnection,
+} = require("../config/mailer");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 
@@ -129,12 +133,15 @@ async function deliverMail({ type, to, subject, html, text }) {
 
   const senderEmail = env.mail.user || env.mail.fromEmail;
   const senderLabel = `"${env.mail.fromName}" <${senderEmail}>`;
+  const transportSettings = getMailTransportSettings();
 
   console.info(`[mail:${type}] Attempting SMTP delivery.`, {
     to: maskEmail(to),
     from: senderEmail,
-    host: env.mail.host,
-    port: env.mail.port,
+    host: transportSettings.host,
+    port: transportSettings.port,
+    secure: transportSettings.secure,
+    family: transportSettings.family,
   });
 
   try {

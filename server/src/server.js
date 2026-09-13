@@ -1,7 +1,7 @@
 const { logEnvLoadSummary } = require("./config/loadEnv");
 const { app } = require("./app");
 const { env, validateStartupEnvironment } = require("./config/env");
-const { verifyMailerConnection } = require("./config/mailer");
+const { getMailTransportSettings, verifyMailerConnection } = require("./config/mailer");
 
 logEnvLoadSummary();
 
@@ -22,10 +22,14 @@ app.listen(env.port, () => {
 
   verifyMailerConnection()
     .catch((error) => {
+      const transportSettings = getMailTransportSettings();
+
       console.error("[mail] SMTP connection verification failed.", {
-        provider: env.mail.provider,
-        host: env.mail.host,
-        port: env.mail.port,
+        provider: transportSettings.provider,
+        host: transportSettings.host,
+        port: transportSettings.port,
+        secure: transportSettings.secure,
+        family: transportSettings.family,
         error: error instanceof Error ? error.message : error,
       });
     });

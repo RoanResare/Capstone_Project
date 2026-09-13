@@ -1,7 +1,10 @@
 import { chatbotSuggestionChips } from "../app/data/systemData.js";
 
-const DEFAULT_PROXY_URL = "/api/groq-chat";
-const DEFAULT_STATUS_URL = "/api/groq-status";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "https://capstone-project-bczf.onrender.com/api"
+).replace(/\/+$/, "");
+const DEFAULT_PROXY_URL = `${API_BASE_URL}/groq-chat`;
+const DEFAULT_STATUS_URL = `${API_BASE_URL}/groq-status`;
 export const GROQ_MODEL = "llama-3.3-70b-versatile";
 export const GROQ_MODELS = [GROQ_MODEL, "llama-3.1-8b-instant"];
 const MAX_HISTORY_MESSAGES = 2;

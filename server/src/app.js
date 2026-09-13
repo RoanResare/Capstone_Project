@@ -11,11 +11,15 @@ const staffRoutes = require("./routes/staff.routes");
 const { errorHandler } = require("./middlewares/errorHandler");
 
 const app = express();
+const productionFrontendOrigin = "https://capstone-project-1-yqto.onrender.com";
 
-const allowedOrigins = env.clientUrl
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const allowedOrigins = Array.from(
+  new Set(
+    [productionFrontendOrigin, ...env.clientUrl.split(",")]
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ),
+);
 
 function isLoopbackOrigin(origin = "") {
   try {
@@ -28,6 +32,7 @@ function isLoopbackOrigin(origin = "") {
 
 app.use(
   cors({
+    credentials: true,
     origin(origin, callback) {
       const allowLoopback =
         env.nodeEnv !== "production" && origin && isLoopbackOrigin(origin);

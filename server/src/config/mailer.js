@@ -5,11 +5,14 @@ let transporter = null;
 let verificationPromise = null;
 
 function buildTransportOptions() {
+  const isGmail = env.mail.provider === "gmail";
+
   return {
-    service: env.mail.provider === "gmail" ? "gmail" : undefined,
+    service: isGmail ? "gmail" : undefined,
     host: env.mail.host,
-    port: env.mail.port,
-    secure: env.mail.secure,
+    port: isGmail ? 465 : env.mail.port,
+    secure: isGmail ? true : env.mail.secure,
+    family: 4,
     auth: {
       user: env.mail.user,
       pass: env.mail.pass,

@@ -46,10 +46,6 @@ function readNumber(name, fallback) {
   return parsed;
 }
 
-function normalizeMailPassword(value = "") {
-  return typeof value === "string" ? value.replace(/\s+/g, "") : "";
-}
-
 function resolveServerPath(targetPath) {
   if (!targetPath) {
     return "";
@@ -145,12 +141,10 @@ function loadServiceAccount() {
 }
 
 const serviceAccount = loadServiceAccount();
-const mailUser = readRequired("SMTP_USER", readOptional("EMAIL_USER")).toLowerCase();
-const mailPass = normalizeMailPassword(readRequired("SMTP_PASS", readOptional("EMAIL_PASS")));
-const mailProvider = readOptional("MAIL_PROVIDER", "gmail").toLowerCase();
-const mailHost = readOptional("SMTP_HOST", "smtp.gmail.com");
-const mailPort = mailProvider === "gmail" ? 465 : readNumber("SMTP_PORT", 465);
-const mailSecure = mailProvider === "gmail" ? true : readBoolean("SMTP_SECURE", true);
+const gmailUser = readRequired("GMAIL_USER", readOptional("EMAIL_USER")).toLowerCase();
+const gmailClientId = readRequired("GMAIL_CLIENT_ID");
+const gmailClientSecret = readRequired("GMAIL_CLIENT_SECRET");
+const gmailRefreshToken = readRequired("GMAIL_REFRESH_TOKEN");
 
 const env = {
   nodeEnv: readOptional("NODE_ENV", "development"),
@@ -192,18 +186,19 @@ const env = {
     ttlMinutes: readNumber("PASSWORD_RESET_TTL_MINUTES", 30),
   },
   mail: {
-    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "smtp").toLowerCase(),
-    provider: mailProvider,
-    host: mailHost,
-    port: mailPort,
-    secure: mailSecure,
-    user: mailUser,
-    pass: mailPass,
-    fromName: readOptional(
-      "SMTP_FROM_NAME",
-      readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
-    ),
-    fromEmail: readOptional("SMTP_FROM_EMAIL", mailUser).toLowerCase(),
+    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "gmail-api").toLowerCase(),
+    provider: "gmail-api",
+    user: gmailUser,
+    fromName: readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
+    fromEmail: readOptional(
+      "GMAIL_FROM_EMAIL",
+      readOptional("EMAIL_FROM", gmailUser),
+    ).toLowerCase(),
+    oauth: {
+      clientId: gmailClientId,
+      clientSecret: gmailClientSecret,
+      refreshToken: gmailRefreshToken,
+    },
   },
 };
 
@@ -214,8 +209,8 @@ function resolveMailDeliveryMode() {
     return "disabled";
   }
 
-  if (env.runtime?.smtpReady) {
-    return "smtp";
+  if (env.runtime?.gmailApiReady) {
+    return "gmail-api";
   }
 
   return "disabled";
@@ -234,13 +229,17 @@ env.runtime = {
       env.auth.otpSecret &&
       env.auth.passwordHashPepper,
   ),
-  smtpReady: Boolean(
-    env.mail.host && env.mail.user && env.mail.pass && env.mail.fromEmail,
+  gmailApiReady: Boolean(
+    env.mail.user &&
+      env.mail.fromEmail &&
+      env.mail.oauth.clientId &&
+      env.mail.oauth.clientSecret &&
+      env.mail.oauth.refreshToken,
   ),
 };
 
 env.runtime.mailDeliveryMode = resolveMailDeliveryMode();
-env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "smtp";
+env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "gmail-api";
 
 env.runtime.authReady = Boolean(
   env.runtime.firebaseAdminReady &&
@@ -268,8 +267,13 @@ function collectStartupChecks() {
     },
     {
       label: "Mail Delivery",
-      required: ["EMAIL_USER", "EMAIL_PASS"],
-      alternatives: ["SMTP_USER", "SMTP_PASS", "SMTP_FROM_EMAIL"],
+      required: [
+        "GMAIL_USER",
+        "GMAIL_CLIENT_ID",
+        "GMAIL_CLIENT_SECRET",
+        "GMAIL_REFRESH_TOKEN",
+      ],
+      alternatives: ["GMAIL_FROM_EMAIL"],
       ready: env.runtime.mailDeliveryReady,
     },
   ];
@@ -283,7 +287,7 @@ function getStartupDiagnostics() {
     port: env.port,
     clientUrl: env.clientUrl,
     mailDeliveryMode: env.runtime.mailDeliveryMode,
-    smtpReady: env.runtime.smtpReady,
+    gmailApiReady: env.runtime.gmailApiReady,
     authReady: env.runtime.authReady,
     loadedEnvFiles: env.runtime.loadedEnvFiles.map((file) => ({
       path: file.path,
@@ -296,11 +300,9 @@ function getStartupDiagnostics() {
     mail: {
       userConfigured: Boolean(env.mail.user),
       fromEmailConfigured: Boolean(env.mail.fromEmail),
-      passwordConfigured: Boolean(env.mail.pass),
-      host: env.mail.host,
-      port: env.mail.port,
-      secure: env.mail.secure,
       provider: env.mail.provider,
+      oauthClientConfigured: Boolean(env.mail.oauth.clientId),
+      oauthRefreshTokenConfigured: Boolean(env.mail.oauth.refreshToken),
     },
     failedChecks: checks.filter((check) => !check.ready),
   };
@@ -313,7 +315,7 @@ function buildStartupSuccessSummary(diagnostics) {
     clientUrl: diagnostics.clientUrl,
     authReady: diagnostics.authReady,
     mailDeliveryMode: diagnostics.mailDeliveryMode,
-    smtpReady: diagnostics.smtpReady,
+    gmailApiReady: diagnostics.gmailApiReady,
   };
 }
 

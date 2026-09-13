@@ -24,12 +24,9 @@ app.listen(env.port, () => {
     .catch((error) => {
       const transportSettings = getMailTransportSettings();
 
-      console.error("[mail] SMTP connection verification failed.", {
+      console.error("[mail] Gmail API verification failed.", {
         provider: transportSettings.provider,
-        host: transportSettings.host,
-        port: transportSettings.port,
-        secure: transportSettings.secure,
-        family: transportSettings.family,
+        transport: transportSettings.transport,
         error: error instanceof Error ? error.message : error,
       });
     });

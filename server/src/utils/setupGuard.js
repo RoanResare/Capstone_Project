@@ -18,7 +18,7 @@ function collectMissingVariables(options = {}) {
       { name: "OTP_TICKET_SECRET", ready: Boolean(env.auth.otpTicketSecret) },
       { name: "OTP_HASH_SECRET", ready: Boolean(env.auth.otpSecret) },
       {
-        name: "EMAIL_USER, EMAIL_PASS (or SMTP_USER, SMTP_PASS, SMTP_FROM_EMAIL)",
+        name: "GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN",
         ready: Boolean(env.runtime.mailDeliveryReady),
       },
     );
@@ -27,7 +27,7 @@ function collectMissingVariables(options = {}) {
   if (requirePasswordReset) {
     required.push(
       {
-        name: "EMAIL_USER, EMAIL_PASS (or SMTP_USER, SMTP_PASS, SMTP_FROM_EMAIL)",
+        name: "GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN",
         ready: Boolean(env.runtime.mailDeliveryReady),
       },
     );

@@ -1,6 +1,6 @@
 const {
   getMailTransportSettings,
-  getTransporter,
+  sendMail,
   verifyMailerConnection,
 } = require("../config/mailer");
 const { env } = require("../config/env");
@@ -93,7 +93,7 @@ function maskEmail(value = "") {
 function buildMailConfigurationError() {
   return new ApiError(
     503,
-    "Real email delivery is not configured. Set EMAIL_USER and EMAIL_PASS in server/.env, then restart the backend.",
+    "Real email delivery is not configured. Set GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN, then restart the backend.",
   );
 }
 
@@ -102,78 +102,62 @@ function buildMailDeliveryError(error) {
   const normalizedMessage = message.toLowerCase();
 
   if (
-    normalizedMessage.includes("invalid login") ||
-    normalizedMessage.includes("username and password not accepted") ||
-    normalizedMessage.includes("bad credentials")
+    normalizedMessage.includes("invalid_grant") ||
+    normalizedMessage.includes("invalid client") ||
+    normalizedMessage.includes("unauthorized")
   ) {
     return new ApiError(
       503,
-      "Gmail rejected the SMTP login. Verify EMAIL_USER and regenerate EMAIL_PASS as a Gmail App Password.",
+      "Gmail rejected the OAuth credentials. Verify GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, and GMAIL_USER.",
       { message },
     );
   }
 
   return new ApiError(
     503,
-    "Unable to send email right now. Verify the Gmail SMTP configuration and try again.",
+    "Unable to send email right now. Verify the Gmail API OAuth configuration and try again.",
     { message },
   );
 }
 
 async function deliverMail({ type, to, subject, html, text }) {
-  if (env.runtime.mailDeliveryMode !== "smtp") {
-    throw buildMailConfigurationError();
-  }
-
-  const transporter = getTransporter();
-
-  if (!transporter) {
+  if (env.runtime.mailDeliveryMode !== "gmail-api") {
     throw buildMailConfigurationError();
   }
 
   const senderEmail = env.mail.user || env.mail.fromEmail;
-  const senderLabel = `"${env.mail.fromName}" <${senderEmail}>`;
   const transportSettings = getMailTransportSettings();
 
-  console.info(`[mail:${type}] Attempting SMTP delivery.`, {
+  console.info(`[mail:${type}] Attempting Gmail API delivery.`, {
     to: maskEmail(to),
     from: senderEmail,
-    host: transportSettings.host,
-    port: transportSettings.port,
-    secure: transportSettings.secure,
-    family: transportSettings.family,
+    provider: transportSettings.provider,
+    transport: transportSettings.transport,
   });
 
   try {
     await verifyMailerConnection();
-    const result = await transporter.sendMail({
-      from: senderLabel,
+    const result = await sendMail({
+      fromName: env.mail.fromName,
+      fromEmail: senderEmail,
       to,
       subject,
       html,
       text,
     });
 
-    console.info(`[mail:${type}] SMTP delivery accepted.`, {
+    console.info(`[mail:${type}] Gmail API delivery accepted.`, {
       to: maskEmail(to),
-      accepted: result.accepted,
-      rejected: result.rejected,
-      response: result.response,
-      messageId: result.messageId,
+      messageId: result.id,
+      threadId: result.threadId,
     });
 
-    if (Array.isArray(result.rejected) && result.rejected.length > 0) {
-      throw new ApiError(502, "The email provider rejected the message.", {
-        rejected: result.rejected,
-      });
-    }
-
     return {
-      deliveryMode: "smtp",
-      messageId: result.messageId,
+      deliveryMode: "gmail-api",
+      messageId: result.id,
     };
   } catch (error) {
-    console.error(`[mail:${type}] SMTP delivery failed.`, {
+    console.error(`[mail:${type}] Gmail API delivery failed.`, {
       to: maskEmail(to),
       subject,
       error: error instanceof Error ? error.message : error,

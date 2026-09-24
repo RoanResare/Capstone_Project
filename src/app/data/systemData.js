@@ -27,7 +27,7 @@ export const serviceCatalog = [
     id: "laboratory-testing",
     name: "Laboratory Testing",
     duration: "60 minutes",
-    priceLabel: "PHP 200 - 2,000",
+    priceLabel: "PHP 200 - 2000",
     category: "Diagnostics",
     description: "Diagnostic tests, blood work, screening, and comprehensive chemistry.",
   },

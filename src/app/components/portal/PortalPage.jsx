@@ -1013,14 +1013,15 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
         <MetricCard label="Records With Notes" value={petsWithNotes} tone="gold" />
       </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[0.96fr_1.04fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
         <PanelCard
           title="Manage pet records"
           description="Review booking-created customer pets, keep medical notes current, and prepare future appointments faster."
-          className="h-fit"
+          className="h-full xl:flex xl:min-h-0 xl:flex-col"
+          bodyClassName="xl:flex xl:min-h-0 xl:flex-1"
         >
-          <div className="space-y-4">
-            <div className="flex flex-col gap-3">
+          <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:space-y-0 xl:gap-4">
+            <div className="flex flex-col gap-3 xl:shrink-0">
               <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
                 <Search size={16} />
                 <input
@@ -1041,7 +1042,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 message="Customer pet profiles will appear here as soon as they are created or booked."
               />
             ) : (
-              <div className="max-h-[460px] space-y-2.5 overflow-y-auto pr-1">
+              <div className="max-h-[460px] space-y-2.5 overflow-y-auto pr-1 xl:min-h-0 xl:flex-1 xl:max-h-none">
                 {filteredPetRecords.map((record) => {
                   const appointmentCount = linkedAppointmentCount(record);
 

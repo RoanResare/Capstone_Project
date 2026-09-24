@@ -129,9 +129,9 @@ export const appointmentFilters = [
 
 export const chatbotSuggestionChips = [
   "What services do you offer?",
-  "Magkano ang consultation?",
+  "How much is consultation?",
   "How do I book an appointment?",
-  "Ano ang clinic hours?",
+  "What are the clinic hours?",
 ];
 
 export function formatMoneyLabel(value) {

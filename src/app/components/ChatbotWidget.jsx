@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Languages, LoaderCircle, SendHorizontal } from "lucide-react";
 import { chatbotSuggestionChips } from "../data/systemData.js";
 import { useApp } from "../context/AppContext.jsx";
-import { askGroqAssistantStream } from "../../services/groq.js";
+import {
+  askGroqAssistantStream,
+  CHAT_TIMEOUT_ERROR_MESSAGE,
+} from "../../services/groq.js";
 
 function ChatBubble({ from, children }) {
   const isUser = from === "user";
@@ -35,7 +38,7 @@ export function ChatbotWidget({ surface = "home" }) {
       id: "assistant-intro",
       from: "assistant",
       content:
-        "Hello! Ask about services, pricing, appointments, clinic hours, or policies in English or Tagalog.",
+        "Hello! Ask about services, pricing, appointments, clinic hours, or policies in English.",
     },
   ]);
 
@@ -154,7 +157,7 @@ export function ChatbotWidget({ surface = "home" }) {
         source: surface,
       });
     } catch (error) {
-      const answer = "Sorry, I could not connect to live chat right now. Please try again in a moment.";
+      const answer = CHAT_TIMEOUT_ERROR_MESSAGE;
       console.error("[chatbot] Unable to resolve chatbot reply.", error);
       setMessages((current) =>
         current.map((entry) =>
@@ -192,7 +195,7 @@ export function ChatbotWidget({ surface = "home" }) {
           </div>
           <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#F7F3EA] px-4 py-2 text-sm font-medium text-[#6B6254]">
             <Languages size={16} />
-            English and Tagalog
+            English only
           </div>
         </div>
       </div>

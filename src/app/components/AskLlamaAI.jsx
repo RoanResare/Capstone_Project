@@ -12,6 +12,7 @@ import {
 import { useApp } from "../context/AppContext.jsx";
 import {
   askGroqAssistantStream,
+  CHAT_TIMEOUT_ERROR_MESSAGE,
   getGroqRuntimeStatus,
   groqSuggestionChips,
 } from "../../services/groq.js";
@@ -283,8 +284,7 @@ export function AskLlamaAI() {
         }));
       }
     } catch (error) {
-      const fallbackMessage =
-        "I couldn't process that request right now. Please try again in a moment.";
+      const fallbackMessage = CHAT_TIMEOUT_ERROR_MESSAGE;
 
       if (!mountedRef.current || requestId !== activeRequestIdRef.current) {
         return;

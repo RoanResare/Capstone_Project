@@ -1,7 +1,7 @@
 const Groq = require("groq-sdk");
 
 const DEFAULT_GROQ_MODEL = "llama3-8b-8192";
-const FALLBACK_GROQ_MODELS = [DEFAULT_GROQ_MODEL, "llama3-70b-8192"];
+const FALLBACK_GROQ_MODELS = [DEFAULT_GROQ_MODEL, "llama-3.3-70b-versatile"];
 const GROQ_TIMEOUT_MS = 12000;
 const MAX_HISTORY_MESSAGES = 2;
 

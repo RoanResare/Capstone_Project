@@ -1042,45 +1042,49 @@ export function AppointmentBooking({ embedded = false }) {
                 </div>
 
                 <div className="mt-1.5 grid grid-cols-7 gap-1.5">
-                  {calendarDays.map((day) => (
-                    <button
-                      key={day.dateKey}
-                      type="button"
-                      ref={!formData.selectedDate && day.hasAvailability ? setFieldRef("selectedDate") : undefined}
-                      onClick={() => day.hasAvailability && handleDateSelect(day.dateKey)}
-                      disabled={!day.hasAvailability}
-                      aria-current={day.isToday ? "date" : undefined}
-                      className={`relative min-h-[46px] rounded-lg border px-1 py-1.5 transition ${
-                        day.isSelected
-                          ? "border-[#2D9B9B] bg-[#2D9B9B] text-white shadow-[0_18px_34px_rgba(45,155,155,0.22)]"
-                          : !day.isCurrentMonth
-                            ? "border-transparent bg-transparent text-[#D0DADC] opacity-60"
+                  {calendarDays.map((day) => {
+                    if (!day.isCurrentMonth) {
+                      return <div key={day.dateKey} aria-hidden="true" className="min-h-[46px]" />;
+                    }
+
+                    return (
+                      <button
+                        key={day.dateKey}
+                        type="button"
+                        ref={!formData.selectedDate && day.hasAvailability ? setFieldRef("selectedDate") : undefined}
+                        onClick={() => day.hasAvailability && handleDateSelect(day.dateKey)}
+                        disabled={!day.hasAvailability}
+                        aria-current={day.isToday ? "date" : undefined}
+                        className={`relative min-h-[46px] rounded-lg border px-1 py-1.5 transition ${
+                          day.isSelected
+                            ? "border-[#2D9B9B] bg-[#2D9B9B] text-white shadow-[0_18px_34px_rgba(45,155,155,0.22)]"
                             : day.isToday
                               ? "border-[#F4C16A] bg-[#FFF8EA] text-[#A56A0F] shadow-[0_0_0_2px_rgba(244,193,106,0.2)]"
                               : day.hasAvailability
                                 ? "border-[#DDEAEA] bg-white text-[#20343B] hover:border-[#BFDCDC] hover:bg-[#F5FBFB]"
                                 : "border-transparent bg-transparent text-[#B4C2C5]"
-                      }`}
-                    >
-                      {day.isToday && (
-                        <span className="absolute left-1 top-1 text-[9px] font-bold leading-none">
-                          T
-                        </span>
-                      )}
-                      <div className="flex flex-col items-center justify-center">
-                        <span className="text-sm font-semibold">{day.date.getDate()}</span>
-                        <span
-                          className={`mt-2 inline-flex h-1.5 w-1.5 rounded-full ${
-                            day.hasAvailability
-                              ? day.isSelected
-                                ? "bg-white"
-                                : "bg-[#2D9B9B]"
-                              : "bg-transparent"
-                          }`}
-                        />
-                      </div>
-                    </button>
-                  ))}
+                        }`}
+                      >
+                        {day.isToday && (
+                          <span className="absolute left-1 top-1 text-[9px] font-bold leading-none">
+                            T
+                          </span>
+                        )}
+                        <div className="flex flex-col items-center justify-center">
+                          <span className="text-sm font-semibold">{day.date.getDate()}</span>
+                          <span
+                            className={`mt-2 inline-flex h-1.5 w-1.5 rounded-full ${
+                              day.hasAvailability
+                                ? day.isSelected
+                                  ? "bg-white"
+                                  : "bg-[#2D9B9B]"
+                                : "bg-transparent"
+                            }`}
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#607277]">
                   <span className="rounded-lg bg-[#2D9B9B] px-3 py-1.5 text-white">Selected</span>

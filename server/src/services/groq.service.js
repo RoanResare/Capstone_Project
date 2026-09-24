@@ -11,7 +11,7 @@ You are Charming Fur-fection Assistant, an intelligent, helpful, and polite cust
 
 Business Knowledge Base & Exact Pricing:
 
-- Store Hours & Location: Open daily from 8:00 AM to 6:00 PM. Located in Las Pinas City.
+- Store Hours & Location: Open daily from 8:00 AM to 6:00 PM. Located at Saint Joseph Avenue corner Guinto Street, Pulang Lupa Dos, Las Piñas, Philippines, 1740.
 - Allowed Pets for Appointments: Dogs and Cats.
 - Booking Process: Please book your appointment directly through the Book Appointment tab inside your Customer Dashboard.
 
@@ -215,7 +215,7 @@ async function createChatCompletion(payload = {}) {
         {
           model,
           temperature: 0.2,
-          max_tokens: 250,
+          max_tokens: 500,
           stream: false,
           messages,
         },
@@ -282,7 +282,7 @@ async function createChatCompletionStream(payload = {}, onChunk) {
         {
           model,
           temperature: 0.2,
-          max_tokens: 250,
+          max_tokens: 500,
           stream: true,
           messages,
         },

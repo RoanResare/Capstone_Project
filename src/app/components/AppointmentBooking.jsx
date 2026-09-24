@@ -269,7 +269,7 @@ export function AppointmentBooking({ embedded = false }) {
   const navigate = useNavigate();
   const toast = useToast();
   const currentCustomer = currentUser?.role === "customer" ? currentUser : null;
-  const { state, createAppointment, savePetRecord } = useApp();
+  const { state, createAppointment, getPendingAppointmentCount, savePetRecord } = useApp();
   const fieldRefs = useRef({});
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
@@ -661,6 +661,20 @@ export function AppointmentBooking({ embedded = false }) {
       return;
     }
 
+    const bookingEmail = formData.email.trim().toLowerCase();
+    const pendingAppointmentCount = getPendingAppointmentCount(
+      currentCustomer.uid || currentCustomer.id,
+      bookingEmail,
+    );
+
+    if (pendingAppointmentCount >= 2) {
+      const message =
+        "Booking limit reached. You can have up to 2 pending appointments at a time.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
     setIsSubmitting(true);
 
     const existingPetRecord = petRecords.find(
@@ -702,7 +716,7 @@ export function AppointmentBooking({ embedded = false }) {
         createAppointment(
           {
             customerId: currentCustomer.uid,
-            customerEmail: formData.email.trim().toLowerCase(),
+            customerEmail: bookingEmail,
             customerName: formData.fullName.trim(),
             contactNumber: resolvedContactNumber,
             ownerName: formData.fullName.trim(),
@@ -744,7 +758,10 @@ export function AppointmentBooking({ embedded = false }) {
       setActiveStep(1);
     } catch (error) {
       console.error("Unable to save appointment booking.", error);
-      const message = "Unable to save your appointment. Please try again.";
+      const message =
+        error?.code === "PENDING_APPOINTMENT_LIMIT"
+          ? error.message
+          : "Unable to save your appointment. Please try again.";
       setFeedback({ type: "error", message });
       toast.error(message);
     } finally {

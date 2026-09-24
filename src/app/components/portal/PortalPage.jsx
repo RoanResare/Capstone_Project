@@ -245,6 +245,43 @@ function matchesSearch(appointment, searchValue) {
     .some((value) => value.toLowerCase().includes(lookup));
 }
 
+function getAppointmentAccountIdentifiers(appointment) {
+  const identifiers = [];
+  const customerId = String(appointment?.customerId || "").trim().toLowerCase();
+  const customerEmail = String(appointment?.customerEmail || "").trim().toLowerCase();
+  const ownerName = String(appointment?.ownerName || "").trim().toLowerCase();
+
+  if (customerId) {
+    identifiers.push(`id:${customerId}`);
+  }
+  if (customerEmail) {
+    identifiers.push(`email:${customerEmail}`);
+  }
+  if (!identifiers.length && ownerName) {
+    identifiers.push(`owner:${ownerName}`);
+  }
+
+  return identifiers;
+}
+
+function getAppointmentRisk(appointment, appointments) {
+  const accountIdentifiers = new Set(getAppointmentAccountIdentifiers(appointment));
+  const cancelledCount = (Array.isArray(appointments) ? appointments : []).filter((candidate) => {
+    if (String(candidate?.status || "").toLowerCase() !== "cancelled") {
+      return false;
+    }
+
+    return getAppointmentAccountIdentifiers(candidate).some((identifier) =>
+      accountIdentifiers.has(identifier),
+    );
+  }).length;
+
+  return {
+    isHighRisk: cancelledCount >= 3,
+    cancelledCount,
+  };
+}
+
 function matchesPetRecordSearch(record, searchValue) {
   if (!searchValue) {
     return true;
@@ -787,25 +824,36 @@ function AppointmentsWorkspace({
               />
             ) : (
               <div className="max-h-[430px] space-y-2.5 overflow-y-auto pr-1 xl:min-h-0 xl:flex-1">
-                {filteredAppointments.map((appointment) => (
-                  <button
-                    key={appointment.id}
-                    type="button"
-                    onClick={() => openAppointment(appointment.id)}
-                    className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                      selectedAppointment?.id === appointment.id
-                        ? "border-[#BFE1E1] bg-[#F8FCFC]"
-                        : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
-                    }`}
-                  >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <p className="text-lg font-semibold text-[#20343B]">
-                            {appointment.petName} | {appointment.service}
-                          </p>
-                          <StatusBadge status={appointment.status} />
-                        </div>
+                {filteredAppointments.map((appointment) => {
+                  const risk = getAppointmentRisk(appointment, appointments);
+
+                  return (
+                    <button
+                        key={appointment.id}
+                        type="button"
+                        onClick={() => openAppointment(appointment.id)}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                          selectedAppointment?.id === appointment.id
+                            ? "border-[#BFE1E1] bg-[#F8FCFC]"
+                            : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <p className="text-lg font-semibold text-[#20343B]">
+                                {appointment.petName} | {appointment.service}
+                              </p>
+                              <StatusBadge status={appointment.status} />
+                              {risk.isHighRisk && (
+                                <span
+                                  title={`${risk.cancelledCount} cancelled appointments on this account`}
+                                  className="rounded-full bg-[#FCE8EB] px-2.5 py-1 text-xs font-bold text-[#B23949]"
+                                >
+                                  High Risk / Frequent Canceller
+                                </span>
+                              )}
+                            </div>
                         <p className="mt-2 text-sm text-[#607277]">
                           {appointment.ownerName} | {appointment.customerEmail || "No email"}
                         </p>
@@ -815,14 +863,15 @@ function AppointmentsWorkspace({
                         <p className="mt-2 text-sm text-[#607277]">
                           Assigned staff: {appointment.assignedStaff || "Not assigned"}
                         </p>
-                      </div>
+                          </div>
 
-                      <div className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
-                        {appointment.notes ? "Has notes" : "No notes"}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                          <div className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
+                            {appointment.notes ? "Has notes" : "No notes"}
+                          </div>
+                        </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

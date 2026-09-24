@@ -28,13 +28,30 @@ const PORTAL_USER_STATUSES = ["active", "inactive", "suspended"];
 const PASSWORD_HASH_VERSION = 1;
 const FORECAST_AVAILABILITY_DAYS = 120;
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_PENDING_APPOINTMENTS_PER_ACCOUNT = 2;
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function normalizeEmail(email = "") {
-  return email.trim().toLowerCase();
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+function countPendingAppointments(appointments, customerId = "", customerEmail = "") {
+  const normalizedCustomerId = String(customerId || "").trim();
+  const normalizedCustomerEmail = normalizeEmail(customerEmail);
+
+  return (Array.isArray(appointments) ? appointments : []).filter((appointment) => {
+    if (appointment?.status !== "Pending") {
+      return false;
+    }
+
+    return (
+      (normalizedCustomerId && appointment.customerId === normalizedCustomerId) ||
+      (normalizedCustomerEmail && normalizeEmail(appointment.customerEmail) === normalizedCustomerEmail)
+    );
+  }).length;
 }
 
 function normalizeUsername(username = "") {
@@ -1941,7 +1958,24 @@ export function AppProvider({ children }) {
         payload: { userId: currentUser.id },
       });
     },
+    getPendingAppointmentCount(customerId, customerEmail) {
+      return countPendingAppointments(state.appointments, customerId, customerEmail);
+    },
     createAppointment(payload, actorName) {
+      const pendingAppointmentCount = countPendingAppointments(
+        state.appointments,
+        payload?.customerId,
+        payload?.customerEmail,
+      );
+
+      if (pendingAppointmentCount >= MAX_PENDING_APPOINTMENTS_PER_ACCOUNT) {
+        const error = new Error(
+          "Booking limit reached. You can have up to 2 pending appointments at a time.",
+        );
+        error.code = "PENDING_APPOINTMENT_LIMIT";
+        throw error;
+      }
+
       const nextAppointment = normalizeAppointment({
         id: payload.id || createId("appt"),
         status: "Pending",

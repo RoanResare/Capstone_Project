@@ -497,6 +497,8 @@ function normalizePhotoModeration(record) {
     : "pending";
   const createdAt = parseDateValue(current.createdAt)?.toISOString() || new Date().toISOString();
 
+  const photoURL = typeof current.photoURL === "string" ? current.photoURL : "";
+
   return {
     ...current,
     id: typeof current.id === "string" && current.id.trim() ? current.id : createId("photo"),
@@ -506,7 +508,7 @@ function normalizePhotoModeration(record) {
     ownerEmail: normalizeEmail(current.ownerEmail),
     ownerName: typeof current.ownerName === "string" ? current.ownerName.trim() : "Customer",
     subjectName: typeof current.subjectName === "string" ? current.subjectName.trim() : "Photo",
-    photoURL: typeof current.photoURL === "string" ? current.photoURL : "",
+    photoURL: photoURL.startsWith("blob:") ? "" : photoURL,
     status,
     moderationNote: typeof current.moderationNote === "string" ? current.moderationNote : "",
     createdAt,

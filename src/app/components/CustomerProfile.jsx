@@ -444,7 +444,7 @@ export function CustomerProfile() {
       ownerEmail: customer.email,
       ownerName: customer.fullName || customer.name,
       subjectName: "Profile photo",
-      photoURL: previewUrl,
+      photoURL: "",
     });
     setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
     toast.success(PHOTO_PENDING_MESSAGE);
@@ -454,6 +454,21 @@ export function CustomerProfile() {
         maxDimension: 500,
         quality: 0.6,
         outputType: file.type || "image/jpeg",
+      });
+      const moderationPreviewURL = await compressImageFileToDataUrl(compressedFile, {
+        maxDimension: 500,
+        quality: 0.6,
+        outputType: compressedFile.type || "image/jpeg",
+      });
+      await submitPhotoForReview({
+        id: moderationId,
+        assetType: "profile",
+        assetId: customer.uid,
+        ownerId: customer.uid,
+        ownerEmail: customer.email,
+        ownerName: customer.fullName || customer.name,
+        subjectName: "Profile photo",
+        photoURL: moderationPreviewURL,
       });
       const result = await updateProfile({ photoFile: compressedFile });
 

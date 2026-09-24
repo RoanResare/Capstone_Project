@@ -15,10 +15,14 @@ import { useAuth } from "./AuthContext.jsx";
 import {
   deleteAvailabilitySlotDocument,
   deletePetRecordDocument,
+  loadNotificationDocuments,
+  loadPhotoModerationDocuments,
   saveAppointmentDocument,
   saveAvailabilitySlotDocument,
   savePetRecordDocument,
   savePhotoModerationDocument,
+  saveApprovedCustomerPhotoDocument,
+  saveNotificationDocument,
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
 
@@ -662,6 +666,29 @@ function createNotification(input, message, targetRoles, level = "info") {
   });
 }
 
+function buildPhotoDecisionNotification(photo, reviewedPhoto, actorName) {
+  const approved = reviewedPhoto.status === "approved";
+
+  return normalizeNotification({
+    id: `notification-photo-${reviewedPhoto.id}-${reviewedPhoto.status}`,
+    title: approved ? "Photo Approved" : "Photo Rejected",
+    message: approved
+      ? "Admin approved your photo. It is now visible in your customer dashboard."
+      : `Your ${photo.assetType} photo was rejected and removed from your dashboard${reviewedPhoto.moderationNote ? `: ${reviewedPhoto.moderationNote}` : "."}`,
+    actorName: actorName || "Administrator",
+    actorRole: "admin",
+    actionLabel: approved ? "Approved photo" : "Rejected photo",
+    subjectName: photo.subjectName,
+    subjectRole: photo.assetType === "profile" ? "customer" : "pet",
+    targetType: "photo-moderation",
+    targetId: reviewedPhoto.id,
+    targetUserId: photo.ownerId,
+    email: photo.ownerEmail,
+    targetRoles: ["customer"],
+    level: approved ? "success" : "error",
+  });
+}
+
 function notificationSignature(notification) {
   return [
     notification.targetType,
@@ -1108,6 +1135,40 @@ function appReducer(state, action) {
   switch (action.type) {
     case "HYDRATE_STATE":
       return normalizeStoredState(action.payload);
+    case "HYDRATE_PHOTO_MODERATION": {
+      const mergedPhotos = new Map(
+        state.photoModeration.map((photo) => [photo.id, normalizePhotoModeration(photo)]),
+      );
+
+      action.payload.forEach((photo) => {
+        const normalizedPhoto = normalizePhotoModeration(photo);
+        mergedPhotos.set(normalizedPhoto.id, normalizedPhoto);
+      });
+
+      return {
+        ...state,
+        photoModeration: Array.from(mergedPhotos.values()).sort((left, right) =>
+          sortByNewest(left, right),
+        ),
+      };
+    }
+    case "HYDRATE_NOTIFICATIONS": {
+      const notificationsById = new Map(
+        state.notifications.map((notification) => [notification.id, normalizeNotification(notification)]),
+      );
+
+      action.payload.forEach((notification) => {
+        const normalizedNotification = normalizeNotification(notification);
+        notificationsById.set(normalizedNotification.id, normalizedNotification);
+      });
+
+      return {
+        ...state,
+        notifications: Array.from(notificationsById.values())
+          .sort((left, right) => getNewestTimestamp(right) - getNewestTimestamp(left))
+          .slice(0, 50),
+      };
+    }
     case "SYNC_PORTAL_USERS": {
       const users = action.payload.users.map((user) => normalizePortalUser(user));
       return {
@@ -1453,24 +1514,11 @@ function appReducer(state, action) {
         action: status === "approved" ? "Approved customer photo" : "Rejected customer photo",
         module: "Photo Moderation",
         detail: `${subject} was ${status}.`,
-        notification: {
-          title: status === "approved" ? "Photo Approved" : "Photo Rejected",
-          message:
-            status === "approved"
-              ? "Admin approved your photo. It is now visible in your customer dashboard."
-              : `Your ${target.assetType} photo was rejected and removed from your dashboard${nextPhoto.moderationNote ? `: ${nextPhoto.moderationNote}` : "."}`,
-          actorName: action.meta.actorName || "Administrator",
-          actorRole: "admin",
-          actionLabel: status === "approved" ? "Approved photo" : "Rejected photo",
-          subjectName: target.subjectName,
-          subjectRole: target.assetType === "profile" ? "customer" : "pet",
-          targetType: "photo-moderation",
-          targetId: nextPhoto.id,
-          targetUserId: target.ownerId,
-          email: target.ownerEmail,
-          targetRoles: ["customer"],
-          level: status === "approved" ? "success" : "error",
-        },
+        notification: buildPhotoDecisionNotification(
+          target,
+          nextPhoto,
+          action.meta.actorName || "Administrator",
+        ),
       });
     }
     case "UPSERT_PET_RECORD": {
@@ -1623,6 +1671,34 @@ export function AppProvider({ children }) {
       cancelled = true;
     };
   }, [accessToken, currentUser?.role, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    Promise.all([loadPhotoModerationDocuments(), loadNotificationDocuments()]).then(
+      ([photoRecords, notificationRecords]) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (photoRecords.length > 0) {
+          dispatch({ type: "HYDRATE_PHOTO_MODERATION", payload: photoRecords });
+        }
+
+        if (notificationRecords.length > 0) {
+          dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notificationRecords });
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.uid, currentUser?.role]);
 
   useEffect(() => {
     const handleStorage = (event) => {
@@ -2044,7 +2120,7 @@ export function AppProvider({ children }) {
         },
       });
     },
-    submitPhotoForReview(payload) {
+    submitPhotoForReview(payload, options = {}) {
       const nextPhoto = normalizePhotoModeration({
         id: payload?.id || createId("photo"),
         status: "pending",
@@ -2053,6 +2129,11 @@ export function AppProvider({ children }) {
       });
 
       dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: nextPhoto });
+
+      if (options.persist === false) {
+        return Promise.resolve(nextPhoto);
+      }
+
       return savePhotoModerationDocument(nextPhoto).then(() => nextPhoto);
     },
     moderatePhoto(id, status, moderationNote = "") {
@@ -2078,8 +2159,28 @@ export function AppProvider({ children }) {
         reviewedAt: new Date().toISOString(),
         reviewedBy: currentUser.name || "Administrator",
       });
+      const decisionNotification = buildPhotoDecisionNotification(
+        photo,
+        nextPhoto,
+        currentUser.name || "Administrator",
+      );
 
-      return savePhotoModerationDocument(nextPhoto).then(() => ({ ok: true, photo: nextPhoto }));
+      const syncTasks = [
+        savePhotoModerationDocument(nextPhoto),
+        saveNotificationDocument(decisionNotification),
+      ];
+
+      if (nextPhoto.status === "approved" && nextPhoto.assetType === "profile") {
+        syncTasks.push(
+          saveApprovedCustomerPhotoDocument({
+            customerId: nextPhoto.ownerId,
+            photoURL: nextPhoto.photoURL,
+            photoModerationId: nextPhoto.id,
+          }),
+        );
+      }
+
+      return Promise.all(syncTasks).then(() => ({ ok: true, photo: nextPhoto }));
     },
     markNotificationRead(notificationId) {
       if (!currentUser) {

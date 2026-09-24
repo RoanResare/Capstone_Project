@@ -1,4 +1,4 @@
-import { deleteDoc, doc, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 
 const COLLECTIONS = {
@@ -6,6 +6,7 @@ const COLLECTIONS = {
   petRecords: "pets",
   availabilitySlots: "availabilitySlots",
   photoModeration: "photoModeration",
+  notifications: "notifications",
 };
 
 function normalizeString(value = "") {
@@ -94,6 +95,68 @@ export function savePhotoModerationDocument(record) {
     logSyncError("Photo moderation sync", error);
     return false;
   });
+}
+
+export async function loadPhotoModerationDocuments() {
+  if (!canSyncScheduleData()) {
+    return [];
+  }
+
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.photoModeration));
+    return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+  } catch (error) {
+    logSyncError("Photo moderation load", error);
+    return [];
+  }
+}
+
+export async function loadNotificationDocuments() {
+  if (!canSyncScheduleData()) {
+    return [];
+  }
+
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.notifications));
+    return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+  } catch (error) {
+    logSyncError("Notification load", error);
+    return [];
+  }
+}
+
+export function saveNotificationDocument(notification) {
+  return saveDocument(COLLECTIONS.notifications, notification).catch((error) => {
+    logSyncError("Notification sync", error);
+    return false;
+  });
+}
+
+export function saveApprovedCustomerPhotoDocument({ customerId, photoURL, photoModerationId }) {
+  const normalizedCustomerId = normalizeString(customerId);
+
+  if (!normalizedCustomerId) {
+    return Promise.resolve(false);
+  }
+
+  if (!canSyncScheduleData()) {
+    return Promise.resolve(true);
+  }
+
+  return setDoc(
+    doc(db, "users", normalizedCustomerId),
+    removeUndefinedFields({
+      photoURL: normalizeString(photoURL),
+      profilePhotoModerationId: normalizeString(photoModerationId),
+      updatedAt: new Date().toISOString(),
+    }),
+    { merge: true },
+  )
+    .then(() => true)
+    .catch((error) => {
+      logSyncError("Approved customer photo sync", error);
+      return false;
+    });
 }
 
 export function saveAvailabilitySlotDocument(slot) {

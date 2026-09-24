@@ -2,10 +2,23 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isPortalAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
+    }
+
     // USERS COLLECTION
     match /users/{userId} {
       // Pinapayagan ang user na i-read/update ang sarili nilang profile sa pamamagitan ng UID
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isPortalAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+        || isPortalAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'photoURL',
+            'profilePhotoModerationId',
+            'updatedAt'
+          ]);
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     match /users {

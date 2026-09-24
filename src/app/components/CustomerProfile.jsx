@@ -445,9 +445,10 @@ export function CustomerProfile() {
       ownerName: customer.fullName || customer.name,
       subjectName: "Profile photo",
       photoURL: "",
-    });
+    }, { persist: false });
     setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
     toast.success(PHOTO_PENDING_MESSAGE);
+    setIsSavingPhoto(false);
 
     try {
       const compressedFile = await compressImageFile(file, {
@@ -710,7 +711,7 @@ export function CustomerProfile() {
       ? ""
       : profilePhotoModeration?.status === "pending"
         ? profilePhotoPreviewUrl
-        : profilePhotoPreviewUrl || profileForm.photoURL;
+        : profilePhotoModeration?.photoURL || profilePhotoPreviewUrl || profileForm.photoURL;
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">

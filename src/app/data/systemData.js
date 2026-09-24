@@ -49,6 +49,50 @@ export const serviceCatalog = [
   },
 ];
 
+export const branchDetails = {
+  name: "Charming Fur-fection Pet Care Services - Las Piñas City",
+  address: "Saint Joseph Avenue corner Guinto Street, Pulang Lupa Dos, Las Piñas, Philippines, 1740",
+  phone: "+63 0950 251 1754",
+  phoneHref: "tel:+639502511754",
+  email: "charmingfurfectionpetcare@gmail.com",
+  hours: "Consultations: Saturday and Sunday, 9:00 AM to 6:00 PM. Grooming: Daily, 9:00 AM to 7:00 PM.",
+};
+
+export const petTypeOptions = ["Dog", "Cat", "Other"];
+
+export const dogBreedOptions = [
+  "Aspin (Asong Pinoy)",
+  "Shih Tzu",
+  "Siberian Husky",
+  "Chihuahua",
+  "Labrador Retriever",
+  "Beagle",
+  "Golden Retriever",
+  "Poodle",
+  "Dachshund",
+  "Rottweiler",
+  "Other",
+];
+
+export const catBreedOptions = [
+  "Puspin (Philippine Shorthair)",
+  "Siamese",
+  "Persian",
+  "Maine Coon",
+  "British Shorthair",
+  "Bengal",
+  "Abyssinian",
+  "Egyptian Mau",
+  "Toyger",
+  "Other",
+];
+
+export const breedsByPetType = {
+  Dog: dogBreedOptions,
+  Cat: catBreedOptions,
+  Other: ["Other"],
+};
+
 export const portalModules = [
   { id: "appointments", label: "Manage Appointments" },
   { id: "pet-records", label: "Manage Pet Records" },

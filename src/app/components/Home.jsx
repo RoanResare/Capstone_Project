@@ -2,36 +2,13 @@ import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  Bot,
-  CalendarDays,
   Clock3,
-  LogIn,
   Mail,
   MapPin,
   Phone,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { resolveHomePath } from "../utils/roleUtils.js";
-
-const featureCards = [
-  {
-    title: "Customer Dashboard",
-    description:
-      "Customers can review services, book appointments, manage profile details, and track appointment history after sign-in.",
-    actionLabel: "Open dashboard",
-    kind: "dashboard",
-    icon: CalendarDays,
-  },
-  {
-    title: "Login",
-    description:
-      "Customer, staff, and admin users can sign in through one secure entry. The system sends each account to its correct dashboard.",
-    actionLabel: "Customer / Staff / Admin",
-    to: "/login",
-    kind: "route",
-    icon: LogIn,
-  },
-];
+import { branchDetails as businessBranchDetails } from "../data/systemData.js";
 
 const clinicPolicies = [
   "Arrive at least 10 minutes before your schedule.",
@@ -40,25 +17,30 @@ const clinicPolicies = [
   "Repeated no-shows may lead to account suspension.",
 ];
 
-const branchDetails = [
+const branchDetailsList = [
+  {
+    label: "Branch Name",
+    value: businessBranchDetails.name,
+    icon: MapPin,
+  },
   {
     label: "Address",
-    value: "123 Alabang-Zapote Road, Las Pinas City, Metro Manila, Philippines 1740",
+    value: businessBranchDetails.address,
     icon: MapPin,
   },
   {
     label: "Phone",
-    value: "+63 912 345 6789",
+    value: businessBranchDetails.phone,
     icon: Phone,
   },
   {
     label: "Email",
-    value: "laspinas@charmingfurfection.com",
+    value: businessBranchDetails.email,
     icon: Mail,
   },
   {
     label: "Clinic Hours",
-    value: "Consultations: Saturday and Sunday, 9:00 AM to 6:00 PM. Grooming: Daily, 9:00 AM to 7:00 PM.",
+    value: businessBranchDetails.hours,
     icon: Clock3,
   },
 ];
@@ -76,19 +58,11 @@ export function Home() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const currentCustomer = currentUser?.role === "customer" ? currentUser : null;
-  const dashboardPath = currentUser ? resolveHomePath(currentUser.role) : "/login";
   const customerBookingPath = currentCustomer ? "/customer/dashboard?tab=booking" : "/login";
-  const customerServicesPath = currentCustomer ? "/customer/dashboard?tab=services" : "/login";
 
   const openCustomerBooking = () => {
     navigate(customerBookingPath, {
       state: currentCustomer ? undefined : { from: "/customer/dashboard?tab=booking" },
-    });
-  };
-
-  const openCustomerServices = () => {
-    navigate(customerServicesPath, {
-      state: currentCustomer ? undefined : { from: "/customer/dashboard?tab=services" },
     });
   };
 
@@ -101,9 +75,9 @@ export function Home() {
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="grid gap-4 lg:grid-cols-[1.04fr_0.96fr]"
+            className="grid items-stretch gap-4 lg:grid-cols-[1.02fr_0.98fr]"
           >
-            <div className="flex min-h-[460px] flex-col rounded-lg border border-[#205A60] bg-[#173E44] p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[520px] md:p-7">
+            <div className="flex min-h-[320px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44] p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[360px] md:p-7">
               <div>
                 <p className="inline-flex rounded-full border border-[#F4C16A]/50 bg-[#245B62] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#FFF4D8]">
                   Charming Fur-fection Pet Care Services
@@ -113,10 +87,10 @@ export function Home() {
                 </h1>
               </div>
 
-              <div className="mt-auto pt-8">
+              <div className="pt-8">
                 <p className="max-w-2xl text-sm leading-6 text-[#E9F7F7] md:text-base">
-                  Review branch information, ask the AI assistant, and continue to your customer
-                  account when you are ready to browse services or book a visit.
+                  Review the essentials, then sign in to book a visit or manage your pet care
+                  details from your customer account.
                 </p>
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -128,18 +102,11 @@ export function Home() {
                     Start booking
                     <ArrowRight size={16} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={openCustomerServices}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B8DADA] bg-[#245B62] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#2D6B73]"
-                  >
-                    View services
-                  </button>
                   <Link
-                    to={dashboardPath}
+                    to="/login"
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B8DADA] bg-transparent px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#245B62]"
                   >
-                    Open dashboard
+                    Log in
                   </Link>
                 </div>
               </div>
@@ -149,63 +116,34 @@ export function Home() {
               initial={{ opacity: 0, x: 26 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.65, delay: 0.12 }}
-              className="grid gap-3 self-start"
+              className="flex h-full min-h-[320px] flex-col justify-center rounded-lg bg-[#FFFDFC] p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] md:min-h-[360px] md:p-6"
             >
-              {featureCards.map((card) => {
-                const Icon = card.icon;
-                const sharedClasses =
-                  "group rounded-lg bg-[#FFFDFC] p-4 text-left shadow-[0_14px_28px_rgba(94,81,60,0.12)] transition hover:-translate-y-1 md:p-5";
-
-                const content = (
-                  <>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
-                        <Icon size={24} />
-                      </div>
-                      <span className="rounded-lg bg-[#F6F0E7] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B6254]">
-                        Flow-ready
-                      </span>
-                    </div>
-                    <h2 className="mt-3 text-xl font-semibold text-[#20343B]">{card.title}</h2>
-                    <p className="mt-2 text-sm leading-5 text-[#5C7074]">{card.description}</p>
-                    <div className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#2D6B73]">
-                      {card.actionLabel}
-                      <ArrowRight size={16} className="transition group-hover:translate-x-1" />
-                    </div>
-                  </>
-                );
-
-                if (card.kind === "dashboard") {
-                  return (
-                    <button
-                      key={card.title}
-                      type="button"
-                      onClick={() => navigate(dashboardPath)}
-                      className={sharedClasses}
-                    >
-                      {content}
-                    </button>
-                  );
-                }
-
-                return (
-                  <Link key={card.title} to={card.to} className={sharedClasses}>
-                    {content}
-                  </Link>
-                );
-              })}
-              <div className="rounded-lg bg-[#173E44] p-4 text-white shadow-[0_18px_34px_rgba(20,43,46,0.16)]">
-                <div className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/78">
-                  <Bot size={14} />
-                  AI guidance
-                </div>
-                <h3 className="mt-3 text-lg font-semibold">
-                  Ask questions before you commit to a booking.
-                </h3>
-                <p className="mt-2 text-sm leading-5 text-white/74">
-                  Ask Llama AI stays available on the home page and customer account pages so
-                  customers can get quick answers without losing their place.
-                </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+                Public overview
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold text-[#20343B]">
+                Book pet care through one secure account.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[#607277]">
+                Customers can sign in to create pet records, reserve available appointment slots,
+                track appointment history, and keep profile details current.
+              </p>
+              <div className="mt-5 grid gap-3">
+                <Link
+                  to="/login"
+                  className="group inline-flex items-center justify-between rounded-lg bg-[#EAF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#DCEFEF]"
+                >
+                  Customer / Staff / Admin login
+                  <ArrowRight size={16} className="transition group-hover:translate-x-1" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={openCustomerBooking}
+                  className="group inline-flex items-center justify-between rounded-lg border border-[#E2ECEB] px-4 py-3 text-left text-sm font-semibold text-[#2D6B73] transition hover:border-[#BFE1E1]"
+                >
+                  Start a booking request
+                  <ArrowRight size={16} className="transition group-hover:translate-x-1" />
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -223,7 +161,7 @@ export function Home() {
                   Branch details
                 </p>
                 <div className="mt-3 space-y-2.5">
-                  {branchDetails.map((detail) => {
+                  {branchDetailsList.map((detail) => {
                     const Icon = detail.icon;
 
                     return (
@@ -240,7 +178,7 @@ export function Home() {
                   })}
                 </div>
               </div>
-              <div>
+              <div className="flex min-w-0 flex-col">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                   Visit policies
                 </p>
@@ -251,20 +189,23 @@ export function Home() {
                   Booking now happens in the customer dashboard so pet details, profile information,
                   appointment history, and clinic updates stay connected to one authenticated account.
                 </p>
-              </div>
-            </div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
-              Reminders
-            </p>
-            <div className="mt-2 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-              {clinicPolicies.map((policy) => (
-                <div
-                  key={policy}
-                  className="rounded-lg border border-[#E2ECEB] bg-[#FBFDFC] px-3.5 py-3 text-sm leading-5 text-[#607277] shadow-[0_8px_18px_rgba(94,81,60,0.06)]"
-                >
-                  {policy}
+
+                <div className="mt-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+                    Reminders
+                  </p>
+                  <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+                    {clinicPolicies.map((policy) => (
+                      <div
+                        key={policy}
+                        className="rounded-lg border border-[#E2ECEB] bg-[#FBFDFC] px-3.5 py-3 text-sm leading-5 text-[#607277] shadow-[0_8px_18px_rgba(94,81,60,0.06)]"
+                      >
+                        {policy}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           </motion.section>
         </div>

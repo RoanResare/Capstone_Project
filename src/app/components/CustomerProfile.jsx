@@ -15,7 +15,7 @@ import { AppointmentBooking } from "./AppointmentBooking.jsx";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { serviceCatalog } from "../data/systemData.js";
+import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
 import { compressImageFileToDataUrl } from "../utils/imageCompression.js";
 
 const dashboardTabs = [
@@ -126,18 +126,30 @@ function buildEmptyPetForm() {
     id: "",
     petName: "",
     petType: "",
+    customPetType: "",
     breed: "",
+    customBreed: "",
     notes: "",
     photoURL: "",
   };
 }
 
 function buildPetFormFromRecord(record = {}) {
+  const savedPetType = record.petType || "";
+  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : savedPetType ? "Other" : "";
+  const customPetType = petType === "Other" && savedPetType !== "Other" ? savedPetType : "";
+  const breedOptions = breedsByPetType[petType] || [];
+  const savedBreed = record.breed || "";
+  const breed = breedOptions.includes(savedBreed) ? savedBreed : savedBreed ? "Other" : "";
+  const customBreed = breed === "Other" && savedBreed !== "Other" ? savedBreed : "";
+
   return {
     id: record.id || "",
     petName: record.petName || "",
-    petType: record.petType || "",
-    breed: record.breed || "",
+    petType,
+    customPetType,
+    breed,
+    customBreed,
     notes: record.notes || "",
     photoURL: record.photoURL || "",
   };
@@ -290,10 +302,13 @@ export function CustomerProfile() {
     : Boolean(
         petForm.petName.trim() ||
           petForm.petType.trim() ||
+          petForm.customPetType.trim() ||
           petForm.breed.trim() ||
+          petForm.customBreed.trim() ||
           petForm.notes.trim() ||
           petForm.photoURL,
       );
+  const petBreedOptions = breedsByPetType[petForm.petType] || [];
 
   useEffect(() => {
     if (!selectedAppointmentId && customerAppointments[0]) {
@@ -312,8 +327,28 @@ export function CustomerProfile() {
   };
 
   const handleProfileChange = (field) => (event) => {
-    const value = event.target.value;
+    const value = field === "phone" ? event.target.value.replace(/\D/g, "").slice(0, 15) : event.target.value;
     setProfileForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handlePetTypeChange = (event) => {
+    const value = event.target.value;
+    setPetForm((current) => ({
+      ...current,
+      petType: value,
+      customPetType: value === "Other" ? current.customPetType : "",
+      breed: "",
+      customBreed: "",
+    }));
+  };
+
+  const handleBreedChange = (event) => {
+    const value = event.target.value;
+    setPetForm((current) => ({
+      ...current,
+      breed: value,
+      customBreed: value === "Other" ? current.customBreed : "",
+    }));
   };
 
   const buildProfilePayload = (overrides = {}) => ({
@@ -454,6 +489,13 @@ export function CustomerProfile() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email.trim())) {
+      const message = "Please enter a valid email address.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
     setIsSavingProfile(true);
 
     try {
@@ -503,8 +545,22 @@ export function CustomerProfile() {
       return;
     }
 
-    if (!petForm.petName.trim() || !petForm.petType.trim()) {
-      const message = "Pet name and pet type are required.";
+    if (!petForm.petName.trim() || !petForm.petType.trim() || !petForm.breed.trim()) {
+      const message = "Pet name, pet type, and breed are required.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
+    if (petForm.petType === "Other" && !petForm.customPetType.trim()) {
+      const message = "Specify the custom pet type.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
+    if (petForm.breed === "Other" && !petForm.customBreed.trim()) {
+      const message = "Specify the custom breed.";
       setFeedback({ type: "error", message });
       toast.error(message);
       return;
@@ -513,14 +569,18 @@ export function CustomerProfile() {
     setIsSavingPet(true);
     setFeedback({ type: "", message: "" });
     const existingRecord = customerPetRecords.find((record) => record.id === petForm.id);
+    const resolvedPetType =
+      petForm.petType === "Other" ? petForm.customPetType.trim() : petForm.petType.trim();
+    const resolvedBreed =
+      petForm.breed === "Other" ? petForm.customBreed.trim() : petForm.breed.trim();
     const nextRecord = {
       id: petForm.id || undefined,
       customerId: customer?.uid || "",
       customerEmail: customer?.email || "",
       ownerName: profileForm.fullName,
-      petName: petForm.petName,
-      petType: petForm.petType,
-      breed: petForm.breed,
+      petName: petForm.petName.trim(),
+      petType: resolvedPetType,
+      breed: resolvedBreed,
       lastVisit: existingRecord?.lastVisit || "",
       visitRecords: existingRecord?.visitRecords || [],
       medicalRecords: existingRecord?.medicalRecords || [],
@@ -942,6 +1002,7 @@ export function CustomerProfile() {
                       <input
                         value={profileForm.fullName}
                         onChange={handleProfileChange("fullName")}
+                        maxLength={80}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
@@ -950,6 +1011,8 @@ export function CustomerProfile() {
                       <input
                         value={profileForm.username}
                         onChange={handleProfileChange("username")}
+                        maxLength={32}
+                        pattern="[A-Za-z0-9_]+"
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
@@ -959,6 +1022,7 @@ export function CustomerProfile() {
                         type="email"
                         value={profileForm.email}
                         onChange={handleProfileChange("email")}
+                        maxLength={120}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
                       <p className="mt-2 text-xs text-[#7A9297]">
@@ -970,6 +1034,8 @@ export function CustomerProfile() {
                       <input
                         value={profileForm.phone}
                         onChange={handleProfileChange("phone")}
+                        inputMode="numeric"
+                        maxLength={15}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
@@ -994,33 +1060,65 @@ export function CustomerProfile() {
                         onChange={(event) =>
                           setPetForm((current) => ({ ...current, petName: event.target.value }))
                         }
+                        maxLength={60}
                         className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                         placeholder="Pet name"
                       />
                       <select
                         value={petForm.petType}
-                        onChange={(event) =>
-                          setPetForm((current) => ({ ...current, petType: event.target.value }))
-                        }
+                        onChange={handlePetTypeChange}
                         className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       >
                         <option value="">Select pet type</option>
-                        <option value="Dog">Dog</option>
-                        <option value="Cat">Cat</option>
+                        {petTypeOptions.map((petType) => (
+                          <option key={petType} value={petType}>
+                            {petType}
+                          </option>
+                        ))}
                       </select>
-                      <input
+                      {petForm.petType === "Other" && (
+                        <input
+                          value={petForm.customPetType}
+                          onChange={(event) =>
+                            setPetForm((current) => ({ ...current, customPetType: event.target.value }))
+                          }
+                          maxLength={40}
+                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          placeholder="Specify pet type"
+                        />
+                      )}
+                      <select
                         value={petForm.breed}
-                        onChange={(event) =>
-                          setPetForm((current) => ({ ...current, breed: event.target.value }))
-                        }
-                        className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                        placeholder="Breed"
-                      />
+                        onChange={handleBreedChange}
+                        disabled={!petForm.petType}
+                        className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+                      >
+                        <option value="">
+                          {petForm.petType ? "Select breed" : "Select pet type first"}
+                        </option>
+                        {petBreedOptions.map((breed) => (
+                          <option key={breed} value={breed}>
+                            {breed}
+                          </option>
+                        ))}
+                      </select>
+                      {petForm.breed === "Other" && (
+                        <input
+                          value={petForm.customBreed}
+                          onChange={(event) =>
+                            setPetForm((current) => ({ ...current, customBreed: event.target.value }))
+                          }
+                          maxLength={60}
+                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          placeholder="Specify breed"
+                        />
+                      )}
                       <textarea
                         value={petForm.notes}
                         onChange={(event) =>
                           setPetForm((current) => ({ ...current, notes: event.target.value }))
                         }
+                        maxLength={500}
                         className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                         placeholder="Notes for staff or future visits"
                       />

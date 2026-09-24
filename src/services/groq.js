@@ -1,12 +1,21 @@
 import { chatbotSuggestionChips } from "../app/data/systemData.js";
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "https://capstone-project-bczf.onrender.com/api"
-).replace(/\/+$/, "");
+function getDefaultApiBaseUrl() {
+  if (typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    return "http://localhost:5000/api";
+  }
+
+  return "https://capstone-project-bczf.onrender.com/api";
+}
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(
+  /\/+$/,
+  "",
+);
 const DEFAULT_PROXY_URL = `${API_BASE_URL}/groq-chat`;
 const DEFAULT_STATUS_URL = `${API_BASE_URL}/groq-status`;
-export const GROQ_MODEL = "llama-3.3-70b-versatile";
-export const GROQ_MODELS = [GROQ_MODEL, "llama-3.1-8b-instant"];
+export const GROQ_MODEL = "llama3-8b-8192";
+export const GROQ_MODELS = [GROQ_MODEL, "llama3-70b-8192"];
 const MAX_HISTORY_MESSAGES = 2;
 const GROQ_REQUEST_TIMEOUT_MS = 12000;
 const INAPPROPRIATE_PATTERN =
@@ -144,6 +153,8 @@ async function callGroqProxy(message, history) {
     return {
       answer,
       model: data?.model || "proxy",
+      provider: data?.provider || "groq",
+      warning: data?.warning || "",
     };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -165,6 +176,9 @@ async function parseGroqStream(response, onToken) {
   const decoder = new TextDecoder();
   let buffer = "";
   let answer = "";
+  let model = "";
+  let provider = "groq";
+  let warning = "";
 
   while (true) {
     const { value, done } = await reader.read();
@@ -194,6 +208,18 @@ async function parseGroqStream(response, onToken) {
           continue;
         }
 
+        if (typeof data?.model === "string" && data.model) {
+          model = data.model;
+        }
+
+        if (typeof data?.provider === "string" && data.provider) {
+          provider = data.provider;
+        }
+
+        if (typeof data?.warning === "string" && data.warning) {
+          warning = data.warning;
+        }
+
         const token = data?.choices?.[0]?.delta?.content || "";
         if (token) {
           answer += token;
@@ -203,7 +229,12 @@ async function parseGroqStream(response, onToken) {
     }
   }
 
-  return trimResponse(answer);
+  return {
+    answer: trimResponse(answer),
+    model,
+    provider,
+    warning,
+  };
 }
 
 async function callGroqProxyStream(message, history, onToken) {
@@ -232,12 +263,18 @@ async function callGroqProxyStream(message, history, onToken) {
       throw new Error(data?.error || `Proxy request failed with status ${response.status}.`);
     }
 
-    const answer = await parseGroqStream(response, onToken);
+    const result = await parseGroqStream(response, onToken);
+    const answer = result.answer;
     if (!answer) {
       throw new Error("Proxy returned an empty response.");
     }
 
-    return answer;
+    return {
+      answer,
+      model: result.model || GROQ_MODEL,
+      provider: result.provider || "groq",
+      warning: result.warning || "",
+    };
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("Groq request timed out.");
@@ -274,7 +311,7 @@ export async function getGroqRuntimeStatus() {
     const response = await fetch(statusUrl);
     const data = await parseJsonSafely(response);
 
-    if (!response.ok) {
+    if (!response.ok && !data) {
       throw new Error(data?.error || `Status request failed with status ${response.status}.`);
     }
 
@@ -283,6 +320,8 @@ export async function getGroqRuntimeStatus() {
     return {
       ready,
       mode: data?.mode || "unknown",
+      model: data?.model || GROQ_MODEL,
+      models: Array.isArray(data?.models) && data.models.length ? data.models : GROQ_MODELS,
       summary: ready
         ? data?.message || "Live Groq replies are active."
         : "Live Groq replies are not configured.",
@@ -321,15 +360,15 @@ export async function askGroqAssistant({ message, history = [] }) {
   }
 
   try {
-    const answer = await callGroqProxyStream(cleanMessage, history);
+    const result = await callGroqProxy(cleanMessage, history);
     return {
-      answer,
+      answer: result.answer,
       recognized: true,
       language: detectLanguage(cleanMessage),
       topic: "dynamic",
-      provider: "groq",
-      model: GROQ_MODEL,
-      warning: "",
+      provider: result.provider || "groq",
+      model: result.model || GROQ_MODEL,
+      warning: result.warning || "",
     };
   } catch (error) {
     const answer = buildErrorMessage(error);
@@ -363,14 +402,15 @@ export async function askGroqAssistantStream({ message, history = [], onToken })
   }
 
   try {
-    const answer = await callGroqProxyStream(cleanMessage, history, onToken);
+    const result = await callGroqProxyStream(cleanMessage, history, onToken);
     return {
-      answer,
-      recognized: true,
+      answer: result.answer,
+      recognized: result.provider !== "fallback",
       language: detectLanguage(cleanMessage),
-      topic: "dynamic",
-      provider: "groq",
-      warning: "",
+      topic: result.provider === "fallback" ? "error" : "dynamic",
+      provider: result.provider || "groq",
+      model: result.model || GROQ_MODEL,
+      warning: result.warning || "",
     };
   } catch (error) {
     const answer = buildErrorMessage(error);

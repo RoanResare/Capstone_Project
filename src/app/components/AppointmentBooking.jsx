@@ -13,38 +13,14 @@ import {
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { buildSeedAvailabilitySlots, serviceCatalog } from "../data/systemData.js";
+import {
+  breedsByPetType,
+  buildSeedAvailabilitySlots,
+  petTypeOptions,
+  serviceCatalog,
+} from "../data/systemData.js";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DOG_BREEDS = [
-  "Aspin (Asong Pinoy)",
-  "Shih Tzu",
-  "Siberian Husky",
-  "Chihuahua",
-  "Labrador Retriever",
-  "Beagle",
-  "Golden Retriever",
-  "Poodle",
-  "Dachshund",
-  "Rottweiler",
-  "Other",
-];
-const CAT_BREEDS = [
-  "Puspin (Philippine Shorthair)",
-  "Siamese",
-  "Persian",
-  "Maine Coon",
-  "British Shorthair",
-  "Bengal",
-  "Abyssinian",
-  "Egyptian Mau",
-  "Toyger",
-  "Other",
-];
-const BREEDS_BY_PET_TYPE = {
-  Dog: DOG_BREEDS,
-  Cat: CAT_BREEDS,
-};
 
 function createInitialFormData(customer, selectedDate = "") {
   return {
@@ -56,6 +32,7 @@ function createInitialFormData(customer, selectedDate = "") {
     selectedSlotId: "",
     petName: "",
     petType: "",
+    customPetType: "",
     breed: "",
     customBreed: "",
     petInformation: "",
@@ -498,6 +475,7 @@ export function AppointmentBooking({ embedded = false }) {
     setFormData((current) => ({
       ...current,
       petType: value,
+      customPetType: value === "Other" ? current.customPetType : "",
       breed: "",
       customBreed: "",
     }));
@@ -630,6 +608,8 @@ export function AppointmentBooking({ embedded = false }) {
 
     if (!formData.petType.trim()) {
       nextErrors.petType = "Pet type is required.";
+    } else if (formData.petType === "Other" && !formData.customPetType.trim()) {
+      nextErrors.petType = "Specify the custom pet type.";
     }
 
     if (!formData.breed.trim()) {
@@ -691,6 +671,8 @@ export function AppointmentBooking({ embedded = false }) {
     const now = new Date().toISOString();
     const resolvedBreed =
       formData.breed === "Other" ? formData.customBreed.trim() : formData.breed.trim();
+    const resolvedPetType =
+      formData.petType === "Other" ? formData.customPetType.trim() : formData.petType.trim();
     const resolvedContactNumber = formatPhilippineMobile(formData.contactNumber);
     const petRecordId =
       existingPetRecord?.id || `pet-${currentCustomer.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -701,7 +683,7 @@ export function AppointmentBooking({ embedded = false }) {
       customerEmail: formData.email.trim().toLowerCase(),
       ownerName: formData.fullName.trim(),
       petName: formData.petName.trim(),
-      petType: formData.petType.trim(),
+      petType: resolvedPetType,
       breed: resolvedBreed,
       lastVisit: existingPetRecord?.lastVisit || "",
       visitRecords: existingPetRecord?.visitRecords || [],
@@ -728,12 +710,12 @@ export function AppointmentBooking({ embedded = false }) {
             petSnapshot: {
               id: petRecordId,
               petName: formData.petName.trim(),
-              petType: formData.petType.trim(),
+              petType: resolvedPetType,
               breed: resolvedBreed,
               notes: formData.petInformation.trim(),
             },
             petName: formData.petName.trim(),
-            petType: formData.petType.trim(),
+            petType: resolvedPetType,
             breed: resolvedBreed,
             serviceId: selectedService.id,
             service: selectedService.name,
@@ -829,6 +811,8 @@ export function AppointmentBooking({ embedded = false }) {
       }
       if (!formData.petType.trim()) {
         nextErrors.petType = "Pet type is required.";
+      } else if (formData.petType === "Other" && !formData.customPetType.trim()) {
+        nextErrors.petType = "Specify the custom pet type.";
       }
       if (!formData.breed.trim()) {
         nextErrors.breed = "Pet breed is required.";
@@ -864,7 +848,7 @@ export function AppointmentBooking({ embedded = false }) {
     setActiveStep((current) => Math.max(current - 1, 1));
   };
   const useTwoColumnStepLayout = !embedded && activeStep !== 3;
-  const availableBreedOptions = BREEDS_BY_PET_TYPE[formData.petType] || [];
+  const availableBreedOptions = breedsByPetType[formData.petType] || [];
 
   const content = (
     <div className="mx-auto max-w-[1180px] space-y-4">
@@ -1213,6 +1197,7 @@ export function AppointmentBooking({ embedded = false }) {
               ref={setFieldRef("fullName")}
               value={formData.fullName}
               onChange={handleChange("fullName")}
+              maxLength={80}
               className={fieldClassName("fullName", "rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
               placeholder="Customer name"
             />
@@ -1226,6 +1211,7 @@ export function AppointmentBooking({ embedded = false }) {
               type="email"
               value={formData.email}
               onChange={handleChange("email")}
+              maxLength={120}
               className={fieldClassName("email", "rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
               placeholder="customer@email.com"
             />
@@ -1267,6 +1253,7 @@ export function AppointmentBooking({ embedded = false }) {
                   ref={setFieldRef("petName")}
                   value={formData.petName}
                   onChange={handleChange("petName")}
+                  maxLength={60}
                   className={fieldClassName("petName", "w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
                   placeholder="Pet name"
                 />
@@ -1285,9 +1272,21 @@ export function AppointmentBooking({ embedded = false }) {
                   className={fieldClassName("petType", "w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
                 >
                   <option value="">Select pet type</option>
-                  <option value="Dog">Dog</option>
-                  <option value="Cat">Cat</option>
+                  {petTypeOptions.map((petType) => (
+                    <option key={petType} value={petType}>
+                      {petType}
+                    </option>
+                  ))}
                 </select>
+                {formData.petType === "Other" && (
+                  <input
+                    value={formData.customPetType}
+                    onChange={handleChange("customPetType")}
+                    className={fieldClassName("petType", "mt-3 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
+                    placeholder="Specify pet type"
+                    maxLength={40}
+                  />
+                )}
                 {errors.petType && (
                   <p className="mt-2 text-sm text-[#B23949]">{errors.petType}</p>
                 )}
@@ -1318,6 +1317,7 @@ export function AppointmentBooking({ embedded = false }) {
                 onChange={handleChange("customBreed")}
                 className={fieldClassName("breed", "rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
                 placeholder="Specify Custom Breed"
+                maxLength={60}
               />
             )}
             {errors.breed && <p className="-mt-2 text-sm text-[#B23949]">{errors.breed}</p>}
@@ -1328,6 +1328,7 @@ export function AppointmentBooking({ embedded = false }) {
             <textarea
               value={formData.petInformation}
               onChange={handleChange("petInformation")}
+              maxLength={500}
               rows={4}
               className="rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
               placeholder="Pet information, symptoms, special handling notes, or visit concerns"

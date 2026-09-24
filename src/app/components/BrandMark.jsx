@@ -1,4 +1,4 @@
-import logoUrl from "../../assets/charming-furfection-logo.svg";
+import logoUrl from "../../assets/charming-furfection-logo.png";
 
 export function BrandMark({ className = "", iconClassName = "" }) {
   return (

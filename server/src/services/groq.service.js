@@ -1,7 +1,7 @@
 const Groq = require("groq-sdk");
 
-const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
-const FALLBACK_GROQ_MODELS = [DEFAULT_GROQ_MODEL, "llama-3.1-8b-instant"];
+const DEFAULT_GROQ_MODEL = "llama3-8b-8192";
+const FALLBACK_GROQ_MODELS = [DEFAULT_GROQ_MODEL, "llama3-70b-8192"];
 const GROQ_TIMEOUT_MS = 12000;
 const MAX_HISTORY_MESSAGES = 2;
 
@@ -93,6 +93,7 @@ function createGroqClient() {
 
 function getGroqStatus() {
   const apiKey = getGroqApiKey();
+  const models = getModelCandidates();
 
   return {
     status: apiKey ? "live" : "missing-config",
@@ -104,12 +105,14 @@ function getGroqStatus() {
     error: apiKey ? null : "The backend is missing GROQ_API_KEY.",
     hasServerKey: Boolean(apiKey),
     hasCustomProxy: false,
-    model: getModelCandidates()[0] || DEFAULT_GROQ_MODEL,
+    model: models[0] || DEFAULT_GROQ_MODEL,
+    models,
   };
 }
 
-function createFallbackChunk(content) {
+function createFallbackChunk(content, metadata = {}) {
   return {
+    ...metadata,
     choices: [
       {
         delta: {

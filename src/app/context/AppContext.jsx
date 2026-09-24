@@ -287,6 +287,19 @@ function parseDateValue(value) {
     return isValidDateInstance(value) ? value : null;
   }
 
+  if (value && typeof value === "object") {
+    if (typeof value.toDate === "function") {
+      const parsed = value.toDate();
+      return isValidDateInstance(parsed) ? parsed : null;
+    }
+
+    if (typeof value.seconds === "number") {
+      const milliseconds = value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+      const parsed = new Date(milliseconds);
+      return isValidDateInstance(parsed) ? parsed : null;
+    }
+  }
+
   if (typeof value !== "string" && typeof value !== "number") {
     return null;
   }
@@ -408,6 +421,79 @@ function normalizeAppointment(appointment) {
       typeof current.reminderEnabled === "boolean" ? current.reminderEnabled : true,
     createdAt: parseDateValue(current.createdAt)?.toISOString() || new Date().toISOString(),
   };
+}
+
+function parseGeneratedIdDate(id) {
+  if (typeof id !== "string") {
+    return null;
+  }
+
+  const match = id.match(/-(\d{12,})(?:-|$)/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = new Date(Number(match[1]));
+  return isValidDateInstance(parsed) ? parsed : null;
+}
+
+function normalizePetRecord(record) {
+  const current = record && typeof record === "object" ? record : {};
+  const id = typeof current.id === "string" && current.id.trim() ? current.id : createId("pet");
+  const legacyLastVisit = current.lastVisit ? parseDateValue(`${current.lastVisit}T00:00:00`) : null;
+  const createdAt =
+    parseDateValue(current.createdAt)?.toISOString() ||
+    parseDateValue(current.updatedAt)?.toISOString() ||
+    parseGeneratedIdDate(id)?.toISOString() ||
+    legacyLastVisit?.toISOString() ||
+    new Date().toISOString();
+  const updatedAt = parseDateValue(current.updatedAt)?.toISOString() || createdAt;
+
+  return {
+    ...current,
+    id,
+    customerId: typeof current.customerId === "string" ? current.customerId : "",
+    customerEmail:
+      typeof current.customerEmail === "string" ? normalizeEmail(current.customerEmail) : "",
+    ownerName: typeof current.ownerName === "string" ? current.ownerName.trim() : "",
+    petName: typeof current.petName === "string" ? current.petName.trim() : "",
+    petType: typeof current.petType === "string" ? current.petType.trim() : "",
+    breed: typeof current.breed === "string" ? current.breed.trim() : "",
+    lastVisit: typeof current.lastVisit === "string" ? current.lastVisit.trim() : "",
+    visitRecords: Array.isArray(current.visitRecords)
+      ? current.visitRecords.filter((item) => typeof item === "string" && item.trim())
+      : [],
+    medicalRecords: Array.isArray(current.medicalRecords)
+      ? current.medicalRecords.filter((item) => typeof item === "string" && item.trim())
+      : [],
+    notes: typeof current.notes === "string" ? current.notes : "",
+    createdAt,
+    updatedAt,
+  };
+}
+
+function getNewestTimestamp(record, fallbackFields = []) {
+  const timestampFields = ["createdAt", ...fallbackFields, "updatedAt"];
+
+  for (const field of timestampFields) {
+    const parsed = parseDateValue(record?.[field]);
+    if (parsed) {
+      return parsed.getTime();
+    }
+  }
+
+  return 0;
+}
+
+function sortByNewest(left, right, fallbackFields = []) {
+  const rightTime = getNewestTimestamp(right, fallbackFields);
+  const leftTime = getNewestTimestamp(left, fallbackFields);
+
+  if (rightTime !== leftTime) {
+    return rightTime - leftTime;
+  }
+
+  return String(right?.id || "").localeCompare(String(left?.id || ""));
 }
 
 function normalizeRoleLabel(role = "") {
@@ -833,8 +919,8 @@ function createSeedState() {
     sessionUserId: null,
     users: users.map((user) => normalizePortalUser(user)),
     availabilitySlots,
-    appointments,
-    petRecords,
+    appointments: appointments.map((appointment) => normalizeAppointment(appointment)),
+    petRecords: petRecords.map((record) => normalizePetRecord(record)),
     chatbotLogs: [
       {
         id: "chat-1",
@@ -899,8 +985,14 @@ function normalizeStoredState(parsed) {
       ? parsed.appointments
           .filter((appointment) => appointment && typeof appointment === "object")
           .map((appointment) => normalizeAppointment(appointment))
+          .sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"]))
       : seed.appointments,
-    petRecords: Array.isArray(parsed.petRecords) ? parsed.petRecords : seed.petRecords,
+    petRecords: Array.isArray(parsed.petRecords)
+      ? parsed.petRecords
+          .filter((record) => record && typeof record === "object")
+          .map((record) => normalizePetRecord(record))
+          .sort((left, right) => sortByNewest(left, right, ["updatedAt", "lastVisit"]))
+      : seed.petRecords,
     chatbotLogs: Array.isArray(parsed.chatbotLogs) ? parsed.chatbotLogs : seed.chatbotLogs,
     notifications,
     activityLogs: Array.isArray(parsed.activityLogs)
@@ -1156,7 +1248,9 @@ function appReducer(state, action) {
       });
       const nextState = {
         ...state,
-        appointments: [nextAppointment, ...state.appointments],
+        appointments: [nextAppointment, ...state.appointments].sort((left, right) =>
+          sortByNewest(left, right, ["updatedAt", "schedule"]),
+        ),
       };
 
       return attachAudit(nextState, {
@@ -1196,7 +1290,7 @@ function appReducer(state, action) {
           appointment.id === action.payload.id
             ? normalizeAppointment({ ...appointment, ...action.payload.updates })
             : appointment,
-        ),
+        ).sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"])),
       };
       const updatedAppointment =
         nextState.appointments.find((appointment) => appointment.id === action.payload.id) || null;
@@ -1257,21 +1351,23 @@ function appReducer(state, action) {
       });
     }
     case "UPSERT_PET_RECORD": {
-      const nextRecord = {
+      const nextRecord = normalizePetRecord({
         id: action.payload.id || createId("pet"),
         visitRecords: [],
         medicalRecords: [],
         notes: "",
         ...action.payload,
-      };
+      });
       const exists = state.petRecords.some((record) => record.id === nextRecord.id);
       const nextState = {
         ...state,
         petRecords: exists
           ? state.petRecords.map((record) =>
               record.id === nextRecord.id ? nextRecord : record,
-            )
-          : [nextRecord, ...state.petRecords],
+            ).sort((left, right) => sortByNewest(left, right, ["updatedAt", "lastVisit"]))
+          : [nextRecord, ...state.petRecords].sort((left, right) =>
+              sortByNewest(left, right, ["updatedAt", "lastVisit"]),
+            ),
       };
 
       return attachAudit(nextState, {
@@ -1887,13 +1983,13 @@ export function AppProvider({ children }) {
       return Promise.resolve(false);
     },
     savePetRecord(payload, actorName) {
-      const nextRecord = {
+      const nextRecord = normalizePetRecord({
         id: payload.id || createId("pet"),
         visitRecords: [],
         medicalRecords: [],
         notes: "",
         ...payload,
-      };
+      });
 
       dispatch({
         type: "UPSERT_PET_RECORD",

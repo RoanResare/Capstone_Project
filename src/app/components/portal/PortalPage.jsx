@@ -16,6 +16,8 @@ import { PasswordStrengthMeter } from "../PasswordStrengthMeter.jsx";
 import {
   appointmentFilters,
   appointmentStatusOptions,
+  breedsByPetType,
+  petTypeOptions,
   portalUserRoles,
   portalUserStatuses,
 } from "../../data/systemData.js";
@@ -29,6 +31,19 @@ function isValidDateInstance(value) {
 function parseDateValue(value) {
   if (value instanceof Date) {
     return isValidDateInstance(value) ? value : null;
+  }
+
+  if (value && typeof value === "object") {
+    if (typeof value.toDate === "function") {
+      const parsed = value.toDate();
+      return isValidDateInstance(parsed) ? parsed : null;
+    }
+
+    if (typeof value.seconds === "number") {
+      const milliseconds = value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+      const parsed = new Date(milliseconds);
+      return isValidDateInstance(parsed) ? parsed : null;
+    }
   }
 
   if (typeof value !== "string" && typeof value !== "number") {
@@ -129,6 +144,30 @@ function getAppointmentSortTime(appointment) {
   }
 
   return parseDateValue(appointment?.schedule)?.getTime() ?? Number.POSITIVE_INFINITY;
+}
+
+function getNewestTimestamp(record, fallbackFields = []) {
+  const timestampFields = ["createdAt", ...fallbackFields, "updatedAt"];
+
+  for (const field of timestampFields) {
+    const parsed = parseDateValue(record?.[field]);
+    if (parsed) {
+      return parsed.getTime();
+    }
+  }
+
+  return 0;
+}
+
+function sortByNewest(left, right, fallbackFields = []) {
+  const rightTime = getNewestTimestamp(right, fallbackFields);
+  const leftTime = getNewestTimestamp(left, fallbackFields);
+
+  if (rightTime !== leftTime) {
+    return rightTime - leftTime;
+  }
+
+  return String(right?.id || "").localeCompare(String(left?.id || ""));
 }
 
 function statusClasses(status) {
@@ -255,6 +294,13 @@ function matchesUserSearch(user, searchValue) {
 
 function buildPetRecordForm(record = null) {
   const current = record && typeof record === "object" ? record : {};
+  const savedPetType = typeof current.petType === "string" ? current.petType : "";
+  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : savedPetType ? "Other" : "";
+  const customPetType = petType === "Other" && savedPetType !== "Other" ? savedPetType : "";
+  const breedOptions = breedsByPetType[petType] || [];
+  const savedBreed = typeof current.breed === "string" ? current.breed : "";
+  const breed = breedOptions.includes(savedBreed) ? savedBreed : savedBreed ? "Other" : "";
+  const customBreed = breed === "Other" && savedBreed !== "Other" ? savedBreed : "";
 
   return {
     id: typeof current.id === "string" ? current.id : "",
@@ -262,8 +308,10 @@ function buildPetRecordForm(record = null) {
     ownerName: typeof current.ownerName === "string" ? current.ownerName : "",
     customerEmail: typeof current.customerEmail === "string" ? current.customerEmail : "",
     petName: typeof current.petName === "string" ? current.petName : "",
-    petType: typeof current.petType === "string" ? current.petType : "",
-    breed: typeof current.breed === "string" ? current.breed : "",
+    petType,
+    customPetType,
+    breed,
+    customBreed,
     lastVisit: typeof current.lastVisit === "string" ? current.lastVisit : "",
     notes: typeof current.notes === "string" ? current.notes : "",
     visitRecordsText: Array.isArray(current.visitRecords)
@@ -636,7 +684,7 @@ function AppointmentsWorkspace({
   const appointments = (Array.isArray(state.appointments) ? state.appointments : [])
     .filter((appointment) => appointment && typeof appointment === "object")
     .slice()
-    .sort((left, right) => getAppointmentSortTime(left) - getAppointmentSortTime(right));
+    .sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"]));
   const staffOptions = (Array.isArray(state.users) ? state.users : [])
     .filter((user) => user && user.status === "active" && ["admin", "staff"].includes(user.role))
     .map((user) => user.name);
@@ -813,7 +861,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   const petRecords = (Array.isArray(state.petRecords) ? state.petRecords : [])
     .filter((record) => record && typeof record === "object")
     .slice()
-    .sort((left, right) => `${left.petName || ""}${left.ownerName || ""}`.localeCompare(`${right.petName || ""}${right.ownerName || ""}`));
+    .sort((left, right) => sortByNewest(left, right, ["updatedAt", "lastVisit"]));
   const filteredPetRecords = petRecords.filter((record) =>
     matchesPetRecordSearch(record, searchValue),
   );
@@ -828,6 +876,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       .filter(Boolean),
   ).size;
   const petsWithNotes = petRecords.filter((record) => record.notes?.trim()).length;
+  const availableBreedOptions = breedsByPetType[form.petType] || [];
   const linkedAppointmentCount = (record) =>
     (Array.isArray(state.appointments) ? state.appointments : []).filter(
       (appointment) =>
@@ -856,6 +905,26 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updatePetType = (event) => {
+    const value = event.target.value;
+    setForm((current) => ({
+      ...current,
+      petType: value,
+      customPetType: value === "Other" ? current.customPetType : "",
+      breed: "",
+      customBreed: "",
+    }));
+  };
+
+  const updateBreed = (event) => {
+    const value = event.target.value;
+    setForm((current) => ({
+      ...current,
+      breed: value,
+      customBreed: value === "Other" ? current.customBreed : "",
+    }));
+  };
+
   const saveRecord = (event) => {
     event.preventDefault();
 
@@ -875,6 +944,43 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
+    if (form.petType === "Other" && !form.customPetType.trim()) {
+      setFeedback({
+        type: "error",
+        message: "Specify the custom pet type.",
+      });
+      return;
+    }
+
+    if (!form.breed.trim()) {
+      setFeedback({
+        type: "error",
+        message: "Pet breed is required.",
+      });
+      return;
+    }
+
+    if (form.breed === "Other" && !form.customBreed.trim()) {
+      setFeedback({
+        type: "error",
+        message: "Specify the custom breed.",
+      });
+      return;
+    }
+
+    if (form.customerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail.trim())) {
+      setFeedback({
+        type: "error",
+        message: "Enter a valid customer email address.",
+      });
+      return;
+    }
+
+    const resolvedPetType =
+      form.petType === "Other" ? form.customPetType.trim() : form.petType.trim();
+    const resolvedBreed =
+      form.breed === "Other" ? form.customBreed.trim() : form.breed.trim();
+
     savePetRecord(
       {
         id: selectedRecord.id,
@@ -882,8 +988,8 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
         ownerName: form.ownerName.trim(),
         customerEmail: form.customerEmail.trim().toLowerCase(),
         petName: form.petName.trim(),
-        petType: form.petType.trim(),
-        breed: form.breed.trim(),
+        petType: resolvedPetType,
+        breed: resolvedBreed,
         lastVisit: form.lastVisit.trim(),
         notes: form.notes.trim(),
         visitRecords: normalizeLineItems(form.visitRecordsText),
@@ -1000,6 +1106,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <input
                     value={form.ownerName}
                     onChange={updateField("ownerName")}
+                    maxLength={80}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Customer name"
                   />
@@ -1013,6 +1120,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     type="email"
                     value={form.customerEmail}
                     onChange={updateField("customerEmail")}
+                    maxLength={120}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="customer@example.com"
                   />
@@ -1025,6 +1133,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <input
                     value={form.petName}
                     onChange={updateField("petName")}
+                    maxLength={60}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Pet name"
                   />
@@ -1034,24 +1143,57 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
                     Pet type
                   </label>
-                  <input
+                  <select
                     value={form.petType}
-                    onChange={updateField("petType")}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                    placeholder="Dog, Cat, Rabbit"
-                  />
+                    onChange={updatePetType}
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  >
+                    <option value="">Select pet type</option>
+                    {petTypeOptions.map((petType) => (
+                      <option key={petType} value={petType}>
+                        {petType}
+                      </option>
+                    ))}
+                  </select>
+                  {form.petType === "Other" && (
+                    <input
+                      value={form.customPetType}
+                      onChange={updateField("customPetType")}
+                      maxLength={40}
+                      className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                      placeholder="Specify pet type"
+                    />
+                  )}
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
                     Breed
                   </label>
-                  <input
+                  <select
                     value={form.breed}
-                    onChange={updateField("breed")}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                    placeholder="Breed"
-                  />
+                    onChange={updateBreed}
+                    disabled={!form.petType}
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+                  >
+                    <option value="">
+                      {form.petType ? "Select breed" : "Select pet type first"}
+                    </option>
+                    {availableBreedOptions.map((breed) => (
+                      <option key={breed} value={breed}>
+                        {breed}
+                      </option>
+                    ))}
+                  </select>
+                  {form.breed === "Other" && (
+                    <input
+                      value={form.customBreed}
+                      onChange={updateField("customBreed")}
+                      maxLength={60}
+                      className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                      placeholder="Specify breed"
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -1074,6 +1216,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 <textarea
                   value={form.notes}
                   onChange={updateField("notes")}
+                  maxLength={500}
                   className="min-h-[120px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Handling notes, special reminders, or grooming concerns"
                 />
@@ -1087,6 +1230,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <textarea
                     value={form.visitRecordsText}
                     onChange={updateField("visitRecordsText")}
+                    maxLength={1200}
                     className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="One visit update per line"
                   />
@@ -1099,6 +1243,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <textarea
                     value={form.medicalRecordsText}
                     onChange={updateField("medicalRecordsText")}
+                    maxLength={1200}
                     className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="One medical note per line"
                   />
@@ -1279,6 +1424,22 @@ function ManageUsersWorkspace({
       setFeedback({
         type: "error",
         message: "Name, email, username, and role are required.",
+      });
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fullPayload.email)) {
+      setFeedback({
+        type: "error",
+        message: "Enter a valid employee email address.",
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]{3,32}$/.test(fullPayload.username)) {
+      setFeedback({
+        type: "error",
+        message: "Username must be 3-32 characters and use only letters, numbers, or underscores.",
       });
       return;
     }
@@ -1526,6 +1687,7 @@ function ManageUsersWorkspace({
                     value={form.name}
                     onChange={updateField("name")}
                     disabled={isSaving}
+                    maxLength={80}
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Employee full name"
                   />
@@ -1538,6 +1700,7 @@ function ManageUsersWorkspace({
                     value={form.email}
                     onChange={updateField("email")}
                     disabled={isSaving}
+                    maxLength={120}
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee@furfection.local"
                   />
@@ -1549,6 +1712,8 @@ function ManageUsersWorkspace({
                     value={form.username}
                     onChange={updateField("username")}
                     disabled={isSaving}
+                    maxLength={32}
+                    pattern="[A-Za-z0-9_]{3,32}"
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee username"
                   />

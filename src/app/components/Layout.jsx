@@ -142,13 +142,15 @@ export function Layout() {
                   {item.label}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={handleDashboardClick}
-                className={desktopScrollButtonClassName}
-              >
-                Dashboard
-              </button>
+              {currentUser && (
+                <button
+                  type="button"
+                  onClick={handleDashboardClick}
+                  className={desktopScrollButtonClassName}
+                >
+                  Dashboard
+                </button>
+              )}
               {!currentUser ? (
                 <NavLink to="/login" className={desktopRouteLinkClassName}>
                   Log In
@@ -250,13 +252,15 @@ export function Layout() {
                     {item.label}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={handleDashboardClick}
-                  className="block w-full rounded-xl px-4 py-3 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
-                >
-                  Dashboard
-                </button>
+                {currentUser && (
+                  <button
+                    type="button"
+                    onClick={handleDashboardClick}
+                    className="block w-full rounded-xl px-4 py-3 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
+                  >
+                    Dashboard
+                  </button>
+                )}
                 {!currentUser ? (
                   <NavLink to="/login" onClick={closeMobileMenu} className={mobileLinkClassName}>
                     Log In

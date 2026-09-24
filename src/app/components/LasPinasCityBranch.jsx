@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { Clock3, Mail, MapPin, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ChatbotWidget } from "./ChatbotWidget.jsx";
-import { serviceCatalog } from "../data/systemData.js";
+import { branchDetails, serviceCatalog } from "../data/systemData.js";
 
 const clinicPolicies = [
   "Arrive at least 10 minutes before your slot.",
@@ -40,7 +40,7 @@ export function LasPinasCityBranch() {
               Proceed to booking
             </Link>
             <a
-              href="tel:+639123456789"
+              href={branchDetails.phoneHref}
               className="inline-flex items-center justify-center rounded-full border border-white/16 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/14"
             >
               Call the branch
@@ -117,7 +117,7 @@ export function LasPinasCityBranch() {
                   <div>
                     <p className="font-semibold text-[#20343B]">Address</p>
                     <p className="mt-1 text-sm leading-6 text-[#607277]">
-                      123 Alabang-Zapote Road, Las Pinas City, Metro Manila, Philippines 1740
+                      {branchDetails.address}
                     </p>
                   </div>
                 </div>
@@ -127,7 +127,7 @@ export function LasPinasCityBranch() {
                   </div>
                   <div>
                     <p className="font-semibold text-[#20343B]">Phone</p>
-                    <p className="mt-1 text-sm text-[#607277]">+63 912 345 6789</p>
+                    <p className="mt-1 text-sm text-[#607277]">{branchDetails.phone}</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -137,7 +137,7 @@ export function LasPinasCityBranch() {
                   <div>
                     <p className="font-semibold text-[#20343B]">Email</p>
                     <p className="mt-1 text-sm text-[#607277]">
-                      laspinas@charmingfurfection.com
+                      {branchDetails.email}
                     </p>
                   </div>
                 </div>

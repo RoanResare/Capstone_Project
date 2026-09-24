@@ -22,15 +22,28 @@ function startSseResponse(res) {
 
 async function getGroqRuntimeStatus(_req, res) {
   const status = getGroqStatus();
-  res.status(status.ready ? 200 : 500).json(status);
+  res.status(200).json(status);
 }
 
 async function createGroqChat(req, res) {
   const wantsStream = req.body?.stream === true;
 
   if (!wantsStream) {
-    const result = await createChatCompletion(req.body || {});
-    res.status(200).json(result);
+    try {
+      const result = await createChatCompletion(req.body || {});
+      res.status(200).json(result);
+    } catch (error) {
+      console.error("[groq] Returning fallback chat response.", {
+        error: error instanceof Error ? error.message : String(error || "Unknown error"),
+        statusCode: error?.statusCode || error?.status || null,
+      });
+      res.status(200).json({
+        answer: FALLBACK_STREAM_MESSAGE,
+        model: null,
+        provider: "fallback",
+        warning: error instanceof Error ? error.message : "Groq request failed.",
+      });
+    }
     return;
   }
 
@@ -45,7 +58,14 @@ async function createGroqChat(req, res) {
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
       statusCode: error?.statusCode || error?.status || null,
     });
-    writeSseChunk(res, createFallbackChunk(FALLBACK_STREAM_MESSAGE));
+    writeSseChunk(
+      res,
+      createFallbackChunk(FALLBACK_STREAM_MESSAGE, {
+        model: null,
+        provider: "fallback",
+        warning: error instanceof Error ? error.message : "Groq request failed.",
+      }),
+    );
   } finally {
     res.write("data: [DONE]\n\n");
     res.end();

@@ -110,7 +110,7 @@ Core Guidelines:
 
 1. Language & Formatting: Always reply strictly in English. Do not use any asterisks (*) for bullet points or lists. Use plain text formatting and bold text only for emphasis, such as **Book Appointment**.
 2. Accurate Details: Always use the exact prices and services listed above. Never guess or say information is missing.
-3. Direct Booking: Whenever a user asks about booking, scheduling, or reserving a slot, guide them clearly without mentioning 'dashboard' or 'customer account': Please book your appointment directly through the "Book Appointment" section.
+3. Direct Booking: Whenever a user asks about booking, scheduling, or reserving a slot, use this exact phrase and nothing else: Please book your appointment directly through the Book Appointment tab inside your Customer Dashboard.
 4. Tone: Be warm, professional, and concise.
 `.trim();
 
@@ -185,11 +185,7 @@ function trimResponse(value = "") {
 }
 
 function sanitizeAssistantReply(value = "") {
-  return trimResponse(value)
-    .replace(/\*/g, "")
-    .replace(/\bcustomer\s+dashboard\b/gi, "Book Appointment section")
-    .replace(/\bcustomer\s+account\b/gi, "Book Appointment section")
-    .replace(/\bdashboard\b/gi, "Book Appointment section");
+  return trimResponse(value).replace(/\*/g, "");
 }
 
 function containsInappropriateLanguage(message = "") {

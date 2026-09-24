@@ -215,7 +215,7 @@ async function createChatCompletion(payload = {}) {
         {
           model,
           temperature: 0.2,
-          max_tokens: 500,
+          max_tokens: 2000,
           stream: false,
           messages,
         },
@@ -282,7 +282,7 @@ async function createChatCompletionStream(payload = {}, onChunk) {
         {
           model,
           temperature: 0.2,
-          max_tokens: 500,
+          max_tokens: 2000,
           stream: true,
           messages,
         },

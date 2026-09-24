@@ -80,11 +80,11 @@ export function LasPinasCityBranch() {
                         {service.description}
                       </p>
                     </div>
-                    <div className="rounded-[22px] bg-[#F7F3EA] px-4 py-3 text-center">
+                    <div className="min-w-[9rem] shrink-0 rounded-[22px] bg-[#F7F3EA] px-5 py-3 text-center">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#826D4D]">
                         Sample rate
                       </p>
-                      <p className="mt-2 text-lg font-semibold text-[#4D4438]">
+                      <p className="mt-2 whitespace-nowrap text-lg font-semibold text-[#4D4438]">
                         {service.priceLabel}
                       </p>
                       <p className="mt-1 text-sm text-[#6D6559]">{service.duration}</p>

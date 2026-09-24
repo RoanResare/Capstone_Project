@@ -962,7 +962,9 @@ export function AppointmentBooking({ embedded = false }) {
                   <p className="mt-2 text-sm leading-5 text-[#607277]">{service.description}</p>
                   <div className="mt-2 flex items-center justify-between text-xs font-semibold">
                     <span className="text-[#2D6B73]">{service.duration}</span>
-                    <span className="text-[#6A5D4A]">{service.priceLabel}</span>
+                    <span className="min-w-[8.5rem] shrink-0 whitespace-nowrap rounded-lg bg-[#F7F2E9] px-3.5 py-1 text-center text-[#6A5D4A]">
+                      {service.priceLabel}
+                    </span>
                   </div>
                 </button>
               ))}

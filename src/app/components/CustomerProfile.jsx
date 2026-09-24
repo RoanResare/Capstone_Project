@@ -825,7 +825,7 @@ export function CustomerProfile() {
                       className="flex h-full flex-col rounded-2xl border border-[#E6EFEE] bg-[#FCFEFE] p-4"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
                             {service.category}
                           </p>
@@ -833,7 +833,7 @@ export function CustomerProfile() {
                             {service.name}
                           </h3>
                         </div>
-                        <span className="rounded-lg bg-[#F7F2E9] px-2.5 py-1 text-xs font-semibold text-[#6A5D4A]">
+                        <span className="min-w-[8.5rem] shrink-0 whitespace-nowrap rounded-lg bg-[#F7F2E9] px-3.5 py-1 text-center text-xs font-semibold text-[#6A5D4A]">
                           {service.priceLabel}
                         </span>
                       </div>

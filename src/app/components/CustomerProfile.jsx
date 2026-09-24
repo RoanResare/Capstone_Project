@@ -16,7 +16,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
-import { compressImageFileToDataUrl } from "../utils/imageCompression.js";
+import { compressImageFile, compressImageFileToDataUrl } from "../utils/imageCompression.js";
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
@@ -201,6 +201,7 @@ export function CustomerProfile() {
     state,
     updateAppointment,
     visibleNotifications,
+    submitPhotoForReview,
   } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [activeTab, setActiveTab] = useState("overview");
@@ -291,6 +292,13 @@ export function CustomerProfile() {
   const unreadNotificationCount = visibleNotifications.filter(
     (notification) => !notification.readBy.includes(customer?.id || customer?.uid),
   ).length;
+  const profilePhotoModeration = useMemo(
+    () =>
+      state.photoModeration
+        ?.filter((photo) => photo.assetType === "profile" && photo.assetId === customer?.uid)
+        .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null,
+    [customer?.uid, state.photoModeration],
+  );
   const upcomingAppointments = customerAppointments.filter((appointment) =>
     ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
   );
@@ -416,7 +424,12 @@ export function CustomerProfile() {
     setProfilePhotoPreviewUrl(previewUrl);
 
     try {
-      const result = await updateProfile({ photoFile: file });
+      const compressedFile = await compressImageFile(file, {
+        maxDimension: 500,
+        quality: 0.6,
+        outputType: file.type || "image/jpeg",
+      });
+      const result = await updateProfile({ photoFile: compressedFile });
 
       if (!result.ok) {
         const message = "Unable to upload profile picture. Please try again.";
@@ -430,7 +443,16 @@ export function CustomerProfile() {
         return;
       }
 
-      applySavedProfile(result.user, "Profile picture updated successfully.");
+      await submitPhotoForReview({
+        assetType: "profile",
+        assetId: customer.uid,
+        ownerId: customer.uid,
+        ownerEmail: customer.email,
+        ownerName: result.user.fullName || result.user.name,
+        subjectName: "Profile photo",
+        photoURL: result.user.photoURL,
+      });
+      applySavedProfile(result.user, "Profile picture saved and sent for approval.");
     } catch (error) {
       const message = "Unable to upload profile picture. Please try again.";
       console.error("[customer-profile] Unexpected profile photo upload error.", error);
@@ -632,7 +654,10 @@ export function CustomerProfile() {
     navigate("/");
   };
 
-  const customerPhotoURL = profilePhotoPreviewUrl || profileForm.photoURL;
+  const customerPhotoURL =
+    profilePhotoModeration?.status === "rejected"
+      ? ""
+      : profilePhotoPreviewUrl || profileForm.photoURL;
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">

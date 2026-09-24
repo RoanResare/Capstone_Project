@@ -1,1 +1,0 @@
-import{r as e}from"./motion-BmrLv7E7.js";var t=`/assets/charming-furfection-logo-CScayzWt.png`,n=e();function r({className:e=``,iconClassName:r=``}){return(0,n.jsx)(`div`,{className:`inline-flex items-center justify-center ${e}`,"aria-hidden":`true`,children:(0,n.jsx)(`img`,{src:t,alt:``,className:r||`h-full w-full object-contain`,draggable:`false`})})}export{r as t};

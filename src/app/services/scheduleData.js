@@ -5,6 +5,7 @@ const COLLECTIONS = {
   appointments: "appointments",
   petRecords: "pets",
   availabilitySlots: "availabilitySlots",
+  photoModeration: "photoModeration",
 };
 
 function normalizeString(value = "") {
@@ -84,6 +85,13 @@ export function savePetRecordDocument(record) {
 export function deletePetRecordDocument(id) {
   return deleteDocument(COLLECTIONS.petRecords, id).catch((error) => {
     logSyncError("Pet record delete sync", error);
+    return false;
+  });
+}
+
+export function savePhotoModerationDocument(record) {
+  return saveDocument(COLLECTIONS.photoModeration, record).catch((error) => {
+    logSyncError("Photo moderation sync", error);
     return false;
   });
 }

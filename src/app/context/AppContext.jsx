@@ -18,6 +18,7 @@ import {
   saveAppointmentDocument,
   saveAvailabilitySlotDocument,
   savePetRecordDocument,
+  savePhotoModerationDocument,
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
 
@@ -489,6 +490,31 @@ function normalizePetRecord(record) {
   };
 }
 
+function normalizePhotoModeration(record) {
+  const current = record && typeof record === "object" ? record : {};
+  const status = ["pending", "approved", "rejected"].includes(current.status)
+    ? current.status
+    : "pending";
+  const createdAt = parseDateValue(current.createdAt)?.toISOString() || new Date().toISOString();
+
+  return {
+    ...current,
+    id: typeof current.id === "string" && current.id.trim() ? current.id : createId("photo"),
+    assetType: current.assetType === "profile" ? "profile" : "pet",
+    assetId: typeof current.assetId === "string" ? current.assetId : "",
+    ownerId: typeof current.ownerId === "string" ? current.ownerId : "",
+    ownerEmail: normalizeEmail(current.ownerEmail),
+    ownerName: typeof current.ownerName === "string" ? current.ownerName.trim() : "Customer",
+    subjectName: typeof current.subjectName === "string" ? current.subjectName.trim() : "Photo",
+    photoURL: typeof current.photoURL === "string" ? current.photoURL : "",
+    status,
+    moderationNote: typeof current.moderationNote === "string" ? current.moderationNote : "",
+    createdAt,
+    reviewedAt: parseDateValue(current.reviewedAt)?.toISOString() || "",
+    reviewedBy: typeof current.reviewedBy === "string" ? current.reviewedBy : "",
+  };
+}
+
 function getNewestTimestamp(record, fallbackFields = []) {
   const timestampFields = ["createdAt", ...fallbackFields, "updatedAt"];
 
@@ -938,6 +964,7 @@ function createSeedState() {
     availabilitySlots,
     appointments: appointments.map((appointment) => normalizeAppointment(appointment)),
     petRecords: petRecords.map((record) => normalizePetRecord(record)),
+    photoModeration: [],
     chatbotLogs: [
       {
         id: "chat-1",
@@ -1010,6 +1037,12 @@ function normalizeStoredState(parsed) {
           .map((record) => normalizePetRecord(record))
           .sort((left, right) => sortByNewest(left, right, ["updatedAt", "lastVisit"]))
       : seed.petRecords,
+    photoModeration: Array.isArray(parsed.photoModeration)
+      ? parsed.photoModeration
+          .filter((record) => record && typeof record === "object")
+          .map((record) => normalizePhotoModeration(record))
+          .sort((left, right) => sortByNewest(left, right))
+      : seed.photoModeration,
     chatbotLogs: Array.isArray(parsed.chatbotLogs) ? parsed.chatbotLogs : seed.chatbotLogs,
     notifications,
     activityLogs: Array.isArray(parsed.activityLogs)
@@ -1364,6 +1397,77 @@ function appReducer(state, action) {
           phone: customer.phone,
           targetRoles: ["admin", "staff"],
           level: "success",
+        },
+      });
+    }
+    case "SUBMIT_PHOTO_MODERATION": {
+      const nextPhoto = normalizePhotoModeration({
+        id: action.payload.id || createId("photo"),
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        ...action.payload,
+      });
+      const existing = state.photoModeration.some((photo) => photo.id === nextPhoto.id);
+
+      return {
+        ...state,
+        photoModeration: existing
+          ? state.photoModeration.map((photo) => (photo.id === nextPhoto.id ? nextPhoto : photo))
+          : [nextPhoto, ...state.photoModeration],
+      };
+    }
+    case "MODERATE_PHOTO": {
+      const target = state.photoModeration.find((photo) => photo.id === action.payload.id);
+      if (!target) {
+        return state;
+      }
+
+      const status = action.payload.status === "approved" ? "approved" : "rejected";
+      const subject = target.assetType === "profile" ? "profile photo" : `${target.subjectName}'s photo`;
+      const nextPhoto = normalizePhotoModeration({
+        ...target,
+        status,
+        moderationNote: action.payload.moderationNote || "",
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: action.meta.actorName || "Administrator",
+      });
+      const nextState = {
+        ...state,
+        photoModeration: state.photoModeration.map((photo) =>
+          photo.id === nextPhoto.id ? nextPhoto : photo,
+        ),
+        petRecords:
+          status === "rejected" && target.assetType === "pet"
+            ? state.petRecords.map((record) =>
+                record.id === target.assetId
+                  ? normalizePetRecord({ ...record, photoURL: "", photoModerationId: nextPhoto.id })
+                  : record,
+              )
+            : state.petRecords,
+      };
+
+      return attachAudit(nextState, {
+        actorName: action.meta.actorName || "Administrator",
+        action: status === "approved" ? "Approved customer photo" : "Rejected customer photo",
+        module: "Photo Moderation",
+        detail: `${subject} was ${status}.`,
+        notification: {
+          title: status === "approved" ? "Photo approved" : "Photo rejected",
+          message:
+            status === "approved"
+              ? `Your ${target.assetType} photo was approved and is now visible in your customer dashboard.`
+              : `Your ${target.assetType} photo was rejected and removed from your dashboard${nextPhoto.moderationNote ? `: ${nextPhoto.moderationNote}` : "."}`,
+          actorName: action.meta.actorName || "Administrator",
+          actorRole: "admin",
+          actionLabel: status === "approved" ? "Approved photo" : "Rejected photo",
+          subjectName: target.subjectName,
+          subjectRole: target.assetType === "profile" ? "customer" : "pet",
+          targetType: "photo-moderation",
+          targetId: nextPhoto.id,
+          targetUserId: target.ownerId,
+          email: target.ownerEmail,
+          targetRoles: ["customer"],
+          level: status === "approved" ? "success" : "error",
         },
       });
     }
@@ -1938,6 +2042,43 @@ export function AppProvider({ children }) {
         },
       });
     },
+    submitPhotoForReview(payload) {
+      const nextPhoto = normalizePhotoModeration({
+        id: payload?.id || createId("photo"),
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        ...payload,
+      });
+
+      dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: nextPhoto });
+      return savePhotoModerationDocument(nextPhoto).then(() => nextPhoto);
+    },
+    moderatePhoto(id, status, moderationNote = "") {
+      if (!currentUser || currentUser.role !== "admin") {
+        return Promise.resolve({ ok: false, error: "Only administrators can review photos." });
+      }
+
+      const photo = state.photoModeration.find((record) => record.id === id);
+      if (!photo) {
+        return Promise.resolve({ ok: false, error: "That photo is no longer in the review queue." });
+      }
+
+      dispatch({
+        type: "MODERATE_PHOTO",
+        payload: { id, status, moderationNote },
+        meta: { actorName: currentUser.name || "Administrator" },
+      });
+
+      const nextPhoto = normalizePhotoModeration({
+        ...photo,
+        status: status === "approved" ? "approved" : "rejected",
+        moderationNote,
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: currentUser.name || "Administrator",
+      });
+
+      return savePhotoModerationDocument(nextPhoto).then(() => ({ ok: true, photo: nextPhoto }));
+    },
     markNotificationRead(notificationId) {
       if (!currentUser) {
         return;
@@ -2017,13 +2158,34 @@ export function AppProvider({ children }) {
       return Promise.resolve(false);
     },
     savePetRecord(payload, actorName) {
+      const existingRecord = state.petRecords.find((record) => record.id === payload.id);
+      const hasNewPhoto = Boolean(payload.photoURL) && payload.photoURL !== existingRecord?.photoURL;
+      const photoModerationId = hasNewPhoto ? createId("photo") : payload.photoModerationId || existingRecord?.photoModerationId || "";
       const nextRecord = normalizePetRecord({
         id: payload.id || createId("pet"),
         visitRecords: [],
         medicalRecords: [],
         notes: "",
         ...payload,
+        photoModerationId,
       });
+
+      if (hasNewPhoto) {
+        const nextPhoto = normalizePhotoModeration({
+          id: photoModerationId,
+          assetType: "pet",
+          assetId: nextRecord.id,
+          ownerId: nextRecord.customerId,
+          ownerEmail: nextRecord.customerEmail,
+          ownerName: nextRecord.ownerName,
+          subjectName: nextRecord.petName,
+          photoURL: nextRecord.photoURL,
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        });
+        dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: nextPhoto });
+        void savePhotoModerationDocument(nextPhoto);
+      }
 
       dispatch({
         type: "UPSERT_PET_RECORD",

@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
+  Check,
   Clock3,
+  Image,
   Mail,
   PawPrint,
   Phone,
   Search,
   Trash2,
+  X,
   UserRound,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
@@ -1929,6 +1932,85 @@ function ManageUsersWorkspace({
   );
 }
 
+function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
+  const toast = useToast();
+  const [reviewNote, setReviewNote] = useState("");
+  const [savingId, setSavingId] = useState("");
+  const queue = (state.photoModeration || []).filter((photo) => photo.status === "pending");
+  const reviewed = (state.photoModeration || []).filter((photo) => photo.status !== "pending");
+
+  const review = async (photo, status) => {
+    setSavingId(photo.id);
+    const result = await moderatePhoto(photo.id, status, reviewNote.trim());
+    setSavingId("");
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setReviewNote("");
+    toast.success(status === "approved" ? "Photo approved." : "Photo rejected and removed.");
+  };
+
+  if (currentUser?.role !== "admin") {
+    return <EmptyState title="Administrator access required" message="Only administrators can review customer photos." />;
+  }
+
+  return (
+    <div className="space-y-5">
+      <PanelCard
+        title="Photo approval queue"
+        description="Review profile and pet photos for offensive text, graphics, or other inappropriate content before they are shown to customers."
+      >
+        {queue.length === 0 ? (
+          <EmptyState title="Queue is clear" message="New customer and pet photos will appear here while they await review." />
+        ) : (
+          <div className="space-y-4">
+            {queue.map((photo) => (
+              <article key={photo.id} className="grid gap-4 rounded-2xl border border-[#E2EBEB] bg-[#FBFDFC] p-4 lg:grid-cols-[132px_minmax(0,1fr)_220px] lg:items-center">
+                <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl bg-[#EAF4F4] text-[#2D6B73]">
+                  {photo.photoURL ? <img src={photo.photoURL} alt={`${photo.subjectName} submitted photo`} className="h-full w-full object-cover" /> : <Image size={30} />}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-semibold text-[#20343B]">{photo.subjectName}</h3>
+                    <StatusBadge status={photo.assetType === "profile" ? "Profile" : "Pet photo"} />
+                  </div>
+                  <p className="mt-2 text-sm text-[#607277]">Submitted by {photo.ownerName} | {photo.ownerEmail || "Customer account"}</p>
+                  <p className="mt-2 text-xs text-[#7A9297]">Uploaded {formatDateTime(photo.createdAt)}</p>
+                  <input
+                    value={reviewNote}
+                    onChange={(event) => setReviewNote(event.target.value)}
+                    maxLength={180}
+                    placeholder="Optional rejection note"
+                    className="mt-3 w-full rounded-xl border border-[#D9E7E7] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D9B9B]"
+                  />
+                </div>
+                <div className="flex gap-2 lg:flex-col">
+                  <button type="button" onClick={() => review(photo, "approved")} disabled={savingId === photo.id} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1D7C45] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Check size={16} /> Approve</button>
+                  <button type="button" onClick={() => review(photo, "rejected")} disabled={savingId === photo.id} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#B23949] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><X size={16} /> Reject / Remove</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </PanelCard>
+
+      {reviewed.length > 0 && (
+        <PanelCard title="Recently reviewed" description="A short audit trail of completed photo decisions.">
+          <div className="space-y-2">
+            {reviewed.slice(0, 8).map((photo) => (
+              <div key={photo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EDF2F2] px-4 py-3">
+                <div><p className="font-semibold text-[#20343B]">{photo.subjectName} | {photo.assetType} photo</p><p className="text-sm text-[#607277]">{photo.ownerName} | {photo.reviewedBy || "Administrator"}</p></div>
+                <StatusBadge status={photo.status === "approved" ? "Approved" : "Rejected"} />
+              </div>
+            ))}
+          </div>
+        </PanelCard>
+      )}
+    </div>
+  );
+}
+
 export function PortalPage() {
   const location = useLocation();
   const {
@@ -1940,9 +2022,12 @@ export function PortalPage() {
     createStaff,
     updateUser,
     deleteUser,
+    moderatePhoto,
   } = useApp();
   const activeModule = location.pathname.endsWith("/pet-records")
     ? "pet-records"
+    : location.pathname.endsWith("/photo-moderation")
+      ? "photo-moderation"
     : location.pathname.endsWith("/manage-users")
       ? "manage-users"
       : "appointments";
@@ -1968,6 +2053,10 @@ export function PortalPage() {
         deleteUser={deleteUser}
       />
     );
+  }
+
+  if (activeModule === "photo-moderation") {
+    return <PhotoModerationWorkspace currentUser={currentUser} state={state} moderatePhoto={moderatePhoto} />;
   }
 
   return (

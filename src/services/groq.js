@@ -14,7 +14,9 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl(
 );
 const DEFAULT_PROXY_URL = `${API_BASE_URL}/groq-chat`;
 const DEFAULT_STATUS_URL = `${API_BASE_URL}/groq-status`;
-export const GROQ_MODEL = "llama-3.1-8b-instant";
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b";
+const DEPRECATED_GROQ_MODELS = new Set(["llama3-70b-8192", "llama3-8b-8192"]);
+export const GROQ_MODEL = normalizeValue(import.meta.env.VITE_GROQ_MODEL) || DEFAULT_GROQ_MODEL;
 export const GROQ_MODELS = [GROQ_MODEL];
 const MAX_HISTORY_MESSAGES = 2;
 const GROQ_REQUEST_TIMEOUT_MS = 12000;
@@ -48,6 +50,10 @@ Conversational Rules:
 
 function normalizeValue(value = "") {
   return String(value || "").trim();
+}
+
+function isSupportedModel(model = "") {
+  return Boolean(model) && !DEPRECATED_GROQ_MODELS.has(model);
 }
 
 function getConfiguredProxyUrl() {
@@ -127,8 +133,8 @@ async function callGroqProxy(message, history) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        models: GROQ_MODELS,
+        model: isSupportedModel(GROQ_MODEL) ? GROQ_MODEL : DEFAULT_GROQ_MODEL,
+        models: GROQ_MODELS.filter(isSupportedModel),
         message,
         history: buildRecentHistory(history),
         systemPrompt: GROQ_SYSTEM_PROMPT,
@@ -248,8 +254,8 @@ async function callGroqProxyStream(message, history, onToken) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: GROQ_MODEL,
-        models: GROQ_MODELS,
+        model: isSupportedModel(GROQ_MODEL) ? GROQ_MODEL : DEFAULT_GROQ_MODEL,
+        models: GROQ_MODELS.filter(isSupportedModel),
         message,
         history: buildRecentHistory(history),
         systemPrompt: GROQ_SYSTEM_PROMPT,

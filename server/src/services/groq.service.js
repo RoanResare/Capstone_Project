@@ -1,7 +1,8 @@
 const Groq = require("groq-sdk");
 
-const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b";
 const FALLBACK_GROQ_MODELS = [DEFAULT_GROQ_MODEL];
+const DEPRECATED_GROQ_MODELS = new Set(["llama3-70b-8192", "llama3-8b-8192"]);
 const GROQ_TIMEOUT_MS = 12000;
 const MAX_HISTORY_MESSAGES = 2;
 
@@ -39,16 +40,18 @@ function getConfiguredModel() {
   return normalizeValue(process.env.GROQ_MODEL);
 }
 
+function isSupportedModel(model = "") {
+  return Boolean(model) && !DEPRECATED_GROQ_MODELS.has(model);
+}
+
 function getModelCandidates(payload = {}) {
   const requestedModels = [
     normalizeValue(payload.model),
     ...(Array.isArray(payload.models) ? payload.models.map((model) => normalizeValue(model)) : []),
-  ].filter((model) => FALLBACK_GROQ_MODELS.includes(model));
+  ].filter(isSupportedModel);
   const configuredModel = getConfiguredModel();
-  const configuredFallback =
-    configuredModel && FALLBACK_GROQ_MODELS.includes(configuredModel) ? configuredModel : "";
 
-  return [configuredFallback, ...requestedModels, ...FALLBACK_GROQ_MODELS].filter(
+  return [configuredModel, ...requestedModels, ...FALLBACK_GROQ_MODELS].filter(
     (model, index, values) => Boolean(model) && values.indexOf(model) === index,
   );
 }

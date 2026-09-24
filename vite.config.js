@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 import Groq from "groq-sdk";
 
 const GROQ_MODEL = "llama-3.3-70b-versatile";
-const GROQ_MODELS = [GROQ_MODEL, "llama-3.1-8b-instant"];
+const GROQ_MODELS = [GROQ_MODEL];
 const GROQ_SYSTEM_PROMPT = `
 You are Charming Fur-fection Assistant, an intelligent, helpful, and polite customer support AI for Charming Fur-fection Pet Care Services.
 

@@ -28,6 +28,8 @@ const dashboardTabs = [
 
 const allowedProfilePhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxProfilePhotoSizeBytes = 5 * 1024 * 1024;
+const PHOTO_PENDING_MESSAGE =
+  "Photo uploaded successfully. Waiting for admin approval.";
 
 function getCustomerInitials(name = "") {
   return name
@@ -299,6 +301,15 @@ export function CustomerProfile() {
         .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null,
     [customer?.uid, state.photoModeration],
   );
+  const petPhotoModerationById = useMemo(
+    () =>
+      new Map(
+        (state.photoModeration || [])
+          .filter((photo) => photo.assetType === "pet")
+          .map((photo) => [photo.id, photo]),
+      ),
+    [state.photoModeration],
+  );
   const upcomingAppointments = customerAppointments.filter((appointment) =>
     ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
   );
@@ -383,7 +394,7 @@ export function CustomerProfile() {
     return "";
   };
 
-  const applySavedProfile = (user, message) => {
+  const applySavedProfile = (user, message, options = {}) => {
     if (profilePhotoPreviewUrl) {
       URL.revokeObjectURL(profilePhotoPreviewUrl);
       setProfilePhotoPreviewUrl("");
@@ -397,7 +408,9 @@ export function CustomerProfile() {
       photoURL: user.photoURL || "",
     });
     setFeedback({ type: "success", message });
-    toast.success(message);
+    if (options.notify !== false) {
+      toast.success(message);
+    }
   };
 
   const handleProfilePhotoSelection = async (event) => {
@@ -422,6 +435,19 @@ export function CustomerProfile() {
       URL.revokeObjectURL(profilePhotoPreviewUrl);
     }
     setProfilePhotoPreviewUrl(previewUrl);
+    const moderationId = `photo-profile-${customer.uid}-${Date.now()}`;
+    void submitPhotoForReview({
+      id: moderationId,
+      assetType: "profile",
+      assetId: customer.uid,
+      ownerId: customer.uid,
+      ownerEmail: customer.email,
+      ownerName: customer.fullName || customer.name,
+      subjectName: "Profile photo",
+      photoURL: previewUrl,
+    });
+    setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
+    toast.success(PHOTO_PENDING_MESSAGE);
 
     try {
       const compressedFile = await compressImageFile(file, {
@@ -444,6 +470,7 @@ export function CustomerProfile() {
       }
 
       await submitPhotoForReview({
+        id: moderationId,
         assetType: "profile",
         assetId: customer.uid,
         ownerId: customer.uid,
@@ -452,7 +479,7 @@ export function CustomerProfile() {
         subjectName: "Profile photo",
         photoURL: result.user.photoURL,
       });
-      applySavedProfile(result.user, "Profile picture saved and sent for approval.");
+      applySavedProfile(result.user, PHOTO_PENDING_MESSAGE, { notify: false });
     } catch (error) {
       const message = "Unable to upload profile picture. Please try again.";
       console.error("[customer-profile] Unexpected profile photo upload error.", error);
@@ -553,6 +580,8 @@ export function CustomerProfile() {
         outputType: file.type || "image/jpeg",
       });
       setPetForm((current) => ({ ...current, photoURL }));
+      setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
+      toast.success(PHOTO_PENDING_MESSAGE);
     } catch (error) {
       const message = "Unable to prepare pet photo. Please try another image.";
       console.error("[customer-profile] Pet photo compression failed.", error);
@@ -612,18 +641,25 @@ export function CustomerProfile() {
     };
 
     try {
-      const didSync = await savePetRecord(nextRecord, profileForm.fullName);
+      const savePromise = savePetRecord(nextRecord, profileForm.fullName);
+      const photoSubmitted =
+        Boolean(nextRecord.photoURL) && nextRecord.photoURL !== existingRecord?.photoURL;
+      const saveMessage = photoSubmitted
+        ? PHOTO_PENDING_MESSAGE
+        : "Pet record saved successfully.";
+      setPetForm(buildEmptyPetForm());
+      setIsSavingPet(false);
+      setFeedback({ type: "success", message: saveMessage });
+      toast.success(saveMessage);
+
+      const didSync = await savePromise;
       if (!didSync) {
-        const message = "Pet record was saved locally, but Firestore sync failed. Please check your connection.";
+        const message = photoSubmitted
+          ? "Photo is waiting for approval, but Firestore sync is delayed. It will retry with your next session."
+          : "Pet record was saved locally, but Firestore sync failed. Please check your connection.";
         setFeedback({ type: "error", message });
         toast.error(message);
-        return;
       }
-
-      setPetForm(buildEmptyPetForm());
-      const message = "Pet record saved successfully.";
-      setFeedback({ type: "success", message });
-      toast.success(message);
     } catch (error) {
       const message = "Unable to save pet record. Please try again.";
       console.error("[customer-profile] Pet record save failed.", error);
@@ -657,7 +693,9 @@ export function CustomerProfile() {
   const customerPhotoURL =
     profilePhotoModeration?.status === "rejected"
       ? ""
-      : profilePhotoPreviewUrl || profileForm.photoURL;
+      : profilePhotoModeration?.status === "pending"
+        ? profilePhotoPreviewUrl
+        : profilePhotoPreviewUrl || profileForm.photoURL;
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
@@ -703,6 +741,11 @@ export function CustomerProfile() {
             <div className="mt-6 rounded-[24px] border border-[#F4B7BE] bg-[#FFF1F3] px-5 py-4 text-sm text-[#8A3240]">
               Your account is currently suspended. You can still review your profile, but new
               bookings are disabled until the clinic reactivates your account.
+            </div>
+          )}
+          {profilePhotoModeration?.status === "pending" && (
+            <div className="mt-4 rounded-[18px] border border-[#F1D49A] bg-[#FFF8E9] px-4 py-3 text-sm font-semibold text-[#8A6117]">
+              {PHOTO_PENDING_MESSAGE}
             </div>
           )}
         </motion.section>
@@ -994,6 +1037,9 @@ export function CustomerProfile() {
                     <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                       Profile and saved pets
                     </h2>
+                    {profilePhotoModeration?.status === "pending" && (
+                      <p className="mt-2 text-sm font-semibold text-[#A56A0F]">Profile photo: Waiting for Approval</p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
@@ -1205,7 +1251,10 @@ export function CustomerProfile() {
                         message="Book an appointment or add a pet here so future visits are faster."
                       />
                     ) : (
-                      customerPetRecords.map((record) => (
+                      customerPetRecords.map((record) => {
+                        const photoReview = petPhotoModerationById.get(record.photoModerationId);
+
+                        return (
                         <button
                           key={record.id}
                           type="button"
@@ -1215,7 +1264,7 @@ export function CustomerProfile() {
                           className="w-full rounded-[28px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-5 text-left transition hover:border-[#2D9B9B]"
                         >
                           <div className="flex flex-wrap items-center gap-3">
-                            {record.photoURL ? (
+                            {record.photoURL && photoReview?.status !== "pending" ? (
                               <img
                                 src={record.photoURL}
                                 alt={`${record.petName} profile`}
@@ -1226,6 +1275,7 @@ export function CustomerProfile() {
                             )}
                             <h3 className="text-xl font-semibold text-[#20343B]">{record.petName}</h3>
                             <StatusChip label={record.petType} />
+                            {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
                           </div>
                           <p className="mt-3 text-sm text-[#607277]">
                             {record.breed || "Breed not specified"}
@@ -1234,7 +1284,8 @@ export function CustomerProfile() {
                             {record.notes || "No extra notes yet."}
                           </p>
                         </button>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>

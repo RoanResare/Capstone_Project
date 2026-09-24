@@ -1452,10 +1452,10 @@ function appReducer(state, action) {
         module: "Photo Moderation",
         detail: `${subject} was ${status}.`,
         notification: {
-          title: status === "approved" ? "Photo approved" : "Photo rejected",
+          title: status === "approved" ? "Photo Approved" : "Photo Rejected",
           message:
             status === "approved"
-              ? `Your ${target.assetType} photo was approved and is now visible in your customer dashboard.`
+              ? "Admin approved your photo. It is now visible in your customer dashboard."
               : `Your ${target.assetType} photo was rejected and removed from your dashboard${nextPhoto.moderationNote ? `: ${nextPhoto.moderationNote}` : "."}`,
           actorName: action.meta.actorName || "Administrator",
           actorRole: "admin",

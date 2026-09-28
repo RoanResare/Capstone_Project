@@ -815,6 +815,7 @@ function AppointmentsWorkspace({
                 <Search size={16} />
                 <input
                   value={searchValue}
+                  autoComplete="off"
                   onChange={(event) => setSearchValue(event.target.value)}
                   className="w-full bg-transparent outline-none"
                   placeholder="Search by customer, pet, email, service, or assignee"
@@ -1071,6 +1072,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 <Search size={16} />
                 <input
                   value={searchValue}
+                  autoComplete="off"
                   onChange={(event) => setSearchValue(event.target.value)}
                   className="w-full bg-transparent outline-none"
                   placeholder="Search by owner, pet, breed, type, or email"
@@ -1152,6 +1154,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <input
                     value={form.ownerName}
+                    autoComplete="off"
                     onChange={updateField("ownerName")}
                     maxLength={80}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -1166,6 +1169,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <input
                     type="email"
                     value={form.customerEmail}
+                    autoComplete="off"
                     onChange={updateField("customerEmail")}
                     maxLength={120}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -1179,6 +1183,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <input
                     value={form.petName}
+                    autoComplete="off"
                     onChange={updateField("petName")}
                     maxLength={60}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -1226,6 +1231,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   {form.breed === "Other" && (
                     <input
                       value={form.customBreed}
+                      autoComplete="off"
                       onChange={updateField("customBreed")}
                       maxLength={60}
                       className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -1241,6 +1247,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <input
                     type="date"
                     value={form.lastVisit}
+                    autoComplete="off"
                     onChange={updateField("lastVisit")}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                   />
@@ -1617,6 +1624,7 @@ function ManageUsersWorkspace({
                 <Search size={16} />
                 <input
                   value={searchValue}
+                  autoComplete="off"
                   onChange={(event) => setSearchValue(event.target.value)}
                   className="w-full bg-transparent outline-none"
                   placeholder="Search by name, email, username, role, or status"
@@ -1724,6 +1732,7 @@ function ManageUsersWorkspace({
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">Name</label>
                   <input
                     value={form.name}
+                    autoComplete="off"
                     onChange={updateField("name")}
                     disabled={isSaving}
                     maxLength={80}
@@ -1737,6 +1746,7 @@ function ManageUsersWorkspace({
                   <input
                     type="email"
                     value={form.email}
+                    autoComplete="off"
                     onChange={updateField("email")}
                     disabled={isSaving}
                     maxLength={120}
@@ -1749,6 +1759,7 @@ function ManageUsersWorkspace({
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">Username</label>
                   <input
                     value={form.username}
+                    autoComplete="off"
                     onChange={updateField("username")}
                     disabled={isSaving}
                     maxLength={32}
@@ -1784,6 +1795,7 @@ function ManageUsersWorkspace({
                   <input
                     type={showPassword ? "text" : "password"}
                     value={form.password}
+                    autoComplete="new-password"
                     onChange={updateField("password")}
                     disabled={isSaving}
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 pr-11 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -1974,6 +1986,7 @@ function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
                   <p className="mt-2 text-xs text-[#7A9297]">Uploaded {formatDateTime(photo.createdAt)}</p>
                   <input
                     value={reviewNote}
+                    autoComplete="off"
                     onChange={(event) => setReviewNote(event.target.value)}
                     maxLength={180}
                     placeholder="Optional rejection note"

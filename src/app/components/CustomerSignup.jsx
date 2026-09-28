@@ -140,6 +140,7 @@ export function CustomerSignup() {
               <label className="mb-2 block text-sm font-medium text-[#415D62]">Full name</label>
               <input
                 value={form.fullName}
+                autoComplete="name"
                 onChange={handleChange("fullName")}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -152,6 +153,7 @@ export function CustomerSignup() {
               <input
                 type="email"
                 value={form.email}
+                autoComplete="email"
                 onChange={handleChange("email")}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -165,6 +167,7 @@ export function CustomerSignup() {
               </label>
               <input
                 value={form.username}
+                autoComplete="username"
                 onChange={handleChange("username")}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -188,6 +191,7 @@ export function CustomerSignup() {
                 inputMode="numeric"
                 maxLength={11}
                 pattern="[0-9]{1,11}"
+                autoComplete="tel"
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Optional phone number"
               />
@@ -201,6 +205,7 @@ export function CustomerSignup() {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={form.password}
+                    autoComplete="new-password"
                     onChange={handleChange("password")}
                     disabled={isSubmitting}
                     className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
@@ -229,6 +234,7 @@ export function CustomerSignup() {
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     value={form.confirmPassword}
+                    autoComplete="new-password"
                     onChange={handleChange("confirmPassword")}
                     disabled={isSubmitting}
                     className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"

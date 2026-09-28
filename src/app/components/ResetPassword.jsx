@@ -170,6 +170,7 @@ export function ResetPassword() {
               </label>
               <input
                 value={form.oobCode}
+                autoComplete="off"
                 onChange={(event) =>
                   setForm((current) => ({ ...current, oobCode: event.target.value }))
                 }
@@ -190,6 +191,7 @@ export function ResetPassword() {
                 <input
                   type={showNewPassword ? "text" : "password"}
                   value={form.newPassword}
+                  autoComplete="new-password"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, newPassword: event.target.value }))
                   }
@@ -217,6 +219,7 @@ export function ResetPassword() {
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   value={form.confirmPassword}
+                  autoComplete="new-password"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, confirmPassword: event.target.value }))
                   }

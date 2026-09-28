@@ -106,6 +106,7 @@ export function ForgotPassword() {
                 type="text"
                 inputMode="email"
                 value={identifier}
+                autoComplete="off"
                 onChange={(event) => setIdentifier(event.target.value)}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"

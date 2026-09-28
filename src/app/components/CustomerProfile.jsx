@@ -1059,6 +1059,7 @@ export function CustomerProfile() {
                       {isSavingPhoto ? "Saving..." : "Change photo"}
                       <input
                         type="file"
+                        autoComplete="off"
                         accept="image/png,image/jpeg,image/webp"
                         onChange={handleProfilePhotoSelection}
                         disabled={isSavingPhoto}
@@ -1084,6 +1085,7 @@ export function CustomerProfile() {
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Full Name</label>
                       <input
                         value={profileForm.fullName}
+                        autoComplete="off"
                         onChange={handleProfileChange("fullName")}
                         maxLength={80}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -1093,6 +1095,7 @@ export function CustomerProfile() {
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Username</label>
                       <input
                         value={profileForm.username}
+                        autoComplete="off"
                         onChange={handleProfileChange("username")}
                         maxLength={32}
                         pattern="[A-Za-z0-9_]+"
@@ -1104,6 +1107,7 @@ export function CustomerProfile() {
                       <input
                         type="email"
                         value={profileForm.email}
+                        autoComplete="off"
                         onChange={handleProfileChange("email")}
                         maxLength={120}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -1116,6 +1120,7 @@ export function CustomerProfile() {
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Phone</label>
                       <input
                         value={profileForm.phone}
+                        autoComplete="off"
                         onChange={handleProfileChange("phone")}
                         inputMode="numeric"
                         maxLength={15}
@@ -1131,11 +1136,11 @@ export function CustomerProfile() {
                       <input
                         type={showProfileVerificationPassword ? "text" : "password"}
                         value={profileVerificationPassword}
+                        autoComplete="current-password"
                         onChange={(event) => setProfileVerificationPassword(event.target.value)}
                         disabled={isSavingProfile || isSavingPhoto}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
                         placeholder="Enter your password to authorize this change"
-                        autoComplete="current-password"
                       />
                       <button
                         type="button"
@@ -1167,6 +1172,7 @@ export function CustomerProfile() {
                     <div className="mt-5 grid gap-4">
                       <input
                         value={petForm.petName}
+                        autoComplete="off"
                         onChange={(event) =>
                           setPetForm((current) => ({ ...current, petName: event.target.value }))
                         }
@@ -1204,6 +1210,7 @@ export function CustomerProfile() {
                       {petForm.breed === "Other" && (
                         <input
                           value={petForm.customBreed}
+                          autoComplete="off"
                           onChange={(event) =>
                             setPetForm((current) => ({ ...current, customBreed: event.target.value }))
                           }
@@ -1239,6 +1246,7 @@ export function CustomerProfile() {
                             Pet photo
                             <input
                               type="file"
+                              autoComplete="off"
                               accept="image/png,image/jpeg,image/webp"
                               onChange={handlePetPhotoSelection}
                               className="hidden"

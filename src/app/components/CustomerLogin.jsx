@@ -150,6 +150,7 @@ export function CustomerLogin() {
               <input
                 type="text"
                 value={form.identifier}
+                autoComplete="username"
                 onChange={(event) =>
                   setForm((current) => ({ ...current, identifier: event.target.value }))
                 }
@@ -165,6 +166,7 @@ export function CustomerLogin() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={form.password}
+                  autoComplete="current-password"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }

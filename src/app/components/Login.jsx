@@ -163,6 +163,7 @@ export function Login() {
               </label>
               <input
                 value={form.identifier}
+                autoComplete="username"
                 onChange={updateField("identifier")}
                 disabled={isSubmitting}
                 className={`w-full rounded-lg border px-4 py-3 outline-none transition focus:border-[#2D9B9B] ${
@@ -181,6 +182,7 @@ export function Login() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={form.password}
+                  autoComplete="current-password"
                   onChange={updateField("password")}
                   disabled={isSubmitting}
                   className={`w-full rounded-lg border px-4 py-3 pr-11 outline-none transition focus:border-[#2D9B9B] ${

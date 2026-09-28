@@ -8,7 +8,7 @@ import { useToast } from "../context/ToastContext.jsx";
 export function ForgotPassword() {
   const { isOnline, requestPasswordReset } = useAuth();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,7 +23,7 @@ export function ForgotPassword() {
     setFeedback({ type: "", message: "" });
 
     try {
-      const result = await requestPasswordReset(email.trim());
+      const result = await requestPasswordReset(identifier.trim());
       setFeedback({
         type: result.ok ? "success" : "error",
         message: result.ok ? result.message : result.error,
@@ -54,9 +54,8 @@ export function ForgotPassword() {
             Request a secure password reset link.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Enter the email address used for sign-in. The backend now generates the Firebase reset
-            code and delivers a direct link to this app, so delivery and reset handling stay under
-            one flow.
+            Enter the email address or phone number used for sign-in. The backend resolves the
+            account and delivers a direct Firebase reset link to this app.
           </p>
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
@@ -88,9 +87,8 @@ export function ForgotPassword() {
                     Email recovery
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[#607277]">
-                    Use the same address you sign in with. Reset delivery now runs through the
-                    backend mailer, which means delivery logs, app-specific reset URLs, and
-                    clearer server-side diagnostics are available.
+                    Use the same email address or phone number you registered with. A valid phone
+                    number is matched to its account email before the reset link is sent.
                   </p>
                 </div>
               </div>
@@ -103,14 +101,15 @@ export function ForgotPassword() {
             )}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email</label>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email or phone number</label>
               <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                type="text"
+                inputMode="email"
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Enter your account email"
+                placeholder="Enter your email or 11-digit phone number"
               />
             </div>
 

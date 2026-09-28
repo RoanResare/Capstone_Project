@@ -2,7 +2,9 @@ import {
   confirmPasswordReset,
   createUserWithEmailAndPassword,
   deleteUser,
+  EmailAuthProvider,
   fetchSignInMethodsForEmail,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile as updateFirebaseProfile,
@@ -681,6 +683,19 @@ export async function updateFirebaseUserProfile(currentUser, updates = {}) {
       settleMs: 100,
       timeoutMs: 5000,
     })) || currentUser;
+
+  if (updates.requireProfileVerification === true) {
+    const verificationPassword = typeof updates.verificationPassword === "string"
+      ? updates.verificationPassword
+      : "";
+    if (!authenticatedUser.email || !verificationPassword) {
+      throw new Error("Enter your current password to verify this profile change.");
+    }
+    await reauthenticateWithCredential(
+      authenticatedUser,
+      EmailAuthProvider.credential(authenticatedUser.email, verificationPassword),
+    );
+  }
 
   const reference = doc(db, USERS_COLLECTION, currentUser.profileDocId || authenticatedUser.uid);
   const nextFullName = normalizeString(updates.fullName || currentUser.fullName || currentUser.name);

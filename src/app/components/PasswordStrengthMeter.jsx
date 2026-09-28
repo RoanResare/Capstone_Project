@@ -1,16 +1,15 @@
 function getPasswordStrength(password = "") {
   const value = String(password);
   const hasLetters = /[A-Za-z]/.test(value);
-  const hasNumbers = /\d/.test(value);
   const hasLower = /[a-z]/.test(value);
   const hasUpper = /[A-Z]/.test(value);
   const hasSpecial = /[^A-Za-z0-9]/.test(value);
 
-  if (value.length >= 8 && hasLower && hasUpper && hasNumbers && hasSpecial) {
+  if (value.length >= 8 && hasLower && hasUpper && hasSpecial) {
     return { level: 3, label: "Strong", labelClassName: "text-[#1D7C45]" };
   }
 
-  if (value.length >= 6 && hasLetters && hasNumbers) {
+  if (value.length >= 6 && hasLetters && hasSpecial) {
     return { level: 2, label: "Medium", labelClassName: "text-[#A56A0F]" };
   }
 

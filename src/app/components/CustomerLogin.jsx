@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -24,9 +24,10 @@ export function CustomerLogin() {
     isOnline,
   } = useAuth();
   const { error: showErrorToast } = useToast();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", password: "" });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const requestedPath =
     typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const crossRoleState =
@@ -65,7 +66,7 @@ export function CustomerLogin() {
 
     try {
       const result = await signIn({
-        email: form.email.trim(),
+        identifier: form.identifier.trim(),
         password: form.password,
         roleHint: "customer",
       });
@@ -98,9 +99,8 @@ export function CustomerLogin() {
             Sign in with your customer email and password.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Customer accounts now authenticate directly with Firebase email and password. Username
-            lookup is no longer used during sign-in, which avoids the Firestore permission issue
-            that was blocking customer access.
+            Customer accounts can authenticate with either the registered email address or username
+            and password.
           </p>
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
@@ -108,8 +108,8 @@ export function CustomerLogin() {
               Standard Firebase flow
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
-              <p>1. Enter the email address linked to your customer account.</p>
-              <p>2. Firebase Authentication validates the email and password directly.</p>
+              <p>1. Enter the email address or username linked to your customer account.</p>
+              <p>2. The account lookup resolves the identifier to Firebase Authentication.</p>
               <p>3. Your customer profile loads from Firestore after sign-in succeeds.</p>
             </div>
           </div>
@@ -146,31 +146,41 @@ export function CustomerLogin() {
               </div>
             )}
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email</label>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email or username</label>
               <input
-                type="email"
-                value={form.email}
+                type="text"
+                value={form.identifier}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, email: event.target.value }))
+                  setForm((current) => ({ ...current, identifier: event.target.value }))
                 }
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Enter your email address"
+                placeholder="Enter your email or username"
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, password: event.target.value }))
-                }
-                disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Enter your password"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, password: event.target.value }))
+                  }
+                  disabled={isSubmitting}
+                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <PasswordStrengthMeter password={form.password} />
             </div>
 

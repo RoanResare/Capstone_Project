@@ -1,7 +1,9 @@
 import {
   createUserWithEmailAndPassword,
   deleteUser,
+  EmailAuthProvider,
   getIdTokenResult,
+  reauthenticateWithCredential,
   signInWithEmailAndPassword,
   updateEmail,
   updateProfile as updateFirebaseProfile,
@@ -272,6 +274,22 @@ async function assertCustomerSessionRole(firebaseUser) {
   }
 
   return tokenResult;
+}
+
+export async function verifyCustomerPassword(password) {
+  ensureCustomerFirebaseReady();
+
+  const activeUser = auth.currentUser;
+  const normalizedPassword = typeof password === "string" ? password : "";
+
+  if (!activeUser?.email || !normalizedPassword) {
+    throw new Error("Enter your current password to verify this profile change.");
+  }
+
+  await reauthenticateWithCredential(
+    activeUser,
+    EmailAuthProvider.credential(activeUser.email, normalizedPassword),
+  );
 }
 
 function validateCustomerPhotoFile(file) {
@@ -670,17 +688,20 @@ export async function signUpCustomerWithEmailPassword({
 export async function signInCustomerWithEmailPassword({ email, password }) {
   ensureCustomerFirebaseReady();
 
-  const normalizedEmail = normalizeEmail(email);
+  const normalizedIdentifier = normalizeString(email);
+  let normalizedEmail = normalizeEmail(normalizedIdentifier);
+
+  if (!normalizedEmail.includes("@")) {
+    const usernameSnapshot = await getDoc(doc(db, "usernames", normalizeUsername(normalizedIdentifier)));
+    normalizedEmail = normalizeEmail(usernameSnapshot.exists() ? usernameSnapshot.data()?.email : "");
+  }
 
   if (!normalizedEmail) {
     throw new Error("Email is required.");
   }
 
   if (!normalizedEmail.includes("@")) {
-    throw createCustomerAppError(
-      "customer/email-required",
-      "Customer sign-in now uses email and password only.",
-    );
+    throw createCustomerAppError("auth/user-not-found", "No account was found for that email or username.");
   }
 
   console.info("[customer-auth] Starting customer sign-in.", {
@@ -744,6 +765,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
   const nextPhone = normalizeString(updates.phone || existingProfile.phone);
   const nextUsername = assertCustomerUsername(updates.username || existingProfile.username);
   const shouldRemovePhoto = updates.removePhoto === true;
+  const shouldDeferPhotoUpdate = updates.deferPhotoUpdate === true;
   const nextPhotoFile =
     typeof File !== "undefined" && updates.photoFile instanceof File ? updates.photoFile : null;
   let nextPhotoURL = normalizeString(existingProfile.photoURL);
@@ -753,6 +775,10 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
 
   if (!nextEmail) {
     throw new Error("Email is required.");
+  }
+
+  if (updates.requireProfileVerification === true) {
+    await verifyCustomerPassword(updates.verificationPassword);
   }
 
   console.info("[customer-auth] Updating customer profile.", {
@@ -790,28 +816,30 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
       await activeAuthUser.getIdToken(true);
     }
 
-    await writeCustomerProfileSnapshot(
-      reference,
-      {
-        uid: activeAuthUser.uid,
-        email: nextEmail,
-        username: nextUsername,
-        fullName: nextFullName,
-        phone: nextPhone,
-        role: "customer",
-        accountStatus: normalizeAccountStatus(existingProfile.accountStatus),
-        status: normalizeAccountStatus(existingProfile.status),
-        photoURL: nextPhotoURL,
-        profilePhotoPath: nextProfilePhotoPath,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    if (!shouldDeferPhotoUpdate) {
+      await writeCustomerProfileSnapshot(
+        reference,
+        {
+          uid: activeAuthUser.uid,
+          email: nextEmail,
+          username: nextUsername,
+          fullName: nextFullName,
+          phone: nextPhone,
+          role: "customer",
+          accountStatus: normalizeAccountStatus(existingProfile.accountStatus),
+          status: normalizeAccountStatus(existingProfile.status),
+          photoURL: nextPhotoURL,
+          profilePhotoPath: nextProfilePhotoPath,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
 
-    await updateFirebaseProfile(activeAuthUser, {
-      displayName: nextFullName || null,
-      photoURL: isDataUrl(nextPhotoURL) ? null : nextPhotoURL || null,
-    });
+      await updateFirebaseProfile(activeAuthUser, {
+        displayName: nextFullName || null,
+        photoURL: isDataUrl(nextPhotoURL) ? null : nextPhotoURL || null,
+      });
+    }
 
     const profile = buildCustomerProfile(activeAuthUser, {
       ...currentUser,
@@ -827,11 +855,30 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
       profilePhotoPath: nextProfilePhotoPath,
     });
 
-    if (nextPhotoFile && previousPhotoPath && previousPhotoPath !== nextProfilePhotoPath) {
+    if (shouldDeferPhotoUpdate) {
+      const activeProfile = buildCustomerProfile(activeAuthUser, {
+        ...currentUser,
+        uid: activeAuthUser.uid,
+        email: nextEmail,
+        fullName: nextFullName,
+        phone: nextPhone,
+        username: nextUsername,
+        role: "customer",
+        accountStatus: normalizeAccountStatus(existingProfile.accountStatus),
+        status: normalizeAccountStatus(existingProfile.status),
+        photoURL: existingProfile.photoURL,
+        profilePhotoPath: existingProfile.profilePhotoPath,
+      });
+      activeProfile.pendingPhotoURL = nextPhotoURL;
+      activeProfile.pendingProfilePhotoPath = nextProfilePhotoPath;
+      return activeProfile;
+    }
+
+    if (!shouldDeferPhotoUpdate && nextPhotoFile && previousPhotoPath && previousPhotoPath !== nextProfilePhotoPath) {
       await deleteStorageObjectIfPresent(previousPhotoPath);
     }
 
-    if (shouldRemovePhoto && previousPhotoPath) {
+    if (!shouldDeferPhotoUpdate && shouldRemovePhoto && previousPhotoPath) {
       await deleteStorageObjectIfPresent(previousPhotoPath);
     }
 

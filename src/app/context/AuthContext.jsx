@@ -449,6 +449,21 @@ export function AuthProvider({ children }) {
       };
     }
 
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      return {
+        ok: false,
+        error: "Password must be at least 8 characters and include an uppercase letter, lowercase letter, and symbol.",
+      };
+    }
+
+    const normalizedPhone = typeof phone === "string" ? phone.trim() : "";
+    if (normalizedPhone && !/^\d{1,11}$/.test(normalizedPhone)) {
+      return {
+        ok: false,
+        error: "Phone number must contain numbers only and be no more than 11 digits.",
+      };
+    }
+
     if (password !== confirmPassword) {
       return {
         ok: false,
@@ -778,18 +793,18 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function requestPasswordReset(email) {
+  async function requestPasswordReset(identifier) {
     setAuthHydrationError("");
 
-    if (!email?.trim()) {
+    if (!identifier?.trim()) {
       return {
         ok: false,
-        error: "Email is required.",
+        error: "Email address or phone number is required.",
       };
     }
 
     try {
-      const response = await requestBackendPasswordReset(email.trim());
+      const response = await requestBackendPasswordReset(identifier.trim());
       return {
         ok: true,
         message:

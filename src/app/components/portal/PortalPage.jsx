@@ -3,6 +3,8 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   Check,
+  Eye,
+  EyeOff,
   Clock3,
   Image,
   Mail,
@@ -335,8 +337,8 @@ function matchesUserSearch(user, searchValue) {
 function buildPetRecordForm(record = null) {
   const current = record && typeof record === "object" ? record : {};
   const savedPetType = typeof current.petType === "string" ? current.petType : "";
-  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : savedPetType ? "Other" : "";
-  const customPetType = petType === "Other" && savedPetType !== "Other" ? savedPetType : "";
+  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : "";
+  const customPetType = "";
   const breedOptions = breedsByPetType[petType] || [];
   const savedBreed = typeof current.breed === "string" ? current.breed : "";
   const breed = breedOptions.includes(savedBreed) ? savedBreed : savedBreed ? "Other" : "";
@@ -962,7 +964,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
     setForm((current) => ({
       ...current,
       petType: value,
-      customPetType: value === "Other" ? current.customPetType : "",
+      customPetType: "",
       breed: "",
       customBreed: "",
     }));
@@ -996,14 +998,6 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
-    if (form.petType === "Other" && !form.customPetType.trim()) {
-      setFeedback({
-        type: "error",
-        message: "Specify the custom pet type.",
-      });
-      return;
-    }
-
     if (!form.breed.trim()) {
       setFeedback({
         type: "error",
@@ -1028,8 +1022,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
-    const resolvedPetType =
-      form.petType === "Other" ? form.customPetType.trim() : form.petType.trim();
+    const resolvedPetType = form.petType.trim();
     const resolvedBreed =
       form.breed === "Other" ? form.customBreed.trim() : form.breed.trim();
 
@@ -1209,15 +1202,6 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                       </option>
                     ))}
                   </select>
-                  {form.petType === "Other" && (
-                    <input
-                      value={form.customPetType}
-                      onChange={updateField("customPetType")}
-                      maxLength={40}
-                      className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                      placeholder="Specify pet type"
-                    />
-                  )}
                 </div>
 
                 <div>
@@ -1370,6 +1354,7 @@ function ManageUsersWorkspace({
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState(() => buildPortalUserForm());
   const [originalForm, setOriginalForm] = useState(() => buildPortalUserForm());
 
@@ -1795,18 +1780,28 @@ function ManageUsersWorkspace({
                 <label className="mb-2 block text-sm font-medium text-[#425A60]">
                   {isCreatingNew ? "Password" : "New password"}
                 </label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={updateField("password")}
-                  disabled={isSaving}
-                  className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                  placeholder={
-                    isCreatingNew
-                      ? "Set an employee password"
-                    : "Leave blank to keep the current password"
-                  }
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={updateField("password")}
+                    disabled={isSaving}
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 pr-11 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder={
+                      isCreatingNew
+                        ? "Set an employee password"
+                        : "Leave blank to keep the current password"
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 <PasswordStrengthMeter password={form.password} />
               </div>
 

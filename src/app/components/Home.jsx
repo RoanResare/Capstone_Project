@@ -128,23 +128,9 @@ export function Home() {
                 Customers can sign in to create pet records, reserve available appointment slots,
                 track appointment history, and keep profile details current.
               </p>
-              <div className="mt-5 grid gap-3">
-                <Link
-                  to="/login"
-                  className="group inline-flex items-center justify-between rounded-lg bg-[#EAF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#DCEFEF]"
-                >
-                  Customer / Staff / Admin login
-                  <ArrowRight size={16} className="transition group-hover:translate-x-1" />
-                </Link>
-                <button
-                  type="button"
-                  onClick={openCustomerBooking}
-                  className="group inline-flex items-center justify-between rounded-lg border border-[#E2ECEB] px-4 py-3 text-left text-sm font-semibold text-[#2D6B73] transition hover:border-[#BFE1E1]"
-                >
-                  Start a booking request
-                  <ArrowRight size={16} className="transition group-hover:translate-x-1" />
-                </button>
-              </div>
+              <p className="mt-5 rounded-lg bg-[#EAF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
+                One secure login routes customers, staff, and admins to the right workspace.
+              </p>
             </motion.div>
           </motion.div>
 

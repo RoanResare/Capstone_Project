@@ -6,6 +6,8 @@ import {
   Camera,
   CheckCircle2,
   Clock3,
+  Eye,
+  EyeOff,
   PawPrint,
   Scissors,
   UserRound,
@@ -138,8 +140,8 @@ function buildEmptyPetForm() {
 
 function buildPetFormFromRecord(record = {}) {
   const savedPetType = record.petType || "";
-  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : savedPetType ? "Other" : "";
-  const customPetType = petType === "Other" && savedPetType !== "Other" ? savedPetType : "";
+  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : "";
+  const customPetType = "";
   const breedOptions = breedsByPetType[petType] || [];
   const savedBreed = record.breed || "";
   const breed = breedOptions.includes(savedBreed) ? savedBreed : savedBreed ? "Other" : "";
@@ -222,6 +224,8 @@ export function CustomerProfile() {
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [isSavingPet, setIsSavingPet] = useState(false);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
+  const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
+  const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
 
   useEffect(() => {
     const tabFromQuery = searchParams.get("tab") || "";
@@ -346,7 +350,7 @@ export function CustomerProfile() {
   };
 
   const handleProfileChange = (field) => (event) => {
-    const value = field === "phone" ? event.target.value.replace(/\D/g, "").slice(0, 15) : event.target.value;
+    const value = field === "phone" ? event.target.value.replace(/\D/g, "").slice(0, 11) : event.target.value;
     setProfileForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -355,7 +359,7 @@ export function CustomerProfile() {
     setPetForm((current) => ({
       ...current,
       petType: value,
-      customPetType: value === "Other" ? current.customPetType : "",
+      customPetType: "",
       breed: "",
       customBreed: "",
     }));
@@ -435,20 +439,8 @@ export function CustomerProfile() {
       URL.revokeObjectURL(profilePhotoPreviewUrl);
     }
     setProfilePhotoPreviewUrl(previewUrl);
+    const hasExistingPhoto = Boolean(profileForm.photoURL);
     const moderationId = `photo-profile-${customer.uid}-${Date.now()}`;
-    void submitPhotoForReview({
-      id: moderationId,
-      assetType: "profile",
-      assetId: customer.uid,
-      ownerId: customer.uid,
-      ownerEmail: customer.email,
-      ownerName: customer.fullName || customer.name,
-      subjectName: "Profile photo",
-      photoURL: "",
-    }, { persist: false });
-    setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
-    toast.success(PHOTO_PENDING_MESSAGE);
-    setIsSavingPhoto(false);
 
     try {
       const compressedFile = await compressImageFile(file, {
@@ -461,17 +453,10 @@ export function CustomerProfile() {
         quality: 0.6,
         outputType: compressedFile.type || "image/jpeg",
       });
-      await submitPhotoForReview({
-        id: moderationId,
-        assetType: "profile",
-        assetId: customer.uid,
-        ownerId: customer.uid,
-        ownerEmail: customer.email,
-        ownerName: customer.fullName || customer.name,
-        subjectName: "Profile photo",
-        photoURL: moderationPreviewURL,
+      const result = await updateProfile({
+        photoFile: compressedFile,
+        deferPhotoUpdate: hasExistingPhoto,
       });
-      const result = await updateProfile({ photoFile: compressedFile });
 
       if (!result.ok) {
         const message = "Unable to upload profile picture. Please try again.";
@@ -485,17 +470,24 @@ export function CustomerProfile() {
         return;
       }
 
-      await submitPhotoForReview({
-        id: moderationId,
-        assetType: "profile",
-        assetId: customer.uid,
-        ownerId: customer.uid,
-        ownerEmail: customer.email,
-        ownerName: result.user.fullName || result.user.name,
-        subjectName: "Profile photo",
-        photoURL: result.user.photoURL,
-      });
-      applySavedProfile(result.user, PHOTO_PENDING_MESSAGE, { notify: false });
+      if (hasExistingPhoto) {
+        await submitPhotoForReview({
+          id: moderationId,
+          assetType: "profile",
+          assetId: customer.uid,
+          ownerId: customer.uid,
+          ownerEmail: customer.email,
+          ownerName: result.user.fullName || result.user.name,
+          subjectName: "Profile photo",
+          photoURL: result.user.pendingPhotoURL || moderationPreviewURL,
+          storagePath: result.user.pendingProfilePhotoPath || "",
+        });
+        setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
+        toast.success(PHOTO_PENDING_MESSAGE);
+        applySavedProfile({ ...customer, photoURL: profileForm.photoURL }, PHOTO_PENDING_MESSAGE, { notify: false });
+      } else {
+        applySavedProfile(result.user, "Profile photo uploaded successfully.");
+      }
     } catch (error) {
       const message = "Unable to upload profile picture. Please try again.";
       console.error("[customer-profile] Unexpected profile photo upload error.", error);
@@ -561,10 +553,21 @@ export function CustomerProfile() {
       return;
     }
 
+    if (!profileVerificationPassword) {
+      const message = "Enter your current password before saving profile changes.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
     setIsSavingProfile(true);
 
     try {
-      const result = await updateProfile(buildProfilePayload());
+      const result = await updateProfile({
+        ...buildProfilePayload(),
+        requireProfileVerification: true,
+        verificationPassword: profileVerificationPassword,
+      });
 
       if (!result.ok) {
         setFeedback({ type: "error", message: result.error });
@@ -573,6 +576,7 @@ export function CustomerProfile() {
       }
 
       applySavedProfile(result.user, "Customer profile updated successfully.");
+      setProfileVerificationPassword("");
     } finally {
       setIsSavingProfile(false);
     }
@@ -619,13 +623,6 @@ export function CustomerProfile() {
       return;
     }
 
-    if (petForm.petType === "Other" && !petForm.customPetType.trim()) {
-      const message = "Specify the custom pet type.";
-      setFeedback({ type: "error", message });
-      toast.error(message);
-      return;
-    }
-
     if (petForm.breed === "Other" && !petForm.customBreed.trim()) {
       const message = "Specify the custom breed.";
       setFeedback({ type: "error", message });
@@ -636,8 +633,7 @@ export function CustomerProfile() {
     setIsSavingPet(true);
     setFeedback({ type: "", message: "" });
     const existingRecord = customerPetRecords.find((record) => record.id === petForm.id);
-    const resolvedPetType =
-      petForm.petType === "Other" ? petForm.customPetType.trim() : petForm.petType.trim();
+    const resolvedPetType = petForm.petType.trim();
     const resolvedBreed =
       petForm.breed === "Other" ? petForm.customBreed.trim() : petForm.breed.trim();
     const nextRecord = {
@@ -1127,6 +1123,33 @@ export function CustomerProfile() {
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                      Verify with your current password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showProfileVerificationPassword ? "text" : "password"}
+                        value={profileVerificationPassword}
+                        onChange={(event) => setProfileVerificationPassword(event.target.value)}
+                        disabled={isSavingProfile || isSavingPhoto}
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                        placeholder="Enter your password to authorize this change"
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileVerificationPassword((visible) => !visible)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                        aria-label={showProfileVerificationPassword ? "Hide verification password" : "Show verification password"}
+                      >
+                        {showProfileVerificationPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-[#7A9297]">
+                      Your password is checked before your name, username, email, or phone changes are saved.
+                    </p>
+                  </div>
                   <button
                     type="submit"
                     disabled={isSavingProfile || isSavingPhoto}
@@ -1163,17 +1186,6 @@ export function CustomerProfile() {
                           </option>
                         ))}
                       </select>
-                      {petForm.petType === "Other" && (
-                        <input
-                          value={petForm.customPetType}
-                          onChange={(event) =>
-                            setPetForm((current) => ({ ...current, customPetType: event.target.value }))
-                          }
-                          maxLength={40}
-                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                          placeholder="Specify pet type"
-                        />
-                      )}
                       <select
                         value={petForm.breed}
                         onChange={handleBreedChange}

@@ -58,7 +58,7 @@ export const branchDetails = {
   hours: "Consultations: Saturday and Sunday, 9:00 AM to 6:00 PM. Grooming: Daily, 9:00 AM to 7:00 PM.",
 };
 
-export const petTypeOptions = ["Dog", "Cat", "Other"];
+export const petTypeOptions = ["Dog", "Cat"];
 
 export const dogBreedOptions = [
   "Aspin (Asong Pinoy)",
@@ -90,7 +90,6 @@ export const catBreedOptions = [
 export const breedsByPetType = {
   Dog: dogBreedOptions,
   Cat: catBreedOptions,
-  Other: ["Other"],
 };
 
 export const portalModules = [

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { KeyRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "lucide-react";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -26,6 +26,8 @@ export function ResetPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingCode, setIsCheckingCode] = useState(Boolean(form.oobCode.trim()));
   const [verifiedEmail, setVerifiedEmail] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const hasCode = useMemo(() => Boolean(form.oobCode.trim()), [form.oobCode]);
 
   useEffect(() => {
@@ -184,16 +186,26 @@ export function ResetPassword() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-[#415D62]">New password</label>
-              <input
-                type="password"
-                value={form.newPassword}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, newPassword: event.target.value }))
-                }
-                disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Enter your new password"
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={form.newPassword}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, newPassword: event.target.value }))
+                  }
+                  disabled={isSubmitting}
+                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                  placeholder="Enter your new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((visible) => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                  aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <PasswordStrengthMeter password={form.newPassword} />
             </div>
 
@@ -201,16 +213,26 @@ export function ResetPassword() {
               <label className="mb-2 block text-sm font-medium text-[#415D62]">
                 Confirm password
               </label>
-              <input
-                type="password"
-                value={form.confirmPassword}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                }
-                disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Re-enter your new password"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={form.confirmPassword}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, confirmPassword: event.target.value }))
+                  }
+                  disabled={isSubmitting}
+                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                  placeholder="Re-enter your new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((visible) => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                  aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button

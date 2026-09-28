@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Bot,
@@ -31,6 +31,10 @@ function createMessage(from, content, meta = {}) {
     content,
     ...meta,
   };
+}
+
+function isBookingInquiry(message = "") {
+  return /\b(book|booking|appointment|schedule|reserve|reservation)\b/i.test(message);
 }
 
 function shouldRenderWidget(pathname) {
@@ -73,6 +77,14 @@ function ChatBubble({ message }) {
         }`}
       >
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        {message.bookingLink && (
+          <Link
+            to="/customer/dashboard?tab=booking"
+            className="mt-3 inline-flex items-center rounded-full bg-[#6D37FF] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#5A2BE0]"
+          >
+            Book an appointment
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -202,6 +214,7 @@ export function AskLlamaAI() {
     const assistantMessage = createMessage("assistant", "", {
       provider: "groq",
       topic: "dynamic",
+      bookingLink: isBookingInquiry(cleanMessage),
     });
     const assistantId = assistantMessage.id;
 

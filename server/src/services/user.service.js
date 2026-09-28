@@ -280,6 +280,31 @@ async function getUserByEmail(email) {
   return normalizeUserPayload(snapshot.docs[0].data(), snapshot.docs[0].id);
 }
 
+async function getUserByPhone(phone) {
+  const normalizedPhone = typeof phone === "string" ? phone.replace(/\D/g, "") : "";
+
+  if (!normalizedPhone) {
+    return null;
+  }
+
+  const snapshot = await db
+    .collection(USERS_COLLECTION)
+    .where("phone", "==", normalizedPhone)
+    .limit(1)
+    .get();
+
+  if (!snapshot.empty) {
+    return normalizeUserPayload(snapshot.docs[0].data(), snapshot.docs[0].id);
+  }
+
+  const fallbackSnapshot = await db.collection(USERS_COLLECTION).limit(200).get();
+  const document = fallbackSnapshot.docs.find(
+    (doc) => String(doc.data()?.phone || "").replace(/\D/g, "") === normalizedPhone,
+  );
+
+  return document ? normalizeUserPayload(document.data(), document.id) : null;
+}
+
 async function findUserByEmailCaseInsensitive(email) {
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
@@ -1093,6 +1118,7 @@ module.exports = {
   ensureAdminCanMutateTarget,
   findUserByEmailCaseInsensitive,
   getUserByEmail,
+  getUserByPhone,
   getUserByUsername,
   getUsernameOwner,
   getUserByUid,

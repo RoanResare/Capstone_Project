@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
+import { Eye, EyeOff, LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { BrandMark } from "./BrandMark.jsx";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -25,6 +25,7 @@ export function Login() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
 
@@ -176,16 +177,26 @@ export function Login() {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={updateField("password")}
-                disabled={isSubmitting}
-                className={`w-full rounded-lg border px-4 py-3 outline-none transition focus:border-[#2D9B9B] ${
-                  fieldErrors.password ? "border-[#D95A6A]" : "border-[#D9E7E7]"
-                }`}
-                placeholder="Enter your password"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={updateField("password")}
+                  disabled={isSubmitting}
+                  className={`w-full rounded-lg border px-4 py-3 pr-11 outline-none transition focus:border-[#2D9B9B] ${
+                    fieldErrors.password ? "border-[#D95A6A]" : "border-[#D9E7E7]"
+                  }`}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               <PasswordStrengthMeter password={form.password} />
               {fieldErrors.password && (
                 <p className="mt-2 text-sm text-[#B23949]">{fieldErrors.password}</p>

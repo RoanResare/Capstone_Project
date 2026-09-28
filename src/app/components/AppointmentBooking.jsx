@@ -475,7 +475,7 @@ export function AppointmentBooking({ embedded = false }) {
     setFormData((current) => ({
       ...current,
       petType: value,
-      customPetType: value === "Other" ? current.customPetType : "",
+      customPetType: "",
       breed: "",
       customBreed: "",
     }));
@@ -608,8 +608,6 @@ export function AppointmentBooking({ embedded = false }) {
 
     if (!formData.petType.trim()) {
       nextErrors.petType = "Pet type is required.";
-    } else if (formData.petType === "Other" && !formData.customPetType.trim()) {
-      nextErrors.petType = "Specify the custom pet type.";
     }
 
     if (!formData.breed.trim()) {
@@ -685,8 +683,7 @@ export function AppointmentBooking({ embedded = false }) {
     const now = new Date().toISOString();
     const resolvedBreed =
       formData.breed === "Other" ? formData.customBreed.trim() : formData.breed.trim();
-    const resolvedPetType =
-      formData.petType === "Other" ? formData.customPetType.trim() : formData.petType.trim();
+    const resolvedPetType = formData.petType.trim();
     const resolvedContactNumber = formatPhilippineMobile(formData.contactNumber);
     const petRecordId =
       existingPetRecord?.id || `pet-${currentCustomer.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -828,8 +825,6 @@ export function AppointmentBooking({ embedded = false }) {
       }
       if (!formData.petType.trim()) {
         nextErrors.petType = "Pet type is required.";
-      } else if (formData.petType === "Other" && !formData.customPetType.trim()) {
-        nextErrors.petType = "Specify the custom pet type.";
       }
       if (!formData.breed.trim()) {
         nextErrors.breed = "Pet breed is required.";
@@ -1307,15 +1302,6 @@ export function AppointmentBooking({ embedded = false }) {
                     </option>
                   ))}
                 </select>
-                {formData.petType === "Other" && (
-                  <input
-                    value={formData.customPetType}
-                    onChange={handleChange("customPetType")}
-                    className={fieldClassName("petType", "mt-3 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
-                    placeholder="Specify pet type"
-                    maxLength={40}
-                  />
-                )}
                 {errors.petType && (
                   <p className="mt-2 text-sm text-[#B23949]">{errors.petType}</p>
                 )}

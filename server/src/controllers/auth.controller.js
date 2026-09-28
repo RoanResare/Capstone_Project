@@ -16,6 +16,7 @@ const {
 const {
   findUserByEmailCaseInsensitive,
   getUserByEmail,
+  getUserByPhone,
   getUserByUid,
   getUserByUsername,
   getUsernameOwner,
@@ -203,13 +204,13 @@ function validateLoginPayload(payload = {}) {
 }
 
 function validateForgotPasswordPayload(payload = {}) {
-  const email = normalizeEmail(payload.email);
+  const identifier = normalizeString(payload.identifier || payload.email);
 
-  if (!email) {
-    throw new ApiError(400, "Email is required.");
+  if (!identifier) {
+    throw new ApiError(400, "Email address or phone number is required.");
   }
 
-  return { email };
+  return { identifier };
 }
 
 function validateResetPasswordPayload(payload = {}) {
@@ -601,16 +602,24 @@ async function loginUnified(req, res) {
 
 async function forgotPassword(req, res) {
   assertAuthSetupReady({ requirePasswordReset: true });
-  const { email } = validateForgotPasswordPayload(req.body);
-  const genericMessage = "If an account exists for that email, a password reset link has been sent.";
+  const { identifier } = validateForgotPasswordPayload(req.body);
+  const normalizedIdentifier = identifier.toLowerCase();
+  const isEmail = normalizedIdentifier.includes("@");
+  const storedUser = isEmail
+    ? await findUserByEmailCaseInsensitive(normalizedIdentifier)
+    : await getUserByPhone(identifier);
+  const email = normalizeEmail(storedUser?.email || (isEmail ? normalizedIdentifier : ""));
+  const genericMessage = "If an account exists for that email address or phone number, a password reset link has been sent.";
 
   let firebaseUser = null;
 
-  try {
-    firebaseUser = await auth.getUserByEmail(email);
-  } catch (error) {
-    if (error?.code !== "auth/user-not-found") {
-      throw error;
+  if (email) {
+    try {
+      firebaseUser = await auth.getUserByEmail(email);
+    } catch (error) {
+      if (error?.code !== "auth/user-not-found") {
+        throw error;
+      }
     }
   }
 
@@ -624,13 +633,13 @@ async function forgotPassword(req, res) {
     });
   }
 
-  const storedUser = await getUserByUid(firebaseUser.uid);
+  const firebaseStoredUser = await getUserByUid(firebaseUser.uid);
 
-  if (storedUser && storedUser.accountStatus !== USER_STATUSES.ACTIVE) {
+  if (firebaseStoredUser && firebaseStoredUser.accountStatus !== USER_STATUSES.ACTIVE) {
     console.info("[auth] Password reset blocked for a non-active account.", {
-      uid: storedUser.uid,
+      uid: firebaseStoredUser.uid,
       email: maskEmail(firebaseUser.email),
-      status: storedUser.accountStatus,
+      status: firebaseStoredUser.accountStatus,
     });
     return res.status(200).json({
       success: true,
@@ -645,7 +654,7 @@ async function forgotPassword(req, res) {
   try {
     delivery = await sendPasswordResetEmail({
       to: firebaseUser.email,
-      fullName: storedUser?.fullName || firebaseUser.displayName || "",
+      fullName: firebaseStoredUser?.fullName || firebaseUser.displayName || "",
       resetLink,
     });
   } catch (error) {

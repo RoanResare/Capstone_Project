@@ -132,7 +132,7 @@ export function saveNotificationDocument(notification) {
   });
 }
 
-export function saveApprovedCustomerPhotoDocument({ customerId, photoURL, photoModerationId }) {
+export function saveApprovedCustomerPhotoDocument({ customerId, photoURL, photoModerationId, storagePath }) {
   const normalizedCustomerId = normalizeString(customerId);
 
   if (!normalizedCustomerId) {
@@ -147,6 +147,7 @@ export function saveApprovedCustomerPhotoDocument({ customerId, photoURL, photoM
     doc(db, "users", normalizedCustomerId),
     removeUndefinedFields({
       photoURL: normalizeString(photoURL),
+      profilePhotoPath: normalizeString(storagePath),
       profilePhotoModerationId: normalizeString(photoModerationId),
       updatedAt: new Date().toISOString(),
     }),

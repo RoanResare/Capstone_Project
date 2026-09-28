@@ -26,10 +26,10 @@ function createApiRequestError(error, fallbackMessage, context) {
   return requestError;
 }
 
-export async function requestBackendPasswordReset(email) {
+export async function requestBackendPasswordReset(identifier) {
   try {
     const response = await apiClient.post("/auth/forgot-password", {
-      email,
+      identifier,
     });
     return response.data;
   } catch (error) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { UserPlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
@@ -27,13 +27,17 @@ export function CustomerSignup() {
   });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!isLoading && isAuthenticated && currentUser) {
     return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;
   }
 
   const handleChange = (field) => (event) => {
-    const value = event.target.value;
+    const value = field === "phone"
+      ? event.target.value.replace(/\D/g, "").slice(0, 11)
+      : event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -167,8 +171,8 @@ export function CustomerSignup() {
                 placeholder="Choose a profile username"
               />
               <p className="mt-2 text-xs text-[#7A9297]">
-                This username is stored on your customer profile. Customer sign-in uses email and
-                password only.
+                This username is stored on your customer profile. You can use it or your email to
+                sign in.
               </p>
             </div>
 
@@ -180,37 +184,65 @@ export function CustomerSignup() {
                 value={form.phone}
                 onChange={handleChange("phone")}
                 disabled={isSubmitting}
+                type="tel"
+                inputMode="numeric"
+                maxLength={11}
+                pattern="[0-9]{1,11}"
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Optional phone number"
               />
+              <p className="mt-2 text-xs text-[#7A9297]">Numbers only, up to 11 digits.</p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={handleChange("password")}
-                  disabled={isSubmitting}
-                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                  placeholder="Create a password"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={handleChange("password")}
+                    disabled={isSubmitting}
+                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Create a password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 <PasswordStrengthMeter password={form.password} />
+                <p className="mt-2 text-xs text-[#607277]">
+                  Use at least 8 characters with an uppercase letter, lowercase letter, and symbol.
+                </p>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#415D62]">
                   Confirm password
                 </label>
-                <input
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={handleChange("confirmPassword")}
-                  disabled={isSubmitting}
-                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                  placeholder="Repeat your password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={form.confirmPassword}
+                    onChange={handleChange("confirmPassword")}
+                    disabled={isSubmitting}
+                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Repeat your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((visible) => !visible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                    aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
 

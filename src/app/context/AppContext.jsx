@@ -513,6 +513,7 @@ function normalizePhotoModeration(record) {
     ownerName: typeof current.ownerName === "string" ? current.ownerName.trim() : "Customer",
     subjectName: typeof current.subjectName === "string" ? current.subjectName.trim() : "Photo",
     photoURL: photoURL.startsWith("blob:") ? "" : photoURL,
+    storagePath: typeof current.storagePath === "string" ? current.storagePath.trim() : "",
     status,
     moderationNote: typeof current.moderationNote === "string" ? current.moderationNote : "",
     createdAt,
@@ -2176,6 +2177,7 @@ export function AppProvider({ children }) {
             customerId: nextPhoto.ownerId,
             photoURL: nextPhoto.photoURL,
             photoModerationId: nextPhoto.id,
+            storagePath: nextPhoto.storagePath,
           }),
         );
       }

@@ -4,13 +4,14 @@ const {
   createPortalUser,
   deletePortalUser,
   ensureAdminCanMutateTarget,
+  getUserByUid,
   listPortalUsers,
   toPublicUser,
   updateOwnUser,
   updatePortalUser,
 } = require("../services/user.service");
 const { ApiError } = require("../utils/ApiError");
-const { hashPassword, assertStrongPassword } = require("../utils/password");
+const { hashPassword, assertStrongPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
 
 function normalizePortalRole(role = "") {
@@ -155,9 +156,19 @@ async function updateMyProfile(req, res) {
   const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
 
   if (!fullName || !email) {
     throw new ApiError(400, "Full name and email are required.");
+  }
+
+  if (!currentPassword) {
+    throw new ApiError(400, "Enter your current password before changing profile information.");
+  }
+
+  const existingUser = await getUserByUid(req.auth.user.uid);
+  if (!existingUser || !verifyPasswordHash(currentPassword, existingUser.passwordHash)) {
+    throw new ApiError(401, "The current password is incorrect.");
   }
 
   const user = await updateOwnUser(req.auth.user.uid, {

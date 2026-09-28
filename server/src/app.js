@@ -1,5 +1,6 @@
 const cors = require("cors");
 const express = require("express");
+const fs = require("fs");
 const helmet = require("helmet");
 const path = require("path");
 const { env } = require("./config/env");
@@ -51,7 +52,15 @@ app.use(
 app.use(helmet());
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/", (_req, res) => {
+app.get("/", (_req, res, next) => {
+  if (fs.existsSync(frontendIndexPath)) {
+    return res.sendFile(frontendIndexPath, (error) => {
+      if (error) {
+        next(error);
+      }
+    });
+  }
+
   res.status(200).json({
     success: true,
     message: "Charming Fur-fection backend is running.",

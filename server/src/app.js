@@ -1,6 +1,7 @@
 const cors = require("cors");
 const express = require("express");
 const helmet = require("helmet");
+const path = require("path");
 const { env } = require("./config/env");
 const { buildSetupMessage } = require("./utils/setupGuard");
 const adminRoutes = require("./routes/admin.routes");
@@ -11,6 +12,8 @@ const staffRoutes = require("./routes/staff.routes");
 const { errorHandler } = require("./middlewares/errorHandler");
 
 const app = express();
+const frontendDistPath = path.resolve(__dirname, "../../dist");
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const productionFrontendOrigin = "https://capstone-project-1-yqto.onrender.com";
 
 const allowedOrigins = Array.from(
@@ -64,6 +67,20 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", groqRoutes);
 app.use("/api/staff", staffRoutes);
+
+// Render serves this Node process in production. Mount the Vite output after
+// the API routes so browser assets are available without intercepting API JSON.
+app.use(express.static(frontendDistPath));
+
+// React Router owns frontend paths such as /reset-password. Express 5 requires
+// a named wildcard, so use a regex route and leave /api/* to the API handlers.
+app.get(/^(?!\/api(?:\/|$)).*/, (_req, res, next) => {
+  res.sendFile(frontendIndexPath, (error) => {
+    if (error) {
+      next(error);
+    }
+  });
+});
 
 app.use(errorHandler);
 

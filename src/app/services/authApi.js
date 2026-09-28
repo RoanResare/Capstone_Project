@@ -91,6 +91,19 @@ export async function loginUnifiedUser(payload) {
   }
 }
 
+export async function checkCustomerRegistrationAvailability({ email, phone }) {
+  try {
+    const response = await apiClient.post("/auth/register/check", { email, phone });
+    return response.data;
+  } catch (error) {
+    throw createApiRequestError(
+      error,
+      "Unable to verify registration details right now.",
+      "customer-registration-check",
+    );
+  }
+}
+
 export async function resendPortalOtp(role, otpTicket) {
   try {
     const response = await apiClient.post(`/${normalizePortalRole(role)}/send-otp`, {

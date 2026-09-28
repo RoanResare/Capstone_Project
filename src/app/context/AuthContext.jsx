@@ -20,6 +20,7 @@ import {
 } from "../services/customerAccount.js";
 import {
   completeBackendPasswordReset,
+  checkCustomerRegistrationAvailability,
   loginUnifiedUser,
   loginPortalUser,
   requestBackendPasswordReset,
@@ -472,6 +473,11 @@ export function AuthProvider({ children }) {
     }
 
     try {
+      await checkCustomerRegistrationAvailability({
+        email: email.trim(),
+        phone: normalizedPhone,
+      });
+
       const { firebaseUser, profile } = await signUpCustomerWithEmailPassword({
         fullName,
         email,

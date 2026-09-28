@@ -302,7 +302,7 @@ export function formatFirebaseAuthError(error, fallbackMessage) {
     case "auth/missing-password":
       return "Password is required.";
     case "auth/email-already-in-use":
-      return "An account already exists for that email.";
+      return "Email is already associated with another account.";
     case "auth/weak-password":
       return "Password should be at least 6 characters.";
     case "auth/operation-not-allowed":

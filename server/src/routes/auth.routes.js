@@ -1,5 +1,6 @@
 const express = require("express");
 const {
+  checkCustomerRegistrationAvailability,
   forgotPassword,
   loginUnified,
   logout,
@@ -14,6 +15,7 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const router = express.Router();
 
 router.post("/forgot-password", authRateLimiter, asyncHandler(forgotPassword));
+router.post("/register/check", authRateLimiter, asyncHandler(checkCustomerRegistrationAvailability));
 router.post("/login", authRateLimiter, asyncHandler(loginUnified));
 router.post("/validate-reset-code", authRateLimiter, asyncHandler(validateResetCode));
 router.post("/reset-password", authRateLimiter, asyncHandler(resetPassword));

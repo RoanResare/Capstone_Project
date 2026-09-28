@@ -165,6 +165,49 @@ async function resolveEmailFromIdentifier(identifier = "") {
   return resolvedEmail;
 }
 
+async function checkCustomerRegistrationAvailability(req, res) {
+  assertAuthSetupReady();
+
+  const email = normalizeEmail(req.body?.email);
+  const phone = normalizeString(req.body?.phone).replace(/\D/g, "");
+
+  if (!email) {
+    throw new ApiError(400, "Email is required.");
+  }
+
+  if (!isEmailLike(email)) {
+    throw new ApiError(400, "Please enter a valid email address.");
+  }
+
+  if (phone && !/^\d{1,11}$/.test(phone)) {
+    throw new ApiError(400, "Phone number must contain numbers only and be no more than 11 digits.");
+  }
+
+  const storedEmailUser = await findUserByEmailCaseInsensitive(email);
+  if (storedEmailUser) {
+    throw new ApiError(409, "Email is already associated with another account.");
+  }
+
+  try {
+    await auth.getUserByEmail(email);
+    throw new ApiError(409, "Email is already associated with another account.");
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    if (error?.code !== "auth/user-not-found") {
+      throw error;
+    }
+  }
+
+  if (phone && (await getUserByPhone(phone))) {
+    throw new ApiError(409, "This phone number is already registered to another account");
+  }
+
+  return res.status(200).json({ success: true, available: true });
+}
+
 async function resolveAuthenticatedFirestoreUser({ identifier, email, firebaseUid }) {
   const normalizedIdentifier = normalizeString(identifier).toLowerCase();
   const normalizedEmail = normalizeEmail(email);
@@ -772,6 +815,7 @@ async function me(req, res) {
 }
 
 module.exports = {
+  checkCustomerRegistrationAvailability,
   forgotPassword,
   loginAdmin,
   loginCustomer,

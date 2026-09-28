@@ -147,7 +147,16 @@ async function resolveEmailFromIdentifier(identifier = "") {
   }
 
   const usernameRecord = await getUsernameOwner(normalizedIdentifier);
-  const resolvedEmail = normalizeEmail(usernameRecord?.email || "");
+  const indexedEmail = normalizeEmail(usernameRecord?.email || "");
+
+  if (indexedEmail) {
+    return indexedEmail;
+  }
+
+  // Older customer registrations may have a profile username but no index
+  // document. Resolve those records once, then let login continue normally.
+  const profileUser = await getUserByUsername(normalizedIdentifier);
+  const resolvedEmail = normalizeEmail(profileUser?.email || "");
 
   if (!resolvedEmail) {
     throw new ApiError(401, "Invalid email, username, or password.");

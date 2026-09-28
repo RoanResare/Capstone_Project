@@ -9,7 +9,14 @@ import {
   updateProfile as updateFirebaseProfile,
 } from "firebase/auth";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { doc, getDoc, getDocFromCache, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  getDocFromCache,
+  serverTimestamp,
+  setDoc,
+  writeBatch,
+} from "firebase/firestore";
 import { auth, db, firebaseConfigError, isFirebaseConfigured, storage } from "../../firebase.js";
 import { compressImageFile } from "../utils/imageCompression.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";
@@ -480,6 +487,13 @@ function buildCustomerProfilePayload(firebaseUser, profile = {}) {
 async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options = {}) {
   const reference = customerProfileReference(firebaseUser.uid);
   const payload = buildCustomerProfilePayload(firebaseUser, profile);
+  const usernameReference = doc(db, "usernames", payload.username);
+  const usernameSnapshot = await getDoc(usernameReference);
+
+  if (usernameSnapshot.exists() && usernameSnapshot.data()?.uid !== firebaseUser.uid) {
+    throw new Error("That username is already in use.");
+  }
+
   const timestampPayload = {
     updatedAt: serverTimestamp(),
   };
@@ -490,14 +504,24 @@ async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options
     timestampPayload.createdAt = options.createdAt;
   }
 
-  await writeCustomerProfileSnapshot(
-    reference,
+  const batch = writeBatch(db);
+  batch.set(reference, { ...payload, ...timestampPayload }, { merge: true });
+  batch.set(
+    usernameReference,
     {
-      ...payload,
-      ...timestampPayload,
+      uid: firebaseUser.uid,
+      email: payload.email,
+      username: payload.username,
+      updatedAt: serverTimestamp(),
+      ...(options.isNew ? { createdAt: serverTimestamp() } : {}),
     },
     { merge: true },
   );
+  try {
+    await batch.commit();
+  } catch (error) {
+    throw normalizeCustomerServiceError(error);
+  }
 
   const snapshot = await readCustomerProfileSnapshot(reference);
   const data = snapshot.exists() ? snapshot.data() : payload;

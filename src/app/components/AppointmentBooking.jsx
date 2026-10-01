@@ -699,6 +699,9 @@ export function AppointmentBooking({ embedded = false }) {
     const resolvedContactNumber = formatPhilippineMobile(formData.contactNumber);
     const petRecordId =
       existingPetRecord?.id || `pet-${currentCustomer.uid}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const appointmentId = `appt-${currentCustomer.uid}-${selectedSlot.id}-${petRecordId}`
+      .replace(/[^a-zA-Z0-9_-]/g, "-")
+      .slice(0, 150);
 
     const nextPetRecordPayload = {
       id: petRecordId,
@@ -724,6 +727,7 @@ export function AppointmentBooking({ embedded = false }) {
       const appointmentSaved = await Promise.resolve(
         createAppointment(
           {
+            id: appointmentId,
             customerId: currentCustomer.uid,
             customerEmail: bookingEmail,
             customerName: formData.fullName.trim(),

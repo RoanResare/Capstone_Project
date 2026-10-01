@@ -467,6 +467,24 @@ function normalizeAppointment(appointment) {
   };
 }
 
+function mergeDuplicateAppointments(appointments = []) {
+  const byBookingKey = new Map();
+
+  appointments.forEach((appointment) => {
+    const key = [
+      appointment.customerId || appointment.customerEmail || "",
+      appointment.slotId || `${appointment.scheduleDate}|${appointment.scheduleTime}`,
+      appointment.petRecordId || appointment.petName || "",
+    ].join("|");
+    const existing = byBookingKey.get(key);
+    if (!existing || getNewestTimestamp(appointment, ["updatedAt"]) >= getNewestTimestamp(existing, ["updatedAt"])) {
+      byBookingKey.set(key, appointment);
+    }
+  });
+
+  return Array.from(byBookingKey.values());
+}
+
 function parseGeneratedIdDate(id) {
   if (typeof id !== "string") {
     return null;
@@ -1176,8 +1194,8 @@ function appReducer(state, action) {
       };
     }
     case "HYDRATE_SCHEDULE_DATA": {
-      const appointments = Array.isArray(action.payload?.appointments)
-        ? action.payload.appointments.map(normalizeAppointment)
+      const appointments = Array.isArray(action.payload?.appointments) && action.payload.appointments.length > 0
+        ? mergeDuplicateAppointments(action.payload.appointments.map(normalizeAppointment))
         : state.appointments;
       const petRecords = Array.isArray(action.payload?.petRecords)
         ? action.payload.petRecords.map(normalizePetRecord)
@@ -1745,7 +1763,11 @@ export function AppProvider({ children }) {
           dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notificationRecords });
         }
       },
-    );
+    ).catch((error) => {
+      if (!cancelled) {
+        console.error("Unable to refresh shared appointment data.", error);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -2258,7 +2280,7 @@ export function AppProvider({ children }) {
     getPendingAppointmentCount(customerId, customerEmail) {
       return countPendingAppointments(state.appointments, customerId, customerEmail);
     },
-    createAppointment(payload, actorName) {
+    async createAppointment(payload, actorName) {
       const pendingAppointmentCount = countPendingAppointments(
         state.appointments,
         payload?.customerId,
@@ -2282,6 +2304,7 @@ export function AppProvider({ children }) {
         ...payload,
       });
 
+      await saveAppointmentDocument(nextAppointment);
       dispatch({
         type: "CREATE_APPOINTMENT",
         payload: nextAppointment,
@@ -2290,7 +2313,7 @@ export function AppProvider({ children }) {
           actorRole: currentUser?.role || "customer",
         },
       });
-      return saveAppointmentDocument(nextAppointment);
+      return true;
     },
     updateAppointment(id, updates, actorName) {
       const existingAppointment = state.appointments.find((appointment) => appointment.id === id);

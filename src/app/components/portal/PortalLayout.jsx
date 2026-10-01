@@ -280,17 +280,6 @@ export function PortalLayout() {
 
           <button
             type="button"
-            onClick={() => {
-              setProfileEditorOpen((open) => !open);
-              setProfileFeedback({ type: "", message: "" });
-            }}
-            className="mt-3 flex w-full items-center justify-center rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
-          >
-            {profileEditorOpen ? "Close profile editor" : "Edit my profile"}
-          </button>
-
-          <button
-            type="button"
             onClick={signOut}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#F4FBFB]"
           >
@@ -356,29 +345,6 @@ export function PortalLayout() {
         </section>
       </div>
 
-      {profileEditorOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#173E44]/35 px-4 py-6">
-          <form onSubmit={saveOwnProfile} className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-[0_24px_60px_rgba(20,43,46,0.25)]">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">Profile information</p>
-                <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">Edit your account</h2>
-              </div>
-              <button type="button" onClick={() => setProfileEditorOpen(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#F6FAFA] text-[#365057]" aria-label="Close profile editor"><X size={16} /></button>
-            </div>
-
-            <div className="mt-5 grid gap-4">
-              <label className="text-sm font-medium text-[#425A60]">Full name<input value={profileForm.fullName} autoComplete="off" onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))} className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]" /></label>
-              <label className="text-sm font-medium text-[#425A60]">Email<input type="email" value={profileForm.email} autoComplete="off" onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]" /></label>
-              <label className="text-sm font-medium text-[#425A60]">Phone number<input value={profileForm.phone} autoComplete="off" onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value.replace(/\D/g, "").slice(0, 11) }))} inputMode="numeric" maxLength={11} className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]" /></label>
-              <label className="text-sm font-medium text-[#425A60]">Current password<div className="relative mt-2"><input type={showProfilePassword ? "text" : "password"} value={profileForm.currentPassword} onChange={(event) => setProfileForm((current) => ({ ...current, currentPassword: event.target.value }))} autoComplete="current-password" className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 pr-11 outline-none focus:border-[#2D9B9B]" placeholder="Required to authorize changes" /><button type="button" onClick={() => setShowProfilePassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]" aria-label={showProfilePassword ? "Hide current password" : "Show current password"}>{showProfilePassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>
-            </div>
-            <p className="mt-3 text-xs text-[#7A9297]">Your password is verified before profile information is changed.</p>
-            <button type="submit" disabled={isSavingProfile} className="mt-5 w-full rounded-lg bg-[#173E44] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{isSavingProfile ? "Saving profile..." : "Save profile"}</button>
-            {profileFeedback.message && <p className={`mt-4 rounded-lg px-4 py-3 text-sm ${profileFeedback.type === "error" ? "bg-[#FBECEF] text-[#B23949]" : "bg-[#EAF7F7] text-[#2D6B73]"}`}>{profileFeedback.message}</p>}
-          </form>
-        </div>
-      )}
     </div>
   );
 }

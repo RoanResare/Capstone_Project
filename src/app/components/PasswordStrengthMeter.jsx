@@ -27,6 +27,10 @@ const segmentClassNames = [
 ];
 
 export function PasswordStrengthMeter({ password }) {
+  if (!password) {
+    return null;
+  }
+
   const strength = getPasswordStrength(password);
 
   return (

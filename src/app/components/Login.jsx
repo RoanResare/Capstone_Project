@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { BrandMark } from "./BrandMark.jsx";
+import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
@@ -198,6 +199,7 @@ export function Login() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <PasswordStrengthMeter password={form.password} />
               {fieldErrors.password && (
                 <p className="mt-2 text-sm text-[#B23949]">{fieldErrors.password}</p>
               )}

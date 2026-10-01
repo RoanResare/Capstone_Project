@@ -350,6 +350,11 @@ export function AppointmentBooking({ embedded = false }) {
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeStep, setActiveStep] = useState(1);
+  const [selectedPetIds, setSelectedPetIds] = useState([]);
+  const customerPetRecords = useMemo(
+    () => petRecords.filter((record) => record.customerId === currentCustomer?.uid),
+    [currentCustomer?.uid, petRecords],
+  );
   const firstAvailableMonthDate = firstAvailableDate ? parseLocalDate(firstAvailableDate) : null;
 
   const selectedService = serviceCatalog.find(
@@ -414,6 +419,13 @@ export function AppointmentBooking({ embedded = false }) {
       contactNumber: toPhilippineMobileLocal(currentCustomer?.phone || current.contactNumber),
     }));
   }, [currentCustomer]);
+
+  useEffect(() => {
+    document.getElementById("appointment-booking-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [activeStep]);
 
   const handleMonthChange = useCallback(
     (amount) => {
@@ -718,6 +730,25 @@ export function AppointmentBooking({ embedded = false }) {
             contactNumber: resolvedContactNumber,
             ownerName: formData.fullName.trim(),
             petRecordId,
+            petRecordIds: [petRecordId, ...selectedPetIds.filter((id) => id !== petRecordId)],
+            petSnapshots: [
+              {
+                id: petRecordId,
+                petName: formData.petName.trim(),
+                petType: resolvedPetType,
+                breed: resolvedBreed,
+                notes: formData.petInformation.trim(),
+              },
+              ...customerPetRecords
+                .filter((record) => selectedPetIds.includes(record.id) && record.id !== petRecordId)
+                .map((record) => ({
+                  id: record.id,
+                  petName: record.petName,
+                  petType: record.petType,
+                  breed: record.breed,
+                  notes: record.notes || "",
+                })),
+            ],
             petSnapshot: {
               id: petRecordId,
               petName: formData.petName.trim(),
@@ -732,6 +763,7 @@ export function AppointmentBooking({ embedded = false }) {
             service: selectedService.name,
             servicePrice: selectedService.priceLabel,
             slotId: selectedSlot.id,
+            slotCapacity: selectedSlot.capacity,
             scheduleDate: selectedSlot.date,
             scheduleTime: selectedSlot.time,
             status: "Pending",
@@ -751,12 +783,13 @@ export function AppointmentBooking({ embedded = false }) {
       setFeedback({ type: "success", message });
       toast.success(message);
       setFormData(createInitialFormData(currentCustomer));
+      setSelectedPetIds([]);
       setErrors({});
       setActiveStep(1);
     } catch (error) {
       console.error("Unable to save appointment booking.", error);
       const message =
-        error?.code === "PENDING_APPOINTMENT_LIMIT"
+        error?.code === "PENDING_APPOINTMENT_LIMIT" || error?.code === "SLOT_FULL"
           ? error.message
           : "Unable to save your appointment. Please try again.";
       setFeedback({ type: "error", message });
@@ -891,7 +924,7 @@ export function AppointmentBooking({ embedded = false }) {
         </motion.section>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form id="appointment-booking-form" onSubmit={handleSubmit} className="space-y-4">
         <div className="rounded-lg bg-white p-3 shadow-[0_10px_24px_rgba(94,81,60,0.1)] md:p-4">
           <div className="grid gap-2 md:grid-cols-3">
             {bookingSteps.map((step) => {
@@ -1214,6 +1247,32 @@ export function AppointmentBooking({ embedded = false }) {
           </div>
 
           <div className="mt-5 grid gap-4">
+            {customerPetRecords.length > 0 && (
+              <fieldset className="rounded-lg border border-[#D9E7E7] bg-[#F8FCFC] p-4">
+                <legend className="px-1 text-sm font-semibold text-[#33545A]">
+                  Include another saved pet in this appointment
+                </legend>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {customerPetRecords.map((record) => (
+                    <label key={record.id} className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm text-[#425A60]">
+                      <input
+                        type="checkbox"
+                        checked={selectedPetIds.includes(record.id)}
+                        onChange={(event) =>
+                          setSelectedPetIds((current) =>
+                            event.target.checked
+                              ? [...new Set([...current, record.id])]
+                              : current.filter((id) => id !== record.id),
+                          )
+                        }
+                        className="h-4 w-4 rounded border-[#BFD6D6]"
+                      />
+                      <span>{record.petName} <span className="text-[#7A979C]">({record.petType})</span></span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <label className="block text-sm font-medium text-[#425A60]">
               Full name
             </label>

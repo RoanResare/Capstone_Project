@@ -19,6 +19,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
 import { compressImageFile, compressImageFileToDataUrl } from "../utils/imageCompression.js";
+import { changeCustomerPassword } from "../services/customerAccount.js";
+import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
@@ -226,6 +228,8 @@ export function CustomerProfile() {
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
   const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
   const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     const tabFromQuery = searchParams.get("tab") || "";
@@ -350,7 +354,11 @@ export function CustomerProfile() {
   };
 
   const handleProfileChange = (field) => (event) => {
-    const value = field === "phone" ? event.target.value.replace(/\D/g, "").slice(0, 11) : event.target.value;
+    const value = field === "phone"
+      ? event.target.value.replace(/\D/g, "").slice(0, 11)
+      : field === "username"
+        ? event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 24)
+        : event.target.value;
     setProfileForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -579,6 +587,24 @@ export function CustomerProfile() {
       setProfileVerificationPassword("");
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const savePassword = async (event) => {
+    event.preventDefault();
+    if (isChangingPassword) return;
+    setIsChangingPassword(true);
+    try {
+      await changeCustomerPassword(passwordForm.current, passwordForm.next, passwordForm.confirm);
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      setFeedback({ type: "success", message: "Password changed successfully." });
+      toast.success("Password changed successfully.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to change your password.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -1097,8 +1123,8 @@ export function CustomerProfile() {
                         value={profileForm.username}
                         autoComplete="off"
                         onChange={handleProfileChange("username")}
-                        maxLength={32}
-                        pattern="[A-Za-z0-9_]+"
+                        maxLength={24}
+                        pattern="[a-z0-9._-]{3,24}"
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
@@ -1161,6 +1187,51 @@ export function CustomerProfile() {
                     className="rounded-[20px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A] disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
                   >
                     {isSavingProfile ? "Saving profile..." : "Save profile"}
+                  </button>
+                </form>
+
+                <form onSubmit={savePassword} className="mt-8 rounded-[28px] bg-[#FBFDFC] p-6">
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
+                    Change password
+                  </p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <input
+                      type="password"
+                      value={passwordForm.current}
+                      onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))}
+                      autoComplete="current-password"
+                      className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]"
+                      placeholder="Current password"
+                      required
+                    />
+                    <div>
+                      <input
+                        type="password"
+                        value={passwordForm.next}
+                        onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))}
+                        autoComplete="new-password"
+                        className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]"
+                        placeholder="New password"
+                        required
+                      />
+                      <PasswordStrengthMeter password={passwordForm.next} />
+                    </div>
+                    <input
+                      type="password"
+                      value={passwordForm.confirm}
+                      onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))}
+                      autoComplete="new-password"
+                      className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]"
+                      placeholder="Confirm new password"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isChangingPassword}
+                    className="mt-4 rounded-[18px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {isChangingPassword ? "Changing password..." : "Change password"}
                   </button>
                 </form>
 

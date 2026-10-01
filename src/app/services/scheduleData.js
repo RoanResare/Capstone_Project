@@ -1,4 +1,13 @@
-import { collection, deleteDoc, doc, getDocs, setDoc } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  runTransaction,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 
 const COLLECTIONS = {
@@ -65,14 +74,65 @@ async function deleteDocument(collectionName, id = "") {
   return true;
 }
 
+export async function loadScheduleDocuments(collectionName) {
+  if (!canSyncScheduleData()) {
+    return [];
+  }
+
+  try {
+    const snapshot = await getDocs(collection(db, collectionName));
+    return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+  } catch (error) {
+    logSyncError(`${collectionName} load`, error);
+    return [];
+  }
+}
+
 function logSyncError(action, error) {
   console.error(`[schedule-data] ${action} failed.`, error);
 }
 
 export function saveAppointmentDocument(appointment) {
-  return saveDocument(COLLECTIONS.appointments, appointment).catch((error) => {
+  const save = async () => {
+    if (!canSyncScheduleData()) {
+      return true;
+    }
+
+    const id = normalizeString(appointment?.id);
+    const slotId = normalizeString(appointment?.slotId);
+    if (!id || !slotId) {
+      return saveDocument(COLLECTIONS.appointments, appointment);
+    }
+
+    const appointmentRef = doc(db, COLLECTIONS.appointments, id);
+    await runTransaction(db, async (transaction) => {
+      const existing = await transaction.get(appointmentRef);
+      if (!existing.exists()) {
+        const slotQuery = query(
+          collection(db, COLLECTIONS.appointments),
+          where("slotId", "==", slotId),
+        );
+        const matchingAppointments = await transaction.get(slotQuery);
+        const activeCount = matchingAppointments.docs.filter((entry) =>
+          ["Pending", "Confirmed", "Accepted"].includes(entry.data()?.status),
+        ).length;
+        const capacity = Math.max(Number(appointment.slotCapacity) || 1, 1);
+
+        if (activeCount >= capacity) {
+          const error = new Error("That time slot is already full. Please choose another slot.");
+          error.code = "SLOT_FULL";
+          throw error;
+        }
+      }
+
+      transaction.set(appointmentRef, removeUndefinedFields(appointment), { merge: true });
+    });
+    return true;
+  };
+
+  return save().catch((error) => {
     logSyncError("Appointment sync", error);
-    return false;
+    throw error;
   });
 }
 
@@ -98,31 +158,23 @@ export function savePhotoModerationDocument(record) {
 }
 
 export async function loadPhotoModerationDocuments() {
-  if (!canSyncScheduleData()) {
-    return [];
-  }
-
-  try {
-    const snapshot = await getDocs(collection(db, COLLECTIONS.photoModeration));
-    return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
-  } catch (error) {
-    logSyncError("Photo moderation load", error);
-    return [];
-  }
+  return loadScheduleDocuments(COLLECTIONS.photoModeration);
 }
 
 export async function loadNotificationDocuments() {
-  if (!canSyncScheduleData()) {
-    return [];
-  }
+  return loadScheduleDocuments(COLLECTIONS.notifications);
+}
 
-  try {
-    const snapshot = await getDocs(collection(db, COLLECTIONS.notifications));
-    return snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
-  } catch (error) {
-    logSyncError("Notification load", error);
-    return [];
-  }
+export function loadAppointmentDocuments() {
+  return loadScheduleDocuments(COLLECTIONS.appointments);
+}
+
+export function loadPetRecordDocuments() {
+  return loadScheduleDocuments(COLLECTIONS.petRecords);
+}
+
+export function loadAvailabilitySlotDocuments() {
+  return loadScheduleDocuments(COLLECTIONS.availabilitySlots);
 }
 
 export function saveNotificationDocument(notification) {

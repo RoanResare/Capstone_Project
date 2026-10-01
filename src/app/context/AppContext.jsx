@@ -16,6 +16,9 @@ import {
   deleteAvailabilitySlotDocument,
   deletePetRecordDocument,
   loadNotificationDocuments,
+  loadAppointmentDocuments,
+  loadAvailabilitySlotDocuments,
+  loadPetRecordDocuments,
   loadPhotoModerationDocuments,
   saveAppointmentDocument,
   saveAvailabilitySlotDocument,
@@ -180,6 +183,25 @@ function normalizePortalUser(user) {
 
   return {
     ...current,
+    ownerName:
+      typeof current.ownerName === "string" && current.ownerName.trim()
+        ? current.ownerName.trim()
+        : typeof current.customerName === "string" && current.customerName.trim()
+          ? current.customerName.trim()
+          : "Customer",
+    customerEmail: normalizeEmail(current.customerEmail || current.email || ""),
+    petName:
+      typeof current.petName === "string" && current.petName.trim()
+        ? current.petName.trim()
+        : typeof current.petSnapshot?.petName === "string"
+          ? current.petSnapshot.petName.trim()
+          : "Pet",
+    service:
+      typeof current.service === "string" && current.service.trim()
+        ? current.service.trim()
+        : typeof current.serviceName === "string"
+          ? current.serviceName.trim()
+          : "Appointment",
     id,
     uid: id,
     name,
@@ -1153,6 +1175,24 @@ function appReducer(state, action) {
         ),
       };
     }
+    case "HYDRATE_SCHEDULE_DATA": {
+      const appointments = Array.isArray(action.payload?.appointments)
+        ? action.payload.appointments.map(normalizeAppointment)
+        : state.appointments;
+      const petRecords = Array.isArray(action.payload?.petRecords)
+        ? action.payload.petRecords.map(normalizePetRecord)
+        : state.petRecords;
+      const availabilitySlots = Array.isArray(action.payload?.availabilitySlots)
+        ? action.payload.availabilitySlots
+        : state.availabilitySlots;
+
+      return {
+        ...state,
+        appointments,
+        petRecords,
+        availabilitySlots,
+      };
+    }
     case "HYDRATE_NOTIFICATIONS": {
       const notificationsById = new Map(
         state.notifications.map((notification) => [notification.id, normalizeNotification(notification)]),
@@ -1680,11 +1720,22 @@ export function AppProvider({ children }) {
 
     let cancelled = false;
 
-    Promise.all([loadPhotoModerationDocuments(), loadNotificationDocuments()]).then(
-      ([photoRecords, notificationRecords]) => {
+    Promise.all([
+      loadAppointmentDocuments(),
+      loadPetRecordDocuments(),
+      loadAvailabilitySlotDocuments(),
+      loadPhotoModerationDocuments(),
+      loadNotificationDocuments(),
+    ]).then(
+      ([appointments, petRecords, availabilitySlots, photoRecords, notificationRecords]) => {
         if (cancelled) {
           return;
         }
+
+        dispatch({
+          type: "HYDRATE_SCHEDULE_DATA",
+          payload: { appointments, petRecords, availabilitySlots },
+        });
 
         if (photoRecords.length > 0) {
           dispatch({ type: "HYDRATE_PHOTO_MODERATION", payload: photoRecords });

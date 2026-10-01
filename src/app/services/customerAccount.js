@@ -6,6 +6,7 @@ import {
   reauthenticateWithCredential,
   signInWithEmailAndPassword,
   updateEmail,
+  updatePassword,
   updateProfile as updateFirebaseProfile,
 } from "firebase/auth";
 import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -297,6 +298,29 @@ export async function verifyCustomerPassword(password) {
     activeUser,
     EmailAuthProvider.credential(activeUser.email, normalizedPassword),
   );
+}
+
+export async function changeCustomerPassword(currentPassword, newPassword, confirmPassword) {
+  ensureCustomerFirebaseReady();
+
+  if (!newPassword || newPassword !== confirmPassword) {
+    throw new Error("New passwords do not match.");
+  }
+
+  if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+    throw new Error("Password must be at least 8 characters and include uppercase, lowercase, number, and special character.");
+  }
+
+  const activeUser = auth.currentUser;
+  if (!activeUser?.email) {
+    throw new Error("You must be signed in to change your password.");
+  }
+
+  await reauthenticateWithCredential(
+    activeUser,
+    EmailAuthProvider.credential(activeUser.email, currentPassword),
+  );
+  await updatePassword(activeUser, newPassword);
 }
 
 function validateCustomerPhotoFile(file) {

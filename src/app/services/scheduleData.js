@@ -105,28 +105,39 @@ export function saveAppointmentDocument(appointment) {
     }
 
     const appointmentRef = doc(db, COLLECTIONS.appointments, id);
-    await runTransaction(db, async (transaction) => {
-      const existing = await transaction.get(appointmentRef);
-      if (!existing.exists()) {
-        const slotQuery = query(
-          collection(db, COLLECTIONS.appointments),
-          where("slotId", "==", slotId),
-        );
-        const matchingAppointments = await transaction.get(slotQuery);
-        const activeCount = matchingAppointments.docs.filter((entry) =>
-          ["Pending", "Confirmed", "Accepted"].includes(entry.data()?.status),
-        ).length;
-        const capacity = Math.max(Number(appointment.slotCapacity) || 1, 1);
+    try {
+      await runTransaction(db, async (transaction) => {
+        const existing = await transaction.get(appointmentRef);
+        if (!existing.exists()) {
+          const slotQuery = query(
+            collection(db, COLLECTIONS.appointments),
+            where("slotId", "==", slotId),
+          );
+          const matchingAppointments = await transaction.get(slotQuery);
+          const activeCount = matchingAppointments.docs.filter((entry) =>
+            ["Pending", "Confirmed", "Accepted"].includes(entry.data()?.status),
+          ).length;
+          const capacity = Math.max(Number(appointment.slotCapacity) || 1, 1);
 
-        if (activeCount >= capacity) {
-          const error = new Error("That time slot is already full. Please choose another slot.");
-          error.code = "SLOT_FULL";
-          throw error;
+          if (activeCount >= capacity) {
+            const error = new Error("That time slot is already full. Please choose another slot.");
+            error.code = "SLOT_FULL";
+            throw error;
+          }
         }
+
+        transaction.set(appointmentRef, removeUndefinedFields(appointment), { merge: true });
+      });
+    } catch (error) {
+      if (error?.code === "SLOT_FULL") {
+        throw error;
       }
 
-      transaction.set(appointmentRef, removeUndefinedFields(appointment), { merge: true });
-    });
+      // The booking ID is deterministic, so a direct idempotent write is safe
+      // when a transaction is rejected by a temporary Firestore client state.
+      console.warn("[schedule-data] Appointment transaction failed; retrying direct save.", error);
+      await setDoc(appointmentRef, removeUndefinedFields(appointment), { merge: true });
+    }
     return true;
   };
 
@@ -139,7 +150,7 @@ export function saveAppointmentDocument(appointment) {
 export function savePetRecordDocument(record) {
   return saveDocument(COLLECTIONS.petRecords, record).catch((error) => {
     logSyncError("Pet record sync", error);
-    return false;
+    throw error;
   });
 }
 

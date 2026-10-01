@@ -724,6 +724,10 @@ export function AppointmentBooking({ embedded = false }) {
         savePetRecord(nextPetRecordPayload, formData.fullName.trim()),
       );
 
+      if (!petSaved) {
+        throw new Error("Your pet information could not be saved. Please try again.");
+      }
+
       const appointmentSaved = await Promise.resolve(
         createAppointment(
           {
@@ -779,7 +783,7 @@ export function AppointmentBooking({ embedded = false }) {
         ),
       );
 
-      if (!petSaved || !appointmentSaved) {
+      if (!appointmentSaved) {
         throw new Error("The booking could not be synchronized.");
       }
 
@@ -795,7 +799,7 @@ export function AppointmentBooking({ embedded = false }) {
       const message =
         error?.code === "PENDING_APPOINTMENT_LIMIT" || error?.code === "SLOT_FULL"
           ? error.message
-          : "Unable to save your appointment. Please try again.";
+          : error?.message || "Unable to save your appointment. Please try again.";
       setFeedback({ type: "error", message });
       toast.error(message);
     } finally {

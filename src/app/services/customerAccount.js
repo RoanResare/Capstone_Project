@@ -214,7 +214,9 @@ function buildCustomerProfile(firebaseUser, profile = {}) {
     role: "customer",
     accountStatus,
     status: accountStatus,
-    photoURL: normalizeString(profile.photoURL || firebaseUser?.photoURL),
+    photoURL: Object.prototype.hasOwnProperty.call(profile, "photoURL")
+      ? normalizeString(profile.photoURL)
+      : normalizeString(firebaseUser?.photoURL),
     profilePhotoPath: normalizeString(profile.profilePhotoPath),
     profilePhotoUploadCount: Math.max(
       Number(profile.profilePhotoUploadCount) || (profile.photoURL ? 1 : 0),
@@ -875,7 +877,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
         nextPhotoURL = await buildFirestoreProfilePhotoDataUrl(nextPhotoFile);
         nextProfilePhotoPath = "";
       }
-    } else if (shouldRemovePhoto && existingProfile.profilePhotoPath) {
+    } else if (shouldRemovePhoto) {
       nextPhotoURL = "";
       nextProfilePhotoPath = "";
     }

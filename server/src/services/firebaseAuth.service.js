@@ -80,24 +80,63 @@ async function generatePasswordResetLink(email) {
     );
   }
 
+  let actionCodeUrl = env.auth.passwordResetUrl;
+
+  try {
+    const parsedActionCodeUrl = new URL(env.auth.passwordResetUrl);
+
+    if (!['http:', 'https:'].includes(parsedActionCodeUrl.protocol)) {
+      throw new Error("Password reset URL must use HTTP or HTTPS.");
+    }
+
+    parsedActionCodeUrl.search = "";
+    parsedActionCodeUrl.hash = "";
+    parsedActionCodeUrl.pathname = "/reset-password";
+    actionCodeUrl = parsedActionCodeUrl.toString();
+  } catch (error) {
+    console.warn("[firebase-auth] Invalid configured password reset URL; using production fallback.", {
+      configuredUrl: env.auth.passwordResetUrl,
+      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
+    actionCodeUrl = "https://capstone-project-1-yqto.onrender.com/reset-password";
+  }
+
   const actionCodeSettings = {
-    url: env.auth.passwordResetUrl,
-    handleCodeInApp: true,
+    url: actionCodeUrl,
+    // The controller converts Firebase's provider link into the app URL, so
+    // Dynamic Links are not needed for this web reset flow.
+    handleCodeInApp: false,
   };
 
   try {
     return await firebaseAdminAuth.generatePasswordResetLink(email, actionCodeSettings);
   } catch (error) {
     console.error("[firebase-auth] Password reset link generation failed.", {
-      email,
       actionCodeUrl: actionCodeSettings.url,
+      firebaseCode: error?.code || error?.errorInfo?.code || "",
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
     });
-    throw new ApiError(
-      500,
-      "Unable to generate a Firebase password reset link right now.",
-      error instanceof Error ? { message: error.message } : null,
-    );
+
+    try {
+      // The app only needs Firebase's oobCode. This fallback avoids failing
+      // the request when Firebase rejects a continuation URL configuration.
+      const providerLink = await firebaseAdminAuth.generatePasswordResetLink(email);
+      console.warn("[firebase-auth] Generated password reset link without action-code settings.");
+      return providerLink;
+    } catch (fallbackError) {
+      console.error("[firebase-auth] Password reset link fallback also failed.", {
+        firebaseCode: fallbackError?.code || fallbackError?.errorInfo?.code || "",
+        error:
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : String(fallbackError || "Unknown error"),
+      });
+      throw new ApiError(
+        500,
+        "Unable to generate a Firebase password reset link right now.",
+        fallbackError instanceof Error ? { message: fallbackError.message } : null,
+      );
+    }
   }
 }
 

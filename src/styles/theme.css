@@ -87,6 +87,29 @@
     color: var(--foreground);
   }
 
+  .portal-scroll-panel {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #b7cecf transparent;
+  }
+
+  .portal-scroll-panel::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .portal-scroll-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .portal-scroll-panel::-webkit-scrollbar-thumb {
+    background: #b7cecf;
+    border-radius: 999px;
+  }
+
+  .portal-scroll-panel::-webkit-scrollbar-thumb:hover {
+    background: #7da9ab;
+  }
+
   /**
   * Default typography styles for HTML elements (h1-h4, p, label, button, input).
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.

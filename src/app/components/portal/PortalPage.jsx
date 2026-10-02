@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   Check,
@@ -415,7 +415,7 @@ function PanelCard({ title, description, children, className = "", bodyClassName
         <h3 className="text-xl font-semibold text-[#20343B]">{title}</h3>
         {description && <p className="mt-1 text-sm text-[#607277]">{description}</p>}
       </div>
-        <div className={`mt-4 ${bodyClassName}`}>{children}</div>
+      <div className={`mt-4 min-w-0 ${bodyClassName}`}>{children}</div>
     </section>
   );
 }
@@ -679,7 +679,7 @@ function RecentNotificationList({ currentUser, notifications, openAppointment })
         />
       ) : (
         <div className="space-y-3">
-          {notifications.slice(0, 3).map((notification) => {
+          {notifications.slice(0, 5).map((notification) => {
             const isUnread = !notification.readBy.includes(currentUser.id);
 
             return (
@@ -808,7 +808,7 @@ function AppointmentsWorkspace({
         <MetricCard label="Rejected / Cancelled" value={blockedCount} tone="rose" />
       </div>
 
-      <div className="grid gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid min-w-0 gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:items-stretch">
         <PanelCard
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
@@ -845,7 +845,7 @@ function AppointmentsWorkspace({
                 message="Try another filter or wait for new customer bookings to reach the queue."
               />
             ) : (
-              <div className="max-h-[430px] space-y-2.5 overflow-y-auto pr-1 xl:min-h-0 xl:flex-1">
+              <div className="portal-scroll-panel min-h-0 max-h-[430px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-1">
                 {filteredAppointments.map((appointment) => {
                   const risk = getAppointmentRisk(appointment, appointments);
 
@@ -923,7 +923,8 @@ function AppointmentsWorkspace({
   );
 }
 
-function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
+function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePetRecord }) {
+  const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState("");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
@@ -1075,11 +1076,11 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
         <MetricCard label="Records With Notes" value={petsWithNotes} tone="gold" />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
+      <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
         <PanelCard
           title="Manage pet records"
           description="Review booking-created customer pets, keep medical notes current, and prepare future appointments faster."
-          className="h-full xl:flex xl:min-h-0 xl:flex-col"
+          className="h-full min-w-0 xl:flex xl:min-h-0 xl:flex-col"
           bodyClassName="xl:flex xl:min-h-0 xl:flex-1"
         >
           <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:space-y-0 xl:gap-4">
@@ -1105,7 +1106,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 message="Customer pet profiles will appear here as soon as they are created or booked."
               />
             ) : (
-              <div className="max-h-[460px] space-y-2.5 overflow-y-auto pr-1 xl:min-h-0 xl:flex-1 xl:max-h-none">
+              <div className="portal-scroll-panel min-h-0 max-h-[460px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-1 xl:max-h-none">
                 {filteredPetRecords.map((record) => {
                   const appointmentCount = linkedAppointmentCount(record);
 
@@ -1160,6 +1161,8 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
         <PanelCard
           title="Pet record details"
           description="Update pet profile information, visit history, and medical notes for staff visibility."
+          className="h-full min-w-0 xl:flex xl:min-h-0 xl:flex-col"
+          bodyClassName="xl:min-h-0 xl:flex-1"
         >
           {selectedRecord ? (
             <form onSubmit={saveRecord} className="space-y-5">
@@ -1359,6 +1362,17 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
           )}
         </PanelCard>
       </div>
+
+      <RecentNotificationList
+        currentUser={currentUser}
+        notifications={visibleNotifications}
+        openAppointment={(appointmentId, notificationId = "") => {
+          const params = new URLSearchParams();
+          if (appointmentId) params.set("appointment", appointmentId);
+          if (notificationId) params.set("notification", notificationId);
+          navigate(`/portal/appointments${params.toString() ? `?${params.toString()}` : ""}`);
+        }}
+      />
     </div>
   );
 }
@@ -2060,6 +2074,7 @@ export function PortalPage() {
       <PetRecordsWorkspace
         currentUser={currentUser}
         state={state}
+        visibleNotifications={visibleNotifications}
         savePetRecord={savePetRecord}
       />
     );

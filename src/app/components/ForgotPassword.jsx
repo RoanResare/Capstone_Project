@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { getPasswordRecoveryIdentifierError } from "../utils/passwordRecovery.js";
+import { getPasswordRecoveryEmailError } from "../utils/passwordRecovery.js";
 
 export function ForgotPassword() {
   const { isOnline, requestPasswordReset } = useAuth();
@@ -21,7 +21,7 @@ export function ForgotPassword() {
       return;
     }
 
-    const validationError = getPasswordRecoveryIdentifierError(identifier);
+    const validationError = getPasswordRecoveryEmailError(identifier);
     if (validationError) {
       setIdentifierError(validationError);
       setFeedback({ type: "error", message: validationError });
@@ -64,8 +64,8 @@ export function ForgotPassword() {
             Request a secure password reset link.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Enter the email address or phone number used for sign-in. The backend resolves the
-            account and delivers a direct Firebase reset link to this app.
+            Enter the email address used for sign-in. The backend resolves the account and
+            delivers a direct Firebase reset link to this app.
           </p>
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
@@ -97,8 +97,8 @@ export function ForgotPassword() {
                     Email recovery
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[#607277]">
-                    Use the same email address or phone number you registered with. A valid phone
-                    number is matched to its account email before the reset link is sent.
+                    Use the same email address you registered with. A valid email is matched to
+                    its Firebase account before the reset link is sent.
                   </p>
                 </div>
               </div>
@@ -111,17 +111,17 @@ export function ForgotPassword() {
             )}
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email or phone number</label>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email address</label>
               <input
-                type="text"
-                inputMode="text"
+                type="email"
+                inputMode="email"
                 value={identifier}
                 autoComplete="off"
                 onChange={(event) => {
                   const value = event.target.value;
                   setIdentifier(value);
                   if (identifierError) {
-                    setIdentifierError(getPasswordRecoveryIdentifierError(value));
+                    setIdentifierError(getPasswordRecoveryEmailError(value));
                   }
                 }}
                 disabled={isSubmitting}
@@ -129,7 +129,7 @@ export function ForgotPassword() {
                 className={`w-full rounded-[20px] border px-4 py-3 outline-none transition focus:border-[#2D9B9B] ${
                   identifierError ? "border-[#D95A6A]" : "border-[#D9E7E7]"
                 }`}
-                placeholder="Enter your email or 11-digit phone number"
+                placeholder="Enter your email address"
               />
               {identifierError && (
                 <p className="mt-2 text-sm text-[#B23949]">{identifierError}</p>

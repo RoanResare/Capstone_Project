@@ -260,18 +260,19 @@ function validateLoginPayload(payload = {}) {
 
 function validateForgotPasswordPayload(payload = {}) {
   const identifier = normalizeString(payload.identifier || payload.email);
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(identifier);
-  const isPhilippineMobile = /^09\d{9}$/.test(identifier);
+  const isEmail =
+    identifier.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(identifier) &&
+    !identifier.includes("..") &&
+    !identifier.startsWith(".") &&
+    !identifier.endsWith(".");
 
   if (!identifier) {
-    throw new ApiError(400, "Email address or phone number is required.");
+    throw new ApiError(400, "Email address is required.");
   }
 
-  if (!isEmail && !isPhilippineMobile) {
-    throw new ApiError(
-      400,
-      "Enter a valid email address or an 11-digit Philippine mobile number starting with 09.",
-    );
+  if (!isEmail) {
+    throw new ApiError(400, "Enter a valid email address, such as name@example.com.");
   }
 
   return { identifier };
@@ -673,7 +674,7 @@ async function forgotPassword(req, res) {
     ? await findUserByEmailCaseInsensitive(normalizedIdentifier)
     : await getUserByPhone(identifier);
   const email = normalizeEmail(storedUser?.email || (isEmail ? normalizedIdentifier : ""));
-  const genericMessage = "If an account exists for that email address or phone number, a password reset link has been sent.";
+  const genericMessage = "If an account exists for that email address, a password reset link has been sent.";
 
   let firebaseUser = null;
 

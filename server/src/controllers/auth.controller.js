@@ -262,7 +262,7 @@ function validateForgotPasswordPayload(payload = {}) {
   const identifier = normalizeString(payload.identifier || payload.email);
   const isEmail =
     identifier.length <= 254 &&
-    /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(identifier) &&
+    /^[^\s@]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.com$/i.test(identifier) &&
     !identifier.includes("..") &&
     !identifier.startsWith(".") &&
     !identifier.endsWith(".");
@@ -272,7 +272,7 @@ function validateForgotPasswordPayload(payload = {}) {
   }
 
   if (!isEmail) {
-    throw new ApiError(400, "Enter a valid email address, such as name@example.com.");
+    throw new ApiError(400, "Enter a valid .com email address, such as name@example.com.");
   }
 
   return { identifier };

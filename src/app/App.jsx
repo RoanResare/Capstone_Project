@@ -7,7 +7,7 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useToast } from "./context/ToastContext.jsx";
 
-const INACTIVITY_LIMIT_MS = 5 * 60 * 1000;
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
 const INACTIVITY_WARNING_MS = INACTIVITY_LIMIT_MS - 30 * 1000;
 
 function InactivityGuard() {
@@ -41,7 +41,7 @@ function InactivityGuard() {
       }, INACTIVITY_WARNING_MS);
       logoutTimer = window.setTimeout(async () => {
         if (warned) {
-          toastRef.current.info("Your session ended after 5 minutes of inactivity.");
+          toastRef.current.info("Your session ended after 15 minutes of inactivity.");
         }
         await signOutRef.current();
       }, INACTIVITY_LIMIT_MS);

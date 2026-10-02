@@ -10,6 +10,7 @@ import { ResetPassword } from "./components/ResetPassword.jsx";
 import { RouteErrorScreen } from "./components/RouteErrorScreen.jsx";
 import { UnauthorizedPage } from "./components/UnauthorizedPage.jsx";
 import { RequireAuth } from "./components/portal/RequireAuth.jsx";
+import { PortalSessionRouteGuard } from "./components/portal/PortalSessionRouteGuard.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { resolveHomePath } from "./utils/roleUtils.js";
 
@@ -168,9 +169,11 @@ export const router = createBrowserRouter([
     path: "/portal",
     errorElement: <RouteErrorScreen />,
     element: (
-      <RequireAuth allowedRoles={["admin", "staff"]}>
-        <RouteLoader Component={PortalLayout} />
-      </RequireAuth>
+      <PortalSessionRouteGuard>
+        <RequireAuth allowedRoles={["admin", "staff"]}>
+          <RouteLoader Component={PortalLayout} />
+        </RequireAuth>
+      </PortalSessionRouteGuard>
     ),
     children: [
       { index: true, element: <Navigate to="appointments" replace /> },
@@ -187,5 +190,13 @@ export const router = createBrowserRouter([
       },
       { path: ":moduleId", element: <Navigate to="/portal/appointments" replace /> },
     ],
+  },
+  {
+    path: "*",
+    element: (
+      <PortalSessionRouteGuard>
+        <RouteErrorScreen />
+      </PortalSessionRouteGuard>
+    ),
   },
 ]);

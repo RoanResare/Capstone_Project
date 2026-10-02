@@ -6,6 +6,7 @@ import { BrandMark } from "./BrandMark.jsx";
 import { AskLlamaAI } from "./AskLlamaAI.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
+import { PortalSessionRouteGuard } from "./portal/PortalSessionRouteGuard.jsx";
 
 const landingNavItems = [{ id: "home", label: "Home" }];
 
@@ -120,7 +121,8 @@ export function Layout() {
     }`;
 
   return (
-    <div className="min-h-screen bg-[#F6F0E7]">
+    <PortalSessionRouteGuard>
+      <div className="min-h-screen bg-[#F6F0E7]">
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#2D9B9B] shadow-[0_2px_16px_rgba(34,65,71,0.15)]">
         <div className="mx-auto flex max-w-[1260px] items-center justify-between px-4 py-2 md:px-7">
           <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
@@ -315,6 +317,7 @@ export function Layout() {
         <Outlet />
       </main>
       <AskLlamaAI />
-    </div>
+      </div>
+    </PortalSessionRouteGuard>
   );
 }

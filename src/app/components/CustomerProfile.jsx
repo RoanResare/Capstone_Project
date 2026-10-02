@@ -207,6 +207,7 @@ export function CustomerProfile() {
     updateAppointment,
     visibleNotifications,
     submitPhotoForReview,
+    cancelPhotoForReview,
   } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [activeTab, setActiveTab] = useState("overview");
@@ -513,7 +514,10 @@ export function CustomerProfile() {
   };
 
   const clearProfilePhoto = async () => {
-    if (!profileForm.photoURL || isSavingPhoto) {
+    const pendingPhotoId =
+      profilePhotoModeration?.status === "pending" ? profilePhotoModeration.id : "";
+
+    if ((!profileForm.photoURL && !pendingPhotoId) || isSavingPhoto) {
       return;
     }
 
@@ -531,6 +535,16 @@ export function CustomerProfile() {
         setFeedback({ type: "error", message });
         toast.error(message);
         return;
+      }
+
+      if (pendingPhotoId) {
+        const cancelResult = await cancelPhotoForReview(pendingPhotoId);
+        if (!cancelResult.ok) {
+          const message = cancelResult.error || "Unable to cancel the pending profile photo.";
+          setFeedback({ type: "error", message });
+          toast.error(message);
+          return;
+        }
       }
 
       applySavedProfile(result.user, "Profile photo removed successfully.");

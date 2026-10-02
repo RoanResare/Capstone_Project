@@ -901,6 +901,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
           status: normalizeAccountStatus(existingProfile.status),
           photoURL: nextPhotoURL,
           profilePhotoPath: nextProfilePhotoPath,
+          profilePhotoModerationId: shouldRemovePhoto ? "" : undefined,
           profilePhotoUploadCount: nextProfilePhotoUploadCount,
           updatedAt: serverTimestamp(),
         },

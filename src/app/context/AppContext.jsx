@@ -15,6 +15,7 @@ import { useAuth } from "./AuthContext.jsx";
 import {
   deleteAvailabilitySlotDocument,
   deletePetRecordDocument,
+  deletePhotoModerationDocument,
   loadNotificationDocuments,
   loadAppointmentDocuments,
   loadAvailabilitySlotDocuments,
@@ -1533,6 +1534,13 @@ function appReducer(state, action) {
           : [nextPhoto, ...state.photoModeration],
       };
     }
+    case "REMOVE_PHOTO_MODERATION":
+      return {
+        ...state,
+        photoModeration: state.photoModeration.filter(
+          (photo) => photo.id !== action.payload.id,
+        ),
+      };
     case "MODERATE_PHOTO": {
       const target = state.photoModeration.find((photo) => photo.id === action.payload.id);
       if (!target) {
@@ -2202,6 +2210,32 @@ export function AppProvider({ children }) {
       }
 
       return savePhotoModerationDocument(nextPhoto).then(() => nextPhoto);
+    },
+    cancelPhotoForReview(id) {
+      if (!currentUser?.uid) {
+        return Promise.resolve({ ok: false, error: "You must be signed in to cancel a photo upload." });
+      }
+
+      const photo = state.photoModeration.find((record) => record.id === id);
+      const belongsToCustomer =
+        photo?.assetType === "profile" &&
+        photo.status === "pending" &&
+        [photo.ownerId, photo.assetId].includes(currentUser.uid);
+
+      if (!belongsToCustomer) {
+        return Promise.resolve({ ok: false, error: "That pending photo is no longer available." });
+      }
+
+      dispatch({ type: "REMOVE_PHOTO_MODERATION", payload: { id } });
+
+      return deletePhotoModerationDocument(id).then((ok) => {
+        if (!ok) {
+          dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: photo });
+          return { ok: false, error: "Unable to cancel the pending photo upload." };
+        }
+
+        return { ok: true };
+      });
     },
     moderatePhoto(id, status, moderationNote = "") {
       if (!currentUser || currentUser.role !== "admin") {

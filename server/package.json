@@ -4,6 +4,7 @@
   "description": "Backend API for Charming Fur-fection Pet Care",
   "main": "server.js",
   "scripts": {
+    "build": "node scripts/buildFrontendForServer.mjs",
     "dev": "node ../scripts/dev-server.mjs",
     "start": "node server.js",
     "repair:profiles": "node scripts/repairUserProfiles.js",

@@ -16,10 +16,10 @@ const app = express();
 app.set("trust proxy", 1);
 const projectRoot = path.resolve(__dirname, "../..");
 const frontendIndexCandidates = [
-  path.join(process.cwd(), "../dist/index.html"),
-  path.join(projectRoot, "dist/index.html"),
-  path.join(process.cwd(), "dist/index.html"),
   path.join(__dirname, "../dist/index.html"),
+  path.join(projectRoot, "dist/index.html"),
+  path.join(process.cwd(), "../dist/index.html"),
+  path.join(process.cwd(), "dist/index.html"),
 ];
 const frontendIndexPath =
   frontendIndexCandidates.find((candidate) => fs.existsSync(candidate)) ||

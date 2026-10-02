@@ -24,6 +24,7 @@ const frontendIndexPath =
   frontendIndexCandidates.find((candidate) => fs.existsSync(candidate)) ||
   frontendIndexCandidates[0];
 const frontendDistPath = path.dirname(frontendIndexPath);
+const resetPasswordIndexPath = path.join(__dirname, "../dist/index.html");
 const productionFrontendOrigin = "https://capstone-project-1-yqto.onrender.com";
 
 const allowedOrigins = Array.from(
@@ -99,7 +100,24 @@ app.get("/", (_req, res, next) => {
 
 // Firebase password-reset links include mode/oobCode query parameters. Serve
 // the SPA shell explicitly so Render never treats this browser route as a 404.
-app.get(/^\/reset-password(?:\/.*)?$/, sendFrontendIndex);
+app.get("/reset-password", (_req, res, next) => {
+  const indexPath = fs.existsSync(resetPasswordIndexPath)
+    ? resetPasswordIndexPath
+    : frontendIndexPath;
+
+  if (!fs.existsSync(indexPath)) {
+    return next();
+  }
+
+  res.set("Cache-Control", "no-store");
+  return res.sendFile(indexPath, (error) => {
+    if (error) {
+      next(error);
+    }
+  });
+});
+
+app.get(/^\/reset-password\/.+$/, sendFrontendIndex);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/customer", customerRoutes);

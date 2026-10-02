@@ -15,7 +15,6 @@ import { useAuth } from "./AuthContext.jsx";
 import {
   deleteAvailabilitySlotDocument,
   deletePetRecordDocument,
-  deletePhotoModerationDocument,
   loadNotificationDocuments,
   loadAppointmentDocuments,
   loadAvailabilitySlotDocuments,
@@ -2228,7 +2227,14 @@ export function AppProvider({ children }) {
 
       dispatch({ type: "REMOVE_PHOTO_MODERATION", payload: { id } });
 
-      return deletePhotoModerationDocument(id).then((ok) => {
+      const cancelledPhoto = {
+        ...photo,
+        status: "cancelled",
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: currentUser.name || currentUser.email || "Customer",
+      };
+
+      return savePhotoModerationDocument(cancelledPhoto).then((ok) => {
         if (!ok) {
           dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: photo });
           return { ok: false, error: "Unable to cancel the pending photo upload." };

@@ -1960,7 +1960,9 @@ function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
   const [reviewNote, setReviewNote] = useState("");
   const [savingId, setSavingId] = useState("");
   const queue = (state.photoModeration || []).filter((photo) => photo.status === "pending");
-  const reviewed = (state.photoModeration || []).filter((photo) => photo.status !== "pending");
+  const reviewed = (state.photoModeration || []).filter(
+    (photo) => !["pending", "cancelled"].includes(photo.status),
+  );
 
   const review = async (photo, status) => {
     setSavingId(photo.id);

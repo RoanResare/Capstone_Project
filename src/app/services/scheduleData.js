@@ -168,13 +168,6 @@ export function savePhotoModerationDocument(record) {
   });
 }
 
-export function deletePhotoModerationDocument(id) {
-  return deleteDocument(COLLECTIONS.photoModeration, id).catch((error) => {
-    logSyncError("Photo moderation delete sync", error);
-    return false;
-  });
-}
-
 export async function loadPhotoModerationDocuments() {
   return loadScheduleDocuments(COLLECTIONS.photoModeration);
 }

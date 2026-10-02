@@ -13,6 +13,7 @@ const staffRoutes = require("./routes/staff.routes");
 const { errorHandler } = require("./middlewares/errorHandler");
 
 const app = express();
+app.set("trust proxy", 1);
 const frontendDistPath = path.resolve(__dirname, "../../dist");
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const productionFrontendOrigin = "https://capstone-project-1-yqto.onrender.com";
@@ -54,6 +55,7 @@ app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (_req, res, next) => {
   if (fs.existsSync(frontendIndexPath)) {
+    res.set("Cache-Control", "no-store");
     return res.sendFile(frontendIndexPath, (error) => {
       if (error) {
         next(error);
@@ -84,6 +86,7 @@ app.use(express.static(frontendDistPath));
 // React Router owns frontend paths such as /reset-password. Express 5 requires
 // a named wildcard, so use a regex route and leave /api/* to the API handlers.
 app.get(/^(?!\/api(?:\/|$)).*/, (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
   res.sendFile(frontendIndexPath, (error) => {
     if (error) {
       next(error);

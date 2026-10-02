@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, Eye, EyeOff, Image, LogOut, PawPrint, Users, X } from "lucide-react";
+import { Bell, CalendarDays, Image, LogOut, PawPrint, Users, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
-import { useAuth } from "../../context/AuthContext.jsx";
 import { BrandMark } from "../BrandMark.jsx";
-import { updateMyProfile } from "../../services/userApi.js";
 
 const iconMap = {
   appointments: CalendarDays,
@@ -200,23 +198,8 @@ export function PortalLayout() {
     markAllNotificationsRead,
     signOut,
   } = useApp();
-  const { accessToken, refreshCurrentUser } = useAuth();
   const [panelOpen, setPanelOpen] = useState(false);
-  const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [profileForm, setProfileForm] = useState({ fullName: "", email: "", phone: "", currentPassword: "" });
-  const [profileFeedback, setProfileFeedback] = useState({ type: "", message: "" });
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [showProfilePassword, setShowProfilePassword] = useState(false);
   const location = useLocation();
-
-  useEffect(() => {
-    setProfileForm({
-      fullName: currentUser.name || currentUser.fullName || "",
-      email: currentUser.email || "",
-      phone: currentUser.phone || "",
-      currentPassword: "",
-    });
-  }, [currentUser]);
 
   useEffect(() => {
     setPanelOpen(false);
@@ -226,29 +209,6 @@ export function PortalLayout() {
     (notification) => !notification.readBy.includes(currentUser.id),
   ).length;
 
-  const saveOwnProfile = async (event) => {
-    event.preventDefault();
-    if (isSavingProfile) {
-      return;
-    }
-
-    setIsSavingProfile(true);
-    setProfileFeedback({ type: "", message: "" });
-
-    try {
-      const response = await updateMyProfile(accessToken, currentUser.role, profileForm);
-      await refreshCurrentUser();
-      setProfileForm((current) => ({ ...current, currentPassword: "" }));
-      setProfileFeedback({ type: "success", message: response.message || "Profile updated successfully." });
-    } catch (error) {
-      setProfileFeedback({
-        type: "error",
-        message: error instanceof Error ? error.message : "Unable to update your profile.",
-      });
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#F7F1E8] px-4 py-5 md:px-6">

@@ -509,6 +509,31 @@ export function AppointmentBooking({ embedded = false }) {
     }
   };
 
+  const toggleSavedPet = (record, checked) => {
+    setSelectedPetIds((current) =>
+      checked
+        ? [...new Set([...current, record.id])]
+        : current.filter((id) => id !== record.id),
+    );
+
+    if (!checked) {
+      return;
+    }
+
+    const breedOptions = breedsByPetType[record.petType] || [];
+    const hasKnownBreed = breedOptions.includes(record.breed);
+    setFormData((current) => ({
+      ...current,
+      petName: record.petName || current.petName,
+      petType: record.petType || current.petType,
+      customPetType: "",
+      breed: hasKnownBreed ? record.breed : record.breed ? "Other" : current.breed,
+      customBreed: hasKnownBreed ? "" : record.breed || "",
+      petInformation: record.notes || current.petInformation,
+    }));
+    setErrors((current) => ({ ...current, petName: "", petType: "", breed: "" }));
+  };
+
   const handleServiceSelect = (serviceId) => {
     setFormData((current) => ({ ...current, selectedServiceId: serviceId }));
     if (feedback.message) {
@@ -1266,13 +1291,7 @@ export function AppointmentBooking({ embedded = false }) {
                       <input
                         type="checkbox"
                         checked={selectedPetIds.includes(record.id)}
-                        onChange={(event) =>
-                          setSelectedPetIds((current) =>
-                            event.target.checked
-                              ? [...new Set([...current, record.id])]
-                              : current.filter((id) => id !== record.id),
-                          )
-                        }
+                        onChange={(event) => toggleSavedPet(record, event.target.checked)}
                         className="h-4 w-4 rounded border-[#BFD6D6]"
                       />
                       <span>{record.petName} <span className="text-[#7A979C]">({record.petType})</span></span>

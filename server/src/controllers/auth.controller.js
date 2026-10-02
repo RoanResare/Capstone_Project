@@ -33,6 +33,7 @@ const {
 const { ApiError } = require("../utils/ApiError");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
+const { validateRegistrationSecurity } = require("../services/registrationSecurity.service");
 
 function normalizeEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -179,6 +180,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
     throw new ApiError(400, "Please enter a valid email address.");
   }
 
+  const registrationSecurity = await validateRegistrationSecurity(req, email);
+
   if (phone && !/^\d{1,11}$/.test(phone)) {
     throw new ApiError(400, "Phone number must contain numbers only and be no more than 11 digits.");
   }
@@ -205,7 +208,7 @@ async function checkCustomerRegistrationAvailability(req, res) {
     throw new ApiError(409, "This phone number is already registered to another account");
   }
 
-  return res.status(200).json({ success: true, available: true });
+  return res.status(200).json({ success: true, available: true, ...registrationSecurity });
 }
 
 async function resolveAuthenticatedFirestoreUser({ identifier, email, firebaseUid }) {

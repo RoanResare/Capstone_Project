@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
-import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import {
@@ -247,7 +246,6 @@ export function RoleLoginPage({
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <PasswordStrengthMeter password={form.password} />
             </div>
 
             <button

@@ -447,7 +447,7 @@ export function CustomerProfile() {
       URL.revokeObjectURL(profilePhotoPreviewUrl);
     }
     setProfilePhotoPreviewUrl(previewUrl);
-    const hasExistingPhoto = Boolean(profileForm.photoURL);
+    const hasExistingPhoto = Number(customer.profilePhotoUploadCount) > 0;
     const moderationId = `photo-profile-${customer.uid}-${Date.now()}`;
 
     try {

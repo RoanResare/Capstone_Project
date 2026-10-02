@@ -473,7 +473,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      await checkCustomerRegistrationAvailability({
+      const registrationCheck = await checkCustomerRegistrationAvailability({
         email: email.trim(),
         phone: normalizedPhone,
       });
@@ -484,6 +484,7 @@ export function AuthProvider({ children }) {
         password,
         phone,
         username,
+        registrationIp: registrationCheck.registrationIp || "",
       });
       const token = await firebaseUser.getIdToken();
 

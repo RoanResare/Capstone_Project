@@ -539,6 +539,23 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </button>
         </div>
 
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] px-4 py-3 text-sm font-semibold text-[#365057]">
+          <span className="flex items-center gap-2">
+            <Check size={17} />
+            Mark appointment completed
+          </span>
+          <input
+            type="checkbox"
+            checked={appointment.status === "Completed"}
+            onChange={(event) =>
+              updateAppointment(appointment.id, {
+                status: event.target.checked ? "Completed" : "Pending",
+              })
+            }
+            className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B]"
+          />
+        </label>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm font-medium text-[#425A60]">

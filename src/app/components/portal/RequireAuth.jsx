@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import {
@@ -63,6 +64,17 @@ export function RequireAuth({ children, allowedRoles = [] }) {
   const normalizedAllowedRoles = Array.isArray(allowedRoles)
     ? allowedRoles.map((role) => normalizeRole(role)).filter(Boolean)
     : [];
+
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      if (event.persisted && !isAuthenticated) {
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return <LoadingScreen />;

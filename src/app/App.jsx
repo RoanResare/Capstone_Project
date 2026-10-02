@@ -19,7 +19,7 @@ function InactivityGuard() {
   toastRef.current = toast;
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || !["admin", "staff"].includes(currentUser.role)) {
       return undefined;
     }
 

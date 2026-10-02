@@ -215,6 +215,10 @@ function buildCustomerProfile(firebaseUser, profile = {}) {
     status: accountStatus,
     photoURL: normalizeString(profile.photoURL || firebaseUser?.photoURL),
     profilePhotoPath: normalizeString(profile.profilePhotoPath),
+    profilePhotoUploadCount: Math.max(
+      Number(profile.profilePhotoUploadCount) || (profile.photoURL ? 1 : 0),
+      0,
+    ),
   };
 }
 
@@ -626,6 +630,10 @@ export async function loadOrCreateCustomerProfile(firebaseUser, defaults = {}) {
     ),
     photoURL: normalizeString(existingData?.photoURL || firebaseUser.photoURL),
     profilePhotoPath: normalizeString(existingData?.profilePhotoPath),
+    profilePhotoUploadCount: Math.max(
+      Number(existingData?.profilePhotoUploadCount) || (existingData?.photoURL ? 1 : 0),
+      0,
+    ),
   };
   const hasValidStoredUsername = /^[a-z0-9._-]{3,24}$/.test(
     normalizeString(existingData?.username),
@@ -660,6 +668,7 @@ export async function signUpCustomerWithEmailPassword({
   password,
   phone = "",
   username = "",
+  registrationIp = "",
 }) {
   ensureCustomerFirebaseReady();
 
@@ -704,6 +713,8 @@ export async function signUpCustomerWithEmailPassword({
         status: "active",
         photoURL: normalizeString(authenticatedUser.photoURL),
         profilePhotoPath: "",
+        profilePhotoUploadCount: 0,
+        registrationIp: normalizeString(registrationIp),
       },
       {
         isNew: true,
@@ -820,6 +831,8 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
   let nextProfilePhotoPath = normalizeString(existingProfile.profilePhotoPath);
   let uploadedPhotoPath = "";
   const previousPhotoPath = normalizeString(existingProfile.profilePhotoPath);
+  const nextProfilePhotoUploadCount =
+    Math.max(Number(existingProfile.profilePhotoUploadCount) || 0, 0) + (nextPhotoFile ? 1 : 0);
 
   if (!nextEmail) {
     throw new Error("Email is required.");
@@ -878,6 +891,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
           status: normalizeAccountStatus(existingProfile.status),
           photoURL: nextPhotoURL,
           profilePhotoPath: nextProfilePhotoPath,
+          profilePhotoUploadCount: nextProfilePhotoUploadCount,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -901,6 +915,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
       status: normalizeAccountStatus(existingProfile.status),
       photoURL: nextPhotoURL,
       profilePhotoPath: nextProfilePhotoPath,
+      profilePhotoUploadCount: nextProfilePhotoUploadCount,
     });
 
     if (shouldDeferPhotoUpdate) {
@@ -916,6 +931,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
         status: normalizeAccountStatus(existingProfile.status),
         photoURL: existingProfile.photoURL,
         profilePhotoPath: existingProfile.profilePhotoPath,
+        profilePhotoUploadCount: nextProfilePhotoUploadCount,
       });
       activeProfile.pendingPhotoURL = nextPhotoURL;
       activeProfile.pendingProfilePhotoPath = nextProfilePhotoPath;

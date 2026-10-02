@@ -185,6 +185,14 @@ const env = {
   passwordReset: {
     ttlMinutes: readNumber("PASSWORD_RESET_TTL_MINUTES", 30),
   },
+  security: {
+    maxAccountsPerIp: readNumber("MAX_ACCOUNTS_PER_IP", 2),
+    geoLookupUrl: readOptional("FRAUD_GEO_LOOKUP_URL"),
+    geoLookupApiKey: readOptional("FRAUD_GEO_LOOKUP_API_KEY"),
+    emailValidationUrl: readOptional("EMAIL_VALIDATION_API_URL"),
+    emailValidationApiKey: readOptional("EMAIL_VALIDATION_API_KEY"),
+    failClosed: readBoolean("FRAUD_FAIL_CLOSED", false),
+  },
   mail: {
     deliveryMode: readOptional("MAIL_DELIVERY_MODE", "gmail-api").toLowerCase(),
     provider: "gmail-api",

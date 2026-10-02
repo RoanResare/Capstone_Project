@@ -456,15 +456,20 @@ export function CustomerProfile() {
         quality: 0.6,
         outputType: file.type || "image/jpeg",
       });
-      const moderationPreviewURL = await compressImageFileToDataUrl(compressedFile, {
-        maxDimension: 500,
-        quality: 0.6,
-        outputType: compressedFile.type || "image/jpeg",
-      });
-      const result = await updateProfile({
-        photoFile: compressedFile,
-        deferPhotoUpdate: hasExistingPhoto,
-      });
+      const [result, moderationPreviewURL] = await Promise.all([
+        updateProfile({
+          photoFile: compressedFile,
+          deferPhotoUpdate: hasExistingPhoto,
+          preferInlinePhoto: true,
+        }),
+        hasExistingPhoto
+          ? compressImageFileToDataUrl(compressedFile, {
+              maxDimension: 500,
+              quality: 0.6,
+              outputType: compressedFile.type || "image/jpeg",
+            })
+          : Promise.resolve(""),
+      ]);
 
       if (!result.ok) {
         const message = "Unable to upload profile picture. Please try again.";

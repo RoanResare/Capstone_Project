@@ -825,6 +825,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
   const nextUsername = assertCustomerUsername(updates.username || existingProfile.username);
   const shouldRemovePhoto = updates.removePhoto === true;
   const shouldDeferPhotoUpdate = updates.deferPhotoUpdate === true;
+  const preferInlinePhoto = updates.preferInlinePhoto !== false;
   const nextPhotoFile =
     typeof File !== "undefined" && updates.photoFile instanceof File ? updates.photoFile : null;
   let nextPhotoURL = normalizeString(existingProfile.photoURL);
@@ -852,16 +853,21 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
   try {
     if (nextPhotoFile) {
       try {
-        const uploadedPhoto = await uploadCustomerProfilePhoto(activeAuthUser.uid, nextPhotoFile);
-        uploadedPhotoPath = uploadedPhoto.storagePath;
-        nextPhotoURL = uploadedPhoto.photoURL;
-        nextProfilePhotoPath = uploadedPhoto.storagePath;
+        if (preferInlinePhoto) {
+          nextPhotoURL = await buildFirestoreProfilePhotoDataUrl(nextPhotoFile);
+          nextProfilePhotoPath = "";
+        } else {
+          const uploadedPhoto = await uploadCustomerProfilePhoto(activeAuthUser.uid, nextPhotoFile);
+          uploadedPhotoPath = uploadedPhoto.storagePath;
+          nextPhotoURL = uploadedPhoto.photoURL;
+          nextProfilePhotoPath = uploadedPhoto.storagePath;
+        }
       } catch (error) {
-        if (getFirebaseErrorCode(error) !== "storage/bucket-unavailable") {
+        if (getFirebaseErrorCode(error) !== "storage/bucket-unavailable" && !preferInlinePhoto) {
           throw error;
         }
 
-        console.warn("[customer-auth] Firebase Storage unavailable; saving compressed profile photo fallback.", {
+        console.warn("[customer-auth] Saving compressed profile photo fallback.", {
           uid: activeAuthUser.uid,
         });
         nextPhotoURL = await buildFirestoreProfilePhotoDataUrl(nextPhotoFile);

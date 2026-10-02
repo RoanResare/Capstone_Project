@@ -14,7 +14,15 @@ const { errorHandler } = require("./middlewares/errorHandler");
 
 const app = express();
 app.set("trust proxy", 1);
-const frontendDistPath = path.resolve(__dirname, "../../dist");
+const frontendDistCandidates = [
+  path.resolve(__dirname, "../../dist"),
+  path.resolve(__dirname, "../dist"),
+  path.resolve(process.cwd(), "dist"),
+  path.resolve(process.cwd(), "../dist"),
+];
+const frontendDistPath =
+  frontendDistCandidates.find((candidate) => fs.existsSync(path.join(candidate, "index.html"))) ||
+  frontendDistCandidates[0];
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const productionFrontendOrigin = "https://capstone-project-1-yqto.onrender.com";
 
@@ -83,11 +91,16 @@ app.use("/api/staff", staffRoutes);
 // the API routes so browser assets are available without intercepting API JSON.
 app.use(express.static(frontendDistPath));
 
-// React Router owns frontend paths such as /reset-password. Express 5 requires
-// a named wildcard, so use a regex route and leave /api/* to the API handlers.
-app.get(/^(?!\/api(?:\/|$)).*/, (_req, res, next) => {
+// React Router owns frontend paths such as /reset-password. This must stay
+// after API routes and static assets so browser refreshes receive index.html.
+// Express 5 uses the named wildcard syntax; `*` by itself throws at startup.
+app.get("/{*splat}", (req, res, next) => {
+  if (req.path === "/api" || req.path.startsWith("/api/")) {
+    return next();
+  }
+
   res.set("Cache-Control", "no-store");
-  res.sendFile(frontendIndexPath, (error) => {
+  return res.sendFile(frontendIndexPath, (error) => {
     if (error) {
       next(error);
     }

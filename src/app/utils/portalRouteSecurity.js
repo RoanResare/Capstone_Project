@@ -8,6 +8,7 @@ const ADMIN_ROUTES = new Set([
   "/portal/photo-moderation",
   "/portal/manage-users",
   "/verify-otp",
+  "/reset-password",
 ]);
 
 const STAFF_ROUTES = new Set([
@@ -17,6 +18,7 @@ const STAFF_ROUTES = new Set([
   "/portal/pet-records",
   "/portal/photo-moderation",
   "/verify-otp",
+  "/reset-password",
 ]);
 
 export function isValidPortalSessionRoute(role = "", pathname = "") {

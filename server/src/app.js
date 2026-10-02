@@ -81,6 +81,21 @@ app.get("/", (_req, res, next) => {
   });
 });
 
+// Firebase password-reset links include mode/oobCode query parameters. Serve
+// the SPA shell explicitly so Render never treats this browser route as a 404.
+app.get("/reset-password", (_req, res, next) => {
+  if (!fs.existsSync(frontendIndexPath)) {
+    return next();
+  }
+
+  res.set("Cache-Control", "no-store");
+  return res.sendFile(frontendIndexPath, (error) => {
+    if (error) {
+      next(error);
+    }
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/admin", adminRoutes);

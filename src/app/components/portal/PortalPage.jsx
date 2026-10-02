@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   Check,
@@ -923,8 +923,7 @@ function AppointmentsWorkspace({
   );
 }
 
-function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePetRecord }) {
-  const navigate = useNavigate();
+function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   const [searchValue, setSearchValue] = useState("");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
@@ -1076,11 +1075,11 @@ function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePet
         <MetricCard label="Records With Notes" value={petsWithNotes} tone="gold" />
       </div>
 
-      <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+      <div className="grid min-w-0 items-stretch gap-4 xl:h-[780px] xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
         <PanelCard
           title="Manage pet records"
           description="Review booking-created customer pets, keep medical notes current, and prepare future appointments faster."
-          className="h-full min-w-0 xl:flex xl:min-h-0 xl:flex-col"
+          className="h-full min-w-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col"
           bodyClassName="xl:flex xl:min-h-0 xl:flex-1"
         >
           <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:space-y-0 xl:gap-4">
@@ -1095,9 +1094,6 @@ function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePet
                   placeholder="Search by owner, pet, breed, type, or email"
                 />
               </label>
-              <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-3 text-sm leading-6 text-[#607277]">
-                New pet records are now created automatically when a customer books an appointment.
-              </div>
             </div>
 
             {filteredPetRecords.length === 0 ? (
@@ -1106,7 +1102,7 @@ function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePet
                 message="Customer pet profiles will appear here as soon as they are created or booked."
               />
             ) : (
-              <div className="portal-scroll-panel min-h-0 max-h-[460px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-1 xl:max-h-none">
+              <div className="portal-scroll-panel min-h-0 h-[520px] max-h-[520px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-none">
                 {filteredPetRecords.map((record) => {
                   const appointmentCount = linkedAppointmentCount(record);
 
@@ -1118,38 +1114,39 @@ function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePet
                         setSelectedRecordId(record.id);
                         setFeedback({ type: "", message: "" });
                       }}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      className={`h-[96px] w-full rounded-2xl border px-4 py-3 text-left transition ${
                       selectedRecord?.id === record.id
                           ? "border-[#BFE1E1] bg-[#F8FCFC]"
                           : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
                       }`}
                     >
-                      <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6A73]">
                           <PawPrint size={18} />
                         </div>
-                        <div>
-                          <p className="text-lg font-semibold text-[#20343B]">
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-semibold text-[#20343B]">
                             {record.petName} | {record.petType}
                           </p>
-                          <p className="mt-1 text-sm text-[#607277]">
+                          <p className="mt-1 truncate text-sm text-[#607277]">
                             {record.ownerName} | {record.customerEmail || "No email saved"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs font-semibold">
+                        <div className="flex min-w-0 flex-wrap gap-2">
                         <span className="rounded-full bg-[#F2F6F6] px-3 py-1 text-[#365057]">
                           {record.breed || "Breed pending"}
                         </span>
                         <span className="rounded-full bg-[#FFF6E5] px-3 py-1 text-[#A56A0F]">
                           {appointmentCount} linked appointment{appointmentCount === 1 ? "" : "s"}
                         </span>
+                        </div>
+                        <span className="shrink-0 text-[#607277]">
+                          {formatDateLabel(record.lastVisit)}
+                        </span>
                       </div>
-
-                      <p className="mt-3 text-sm text-[#607277]">
-                        Last visit: {formatDateLabel(record.lastVisit)}
-                      </p>
                     </button>
                   );
                 })}
@@ -1161,8 +1158,8 @@ function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePet
         <PanelCard
           title="Pet record details"
           description="Update pet profile information, visit history, and medical notes for staff visibility."
-          className="h-full min-w-0 xl:flex xl:min-h-0 xl:flex-col"
-          bodyClassName="xl:min-h-0 xl:flex-1"
+          className="h-full min-w-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col"
+          bodyClassName="min-h-0 xl:flex-1 xl:overflow-y-auto"
         >
           {selectedRecord ? (
             <form onSubmit={saveRecord} className="space-y-5">
@@ -1363,16 +1360,6 @@ function PetRecordsWorkspace({ currentUser, state, visibleNotifications, savePet
         </PanelCard>
       </div>
 
-      <RecentNotificationList
-        currentUser={currentUser}
-        notifications={visibleNotifications}
-        openAppointment={(appointmentId, notificationId = "") => {
-          const params = new URLSearchParams();
-          if (appointmentId) params.set("appointment", appointmentId);
-          if (notificationId) params.set("notification", notificationId);
-          navigate(`/portal/appointments${params.toString() ? `?${params.toString()}` : ""}`);
-        }}
-      />
     </div>
   );
 }
@@ -2074,7 +2061,6 @@ export function PortalPage() {
       <PetRecordsWorkspace
         currentUser={currentUser}
         state={state}
-        visibleNotifications={visibleNotifications}
         savePetRecord={savePetRecord}
       />
     );

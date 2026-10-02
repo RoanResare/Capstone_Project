@@ -29,6 +29,8 @@ export function ResetPassword() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const hasCode = useMemo(() => Boolean(form.oobCode.trim()), [form.oobCode]);
+  const passwordsMatch =
+    Boolean(form.newPassword && form.confirmPassword) && form.newPassword === form.confirmPassword;
 
   useEffect(() => {
     let active = true;
@@ -69,6 +71,13 @@ export function ResetPassword() {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    if (form.newPassword !== form.confirmPassword) {
+      const message = "New password and confirmation password must match.";
+      setFeedback({ type: "error", message });
+      showErrorToast(message);
       return;
     }
 
@@ -137,6 +146,8 @@ export function ResetPassword() {
           className="rounded-[34px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-10"
         >
           <form onSubmit={handleSubmit} className="space-y-5">
+            <input type="hidden" name="oobCode" value={form.oobCode} readOnly />
+
             <div className="rounded-[24px] bg-[#F5FAFA] px-5 py-5">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#EEF6F6] text-[#2D6B73]">
@@ -151,7 +162,7 @@ export function ResetPassword() {
                       ? "Checking the reset link..."
                       : verifiedEmail
                         ? `Resetting password for ${verifiedEmail}.`
-                        : "Paste the reset code if it is not already filled in."}
+                        : "Open the reset link from your email to verify this password reset."}
                   </p>
                 </div>
               </div>
@@ -163,27 +174,6 @@ export function ResetPassword() {
                 password.
               </div>
             )}
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[#415D62]">
-                Reset code
-              </label>
-              <input
-                value={form.oobCode}
-                autoComplete="off"
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, oobCode: event.target.value }))
-                }
-                disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Paste the reset code from your email"
-              />
-              {!hasCode && (
-                <p className="mt-2 text-xs text-[#B23949]">
-                  Open the reset email first so the verification code is included automatically.
-                </p>
-              )}
-            </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-[#415D62]">New password</label>
@@ -236,11 +226,20 @@ export function ResetPassword() {
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {form.confirmPassword && !passwordsMatch && (
+                <p className="mt-2 text-xs text-[#B23949]">Passwords do not match.</p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting || isCheckingCode || !hasCode || !verifiedEmail}
+              disabled={
+                isSubmitting ||
+                isCheckingCode ||
+                !hasCode ||
+                !verifiedEmail ||
+                !passwordsMatch
+              }
               className="w-full rounded-[22px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1F4E55] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Resetting password..." : "Reset password"}

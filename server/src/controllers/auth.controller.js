@@ -260,9 +260,18 @@ function validateLoginPayload(payload = {}) {
 
 function validateForgotPasswordPayload(payload = {}) {
   const identifier = normalizeString(payload.identifier || payload.email);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(identifier);
+  const isPhilippineMobile = /^09\d{9}$/.test(identifier);
 
   if (!identifier) {
     throw new ApiError(400, "Email address or phone number is required.");
+  }
+
+  if (!isEmail && !isPhilippineMobile) {
+    throw new ApiError(
+      400,
+      "Enter a valid email address or an 11-digit Philippine mobile number starting with 09.",
+    );
   }
 
   return { identifier };

@@ -48,6 +48,7 @@ import {
 } from "../utils/portalSession.js";
 import { waitForFirebaseUserSession } from "../services/firebaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
+import { getPasswordRecoveryIdentifierError } from "../utils/passwordRecovery.js";
 
 const AuthContext = createContext(null);
 
@@ -805,10 +806,11 @@ export function AuthProvider({ children }) {
   async function requestPasswordReset(identifier) {
     setAuthHydrationError("");
 
-    if (!identifier?.trim()) {
+    const validationError = getPasswordRecoveryIdentifierError(identifier);
+    if (validationError) {
       return {
         ok: false,
-        error: "Email address or phone number is required.",
+        error: validationError,
       };
     }
 

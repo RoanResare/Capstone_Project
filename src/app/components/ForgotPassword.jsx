@@ -4,18 +4,28 @@ import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { getPasswordRecoveryIdentifierError } from "../utils/passwordRecovery.js";
 
 export function ForgotPassword() {
   const { isOnline, requestPasswordReset } = useAuth();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [identifier, setIdentifier] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [identifierError, setIdentifierError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    const validationError = getPasswordRecoveryIdentifierError(identifier);
+    if (validationError) {
+      setIdentifierError(validationError);
+      setFeedback({ type: "error", message: validationError });
+      showErrorToast(validationError);
       return;
     }
 
@@ -104,14 +114,26 @@ export function ForgotPassword() {
               <label className="mb-2 block text-sm font-medium text-[#415D62]">Email or phone number</label>
               <input
                 type="text"
-                inputMode="email"
+                inputMode="text"
                 value={identifier}
                 autoComplete="off"
-                onChange={(event) => setIdentifier(event.target.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setIdentifier(value);
+                  if (identifierError) {
+                    setIdentifierError(getPasswordRecoveryIdentifierError(value));
+                  }
+                }}
                 disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                aria-invalid={Boolean(identifierError)}
+                className={`w-full rounded-[20px] border px-4 py-3 outline-none transition focus:border-[#2D9B9B] ${
+                  identifierError ? "border-[#D95A6A]" : "border-[#D9E7E7]"
+                }`}
                 placeholder="Enter your email or 11-digit phone number"
               />
+              {identifierError && (
+                <p className="mt-2 text-sm text-[#B23949]">{identifierError}</p>
+              )}
             </div>
 
             <button

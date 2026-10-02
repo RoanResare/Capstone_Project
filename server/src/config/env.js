@@ -145,9 +145,15 @@ const gmailUser = readRequired("GMAIL_USER", readOptional("EMAIL_USER")).toLower
 const gmailClientId = readRequired("GMAIL_CLIENT_ID");
 const gmailClientSecret = readRequired("GMAIL_CLIENT_SECRET");
 const gmailRefreshToken = readRequired("GMAIL_REFRESH_TOKEN");
+const nodeEnv = readOptional("NODE_ENV", "development");
+const defaultFrontendUrl = "https://capstone-project-1-yqto.onrender.com";
+const frontendUrl = readOptional("FRONTEND_URL", defaultFrontendUrl).replace(/\/+$/, "");
+const defaultPasswordResetUrl = frontendUrl.endsWith("/reset-password")
+  ? frontendUrl
+  : `${frontendUrl}/reset-password`;
 
 const env = {
-  nodeEnv: readOptional("NODE_ENV", "development"),
+  nodeEnv,
   port: readNumber("PORT", 5000),
   clientUrl: readOptional("CLIENT_URL", "http://localhost:5173"),
   firebase: {
@@ -174,7 +180,7 @@ const env = {
     otpTicketExpiresIn: readOptional("OTP_TICKET_EXPIRES_IN", "10m"),
     otpSecret: readRequired("OTP_HASH_SECRET"),
     passwordHashPepper: readRequired("PASSWORD_HASH_PEPPER"),
-    passwordResetUrl: readOptional("PASSWORD_RESET_URL", "http://localhost:5173/reset-password"),
+    passwordResetUrl: readOptional("PASSWORD_RESET_URL", defaultPasswordResetUrl),
   },
   otp: {
     ttlMinutes: readNumber("OTP_TTL_MINUTES", 5),

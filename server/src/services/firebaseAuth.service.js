@@ -80,9 +80,19 @@ async function generatePasswordResetLink(email) {
     );
   }
 
+  const actionCodeSettings = {
+    url: env.auth.passwordResetUrl,
+    handleCodeInApp: true,
+  };
+
   try {
-    return await firebaseAdminAuth.generatePasswordResetLink(email);
+    return await firebaseAdminAuth.generatePasswordResetLink(email, actionCodeSettings);
   } catch (error) {
+    console.error("[firebase-auth] Password reset link generation failed.", {
+      email,
+      actionCodeUrl: actionCodeSettings.url,
+      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
     throw new ApiError(
       500,
       "Unable to generate a Firebase password reset link right now.",

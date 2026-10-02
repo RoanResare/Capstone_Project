@@ -148,21 +148,25 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: "/admin/dashboard",
+    path: "/admin/dashboard/*",
     errorElement: <RouteErrorScreen />,
     element: (
-      <RequireAuth allowedRoles={["admin"]}>
-        <RouteLoader Component={AdminDashboard} />
-      </RequireAuth>
+      <PortalSessionRouteGuard>
+        <RequireAuth allowedRoles={["admin"]}>
+          <RouteLoader Component={AdminDashboard} />
+        </RequireAuth>
+      </PortalSessionRouteGuard>
     ),
   },
   {
-    path: "/staff/dashboard",
+    path: "/staff/dashboard/*",
     errorElement: <RouteErrorScreen />,
     element: (
-      <RequireAuth allowedRoles={["staff"]}>
-        <RouteLoader Component={StaffDashboard} />
-      </RequireAuth>
+      <PortalSessionRouteGuard>
+        <RequireAuth allowedRoles={["staff"]}>
+          <RouteLoader Component={StaffDashboard} />
+        </RequireAuth>
+      </PortalSessionRouteGuard>
     ),
   },
   {
@@ -188,7 +192,14 @@ export const router = createBrowserRouter([
           </RequireAuth>
         ),
       },
-      { path: ":moduleId", element: <Navigate to="/portal/appointments" replace /> },
+      {
+        path: "admin/*",
+        element: (
+          <RequireAuth allowedRoles={["admin"]}>
+            <RouteLoader Component={PortalPage} />
+          </RequireAuth>
+        ),
+      },
     ],
   },
   {

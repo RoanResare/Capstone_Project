@@ -20,13 +20,19 @@ const STAFF_ROUTES = new Set([
 export function isValidPortalSessionRoute(role = "", pathname = "") {
   const normalizedRole = normalizeRole(role);
   const normalizedPath = typeof pathname === "string" ? pathname.trim() : "";
+  const isPortalAdminRoute =
+    normalizedPath === "/portal/admin" || normalizedPath.startsWith("/portal/admin/");
+  const isAdminDashboardRoute =
+    normalizedPath === "/admin/dashboard" || normalizedPath.startsWith("/admin/dashboard/");
+  const isStaffDashboardRoute =
+    normalizedPath === "/staff/dashboard" || normalizedPath.startsWith("/staff/dashboard/");
 
   if (normalizedRole === "admin") {
-    return ADMIN_ROUTES.has(normalizedPath);
+    return ADMIN_ROUTES.has(normalizedPath) || isPortalAdminRoute || isAdminDashboardRoute;
   }
 
   if (normalizedRole === "staff") {
-    return STAFF_ROUTES.has(normalizedPath);
+    return STAFF_ROUTES.has(normalizedPath) || isPortalAdminRoute || isStaffDashboardRoute;
   }
 
   return true;

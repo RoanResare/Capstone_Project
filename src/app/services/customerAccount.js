@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { auth, db, firebaseConfigError, isFirebaseConfigured, storage } from "../../firebase.js";
 import { compressImageFile } from "../utils/imageCompression.js";
+import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";
 
 const USERS_COLLECTION = "users";
@@ -311,8 +312,9 @@ export async function changeCustomerPassword(currentPassword, newPassword, confi
     throw new Error("New passwords do not match.");
   }
 
-  if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
-    throw new Error("Password must be at least 8 characters and include uppercase, lowercase, number, and special character.");
+  const passwordError = getPasswordPolicyError(newPassword);
+  if (passwordError) {
+    throw new Error(passwordError);
   }
 
   const activeUser = auth.currentUser;

@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { PasswordStrengthMeter } from "../PasswordStrengthMeter.jsx";
 import {
   appointmentFilters,
   appointmentStatusOptions,
@@ -1831,7 +1830,6 @@ function ManageUsersWorkspace({
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <PasswordStrengthMeter password={form.password} />
               </div>
 
               {!isCreatingNew && selectedUser && (

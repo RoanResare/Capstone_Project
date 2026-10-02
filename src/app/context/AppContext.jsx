@@ -28,6 +28,7 @@ import {
   saveNotificationDocument,
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
+import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy.js";
 
 const AppContext = createContext(null);
 const PORTAL_USER_ROLES = ["admin", "staff"];
@@ -99,13 +100,7 @@ function formatPortalStatus(status = "active") {
 }
 
 function isStrongPassword(password = "") {
-  return (
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /\d/.test(password) &&
-    /[^A-Za-z0-9]/.test(password)
-  );
+  return isPasswordPolicyValid(password);
 }
 
 function createRandomSalt() {
@@ -1990,8 +1985,7 @@ export function AppProvider({ children }) {
       if (!isStrongPassword(password)) {
         return {
           ok: false,
-          error:
-            "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+          error: PASSWORD_POLICY_MESSAGE,
         };
       }
 
@@ -2093,8 +2087,7 @@ export function AppProvider({ children }) {
       if (nextPassword && !isStrongPassword(nextPassword)) {
         return {
           ok: false,
-          error:
-            "Password must be at least 8 characters and include uppercase, lowercase, number, and special character.",
+          error: PASSWORD_POLICY_MESSAGE,
         };
       }
 

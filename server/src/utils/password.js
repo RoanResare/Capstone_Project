@@ -3,16 +3,15 @@ const { env } = require("../config/env");
 const { ApiError } = require("./ApiError");
 
 const PASSWORD_POLICY_MESSAGE =
-  "Password must be at least 8 characters and include uppercase, lowercase, number, and special characters.";
+  "Password must be at least 6 characters and include uppercase, lowercase, and special characters.";
 const PASSWORD_HASH_VERSION = 1;
 
 function assertStrongPassword(password = "") {
   const value = typeof password === "string" ? password : "";
   const isValid =
-    value.length >= 8 &&
+    value.length >= 6 &&
     /[A-Z]/.test(value) &&
     /[a-z]/.test(value) &&
-    /\d/.test(value) &&
     /[^A-Za-z0-9]/.test(value);
 
   if (!isValid) {

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
-import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
+import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 
 const passwordChecklist = [
   "At least 6 characters",
-  "Use a password you have not used recently",
-  "Confirm both password fields exactly",
+  "At least one uppercase and one lowercase letter",
+  "At least one special character or symbol",
 ];
 
 export function ResetPassword() {
@@ -71,6 +71,13 @@ export function ResetPassword() {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    const passwordError = getPasswordPolicyError(form.newPassword);
+    if (passwordError) {
+      setFeedback({ type: "error", message: passwordError });
+      showErrorToast(passwordError);
       return;
     }
 
@@ -148,26 +155,6 @@ export function ResetPassword() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <input type="hidden" name="oobCode" value={form.oobCode} readOnly />
 
-            <div className="rounded-[24px] bg-[#F5FAFA] px-5 py-5">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#EEF6F6] text-[#2D6B73]">
-                  <KeyRound size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                    Reset verification code
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-[#607277]">
-                    {isCheckingCode
-                      ? "Checking the reset link..."
-                      : verifiedEmail
-                        ? `Resetting password for ${verifiedEmail}.`
-                        : "Open the reset link from your email to verify this password reset."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {!isOnline && (
               <div className="rounded-[22px] border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-4 text-sm text-[#48656A]">
                 You are offline. Reconnect before verifying the reset code and saving a new
@@ -198,7 +185,6 @@ export function ResetPassword() {
                   {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <PasswordStrengthMeter password={form.newPassword} />
             </div>
 
             <div>

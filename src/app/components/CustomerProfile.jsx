@@ -20,7 +20,6 @@ import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
 import { compressImageFile, compressImageFileToDataUrl } from "../utils/imageCompression.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
-import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
@@ -1219,7 +1218,6 @@ export function CustomerProfile() {
                         placeholder="New password"
                         required
                       />
-                      <PasswordStrengthMeter password={passwordForm.next} />
                     </div>
                     <input
                       type="password"

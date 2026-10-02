@@ -2,7 +2,6 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
-import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 
@@ -220,9 +219,8 @@ export function CustomerSignup() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <PasswordStrengthMeter password={form.password} />
                 <p className="mt-2 text-xs text-[#607277]">
-                  Use at least 8 characters with an uppercase letter, lowercase letter, and symbol.
+                  Use at least 6 characters with uppercase, lowercase, and a special character.
                 </p>
               </div>
 

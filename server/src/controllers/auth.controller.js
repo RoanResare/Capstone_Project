@@ -289,7 +289,7 @@ function validateResetPasswordPayload(payload = {}) {
     throw new ApiError(400, "A new password is required.");
   }
 
-  if (confirmPassword && confirmPassword !== newPassword) {
+  if (confirmPassword !== newPassword) {
     throw new ApiError(400, "The password confirmation does not match.");
   }
 

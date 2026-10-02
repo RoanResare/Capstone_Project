@@ -47,6 +47,7 @@ import {
   readPortalSession,
 } from "../utils/portalSession.js";
 import { waitForFirebaseUserSession } from "../services/firebaseSession.js";
+import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 
 const AuthContext = createContext(null);
 
@@ -450,10 +451,11 @@ export function AuthProvider({ children }) {
       };
     }
 
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    const passwordError = getPasswordPolicyError(password);
+    if (passwordError) {
       return {
         ok: false,
-        error: "Password must be at least 8 characters and include an uppercase letter, lowercase letter, and symbol.",
+        error: passwordError,
       };
     }
 
@@ -865,6 +867,14 @@ export function AuthProvider({ children }) {
       return {
         ok: false,
         error: "New password is required.",
+      };
+    }
+
+    const passwordError = getPasswordPolicyError(newPassword);
+    if (passwordError) {
+      return {
+        ok: false,
+        error: passwordError,
       };
     }
 

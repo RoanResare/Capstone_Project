@@ -226,6 +226,7 @@ export function CustomerProfile() {
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [isSavingPet, setIsSavingPet] = useState(false);
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
+  const [dismissedProfilePhotoModerationId, setDismissedProfilePhotoModerationId] = useState("");
   const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
   const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
@@ -305,9 +306,14 @@ export function CustomerProfile() {
   const profilePhotoModeration = useMemo(
     () =>
       state.photoModeration
-        ?.filter((photo) => photo.assetType === "profile" && photo.assetId === customer?.uid)
+        ?.filter(
+          (photo) =>
+            photo.assetType === "profile" &&
+            photo.assetId === customer?.uid &&
+            photo.id !== dismissedProfilePhotoModerationId,
+        )
         .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null,
-    [customer?.uid, state.photoModeration],
+    [customer?.uid, dismissedProfilePhotoModerationId, state.photoModeration],
   );
   const petPhotoModerationById = useMemo(
     () =>
@@ -523,11 +529,15 @@ export function CustomerProfile() {
 
     setIsSavingPhoto(true);
     setFeedback({ type: "", message: "" });
+    if (pendingPhotoId) {
+      setDismissedProfilePhotoModerationId(pendingPhotoId);
+    }
 
     try {
       const result = await updateProfile({ removePhoto: true });
 
       if (!result.ok) {
+        setDismissedProfilePhotoModerationId("");
         const message = "Unable to remove profile picture. Please try again.";
         console.error("[customer-profile] Profile photo removal failed.", {
           error: result.error,
@@ -540,6 +550,7 @@ export function CustomerProfile() {
       if (pendingPhotoId) {
         const cancelResult = await cancelPhotoForReview(pendingPhotoId);
         if (!cancelResult.ok) {
+          setDismissedProfilePhotoModerationId("");
           const message = cancelResult.error || "Unable to cancel the pending profile photo.";
           setFeedback({ type: "error", message });
           toast.error(message);
@@ -549,6 +560,7 @@ export function CustomerProfile() {
 
       applySavedProfile(result.user, "Profile photo removed successfully.");
     } catch (error) {
+      setDismissedProfilePhotoModerationId("");
       const message = "Unable to remove profile picture. Please try again.";
       console.error("[customer-profile] Unexpected profile photo removal error.", error);
       setFeedback({ type: "error", message });

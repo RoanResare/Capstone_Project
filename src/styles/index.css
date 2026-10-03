@@ -6,3 +6,25 @@ input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
+
+button,
+[role="button"],
+a[href],
+select,
+summary,
+label:has(input[type="file"]),
+input[type="checkbox"],
+input[type="radio"],
+input[type="date"],
+input[type="time"],
+input[type="color"] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}

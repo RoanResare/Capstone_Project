@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
@@ -21,20 +21,13 @@ import {
   appointmentFilters,
   appointmentStatusOptions,
   breedsByPetType,
+  buildSeedAvailabilitySlots,
   petTypeOptions,
   portalUserRoles,
   portalUserStatuses,
 } from "../../data/systemData.js";
 
 const NEW_PORTAL_USER_ID = "__new-portal-user__";
-const fraudStatusOptions = [
-  { value: "normal", label: "Normal" },
-  { value: "flagged", label: "Flagged / Under Review" },
-  { value: "restricted", label: "Restricted" },
-  { value: "suspended", label: "Suspended" },
-  { value: "banned", label: "Banned" },
-];
-
 function isValidDateInstance(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
 }
@@ -381,15 +374,13 @@ function buildPortalUserForm(user = null) {
     username: typeof current.username === "string" ? current.username : "",
     password: "",
     role: typeof current.role === "string" ? current.role : "staff",
-    fraudStatus: typeof current.fraudStatus === "string" ? current.fraudStatus : "normal",
-    fraudReason: typeof current.fraudReason === "string" ? current.fraudReason : "",
   };
 }
 
 function buildChangedPortalUserPayload(form, originalForm) {
   const payload = {};
 
-  ["name", "email", "username", "role", "fraudStatus", "fraudReason"].forEach((field) => {
+  ["name", "email", "username", "role"].forEach((field) => {
     if (form[field] !== originalForm[field]) {
       payload[field] = form[field];
     }
@@ -678,8 +669,8 @@ function NotificationContextPanel({ notification, relatedAppointment, openAppoin
 function RecentNotificationList({ currentUser, notifications, openAppointment }) {
   return (
     <PanelCard
-      title="Recent system events"
-      description="Latest customer account and appointment updates visible to your role."
+      title="History"
+      description="Customer account and appointment events visible to your role."
     >
       {notifications.length === 0 ? (
         <EmptyState
@@ -688,7 +679,7 @@ function RecentNotificationList({ currentUser, notifications, openAppointment })
         />
       ) : (
         <div className="space-y-3">
-          {notifications.slice(0, 5).map((notification) => {
+          {notifications.slice(0, 12).map((notification) => {
             const isUnread = !notification.readBy.includes(currentUser.id);
 
             return (
@@ -916,18 +907,142 @@ function AppointmentsWorkspace({
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-        <NotificationContextPanel
-          notification={selectedNotification}
-          relatedAppointment={relatedNotificationAppointment}
-          openAppointment={openAppointment}
+      <RecentNotificationList
+        currentUser={currentUser}
+        notifications={visibleNotifications}
+        openAppointment={openAppointment}
+      />
+    </div>
+  );
+}
+
+function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
+  const toast = useToast();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const seedSlots = useMemo(() => buildSeedAvailabilitySlots({ days: 90 }), []);
+  const slotsById = useMemo(() => {
+    const map = new Map();
+    seedSlots.forEach((slot) => map.set(slot.id, slot));
+    (state.availabilitySlots || []).forEach((slot) => {
+      if (slot?.id) {
+        map.set(slot.id, { ...map.get(slot.id), ...slot });
+      }
+    });
+    return map;
+  }, [seedSlots, state.availabilitySlots]);
+  const selectedDateSlots = useMemo(
+    () =>
+      Array.from(slotsById.values())
+        .filter((slot) => slot.date === selectedDate)
+        .sort((left, right) => String(left.time).localeCompare(String(right.time))),
+    [selectedDate, slotsById],
+  );
+  const closedSlots = Array.from(slotsById.values()).filter((slot) => slot.isOpen === false);
+
+  const toggleSlot = async (slot, isOpen) => {
+    const nextSlot = {
+      ...slot,
+      isOpen,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser?.name || "Staff",
+    };
+
+    await Promise.resolve(saveAvailabilitySlot(nextSlot));
+    toast.success(`${formatDateLabel(slot.date)} ${formatTimeLabel(slot.time)} is now ${isOpen ? "open" : "disabled"}.`);
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard label="Slots This Day" value={selectedDateSlots.length} />
+        <MetricCard
+          label="Open"
+          value={selectedDateSlots.filter((slot) => slot.isOpen !== false).length}
+          tone="teal"
         />
-        <RecentNotificationList
-          currentUser={currentUser}
-          notifications={visibleNotifications}
-          openAppointment={openAppointment}
+        <MetricCard
+          label="Disabled"
+          value={selectedDateSlots.filter((slot) => slot.isOpen === false).length}
+          tone="rose"
         />
       </div>
+
+      <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <PanelCard
+          title="Manage schedule"
+          description="Choose a date, then disable or reopen individual appointment time slots."
+        >
+          <label className="block text-sm font-medium text-[#425A60]">
+            Calendar date
+          </label>
+          <input
+            type="date"
+            min={todayKey}
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+          />
+          <div className="mt-5 rounded-[22px] bg-[#F6FAFA] px-4 py-4 text-sm text-[#607277]">
+            Disabled slots immediately disappear from customer booking availability. Reopen a slot when it can be booked again.
+          </div>
+        </PanelCard>
+
+        <PanelCard title={formatDateLabel(selectedDate)} description="Available time slots for the selected calendar date.">
+          {selectedDateSlots.length === 0 ? (
+            <EmptyState
+              title="No slots for this date"
+              message="Seed availability starts tomorrow. Choose a later date to manage slots."
+            />
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {selectedDateSlots.map((slot) => {
+                const isOpen = slot.isOpen !== false;
+                return (
+                  <div
+                    key={slot.id}
+                    className="flex min-h-[132px] flex-col justify-between rounded-lg border border-[#E6F0F0] bg-white px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-lg font-semibold text-[#20343B]">{formatTimeLabel(slot.time)}</p>
+                        <p className="mt-1 text-sm text-[#607277]">Capacity {slot.capacity || 1}</p>
+                      </div>
+                      <StatusBadge status={isOpen ? "Open" : "Cancelled"} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleSlot(slot, !isOpen)}
+                      className={`mt-4 rounded-lg px-4 py-3 text-sm font-semibold transition ${
+                        isOpen
+                          ? "bg-[#FBECEF] text-[#B23949] hover:bg-[#F8DDE2]"
+                          : "bg-[#E8F7EE] text-[#1D7C45] hover:bg-[#DDF1E6]"
+                      }`}
+                    >
+                      {isOpen ? "Disable slot" : "Reopen slot"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </PanelCard>
+      </div>
+
+      <PanelCard title="Disabled slots" description="Upcoming appointment times hidden from customer booking.">
+        {closedSlots.length === 0 ? (
+          <EmptyState title="No disabled slots" message="Disabled time slots will appear here." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {closedSlots.slice(0, 12).map((slot) => (
+              <div key={slot.id} className="rounded-lg border border-[#F4D9DE] bg-[#FFF8F9] px-4 py-3">
+                <p className="font-semibold text-[#20343B]">{formatDateLabel(slot.date)}</p>
+                <p className="mt-1 text-sm text-[#607277]">{formatTimeLabel(slot.time)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </PanelCard>
     </div>
   );
 }
@@ -1811,43 +1926,6 @@ function ManageUsersWorkspace({
                   </select>
                 </div>
 
-                {!isCreatingNew && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-[#425A60]">
-                      Fraud status
-                    </label>
-                    <select
-                      value={form.fraudStatus}
-                      onChange={updateField("fraudStatus")}
-                      disabled={isSaving}
-                      className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                    >
-                      {fraudStatusOptions.map((status) => (
-                        <option key={status.value} value={status.value}>
-                          {status.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {!isCreatingNew && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-[#425A60]">
-                      Fraud review note
-                    </label>
-                    <input
-                      value={form.fraudReason}
-                      autoComplete="off"
-                      onChange={updateField("fraudReason")}
-                      disabled={isSaving}
-                      maxLength={240}
-                      className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-                      placeholder="Reason or review note"
-                    />
-                  </div>
-                )}
-
               </div>
 
               <div>
@@ -2092,6 +2170,7 @@ export function PortalPage() {
     state,
     visibleNotifications,
     updateAppointment,
+    saveAvailabilitySlot,
     savePetRecord,
     createStaff,
     updateUser,
@@ -2100,6 +2179,8 @@ export function PortalPage() {
   } = useApp();
   const activeModule = location.pathname.endsWith("/pet-records")
     ? "pet-records"
+    : location.pathname.endsWith("/schedule")
+      ? "schedule"
     : location.pathname.endsWith("/photo-moderation")
       ? "photo-moderation"
     : location.pathname.endsWith("/manage-users")
@@ -2112,6 +2193,16 @@ export function PortalPage() {
         currentUser={currentUser}
         state={state}
         savePetRecord={savePetRecord}
+      />
+    );
+  }
+
+  if (activeModule === "schedule") {
+    return (
+      <ScheduleWorkspace
+        currentUser={currentUser}
+        state={state}
+        saveAvailabilitySlot={saveAvailabilitySlot}
       />
     );
   }

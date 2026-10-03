@@ -12,15 +12,12 @@ function getPhoneSubscriberDigits(value = "") {
   const withoutLeadingZero = withoutCountryCode.startsWith("0")
     ? withoutCountryCode.slice(1)
     : withoutCountryCode;
-  const withoutFixedNine = withoutLeadingZero.startsWith("9")
-    ? withoutLeadingZero.slice(1)
-    : withoutLeadingZero;
 
-  return withoutFixedNine.slice(0, 9);
+  return withoutLeadingZero.slice(0, 10);
 }
 
 function formatSignupPhone(value = "") {
-  return `+63 9${getPhoneSubscriberDigits(value)}`;
+  return `+63 ${getPhoneSubscriberDigits(value)}`;
 }
 
 function getPasswordStrength(password = "") {
@@ -87,10 +84,10 @@ export function CustomerSignup() {
     setFeedback({ type: "", message: "" });
 
     try {
-      if (form.phone.length !== 9) {
+      if (form.phone.length !== 10) {
         setFeedback({
           type: "error",
-          message: "Enter exactly 9 digits after +63 9 for your contact number.",
+          message: "Enter exactly 10 digits after +63 for your contact number.",
         });
         return;
       }
@@ -228,7 +225,7 @@ export function CustomerSignup() {
               </label>
               <label className="flex overflow-hidden rounded-[20px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
                 <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
-                  +63 9
+                  +63
                 </span>
                 <input
                   value={form.phone}
@@ -236,15 +233,15 @@ export function CustomerSignup() {
                   disabled={isSubmitting}
                   type="tel"
                   inputMode="numeric"
-                  maxLength={9}
-                  pattern="[0-9]{9}"
+                  maxLength={10}
+                  pattern="[0-9]{10}"
                   autoComplete="tel"
                   className="min-w-0 flex-1 px-4 py-3 outline-none"
-                  placeholder="XXXXXXXXX"
+                  placeholder="XXXXXXXXXX"
                 />
               </label>
               <p className="mt-2 text-xs text-[#7A9297]">
-                Numbers only. Format: {formatSignupPhone(form.phone || "XXXXXXXXX")}.
+                Numbers only. Format: {formatSignupPhone(form.phone || "XXXXXXXXXX")}.
               </p>
             </div>
 

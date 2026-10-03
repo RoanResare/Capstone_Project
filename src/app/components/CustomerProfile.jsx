@@ -756,6 +756,249 @@ export function CustomerProfile() {
                 </section>
 
                 <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+                        Pet widget
+                      </p>
+                      <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
+                        Add pet
+                      </h2>
+                      <p className="mt-2 rounded-[18px] bg-[#F5FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                        To book a service, please fill out the 'Add pet' form.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPetForm(buildEmptyPetForm())}
+                      className="rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]"
+                    >
+                      New pet
+                    </button>
+                  </div>
+
+                  <div className="mt-6 grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+                    <form onSubmit={savePet} className="rounded-[20px] bg-[#FBFDFC] p-5">
+                      <div className="grid gap-4">
+                        <input
+                          value={petForm.petName}
+                          autoComplete="off"
+                          onChange={(event) =>
+                            setPetForm((current) => ({ ...current, petName: event.target.value }))
+                          }
+                          maxLength={60}
+                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          placeholder="Pet name"
+                        />
+                        <select
+                          value={petForm.petType}
+                          onChange={handlePetTypeChange}
+                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                        >
+                          <option value="">Select pet type</option>
+                          {petTypeOptions.map((petType) => (
+                            <option key={petType} value={petType}>
+                              {petType}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={petForm.breed}
+                          onChange={handleBreedChange}
+                          disabled={!petForm.petType}
+                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+                        >
+                          <option value="">
+                            {petForm.petType ? "Select breed" : "Select pet type first"}
+                          </option>
+                          {petBreedOptions.map((breed) => (
+                            <option key={breed} value={breed}>
+                              {breed}
+                            </option>
+                          ))}
+                        </select>
+                        {petForm.breed === "Other" && (
+                          <input
+                            value={petForm.customBreed}
+                            autoComplete="off"
+                            onChange={(event) =>
+                              setPetForm((current) => ({ ...current, customBreed: event.target.value }))
+                            }
+                            maxLength={60}
+                            className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                            placeholder="Specify breed"
+                          />
+                        )}
+                        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                          <input
+                            value={petForm.ageValue}
+                            autoComplete="off"
+                            onChange={(event) =>
+                              setPetForm((current) => ({
+                                ...current,
+                                ageValue: event.target.value.replace(/\D/g, "").slice(0, 3),
+                              }))
+                            }
+                            inputMode="numeric"
+                            className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                            placeholder="Age"
+                          />
+                          <select
+                            value={petForm.ageUnit}
+                            onChange={(event) =>
+                              setPetForm((current) => ({ ...current, ageUnit: event.target.value }))
+                            }
+                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          >
+                            <option value="months">Months</option>
+                            <option value="years">Years</option>
+                          </select>
+                        </div>
+                        <label className="flex items-center overflow-hidden rounded-[18px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
+                          <input
+                            value={petForm.weightKg}
+                            autoComplete="off"
+                            onChange={(event) =>
+                              setPetForm((current) => ({
+                                ...current,
+                                weightKg: event.target.value
+                                  .replace(/[^0-9.]/g, "")
+                                  .replace(/^(\d*\.?\d{0,2}).*$/, "$1")
+                                  .slice(0, 6),
+                              }))
+                            }
+                            inputMode="decimal"
+                            className="min-w-0 flex-1 px-4 py-3 outline-none"
+                            placeholder="Weight"
+                          />
+                          <span className="shrink-0 border-l border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                            kg
+                          </span>
+                        </label>
+                        <textarea
+                          value={petForm.notes}
+                          onChange={(event) =>
+                            setPetForm((current) => ({ ...current, notes: event.target.value }))
+                          }
+                          maxLength={500}
+                          className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          placeholder="Notes for staff or future visits"
+                        />
+                        <div className="flex flex-col gap-3 rounded-[20px] border border-dashed border-[#D9E7E7] bg-white p-4 sm:flex-row sm:items-center">
+                          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#EEF6F6] text-[#5E777C]">
+                            {petForm.photoURL ? (
+                              <img
+                                src={petForm.photoURL}
+                                alt={`${petForm.petName || "Pet"} preview`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <PawPrint size={26} />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
+                              <Camera size={16} />
+                              Pet photo
+                              <input
+                                type="file"
+                                autoComplete="off"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={handlePetPhotoSelection}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            type="submit"
+                            disabled={isSavingPet || !petFormChanged}
+                            className="rounded-[18px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
+                          >
+                            {isSavingPet
+                              ? "Saving pet..."
+                              : petForm.id
+                                ? "Save changes"
+                                : "Save pet"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPetForm(buildEmptyPetForm())}
+                            disabled={isSavingPet}
+                            className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#2B555C]"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+
+                    <div className="grid auto-rows-fr gap-4 md:grid-cols-2">
+                      {customerPetRecords.length === 0 ? (
+                        <EmptyState
+                          title="No pet records yet"
+                          message="Add a pet here so future bookings can start from the service selection."
+                        />
+                      ) : (
+                        customerPetRecords.map((record) => {
+                          const photoReview = petPhotoModerationById.get(record.photoModerationId);
+
+                          return (
+                            <div
+                              key={record.id}
+                              className="flex min-h-[230px] flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-5 text-left transition hover:border-[#2D9B9B]"
+                            >
+                              <div className="flex flex-wrap items-center gap-3">
+                                {record.photoURL && photoReview?.status !== "pending" ? (
+                                  <img
+                                    src={record.photoURL}
+                                    alt={`${record.petName} profile`}
+                                    className="h-12 w-12 rounded-2xl object-cover"
+                                  />
+                                ) : (
+                                  <PawPrint size={18} className="text-[#2D6B73]" />
+                                )}
+                                <h3 className="text-xl font-semibold text-[#20343B]">{record.petName}</h3>
+                                <StatusChip label={record.petType} />
+                                {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
+                              </div>
+                              <p className="mt-3 text-sm text-[#607277]">
+                                {[
+                                  record.breed || "Breed not specified",
+                                  record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
+                                  record.weightKg ? `${record.weightKg} kg` : "",
+                                ].filter(Boolean).join(" | ")}
+                              </p>
+                              <p className="mt-3 flex-1 rounded-[18px] bg-white px-4 py-3 text-sm text-[#50666B]">
+                                {record.notes || "No extra notes yet."}
+                              </p>
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setPetForm(buildPetFormFromRecord(record))}
+                                  className="rounded-xl bg-[#EEF6F6] px-4 py-2 text-sm font-semibold text-[#2B555C]"
+                                >
+                                  Edit pet
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removePet(record)}
+                                  className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-4 py-2 text-sm font-semibold text-[#B23949]"
+                                >
+                                  <Trash2 size={15} />
+                                  Delete pet
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                   <div className="flex items-center gap-3">
                     <Bell size={20} className="text-[#2D6B73]" />
                     <h2 className="text-xl font-semibold text-[#20343B]">Notifications</h2>
@@ -957,7 +1200,7 @@ export function CustomerProfile() {
                       Manage account
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
-                      Profile and saved pets
+                      Profile settings
                     </h2>
                   </div>
                 </div>
@@ -1091,230 +1334,7 @@ export function CustomerProfile() {
                   </button>
                 </form>
 
-                <div className="mt-8 grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-                  <form onSubmit={savePet} className="rounded-[28px] bg-[#FBFDFC] p-6">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                      Add or update pet
-                    </p>
-                    <div className="mt-5 grid gap-4">
-                      <input
-                        value={petForm.petName}
-                        autoComplete="off"
-                        onChange={(event) =>
-                          setPetForm((current) => ({ ...current, petName: event.target.value }))
-                        }
-                        maxLength={60}
-                        className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                        placeholder="Pet name"
-                      />
-                      <select
-                        value={petForm.petType}
-                        onChange={handlePetTypeChange}
-                        className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                      >
-                        <option value="">Select pet type</option>
-                        {petTypeOptions.map((petType) => (
-                          <option key={petType} value={petType}>
-                            {petType}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={petForm.breed}
-                        onChange={handleBreedChange}
-                        disabled={!petForm.petType}
-                        className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
-                      >
-                        <option value="">
-                          {petForm.petType ? "Select breed" : "Select pet type first"}
-                        </option>
-                        {petBreedOptions.map((breed) => (
-                          <option key={breed} value={breed}>
-                            {breed}
-                          </option>
-                        ))}
-                      </select>
-                      {petForm.breed === "Other" && (
-                        <input
-                          value={petForm.customBreed}
-                          autoComplete="off"
-                          onChange={(event) =>
-                            setPetForm((current) => ({ ...current, customBreed: event.target.value }))
-                          }
-                          maxLength={60}
-                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                          placeholder="Specify breed"
-                        />
-                      )}
-                      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                        <input
-                          value={petForm.ageValue}
-                          autoComplete="off"
-                          onChange={(event) =>
-                            setPetForm((current) => ({
-                              ...current,
-                              ageValue: event.target.value.replace(/\D/g, "").slice(0, 3),
-                            }))
-                          }
-                          inputMode="numeric"
-                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                          placeholder="Age"
-                        />
-                        <select
-                          value={petForm.ageUnit}
-                          onChange={(event) =>
-                            setPetForm((current) => ({ ...current, ageUnit: event.target.value }))
-                          }
-                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                        >
-                          <option value="months">Months</option>
-                          <option value="years">Years</option>
-                        </select>
-                      </div>
-                      <label className="flex items-center overflow-hidden rounded-[18px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
-                        <input
-                          value={petForm.weightKg}
-                          autoComplete="off"
-                          onChange={(event) =>
-                            setPetForm((current) => ({
-                              ...current,
-                              weightKg: event.target.value
-                                .replace(/[^0-9.]/g, "")
-                                .replace(/^(\d*\.?\d{0,2}).*$/, "$1")
-                                .slice(0, 6),
-                            }))
-                          }
-                          inputMode="decimal"
-                          className="min-w-0 flex-1 px-4 py-3 outline-none"
-                          placeholder="Weight"
-                        />
-                        <span className="shrink-0 border-l border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
-                          kg
-                        </span>
-                      </label>
-                      <textarea
-                        value={petForm.notes}
-                        onChange={(event) =>
-                          setPetForm((current) => ({ ...current, notes: event.target.value }))
-                        }
-                        maxLength={500}
-                        className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                        placeholder="Notes for staff or future visits"
-                      />
-                      <div className="flex flex-col gap-3 rounded-[20px] border border-dashed border-[#D9E7E7] bg-white p-4 sm:flex-row sm:items-center">
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#EEF6F6] text-[#5E777C]">
-                          {petForm.photoURL ? (
-                            <img
-                              src={petForm.photoURL}
-                              alt={`${petForm.petName || "Pet"} preview`}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <PawPrint size={26} />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
-                            <Camera size={16} />
-                            Pet photo
-                            <input
-                              type="file"
-                              autoComplete="off"
-                              accept="image/png,image/jpeg,image/webp"
-                              onChange={handlePetPhotoSelection}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          type="submit"
-                          disabled={isSavingPet || !petFormChanged}
-                          className="rounded-[18px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
-                        >
-                          {isSavingPet
-                            ? "Saving pet..."
-                            : petForm.id
-                              ? "SAVE CHANGES"
-                              : "Save pet"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPetForm(buildEmptyPetForm())
-                          }
-                          disabled={isSavingPet}
-                          className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#2B555C]"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-                  </form>
 
-                  <div className="space-y-4">
-                    {customerPetRecords.length === 0 ? (
-                      <EmptyState
-                        title="No pet records yet"
-                        message="Book an appointment or add a pet here so future visits are faster."
-                      />
-                    ) : (
-                      customerPetRecords.map((record) => {
-                        const photoReview = petPhotoModerationById.get(record.photoModerationId);
-
-                        return (
-                        <div
-                          key={record.id}
-                          className="w-full rounded-[28px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-5 text-left transition hover:border-[#2D9B9B]"
-                        >
-                          <div className="flex flex-wrap items-center gap-3">
-                            {record.photoURL && photoReview?.status !== "pending" ? (
-                              <img
-                                src={record.photoURL}
-                                alt={`${record.petName} profile`}
-                                className="h-12 w-12 rounded-2xl object-cover"
-                              />
-                            ) : (
-                              <PawPrint size={18} className="text-[#2D6B73]" />
-                            )}
-                            <h3 className="text-xl font-semibold text-[#20343B]">{record.petName}</h3>
-                            <StatusChip label={record.petType} />
-                            {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
-                          </div>
-                          <p className="mt-3 text-sm text-[#607277]">
-                            {[
-                              record.breed || "Breed not specified",
-                              record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
-                              record.weightKg ? `${record.weightKg} kg` : "",
-                            ].filter(Boolean).join(" | ")}
-                          </p>
-                          <p className="mt-3 rounded-[18px] bg-white px-4 py-3 text-sm text-[#50666B]">
-                            {record.notes || "No extra notes yet."}
-                          </p>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setPetForm(buildPetFormFromRecord(record))}
-                              className="rounded-xl bg-[#EEF6F6] px-4 py-2 text-sm font-semibold text-[#2B555C]"
-                            >
-                              Edit pet
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removePet(record)}
-                              className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-4 py-2 text-sm font-semibold text-[#B23949]"
-                            >
-                              <Trash2 size={15} />
-                              Delete pet
-                            </button>
-                          </div>
-                        </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
               </section>
             )}
 

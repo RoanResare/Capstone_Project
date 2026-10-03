@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, Image, LogOut, PawPrint, Users, X } from "lucide-react";
+import { Bell, CalendarDays, Clock3, Image, LogOut, PawPrint, Users, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { BrandMark } from "../BrandMark.jsx";
 
 const iconMap = {
   appointments: CalendarDays,
+  schedule: Clock3,
   "pet-records": PawPrint,
   "photo-moderation": Image,
   "manage-users": Users,

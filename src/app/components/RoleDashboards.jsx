@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { CalendarDays, PawPrint, ShieldCheck, Users } from "lucide-react";
+import { CalendarDays, Clock3, PawPrint, ShieldCheck, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useApp } from "../context/AppContext.jsx";
 
@@ -121,6 +121,12 @@ function DashboardShell({ role }) {
             icon={CalendarDays}
             title="Appointment Workspace"
             description="Approve, reject, cancel, and assign bookings."
+          />
+          <QuickLink
+            to="/portal/schedule"
+            icon={Clock3}
+            title="Manage Schedule"
+            description="Disable specific dates and time slots from customer booking."
           />
           <QuickLink
             to="/portal/pet-records"

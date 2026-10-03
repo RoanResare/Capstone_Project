@@ -182,6 +182,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="appointments" replace /> },
       { path: "appointments", element: <RouteLoader Component={PortalPage} /> },
+      { path: "schedule", element: <RouteLoader Component={PortalPage} /> },
       { path: "pet-records", element: <RouteLoader Component={PortalPage} /> },
       { path: "photo-moderation", element: <RouteLoader Component={PortalPage} /> },
       {

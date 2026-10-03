@@ -6,6 +6,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 300 - 850",
     category: "Preventive Care",
     description: "Core and optional vaccines for cats, dogs, and anti-rabies options.",
+    availability: "weekend",
   },
   {
     id: "deworming",
@@ -14,6 +15,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 200 - 350",
     category: "Preventive Care",
     description: "Routine parasite control for dogs and cats based on weight brackets.",
+    availability: "weekend",
   },
   {
     id: "consultation",
@@ -22,6 +24,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 300",
     category: "Clinic Visit",
     description: "General veterinary assessment for symptoms, follow-ups, and wellness checks.",
+    availability: "weekend",
   },
   {
     id: "laboratory-testing",
@@ -30,6 +33,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 200 - 2000",
     category: "Diagnostics",
     description: "Diagnostic tests, blood work, screening, and comprehensive chemistry.",
+    availability: "weekend",
   },
   {
     id: "low-cost-kapon",
@@ -38,6 +42,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 200 - 2,200",
     category: "Surgery",
     description: "Affordable spay and neuter program from registration fee to dog/cat procedures.",
+    availability: "weekend",
   },
   {
     id: "pet-grooming",
@@ -46,6 +51,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 250 - 750",
     category: "Grooming",
     description: "Complete grooming packages including basic, sanitary, full groom, and puppy cuts.",
+    availability: "daily",
   },
 ];
 
@@ -116,6 +122,7 @@ export const appointmentStatusOptions = [
   "Rejected",
   "Completed",
   "Cancelled",
+  "Expired",
 ];
 
 export const appointmentFilters = [
@@ -125,6 +132,7 @@ export const appointmentFilters = [
   "Rejected",
   "Completed",
   "Cancelled",
+  "Expired",
 ];
 
 export const chatbotSuggestionChips = [
@@ -191,4 +199,22 @@ export function buildSeedAvailabilitySlots(options = {}) {
   }
 
   return slots;
+}
+
+export function isWeekendDateKey(dateKey = "") {
+  const parsed = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  return parsed.getDay() === 0 || parsed.getDay() === 6;
+}
+
+export function isServiceAvailableOnDate(serviceId = "", dateKey = "") {
+  const service = serviceCatalog.find((item) => item.id === serviceId);
+  if (!service || !dateKey) {
+    return true;
+  }
+
+  return service.availability === "daily" || isWeekendDateKey(dateKey);
 }

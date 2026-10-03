@@ -1,7 +1,8 @@
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 
-const PET_LABEL_PATTERN = /\b(cat|kitten|dog|puppy|retriever|terrier|spaniel|poodle|bulldog|shepherd|hound|beagle|collie|chihuahua|dachshund|pug|husky|malamute|mastiff|pinscher|schnauzer|shih[- ]?tzu|pomeranian|corgi|boxer|rottweiler|doberman)\b/i;
+const PET_LABEL_PATTERN = /\b(cat|kitten|tabby|siamese|persian|dog|puppy|retriever|terrier|spaniel|poodle|bulldog|shepherd|hound|beagle|collie|chihuahua|dachshund|pug|husky|malamute|mastiff|pinscher|schnauzer|shih[- ]?tzu|pomeranian|corgi|boxer|rottweiler|doberman)\b/i;
+const NON_PET_LABEL_PATTERN = /\b(bear|ant|insect|spider|snake|bird|fish|person|human|car|truck|food|plant|flower)\b/i;
 
 function decodeImageDataUrl(value = "") {
   const match = String(value).match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/i);
@@ -53,11 +54,17 @@ async function prescreenPetImage(imageDataUrl) {
     .slice(0, 5)
     .map((entry) => ({ label: entry.label, score: Number(entry.score) || 0 }));
   const petMatch = labels.find((entry) => PET_LABEL_PATTERN.test(entry.label) && entry.score >= 0.2);
+  const strongNonPetMatch = labels.find(
+    (entry) => NON_PET_LABEL_PATTERN.test(entry.label) && entry.score >= 0.25,
+  );
 
   return {
     configured: true,
-    allowed: Boolean(petMatch),
-    reason: petMatch ? "Pet image detected." : "The image does not appear to contain a cat or dog.",
+    allowed: Boolean(petMatch) && !strongNonPetMatch,
+    reason:
+      petMatch && !strongNonPetMatch
+        ? "Pet image detected."
+        : "Unable to prepare pet photo. Please try another image",
     labels,
   };
 }

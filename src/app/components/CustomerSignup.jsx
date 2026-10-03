@@ -4,6 +4,40 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
+import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
+
+function getPhoneSubscriberDigits(value = "") {
+  const digits = String(value || "").replace(/\D/g, "");
+  const withoutCountryCode = digits.startsWith("63") ? digits.slice(2) : digits;
+  const withoutLeadingZero = withoutCountryCode.startsWith("0")
+    ? withoutCountryCode.slice(1)
+    : withoutCountryCode;
+  const withoutFixedNine = withoutLeadingZero.startsWith("9")
+    ? withoutLeadingZero.slice(1)
+    : withoutLeadingZero;
+
+  return withoutFixedNine.slice(0, 9);
+}
+
+function formatSignupPhone(value = "") {
+  return `+63 9${getPhoneSubscriberDigits(value)}`;
+}
+
+function getPasswordStrength(password = "") {
+  const checks = [
+    password.length >= 6,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+    /\d/.test(password),
+  ];
+  const score = checks.filter(Boolean).length;
+
+  if (!password) return { label: "Not started", width: "0%", color: "bg-[#D8E8EA]" };
+  if (score <= 2) return { label: "Weak", width: "33%", color: "bg-[#D85757]" };
+  if (score <= 4) return { label: "Good", width: "66%", color: "bg-[#F0AA3D]" };
+  return { label: "Strong", width: "100%", color: "bg-[#2D9B6F]" };
+}
 
 export function CustomerSignup() {
   const navigate = useNavigate();
@@ -28,6 +62,8 @@ export function CustomerSignup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const passwordStrength = getPasswordStrength(form.password);
+  const passwordPolicyError = form.password ? getPasswordPolicyError(form.password) : "";
 
   if (!isLoading && isAuthenticated && currentUser) {
     return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;
@@ -35,7 +71,7 @@ export function CustomerSignup() {
 
   const handleChange = (field) => (event) => {
     const value = field === "phone"
-      ? event.target.value.replace(/\D/g, "").slice(0, 11)
+      ? getPhoneSubscriberDigits(event.target.value)
       : event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -51,11 +87,19 @@ export function CustomerSignup() {
     setFeedback({ type: "", message: "" });
 
     try {
+      if (form.phone.length !== 9) {
+        setFeedback({
+          type: "error",
+          message: "Enter exactly 9 digits after +63 9 for your contact number.",
+        });
+        return;
+      }
+
       const result = await signUp({
         fullName: form.fullName,
         username: form.username,
         email: form.email,
-        phone: form.phone,
+        phone: formatSignupPhone(form.phone),
         password: form.password,
         confirmPassword: form.confirmPassword,
       });
@@ -182,19 +226,26 @@ export function CustomerSignup() {
               <label className="mb-2 block text-sm font-medium text-[#415D62]">
                 Phone number
               </label>
-              <input
-                value={form.phone}
-                onChange={handleChange("phone")}
-                disabled={isSubmitting}
-                type="tel"
-                inputMode="numeric"
-                maxLength={11}
-                pattern="[0-9]{1,11}"
-                autoComplete="tel"
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
-                placeholder="Optional phone number"
-              />
-              <p className="mt-2 text-xs text-[#7A9297]">Numbers only, up to 11 digits.</p>
+              <label className="flex overflow-hidden rounded-[20px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
+                <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                  +63 9
+                </span>
+                <input
+                  value={form.phone}
+                  onChange={handleChange("phone")}
+                  disabled={isSubmitting}
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={9}
+                  pattern="[0-9]{9}"
+                  autoComplete="tel"
+                  className="min-w-0 flex-1 px-4 py-3 outline-none"
+                  placeholder="XXXXXXXXX"
+                />
+              </label>
+              <p className="mt-2 text-xs text-[#7A9297]">
+                Numbers only. Format: {formatSignupPhone(form.phone || "XXXXXXXXX")}.
+              </p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
@@ -222,6 +273,18 @@ export function CustomerSignup() {
                 <p className="mt-2 text-xs text-[#607277]">
                   Use at least 6 characters with uppercase, lowercase, and a special character.
                 </p>
+                <div className="mt-3">
+                  <div className="h-2 overflow-hidden rounded-full bg-[#E7F0F0]">
+                    <div
+                      className={`h-full rounded-full transition-all ${passwordStrength.color}`}
+                      style={{ width: passwordStrength.width }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-[#607277]">
+                    Password strength: {passwordStrength.label}
+                    {passwordPolicyError ? ` - ${passwordPolicyError}` : ""}
+                  </p>
+                </div>
               </div>
 
               <div>

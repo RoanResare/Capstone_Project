@@ -16,6 +16,7 @@ import { useToast } from "../context/ToastContext.jsx";
 import {
   breedsByPetType,
   buildSeedAvailabilitySlots,
+  isServiceAvailableOnDate,
   petTypeOptions,
   serviceCatalog,
 } from "../data/systemData.js";
@@ -40,6 +41,18 @@ function createInitialFormData(customer, selectedDate = "") {
   };
 }
 
+function clearPetFields(current) {
+  return {
+    ...current,
+    petName: "",
+    petType: "",
+    customPetType: "",
+    breed: "",
+    customBreed: "",
+    petInformation: "",
+  };
+}
+
 function toPhilippineMobileLocal(value = "") {
   const digits = String(value || "").replace(/\D/g, "");
   const withoutCountryCode = digits.startsWith("63") ? digits.slice(2) : digits;
@@ -51,7 +64,7 @@ function toPhilippineMobileLocal(value = "") {
 }
 
 function formatPhilippineMobile(value = "") {
-  return `+63${toPhilippineMobileLocal(value)}`;
+  return `+63 ${toPhilippineMobileLocal(value)}`;
 }
 
 function isValidPhilippineMobile(value = "") {
@@ -362,11 +375,23 @@ export function AppointmentBooking({ embedded = false }) {
   );
   const selectedSlot = availableSlots.find((slot) => slot.id === formData.selectedSlotId) || null;
   const selectedDateSlots = formData.selectedDate
-    ? availableSlotsByDate[formData.selectedDate] || []
+    ? (availableSlotsByDate[formData.selectedDate] || []).filter((slot) =>
+        isServiceAvailableOnDate(formData.selectedServiceId, slot.date),
+      )
     : [];
+  const serviceAvailableSlotsByDate = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(availableSlotsByDate).map(([dateKey, slots]) => [
+          dateKey,
+          slots.filter((slot) => isServiceAvailableOnDate(formData.selectedServiceId, slot.date)),
+        ]),
+      ),
+    [availableSlotsByDate, formData.selectedServiceId],
+  );
   const calendarDays = useMemo(
-    () => buildCalendarDays(visibleMonth, availableSlotsByDate, formData.selectedDate),
-    [availableSlotsByDate, formData.selectedDate, visibleMonth],
+    () => buildCalendarDays(visibleMonth, serviceAvailableSlotsByDate, formData.selectedDate),
+    [serviceAvailableSlotsByDate, formData.selectedDate, visibleMonth],
   );
   const firstVisibleMonth = firstAvailableMonthDate
     ? new Date(firstAvailableMonthDate.getFullYear(), firstAvailableMonthDate.getMonth(), 1)
@@ -430,15 +455,18 @@ export function AppointmentBooking({ embedded = false }) {
   const handleMonthChange = useCallback(
     (amount) => {
       const nextVisibleMonth = shiftMonth(visibleMonth, amount);
-      const nextMonthAvailableDate = availableDateKeys.find((dateKey) =>
+      const serviceAvailableDateKeys = Object.keys(serviceAvailableSlotsByDate)
+        .filter((dateKey) => serviceAvailableSlotsByDate[dateKey]?.length)
+        .sort();
+      const nextMonthAvailableDate = serviceAvailableDateKeys.find((dateKey) =>
         isSameMonth(dateKey, nextVisibleMonth),
       );
-      const nextSelectedDate = nextMonthAvailableDate || firstAvailableDate || "";
+      const nextSelectedDate = nextMonthAvailableDate || serviceAvailableDateKeys[0] || "";
 
       setVisibleMonth(nextVisibleMonth);
       setFormData((current) => {
         const selectedSlotStillAvailable = nextSelectedDate
-          ? availableSlotsByDate[nextSelectedDate]?.some((slot) => slot.id === current.selectedSlotId)
+          ? serviceAvailableSlotsByDate[nextSelectedDate]?.some((slot) => slot.id === current.selectedSlotId)
           : false;
 
         if (
@@ -455,7 +483,7 @@ export function AppointmentBooking({ embedded = false }) {
         };
       });
     },
-    [availableDateKeys, availableSlotsByDate, firstAvailableDate, visibleMonth],
+    [serviceAvailableSlotsByDate, visibleMonth],
   );
 
   const handleChange = (field) => (event) => {
@@ -517,6 +545,12 @@ export function AppointmentBooking({ embedded = false }) {
     );
 
     if (!checked) {
+      setFormData((current) =>
+        current.petName.trim().toLowerCase() === String(record.petName || "").trim().toLowerCase()
+          ? clearPetFields(current)
+          : current,
+      );
+      setErrors((current) => ({ ...current, petName: "", petType: "", breed: "" }));
       return;
     }
 
@@ -535,7 +569,17 @@ export function AppointmentBooking({ embedded = false }) {
   };
 
   const handleServiceSelect = (serviceId) => {
-    setFormData((current) => ({ ...current, selectedServiceId: serviceId }));
+    setFormData((current) => {
+      const keepSchedule =
+        current.selectedDate && isServiceAvailableOnDate(serviceId, current.selectedDate);
+
+      return {
+        ...current,
+        selectedServiceId: serviceId,
+        selectedDate: keepSchedule ? current.selectedDate : "",
+        selectedSlotId: keepSchedule ? current.selectedSlotId : "",
+      };
+    });
     if (feedback.message) {
       setFeedback({ type: "", message: "" });
     }
@@ -633,10 +677,14 @@ export function AppointmentBooking({ embedded = false }) {
 
     if (!formData.selectedDate) {
       nextErrors.selectedDate = "Choose an available date.";
+    } else if (!isServiceAvailableOnDate(formData.selectedServiceId, formData.selectedDate)) {
+      nextErrors.selectedDate = "This service is available on weekends only.";
     }
 
     if (!formData.selectedSlotId) {
       nextErrors.selectedSlotId = "Choose an available time slot.";
+    } else if (!selectedDateSlots.some((slot) => slot.id === formData.selectedSlotId)) {
+      nextErrors.selectedSlotId = "Choose a valid time slot for this service.";
     }
 
     if (!formData.petName.trim()) {
@@ -842,38 +890,25 @@ export function AppointmentBooking({ embedded = false }) {
       errors[field] ? "border-[#B23949] bg-[#FFF7F8] ring-2 ring-[#F4B7BE]/50" : ""
     }`;
   const fieldStepMap = {
-    selectedServiceId: 1,
-    selectedDate: 2,
-    selectedSlotId: 2,
-    fullName: 3,
-    email: 3,
-    contactNumber: 3,
-    petName: 3,
-    petType: 3,
-    breed: 3,
+    fullName: 1,
+    email: 1,
+    contactNumber: 1,
+    petName: 1,
+    petType: 1,
+    breed: 1,
+    selectedServiceId: 2,
+    selectedDate: 3,
+    selectedSlotId: 3,
   };
   const bookingSteps = [
-    { id: 1, label: "Select Service" },
-    { id: 2, label: "Date & Time" },
-    { id: 3, label: "Pet Details" },
+    { id: 1, label: "Pet Profile" },
+    { id: 2, label: "Service" },
+    { id: 3, label: "Date & Time" },
   ];
   const validateStep = (step) => {
     const nextErrors = {};
 
-    if (step === 1 && !formData.selectedServiceId) {
-      nextErrors.selectedServiceId = "Choose a service first.";
-    }
-
-    if (step === 2) {
-      if (!formData.selectedDate) {
-        nextErrors.selectedDate = "Choose an available date.";
-      }
-      if (!formData.selectedSlotId) {
-        nextErrors.selectedSlotId = "Choose an available time slot.";
-      }
-    }
-
-    if (step === 3) {
+    if (step === 1) {
       if (!formData.fullName.trim()) {
         nextErrors.fullName = "Full name is required.";
       }
@@ -897,6 +932,23 @@ export function AppointmentBooking({ embedded = false }) {
         nextErrors.breed = "Pet breed is required.";
       } else if (formData.breed === "Other" && !formData.customBreed.trim()) {
         nextErrors.breed = "Specify the custom breed.";
+      }
+    }
+
+    if (step === 2 && !formData.selectedServiceId) {
+      nextErrors.selectedServiceId = "Choose a service first.";
+    }
+
+    if (step === 3) {
+      if (!formData.selectedDate) {
+        nextErrors.selectedDate = "Choose an available date.";
+      } else if (!isServiceAvailableOnDate(formData.selectedServiceId, formData.selectedDate)) {
+        nextErrors.selectedDate = "This service is available on weekends only.";
+      }
+      if (!formData.selectedSlotId) {
+        nextErrors.selectedSlotId = "Choose an available time slot.";
+      } else if (!selectedDateSlots.some((slot) => slot.id === formData.selectedSlotId)) {
+        nextErrors.selectedSlotId = "Choose a valid time slot for this service.";
       }
     }
 
@@ -926,7 +978,7 @@ export function AppointmentBooking({ embedded = false }) {
     setFeedback({ type: "", message: "" });
     setActiveStep((current) => Math.max(current - 1, 1));
   };
-  const useTwoColumnStepLayout = !embedded && activeStep !== 3;
+  const useTwoColumnStepLayout = !embedded && activeStep !== 1;
   const availableBreedOptions = breedsByPetType[formData.petType] || [];
 
   const content = (
@@ -967,10 +1019,10 @@ export function AppointmentBooking({ embedded = false }) {
               const isActive = activeStep === step.id;
               const isComplete =
                 step.id === 1
-                  ? Boolean(formData.selectedServiceId)
+                  ? Boolean(formData.fullName && formData.email && formData.petName && formData.petType)
                   : step.id === 2
-                    ? Boolean(formData.selectedDate && formData.selectedSlotId)
-                    : Boolean(formData.fullName && formData.email && formData.petName && formData.petType);
+                    ? Boolean(formData.selectedServiceId)
+                    : Boolean(formData.selectedDate && formData.selectedSlotId);
 
               return (
                 <button
@@ -1005,9 +1057,9 @@ export function AppointmentBooking({ embedded = false }) {
         </div>
 
         <div className={`grid items-start gap-4 ${useTwoColumnStepLayout ? "xl:grid-cols-[1.12fr_0.88fr]" : ""}`}>
-          {activeStep !== 3 && (
+          {activeStep !== 1 && (
           <div className="space-y-4">
-            {activeStep === 1 && (
+            {activeStep === 2 && (
           <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -1015,40 +1067,42 @@ export function AppointmentBooking({ embedded = false }) {
               </div>
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                  Step 1
+                  Step 2
                 </p>
                 <h2 className="text-xl font-semibold text-[#20343B]">Choose a service</h2>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-2.5 md:grid-cols-2">
-              {serviceCatalog.map((service, index) => (
-                <button
-                  key={service.id}
-                  type="button"
-                  ref={index === 0 ? setFieldRef("selectedServiceId") : undefined}
-                  onClick={() => handleServiceSelect(service.id)}
-                  className={`rounded-lg border px-3.5 py-3 text-left transition ${
-                    formData.selectedServiceId === service.id
-                      ? "border-[#2D9B9B] bg-[#F3FBFB]"
-                      : errors.selectedServiceId
-                        ? "border-[#B23949] bg-[#FFF7F8]"
-                      : "border-[#E6EFEE] bg-[#FCFEFE]"
-                  }`}
-                >
+            <div className="mt-4 grid gap-3">
+              <select
+                ref={setFieldRef("selectedServiceId")}
+                value={formData.selectedServiceId}
+                onChange={(event) => handleServiceSelect(event.target.value)}
+                className={fieldClassName("selectedServiceId", "w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]")}
+              >
+                <option value="">Select service type</option>
+                {serviceCatalog.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name} - {service.availability === "daily" ? "Daily" : "Weekends only"}
+                  </option>
+                ))}
+              </select>
+              {selectedService && (
+                <div className="rounded-lg border border-[#E6EFEE] bg-[#FCFEFE] px-4 py-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                    {service.category}
+                    {selectedService.category}
                   </p>
-                  <h3 className="mt-1 text-lg font-semibold text-[#20343B]">{service.name}</h3>
-                  <p className="mt-2 text-sm leading-5 text-[#607277]">{service.description}</p>
-                  <div className="mt-2 flex items-center justify-between text-xs font-semibold">
-                    <span className="text-[#2D6B73]">{service.duration}</span>
-                    <span className="min-w-[8.5rem] shrink-0 whitespace-nowrap rounded-lg bg-[#F7F2E9] px-3.5 py-1 text-center text-[#6A5D4A]">
-                      {service.priceLabel}
+                  <h3 className="mt-1 text-lg font-semibold text-[#20343B]">{selectedService.name}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#607277]">{selectedService.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                    <span className="rounded-lg bg-[#EAF7F7] px-3 py-1.5 text-[#2D6B73]">{selectedService.duration}</span>
+                    <span className="rounded-lg bg-[#F7F2E9] px-3 py-1.5 text-[#6A5D4A]">{selectedService.priceLabel}</span>
+                    <span className="rounded-lg bg-[#F4FAFA] px-3 py-1.5 text-[#33545A]">
+                      {selectedService.availability === "daily" ? "Available daily" : "Available Saturday and Sunday"}
                     </span>
                   </div>
-                </button>
-              ))}
+                </div>
+              )}
             </div>
             {errors.selectedServiceId && (
               <p className="mt-3 text-sm text-[#B23949]">{errors.selectedServiceId}</p>
@@ -1056,8 +1110,15 @@ export function AppointmentBooking({ embedded = false }) {
             <div className="mt-4 flex justify-end">
               <button
                 type="button"
+                onClick={goToPreviousStep}
+                className="mr-auto rounded-lg bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
                 onClick={goToNextStep}
-                className="rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+                className="cursor-pointer rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61]"
               >
                 Continue
               </button>
@@ -1065,7 +1126,7 @@ export function AppointmentBooking({ embedded = false }) {
           </section>
             )}
 
-            {activeStep === 2 && (
+            {activeStep === 3 && (
           <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -1073,7 +1134,7 @@ export function AppointmentBooking({ embedded = false }) {
               </div>
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                  Step 2
+                  Step 3
                 </p>
                 <h2 className="text-xl font-semibold text-[#20343B]">
                   Select date and time
@@ -1254,11 +1315,18 @@ export function AppointmentBooking({ embedded = false }) {
                 Back
               </button>
               <button
-                type="button"
-                onClick={goToNextStep}
-                className="rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+                type="submit"
+                disabled={isSubmitting || (currentCustomer?.status !== "active" && Boolean(currentCustomer))}
+                className={`cursor-pointer rounded-lg px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61] ${
+                  isSubmitting ||
+                  (currentCustomer &&
+                    (currentCustomer.status !== "active" ||
+                      ["restricted", "suspended", "banned"].includes(currentCustomer.fraudStatus)))
+                    ? "cursor-not-allowed bg-[#9CB5B8]"
+                    : "bg-[#173E44]"
+                }`}
               >
-                Continue
+                {isSubmitting ? "Saving appointment..." : "Confirm appointment booking"}
               </button>
             </div>
           </section>
@@ -1266,7 +1334,7 @@ export function AppointmentBooking({ embedded = false }) {
           </div>
           )}
 
-        {activeStep === 3 && (
+        {activeStep === 1 && (
         <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -1274,10 +1342,10 @@ export function AppointmentBooking({ embedded = false }) {
             </div>
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                Step 3
+                Step 1
               </p>
               <h2 className="text-xl font-semibold text-[#20343B]">
-                Enter customer and pet details
+                Choose pet profile and contact details
               </h2>
             </div>
           </div>
@@ -1340,7 +1408,7 @@ export function AppointmentBooking({ embedded = false }) {
               )}
             >
               <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
-                +63 🇵🇭
+                +63
               </span>
               <input
                 ref={setFieldRef("contactNumber")}
@@ -1481,24 +1549,10 @@ export function AppointmentBooking({ embedded = false }) {
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              onClick={goToPreviousStep}
-              className="rounded-lg bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A] sm:w-auto"
-            >
-              Back
-            </button>
-            <button
-              type="submit"
-            disabled={isSubmitting || (currentCustomer?.status !== "active" && Boolean(currentCustomer))}
-            className={`flex-1 rounded-lg px-5 py-3 text-sm font-semibold text-white transition ${
-              isSubmitting ||
-              (currentCustomer &&
-                (currentCustomer.status !== "active" ||
-                  ["restricted", "suspended", "banned"].includes(currentCustomer.fraudStatus)))
-                ? "cursor-not-allowed bg-[#9CB5B8]"
-                : "bg-[#2D9B9B] hover:bg-[#288A8A]"
-            }`}
+              onClick={goToNextStep}
+              className="flex-1 cursor-pointer rounded-lg bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
           >
-            {isSubmitting ? "Saving appointment..." : "Confirm appointment booking"}
+            Continue to services
           </button>
           </div>
 

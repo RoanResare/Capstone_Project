@@ -182,8 +182,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
 
-  if (phone && !/^\d{1,11}$/.test(phone)) {
-    throw new ApiError(400, "Phone number must contain numbers only and be no more than 11 digits.");
+  if (phone && !/^(?:09\d{9}|639\d{9})$/.test(phone)) {
+    throw new ApiError(400, "Phone number must use the format +63 9XXXXXXXXX.");
   }
 
   const storedEmailUser = await findUserByEmailCaseInsensitive(email);

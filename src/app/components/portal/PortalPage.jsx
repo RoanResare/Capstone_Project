@@ -186,7 +186,7 @@ function statusClasses(status) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
-  if (["Rejected", "Cancelled"].includes(status)) {
+  if (["Rejected", "Cancelled", "Expired"].includes(status)) {
     return "bg-[#FCE8EB] text-[#B23949]";
   }
 

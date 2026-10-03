@@ -75,9 +75,7 @@ async function assertEmailIsDeliverable(email) {
 
 async function assertPhilippineConnection(ip) {
   if (!env.security.geoLookupUrl) {
-    if (env.security.failClosed) {
-      throw new ApiError(503, "Location security verification is not configured.");
-    }
+    console.warn("[registration-security] Geo/VPN provider is not configured; skipping location verification.");
     return;
   }
 

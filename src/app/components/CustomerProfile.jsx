@@ -8,6 +8,7 @@ import {
   Clock3,
   Eye,
   EyeOff,
+  Trash2,
   PawPrint,
   Scissors,
   UserRound,
@@ -35,22 +36,12 @@ const PET_PHOTO_PENDING_MESSAGE =
 const allowedPetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxPetPhotoSizeBytes = 5 * 1024 * 1024;
 
-function getCustomerInitials(name = "") {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 function statusTone(status) {
   if (["Completed", "active"].includes(status)) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
-  if (["Cancelled", "Rejected", "No-show", "suspended"].includes(status)) {
+  if (["Cancelled", "Rejected", "No-show", "Expired", "suspended"].includes(status)) {
     return "bg-[#FCE8EB] text-[#B23949]";
   }
 
@@ -135,6 +126,9 @@ function buildEmptyPetForm() {
     customPetType: "",
     breed: "",
     customBreed: "",
+    ageValue: "",
+    ageUnit: "months",
+    weightKg: "",
     notes: "",
     photoURL: "",
   };
@@ -156,6 +150,9 @@ function buildPetFormFromRecord(record = {}) {
     customPetType,
     breed,
     customBreed,
+    ageValue: record.ageValue || "",
+    ageUnit: record.ageUnit || "months",
+    weightKg: record.weightKg || "",
     notes: record.notes || "",
     photoURL: record.photoURL || "",
   };
@@ -186,6 +183,20 @@ function MetricCard({ label, value, description }) {
   );
 }
 
+function MetricButton({ label, value, description, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-[26px] bg-white p-5 text-left shadow-[0_14px_30px_rgba(94,81,60,0.1)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(94,81,60,0.14)]"
+    >
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">{label}</p>
+      <p className="mt-3 text-4xl font-bold text-[#20343B]">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-[#607277]">{description}</p>
+    </button>
+  );
+}
+
 function EmptyState({ title, message }) {
   return (
     <div className="rounded-[24px] border border-dashed border-[#D7E5E5] bg-[#FBFDFC] px-6 py-10 text-center">
@@ -203,6 +214,7 @@ export function CustomerProfile() {
   const { accessToken, currentUser, isAuthenticated, isLoading, signOut, updateProfile } = useAuth();
   const {
     markNotificationRead,
+    deletePetRecord,
     savePetRecord,
     state,
     updateAppointment,
@@ -312,6 +324,8 @@ export function CustomerProfile() {
           petForm.customPetType.trim() ||
           petForm.breed.trim() ||
           petForm.customBreed.trim() ||
+          petForm.ageValue.trim() ||
+          petForm.weightKg.trim() ||
           petForm.notes.trim() ||
           petForm.photoURL,
       );
@@ -531,6 +545,9 @@ export function CustomerProfile() {
       petName: petForm.petName.trim(),
       petType: resolvedPetType,
       breed: resolvedBreed,
+      ageValue: petForm.ageValue.trim(),
+      ageUnit: petForm.ageUnit,
+      weightKg: petForm.weightKg.trim(),
       lastVisit: existingRecord?.lastVisit || "",
       visitRecords: existingRecord?.visitRecords || [],
       medicalRecords: existingRecord?.medicalRecords || [],
@@ -569,6 +586,32 @@ export function CustomerProfile() {
     }
   };
 
+  const removePet = async (record) => {
+    if (!record?.id || isSavingPet) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete ${record.petName}'s pet profile?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await Promise.resolve(deletePetRecord(record.id, profileForm.fullName));
+      if (petForm.id === record.id) {
+        setPetForm(buildEmptyPetForm());
+      }
+      const message = "Pet profile deleted.";
+      setFeedback({ type: "success", message });
+      toast.success(message);
+    } catch (error) {
+      const message = "Unable to delete pet profile. Please try again.";
+      console.error("[customer-profile] Pet record delete failed.", error);
+      setFeedback({ type: "error", message });
+      toast.error(message);
+    }
+  };
+
   const cancelAppointment = (appointmentId) => {
     const appointment = customerAppointments.find((item) => item.id === appointmentId);
     if (!canCancelAppointment(appointment)) {
@@ -600,9 +643,6 @@ export function CustomerProfile() {
         >
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/12 text-xl font-bold md:h-[4.5rem] md:w-[4.5rem]">
-                {getCustomerInitials(profileForm.fullName)}
-              </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
                   Customer Dashboard
@@ -630,7 +670,7 @@ export function CustomerProfile() {
         </motion.section>
 
         <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-4">
+          <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             <nav className="grid gap-2">
               {dashboardTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -666,20 +706,23 @@ export function CustomerProfile() {
             {activeTab === "overview" && (
               <div className="space-y-5">
                 <div className="grid gap-5 md:grid-cols-3">
-                  <MetricCard
+                  <MetricButton
                     label="Upcoming"
                     value={upcomingAppointments.length}
                     description="Pending or confirmed visits."
+                    onClick={() => openTab("appointments")}
                   />
-                  <MetricCard
+                  <MetricButton
                     label="Pets"
                     value={customerPetRecords.length}
                     description="Pet profiles connected to your account."
+                    onClick={() => openTab("profile")}
                   />
-                  <MetricCard
+                  <MetricButton
                     label="Unread"
                     value={unreadNotificationCount}
                     description="Clinic updates and booking notices."
+                    onClick={() => openTab("overview")}
                   />
                 </div>
 
@@ -704,7 +747,7 @@ export function CustomerProfile() {
                       <button
                         type="button"
                         onClick={() => openTab("booking")}
-                        className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
+                        className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:scale-[1.03] hover:bg-[#235A61]"
                       >
                         Book appointment
                       </button>
@@ -791,7 +834,7 @@ export function CustomerProfile() {
                       <button
                         type="button"
                         onClick={() => openTab("booking")}
-                        className="mt-4 w-full rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
+                        className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:scale-[1.03] hover:bg-[#235A61]"
                       >
                         Continue to booking
                       </button>
@@ -1103,6 +1146,52 @@ export function CustomerProfile() {
                           placeholder="Specify breed"
                         />
                       )}
+                      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                        <input
+                          value={petForm.ageValue}
+                          autoComplete="off"
+                          onChange={(event) =>
+                            setPetForm((current) => ({
+                              ...current,
+                              ageValue: event.target.value.replace(/\D/g, "").slice(0, 3),
+                            }))
+                          }
+                          inputMode="numeric"
+                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          placeholder="Age"
+                        />
+                        <select
+                          value={petForm.ageUnit}
+                          onChange={(event) =>
+                            setPetForm((current) => ({ ...current, ageUnit: event.target.value }))
+                          }
+                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                        >
+                          <option value="months">Months</option>
+                          <option value="years">Years</option>
+                        </select>
+                      </div>
+                      <label className="flex items-center overflow-hidden rounded-[18px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
+                        <input
+                          value={petForm.weightKg}
+                          autoComplete="off"
+                          onChange={(event) =>
+                            setPetForm((current) => ({
+                              ...current,
+                              weightKg: event.target.value
+                                .replace(/[^0-9.]/g, "")
+                                .replace(/^(\d*\.?\d{0,2}).*$/, "$1")
+                                .slice(0, 6),
+                            }))
+                          }
+                          inputMode="decimal"
+                          className="min-w-0 flex-1 px-4 py-3 outline-none"
+                          placeholder="Weight"
+                        />
+                        <span className="shrink-0 border-l border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                          kg
+                        </span>
+                      </label>
                       <textarea
                         value={petForm.notes}
                         onChange={(event) =>
@@ -1175,12 +1264,8 @@ export function CustomerProfile() {
                         const photoReview = petPhotoModerationById.get(record.photoModerationId);
 
                         return (
-                        <button
+                        <div
                           key={record.id}
-                          type="button"
-                          onClick={() =>
-                            setPetForm(buildPetFormFromRecord(record))
-                          }
                           className="w-full rounded-[28px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-5 text-left transition hover:border-[#2D9B9B]"
                         >
                           <div className="flex flex-wrap items-center gap-3">
@@ -1198,12 +1283,33 @@ export function CustomerProfile() {
                             {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
                           </div>
                           <p className="mt-3 text-sm text-[#607277]">
-                            {record.breed || "Breed not specified"}
+                            {[
+                              record.breed || "Breed not specified",
+                              record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
+                              record.weightKg ? `${record.weightKg} kg` : "",
+                            ].filter(Boolean).join(" | ")}
                           </p>
                           <p className="mt-3 rounded-[18px] bg-white px-4 py-3 text-sm text-[#50666B]">
                             {record.notes || "No extra notes yet."}
                           </p>
-                        </button>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPetForm(buildPetFormFromRecord(record))}
+                              className="rounded-xl bg-[#EEF6F6] px-4 py-2 text-sm font-semibold text-[#2B555C]"
+                            >
+                              Edit pet
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePet(record)}
+                              className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-4 py-2 text-sm font-semibold text-[#B23949]"
+                            >
+                              <Trash2 size={15} />
+                              Delete pet
+                            </button>
+                          </div>
+                        </div>
                         );
                       })
                     )}

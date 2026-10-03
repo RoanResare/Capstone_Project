@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useReducer } from "react";
 import {
   buildSeedAvailabilitySlots,
+  isServiceAvailableOnDate,
   portalModules,
 } from "../data/systemData.js";
 import {
@@ -436,6 +437,15 @@ function normalizeAppointment(appointment) {
   const scheduleFromValue = parseDateValue(current.schedule);
   const resolvedSchedule = scheduleFromParts || scheduleFromValue;
 
+  const rawStatus =
+    typeof current.status === "string" && current.status.trim()
+      ? current.status.trim()
+      : "Pending";
+  const shouldExpire =
+    ["Pending", "Confirmed", "Accepted"].includes(rawStatus) &&
+    resolvedSchedule &&
+    resolvedSchedule.getTime() < Date.now();
+
   return {
     ...current,
     scheduleDate: scheduleFromParts
@@ -449,12 +459,15 @@ function normalizeAppointment(appointment) {
         ? toLocalTimeKey(resolvedSchedule)
         : rawScheduleTime,
     schedule: resolvedSchedule ? resolvedSchedule.toISOString() : null,
-    status:
-      typeof current.status === "string" && current.status.trim()
-        ? current.status
-        : "Pending",
+    status: shouldExpire ? "Expired" : rawStatus,
     assignedStaff:
-      typeof current.assignedStaff === "string" ? current.assignedStaff : "",
+      typeof current.assignedStaff === "string" && current.assignedStaff.trim()
+        ? current.assignedStaff.trim()
+        : typeof current.assignedStaffName === "string" && current.assignedStaffName.trim()
+          ? current.assignedStaffName.trim()
+          : typeof current.staffName === "string" && current.staffName.trim()
+            ? current.staffName.trim()
+            : "",
     reminderEnabled:
       typeof current.reminderEnabled === "boolean" ? current.reminderEnabled : true,
     createdAt: parseDateValue(current.createdAt)?.toISOString() || new Date().toISOString(),
@@ -515,6 +528,9 @@ function normalizePetRecord(record) {
     petName: typeof current.petName === "string" ? current.petName.trim() : "",
     petType: typeof current.petType === "string" ? current.petType.trim() : "",
     breed: typeof current.breed === "string" ? current.breed.trim() : "",
+    ageValue: typeof current.ageValue === "string" ? current.ageValue.trim() : "",
+    ageUnit: current.ageUnit === "years" ? "years" : "months",
+    weightKg: typeof current.weightKg === "string" ? current.weightKg.trim() : "",
     lastVisit: typeof current.lastVisit === "string" ? current.lastVisit.trim() : "",
     visitRecords: Array.isArray(current.visitRecords)
       ? current.visitRecords.filter((item) => typeof item === "string" && item.trim())
@@ -2295,6 +2311,12 @@ export function AppProvider({ children }) {
         throw error;
       }
 
+      if (!isServiceAvailableOnDate(payload?.serviceId, payload?.scheduleDate)) {
+        const error = new Error("This service is available on weekends only. Please choose a Saturday or Sunday.");
+        error.code = "SERVICE_SCHEDULE_UNAVAILABLE";
+        throw error;
+      }
+
       const nextAppointment = normalizeAppointment({
         id: payload.id || createId("appt"),
         status: "Pending",
@@ -2317,13 +2339,23 @@ export function AppProvider({ children }) {
     },
     updateAppointment(id, updates, actorName) {
       const existingAppointment = state.appointments.find((appointment) => appointment.id === id);
+      const nextUpdates = {
+        ...updates,
+        assignedStaff:
+          updates?.status === "Completed" && !updates.assignedStaff && !existingAppointment?.assignedStaff
+            ? actorName || currentUser?.name || "Clinic staff"
+            : updates.assignedStaff,
+      };
+      if (typeof nextUpdates.assignedStaff === "undefined") {
+        delete nextUpdates.assignedStaff;
+      }
       const nextAppointment = existingAppointment
-        ? normalizeAppointment({ ...existingAppointment, ...updates })
+        ? normalizeAppointment({ ...existingAppointment, ...nextUpdates })
         : null;
 
       dispatch({
         type: "UPDATE_APPOINTMENT",
-        payload: { id, updates },
+        payload: { id, updates: nextUpdates },
         meta: {
           actorName: actorName || currentUser?.name || "System User",
           actorRole: currentUser?.role || "customer",

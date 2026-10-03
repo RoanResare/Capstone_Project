@@ -197,7 +197,12 @@ const env = {
     geoLookupApiKey: readOptional("FRAUD_GEO_LOOKUP_API_KEY"),
     emailValidationUrl: readOptional("EMAIL_VALIDATION_API_URL"),
     emailValidationApiKey: readOptional("EMAIL_VALIDATION_API_KEY"),
-    failClosed: readBoolean("FRAUD_FAIL_CLOSED", false),
+    failClosed: readBoolean("FRAUD_FAIL_CLOSED", nodeEnv === "production"),
+    huggingFaceApiKey: readOptional("HUGGINGFACE_API_KEY"),
+    huggingFaceModel: readOptional(
+      "HUGGINGFACE_PET_IMAGE_MODEL",
+      "google/vit-base-patch16-224",
+    ),
   },
   mail: {
     deliveryMode: readOptional("MAIL_DELIVERY_MODE", "gmail-api").toLowerCase(),

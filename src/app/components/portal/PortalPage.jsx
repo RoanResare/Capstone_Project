@@ -27,6 +27,13 @@ import {
 } from "../../data/systemData.js";
 
 const NEW_PORTAL_USER_ID = "__new-portal-user__";
+const fraudStatusOptions = [
+  { value: "normal", label: "Normal" },
+  { value: "flagged", label: "Flagged / Under Review" },
+  { value: "restricted", label: "Restricted" },
+  { value: "suspended", label: "Suspended" },
+  { value: "banned", label: "Banned" },
+];
 
 function isValidDateInstance(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
@@ -374,13 +381,15 @@ function buildPortalUserForm(user = null) {
     username: typeof current.username === "string" ? current.username : "",
     password: "",
     role: typeof current.role === "string" ? current.role : "staff",
+    fraudStatus: typeof current.fraudStatus === "string" ? current.fraudStatus : "normal",
+    fraudReason: typeof current.fraudReason === "string" ? current.fraudReason : "",
   };
 }
 
 function buildChangedPortalUserPayload(form, originalForm) {
   const payload = {};
 
-  ["name", "email", "username", "role"].forEach((field) => {
+  ["name", "email", "username", "role", "fraudStatus", "fraudReason"].forEach((field) => {
     if (form[field] !== originalForm[field]) {
       payload[field] = form[field];
     }
@@ -1802,6 +1811,43 @@ function ManageUsersWorkspace({
                   </select>
                 </div>
 
+                {!isCreatingNew && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                      Fraud status
+                    </label>
+                    <select
+                      value={form.fraudStatus}
+                      onChange={updateField("fraudStatus")}
+                      disabled={isSaving}
+                      className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    >
+                      {fraudStatusOptions.map((status) => (
+                        <option key={status.value} value={status.value}>
+                          {status.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {!isCreatingNew && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                      Fraud review note
+                    </label>
+                    <input
+                      value={form.fraudReason}
+                      autoComplete="off"
+                      onChange={updateField("fraudReason")}
+                      disabled={isSaving}
+                      maxLength={240}
+                      className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                      placeholder="Reason or review note"
+                    />
+                  </div>
+                )}
+
               </div>
 
               <div>
@@ -1959,9 +2005,11 @@ function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
   const toast = useToast();
   const [reviewNote, setReviewNote] = useState("");
   const [savingId, setSavingId] = useState("");
-  const queue = (state.photoModeration || []).filter((photo) => photo.status === "pending");
+  const queue = (state.photoModeration || []).filter(
+    (photo) => photo.assetType === "pet" && photo.status === "pending",
+  );
   const reviewed = (state.photoModeration || []).filter(
-    (photo) => !["pending", "cancelled"].includes(photo.status),
+    (photo) => photo.assetType === "pet" && !["pending", "cancelled"].includes(photo.status),
   );
 
   const review = async (photo, status) => {
@@ -1977,17 +2025,17 @@ function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
   };
 
   if (currentUser?.role !== "admin") {
-    return <EmptyState title="Administrator access required" message="Only administrators can review customer photos." />;
+    return <EmptyState title="Administrator access required" message="Only administrators can review pet photos." />;
   }
 
   return (
     <div className="space-y-5">
       <PanelCard
-        title="Photo approval queue"
-        description="Review profile and pet photos for offensive text, graphics, or other inappropriate content before they are shown to customers."
+        title="Pet photo approval queue"
+        description="Review cat and dog photos for inappropriate content before they are shown to customers."
       >
         {queue.length === 0 ? (
-          <EmptyState title="Queue is clear" message="New customer and pet photos will appear here while they await review." />
+          <EmptyState title="Queue is clear" message="New cat and dog photos will appear here while they await review." />
         ) : (
           <div className="space-y-4">
             {queue.map((photo) => (
@@ -1998,7 +2046,7 @@ function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-lg font-semibold text-[#20343B]">{photo.subjectName}</h3>
-                    <StatusBadge status={photo.assetType === "profile" ? "Profile" : "Pet photo"} />
+                    <StatusBadge status="Pet photo" />
                   </div>
                   <p className="mt-2 text-sm text-[#607277]">Submitted by {photo.ownerName} | {photo.ownerEmail || "Customer account"}</p>
                   <p className="mt-2 text-xs text-[#7A9297]">Uploaded {formatDateTime(photo.createdAt)}</p>

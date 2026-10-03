@@ -24,7 +24,6 @@ import {
   saveAvailabilitySlotDocument,
   savePetRecordDocument,
   savePhotoModerationDocument,
-  saveApprovedCustomerPhotoDocument,
   saveNotificationDocument,
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
@@ -531,7 +530,7 @@ function normalizePetRecord(record) {
 
 function normalizePhotoModeration(record) {
   const current = record && typeof record === "object" ? record : {};
-  const status = ["pending", "approved", "rejected"].includes(current.status)
+  const status = ["pending", "approved", "rejected", "cancelled"].includes(current.status)
     ? current.status
     : "pending";
   const createdAt = parseDateValue(current.createdAt)?.toISOString() || new Date().toISOString();
@@ -541,7 +540,7 @@ function normalizePhotoModeration(record) {
   return {
     ...current,
     id: typeof current.id === "string" && current.id.trim() ? current.id : createId("photo"),
-    assetType: current.assetType === "profile" ? "profile" : "pet",
+    assetType: current.assetType === "pet" ? "pet" : "legacy",
     assetId: typeof current.assetId === "string" ? current.assetId : "",
     ownerId: typeof current.ownerId === "string" ? current.ownerId : "",
     ownerEmail: normalizeEmail(current.ownerEmail),
@@ -1533,13 +1532,6 @@ function appReducer(state, action) {
           : [nextPhoto, ...state.photoModeration],
       };
     }
-    case "REMOVE_PHOTO_MODERATION":
-      return {
-        ...state,
-        photoModeration: state.photoModeration.filter(
-          (photo) => photo.id !== action.payload.id,
-        ),
-      };
     case "MODERATE_PHOTO": {
       const target = state.photoModeration.find((photo) => photo.id === action.payload.id);
       if (!target) {
@@ -1547,7 +1539,7 @@ function appReducer(state, action) {
       }
 
       const status = action.payload.status === "approved" ? "approved" : "rejected";
-      const subject = target.assetType === "profile" ? "profile photo" : `${target.subjectName}'s photo`;
+      const subject = `${target.subjectName}'s pet photo`;
       const nextPhoto = normalizePhotoModeration({
         ...target,
         status,
@@ -2065,6 +2057,10 @@ export function AppProvider({ children }) {
       const normalizedStatus = updates.status
         ? normalizePortalStatus(updates.status)
         : targetUser.status;
+    const fraudStatusOptions = ["normal", "flagged", "restricted", "suspended", "banned"];
+    const normalizedFraudStatus = fraudStatusOptions.includes(updates.fraudStatus)
+      ? updates.fraudStatus
+      : targetUser.fraudStatus || "normal";
       const nextName = updates.name ? updates.name.trim() : targetUser.name;
       const nextPassword =
         typeof updates.password === "string" ? updates.password.trim() : "";
@@ -2111,6 +2107,8 @@ export function AppProvider({ children }) {
                 : "",
           role: normalizedRole,
           status: normalizedStatus,
+          fraudStatus: normalizedFraudStatus,
+          fraudReason: typeof updates.fraudReason === "string" ? updates.fraudReason.trim() : targetUser.fraudReason || "",
           password: nextPassword || undefined,
         });
 
@@ -2195,6 +2193,10 @@ export function AppProvider({ children }) {
       });
     },
     submitPhotoForReview(payload, options = {}) {
+      if (payload?.assetType !== "pet") {
+        return Promise.resolve({ ok: false, error: "Only pet photos can be submitted for review." });
+      }
+
       const nextPhoto = normalizePhotoModeration({
         id: payload?.id || createId("photo"),
         status: "pending",
@@ -2209,39 +2211,6 @@ export function AppProvider({ children }) {
       }
 
       return savePhotoModerationDocument(nextPhoto).then(() => nextPhoto);
-    },
-    cancelPhotoForReview(id) {
-      if (!currentUser?.uid) {
-        return Promise.resolve({ ok: false, error: "You must be signed in to cancel a photo upload." });
-      }
-
-      const photo = state.photoModeration.find((record) => record.id === id);
-      const belongsToCustomer =
-        photo?.assetType === "profile" &&
-        photo.status === "pending" &&
-        [photo.ownerId, photo.assetId].includes(currentUser.uid);
-
-      if (!belongsToCustomer) {
-        return Promise.resolve({ ok: false, error: "That pending photo is no longer available." });
-      }
-
-      dispatch({ type: "REMOVE_PHOTO_MODERATION", payload: { id } });
-
-      const cancelledPhoto = {
-        ...photo,
-        status: "cancelled",
-        cancelledAt: new Date().toISOString(),
-        cancelledBy: currentUser.name || currentUser.email || "Customer",
-      };
-
-      return savePhotoModerationDocument(cancelledPhoto).then((ok) => {
-        if (!ok) {
-          dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: photo });
-          return { ok: false, error: "Unable to cancel the pending photo upload." };
-        }
-
-        return { ok: true };
-      });
     },
     moderatePhoto(id, status, moderationNote = "") {
       if (!currentUser || currentUser.role !== "admin") {
@@ -2277,17 +2246,6 @@ export function AppProvider({ children }) {
         saveNotificationDocument(decisionNotification),
       ];
 
-      if (nextPhoto.status === "approved" && nextPhoto.assetType === "profile") {
-        syncTasks.push(
-          saveApprovedCustomerPhotoDocument({
-            customerId: nextPhoto.ownerId,
-            photoURL: nextPhoto.photoURL,
-            photoModerationId: nextPhoto.id,
-            storagePath: nextPhoto.storagePath,
-          }),
-        );
-      }
-
       return Promise.all(syncTasks).then(() => ({ ok: true, photo: nextPhoto }));
     },
     markNotificationRead(notificationId) {
@@ -2314,6 +2272,15 @@ export function AppProvider({ children }) {
       return countPendingAppointments(state.appointments, customerId, customerEmail);
     },
     async createAppointment(payload, actorName) {
+      if (
+        currentUser?.role === "customer" &&
+        ["restricted", "suspended", "banned"].includes(currentUser.fraudStatus)
+      ) {
+        const error = new Error("This account is restricted from creating new bookings.");
+        error.code = "FRAUD_RESTRICTED";
+        throw error;
+      }
+
       const pendingAppointmentCount = countPendingAppointments(
         state.appointments,
         payload?.customerId,

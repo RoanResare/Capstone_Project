@@ -2,7 +2,7 @@ const { auth: firebaseAdminAuth } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { verifyAccessToken } = require("../services/token.service");
 const { getUserByUid, toPublicUser } = require("../services/user.service");
-const { USER_STATUSES } = require("../constants/auth");
+const { FRAUD_STATUSES, USER_STATUSES } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
 
 function buildFirebaseSetupError() {
@@ -78,6 +78,10 @@ async function attachAuthenticatedUser(req, token, claims, provider) {
 
   if (user.accountStatus !== USER_STATUSES.ACTIVE) {
     throw new ApiError(403, `This account is ${user.accountStatus}.`);
+  }
+
+  if ([FRAUD_STATUSES.SUSPENDED, FRAUD_STATUSES.BANNED].includes(user.fraudStatus)) {
+    throw new ApiError(403, `This account is ${user.fraudStatus} for security review.`);
   }
 
   if (provider === "server-jwt") {

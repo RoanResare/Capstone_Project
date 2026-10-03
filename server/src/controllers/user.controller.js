@@ -1,4 +1,4 @@
-const { USER_ROLES, USER_STATUSES } = require("../constants/auth");
+const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES } = require("../constants/auth");
 const { env } = require("../config/env");
 const {
   createPortalUser,
@@ -31,6 +31,14 @@ function normalizeAccountStatus(status = "") {
     throw new ApiError(400, "Account status must be active, inactive, or suspended.");
   }
 
+  return value;
+}
+
+function normalizeFraudStatus(status = "") {
+  const value = typeof status === "string" ? status.trim().toLowerCase() : "";
+  if (!Object.values(FRAUD_STATUSES).includes(value)) {
+    throw new ApiError(400, "Fraud status must be normal, flagged, restricted, suspended, or banned.");
+  }
   return value;
 }
 
@@ -101,6 +109,9 @@ async function updateUser(req, res) {
       : "";
   const nextPassword =
     typeof req.body?.password === "string" ? req.body.password.trim() : "";
+  const nextFraudStatus = req.body?.fraudStatus
+    ? normalizeFraudStatus(req.body.fraudStatus)
+    : "";
 
   if (nextPassword) {
     assertStrongPassword(nextPassword);
@@ -111,6 +122,7 @@ async function updateUser(req, res) {
     roleChanged: Boolean(nextRole),
     statusChanged: Boolean(nextAccountStatus),
     passwordChanged: Boolean(nextPassword),
+    fraudStatusChanged: Boolean(nextFraudStatus),
   });
 
   await ensureAdminCanMutateTarget(
@@ -130,6 +142,8 @@ async function updateUser(req, res) {
     phone: req.body?.phone,
     role: nextRole || undefined,
     accountStatus: nextAccountStatus || undefined,
+    fraudStatus: nextFraudStatus || undefined,
+    fraudReason: typeof req.body?.fraudReason === "string" ? req.body.fraudReason : undefined,
   });
 
   return res.status(200).json({

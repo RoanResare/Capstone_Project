@@ -656,9 +656,10 @@ export function AppointmentBooking({ embedded = false }) {
     if (
       currentCustomer &&
       currentCustomer.email === formData.email.trim().toLowerCase() &&
-      currentCustomer.status !== "active"
+      (currentCustomer.status !== "active" ||
+        ["restricted", "suspended", "banned"].includes(currentCustomer.fraudStatus))
     ) {
-      nextErrors.email = "This customer account is suspended and cannot create bookings.";
+      nextErrors.email = "This account is currently restricted from creating new bookings.";
     }
 
     setErrors(nextErrors);
@@ -948,10 +949,12 @@ export function AppointmentBooking({ embedded = false }) {
             request in one place.
           </p>
 
-          {currentCustomer?.status !== "active" && currentCustomer && (
+          {currentCustomer &&
+            (currentCustomer.status !== "active" ||
+              ["restricted", "suspended", "banned"].includes(currentCustomer.fraudStatus)) && (
             <div className="mt-6 rounded-[24px] border border-[#F4B7BE] bg-[#FFF1F3] px-5 py-4 text-sm text-[#8A3240]">
-              Your customer account is suspended, so new bookings are disabled until the clinic
-              restores access.
+              Your customer account is restricted from creating new bookings until the security
+              review is resolved.
             </div>
           )}
         </motion.section>
@@ -1487,7 +1490,10 @@ export function AppointmentBooking({ embedded = false }) {
               type="submit"
             disabled={isSubmitting || (currentCustomer?.status !== "active" && Boolean(currentCustomer))}
             className={`flex-1 rounded-lg px-5 py-3 text-sm font-semibold text-white transition ${
-              isSubmitting || (currentCustomer?.status !== "active" && currentCustomer)
+              isSubmitting ||
+              (currentCustomer &&
+                (currentCustomer.status !== "active" ||
+                  ["restricted", "suspended", "banned"].includes(currentCustomer.fraudStatus)))
                 ? "cursor-not-allowed bg-[#9CB5B8]"
                 : "bg-[#2D9B9B] hover:bg-[#288A8A]"
             }`}

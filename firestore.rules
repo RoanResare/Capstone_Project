@@ -12,12 +12,7 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.uid == userId || isPortalAdmin());
       allow create: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && request.auth.uid == userId
-        || isPortalAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'photoURL',
-            'profilePhotoModerationId',
-            'updatedAt'
-          ]);
+        || isPortalAdmin();
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 

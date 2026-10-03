@@ -1,6 +1,6 @@
 const { auth, db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
-const { USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
+const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
 const USERNAMES_COLLECTION = "usernames";
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -43,6 +43,11 @@ function normalizeUserStatus(status = "") {
   }
 
   return Object.values(USER_STATUSES).includes(value) ? value : USER_STATUSES.ACTIVE;
+}
+
+function normalizeFraudStatus(status = "") {
+  const value = normalizeString(status).toLowerCase();
+  return Object.values(FRAUD_STATUSES).includes(value) ? value : FRAUD_STATUSES.NORMAL;
 }
 
 function normalizeUsername(username = "") {
@@ -117,6 +122,9 @@ function normalizeUserPayload(payload = {}, documentId = "") {
     role: normalizeRole(payload.role),
     accountStatus,
     status: accountStatus,
+    fraudStatus: normalizeFraudStatus(payload.fraudStatus),
+    fraudReason: normalizeString(payload.fraudReason),
+    fraudUpdatedAt: normalizeTimestamp(payload.fraudUpdatedAt),
     phone: typeof payload.phone === "string" ? payload.phone.trim() : "",
     passwordHash: typeof payload.passwordHash === "string" ? payload.passwordHash : "",
     createdAt: normalizeTimestamp(payload.createdAt),
@@ -454,6 +462,12 @@ async function repairPortalUserConsistency({ document, rawUser, user }) {
     updates.status = user.accountStatus;
   }
 
+  if (rawUser.fraudStatus !== user.fraudStatus || rawUser.fraudReason !== user.fraudReason) {
+    updates.fraudStatus = user.fraudStatus;
+    updates.fraudReason = user.fraudReason;
+    updates.fraudUpdatedAt = user.fraudUpdatedAt || new Date().toISOString();
+  }
+
   if (!isValidUsername(rawUsername)) {
     nextUsername = await pickAvailableUsername(user.username, user.uid);
     updates.username = nextUsername;
@@ -606,6 +620,7 @@ async function setCustomClaims(user) {
     role: user.role,
     status: user.accountStatus,
     accountStatus: user.accountStatus,
+    fraudStatus: user.fraudStatus,
   });
 }
 
@@ -682,6 +697,9 @@ async function createPortalUser(payload) {
     role,
     accountStatus,
     status: accountStatus,
+    fraudStatus: FRAUD_STATUSES.NORMAL,
+    fraudReason: "",
+    fraudUpdatedAt: timestamp,
     passwordHash: payload.passwordHash,
     phone: payload.phone || "",
     createdAt: timestamp,
@@ -772,12 +790,24 @@ async function updatePortalUser(uid, updates) {
           ? normalizeUserStatus(updates.status)
         : existingUser.accountStatus,
     phone: typeof updates.phone === "string" ? updates.phone.trim() : existingUser.phone,
+    fraudStatus:
+      typeof updates.fraudStatus === "string"
+        ? normalizeFraudStatus(updates.fraudStatus)
+        : existingUser.fraudStatus,
+    fraudReason:
+      typeof updates.fraudReason === "string"
+        ? updates.fraudReason.trim()
+        : existingUser.fraudReason,
     passwordHash:
       typeof updates.passwordHash === "string" && updates.passwordHash.trim()
         ? updates.passwordHash.trim()
         : existingUser.passwordHash,
     updatedAt: new Date().toISOString(),
   };
+  nextUser.fraudUpdatedAt =
+    nextUser.fraudStatus !== existingUser.fraudStatus || nextUser.fraudReason !== existingUser.fraudReason
+      ? nextUser.updatedAt
+      : existingUser.fraudUpdatedAt || nextUser.updatedAt;
   const statusChanged = nextUser.accountStatus !== existingUser.accountStatus;
   const statusChangedAt = statusChanged
     ? nextUser.updatedAt
@@ -846,6 +876,9 @@ async function updatePortalUser(uid, updates) {
           role: nextUser.role,
           accountStatus: nextUser.accountStatus,
           status: nextUser.accountStatus,
+          fraudStatus: nextUser.fraudStatus,
+          fraudReason: nextUser.fraudReason,
+          fraudUpdatedAt: nextUser.fraudUpdatedAt,
           passwordHash: nextUser.passwordHash,
           phone: nextUser.phone,
           updatedAt: nextUser.updatedAt,

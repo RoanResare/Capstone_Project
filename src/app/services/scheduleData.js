@@ -195,34 +195,6 @@ export function saveNotificationDocument(notification) {
   });
 }
 
-export function saveApprovedCustomerPhotoDocument({ customerId, photoURL, photoModerationId, storagePath }) {
-  const normalizedCustomerId = normalizeString(customerId);
-
-  if (!normalizedCustomerId) {
-    return Promise.resolve(false);
-  }
-
-  if (!canSyncScheduleData()) {
-    return Promise.resolve(true);
-  }
-
-  return setDoc(
-    doc(db, "users", normalizedCustomerId),
-    removeUndefinedFields({
-      photoURL: normalizeString(photoURL),
-      profilePhotoPath: normalizeString(storagePath),
-      profilePhotoModerationId: normalizeString(photoModerationId),
-      updatedAt: new Date().toISOString(),
-    }),
-    { merge: true },
-  )
-    .then(() => true)
-    .catch((error) => {
-      logSyncError("Approved customer photo sync", error);
-      return false;
-    });
-}
-
 export function saveAvailabilitySlotDocument(slot) {
   return saveDocument(COLLECTIONS.availabilitySlots, slot).catch((error) => {
     logSyncError("Availability slot sync", error);

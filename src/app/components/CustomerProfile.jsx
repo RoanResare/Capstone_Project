@@ -18,8 +18,9 @@ import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
-import { compressImageFile, compressImageFileToDataUrl } from "../utils/imageCompression.js";
+import { compressImageFileToDataUrl } from "../utils/imageCompression.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
+import { prescreenPetPhoto } from "../services/userApi.js";
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
@@ -29,10 +30,10 @@ const dashboardTabs = [
   { id: "profile", label: "Profile", icon: UserRound },
 ];
 
-const allowedProfilePhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const maxProfilePhotoSizeBytes = 5 * 1024 * 1024;
-const PHOTO_PENDING_MESSAGE =
-  "Photo uploaded successfully. Waiting for admin approval.";
+const PET_PHOTO_PENDING_MESSAGE =
+  "Pet photo uploaded successfully. Waiting for admin approval.";
+const allowedPetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const maxPetPhotoSizeBytes = 5 * 1024 * 1024;
 
 function getCustomerInitials(name = "") {
   return name
@@ -199,15 +200,13 @@ export function CustomerProfile() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const toast = useToast();
-  const { currentUser, isAuthenticated, isLoading, signOut, updateProfile } = useAuth();
+  const { accessToken, currentUser, isAuthenticated, isLoading, signOut, updateProfile } = useAuth();
   const {
     markNotificationRead,
     savePetRecord,
     state,
     updateAppointment,
     visibleNotifications,
-    submitPhotoForReview,
-    cancelPhotoForReview,
   } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [activeTab, setActiveTab] = useState("overview");
@@ -217,16 +216,12 @@ export function CustomerProfile() {
     email: "",
     phone: "",
     status: "active",
-    photoURL: "",
   });
   const [petForm, setPetForm] = useState(() => buildEmptyPetForm());
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [isSavingPet, setIsSavingPet] = useState(false);
-  const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
-  const [dismissedProfilePhotoModerationId, setDismissedProfilePhotoModerationId] = useState("");
   const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
   const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
@@ -260,17 +255,8 @@ export function CustomerProfile() {
       email: customer.email || "",
       phone: customer.phone || "",
       status: customer.status || "active",
-      photoURL: customer.photoURL || "",
     });
   }, [customer]);
-
-  useEffect(() => {
-    return () => {
-      if (profilePhotoPreviewUrl) {
-        URL.revokeObjectURL(profilePhotoPreviewUrl);
-      }
-    };
-  }, [profilePhotoPreviewUrl]);
 
   const customerPetRecords = useMemo(
     () =>
@@ -303,18 +289,6 @@ export function CustomerProfile() {
   const unreadNotificationCount = visibleNotifications.filter(
     (notification) => !notification.readBy.includes(customer?.id || customer?.uid),
   ).length;
-  const profilePhotoModeration = useMemo(
-    () =>
-      state.photoModeration
-        ?.filter(
-          (photo) =>
-            photo.assetType === "profile" &&
-            photo.assetId === customer?.uid &&
-            photo.id !== dismissedProfilePhotoModerationId,
-        )
-        .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))[0] || null,
-    [customer?.uid, dismissedProfilePhotoModerationId, state.photoModeration],
-  );
   const petPhotoModerationById = useMemo(
     () =>
       new Map(
@@ -396,34 +370,29 @@ export function CustomerProfile() {
     ...overrides,
   });
 
-  const validateProfilePhoto = (file) => {
+  const validatePetPhoto = (file) => {
     if (!file) {
       return "Please select a valid image file.";
     }
 
-    if (!allowedProfilePhotoTypes.has(file.type)) {
-      return "Please select a JPG, PNG, or WEBP image.";
+    if (!allowedPetPhotoTypes.has(file.type)) {
+      return "Please select a JPG, PNG, or WEBP pet image.";
     }
 
-    if (file.size > maxProfilePhotoSizeBytes) {
-      return "Profile pictures must be 5 MB or smaller.";
+    if (file.size > maxPetPhotoSizeBytes) {
+      return "Pet pictures must be 5 MB or smaller.";
     }
 
     return "";
   };
 
   const applySavedProfile = (user, message, options = {}) => {
-    if (profilePhotoPreviewUrl) {
-      URL.revokeObjectURL(profilePhotoPreviewUrl);
-      setProfilePhotoPreviewUrl("");
-    }
     setProfileForm({
       fullName: user.fullName || user.name || "",
       username: user.username || "",
       email: user.email || "",
       phone: user.phone || "",
       status: user.status || "active",
-      photoURL: user.photoURL || "",
     });
     setFeedback({ type: "success", message });
     if (options.notify !== false) {
@@ -431,149 +400,10 @@ export function CustomerProfile() {
     }
   };
 
-  const handleProfilePhotoSelection = async (event) => {
-    const file = event.target.files?.[0] || null;
-    event.target.value = "";
-
-    if (isSavingPhoto) {
-      return;
-    }
-
-    const validationMessage = validateProfilePhoto(file);
-    if (validationMessage) {
-      setFeedback({ type: "error", message: validationMessage });
-      toast.error(validationMessage);
-      return;
-    }
-
-    setIsSavingPhoto(true);
-    setFeedback({ type: "", message: "" });
-    const previewUrl = URL.createObjectURL(file);
-    if (profilePhotoPreviewUrl) {
-      URL.revokeObjectURL(profilePhotoPreviewUrl);
-    }
-    setProfilePhotoPreviewUrl(previewUrl);
-    const hasExistingPhoto = Number(customer.profilePhotoUploadCount) > 0;
-    const moderationId = `photo-profile-${customer.uid}-${Date.now()}`;
-
-    try {
-      const compressedFile = await compressImageFile(file, {
-        maxDimension: 500,
-        quality: 0.6,
-        outputType: file.type || "image/jpeg",
-      });
-      const [result, moderationPreviewURL] = await Promise.all([
-        updateProfile({
-          photoFile: compressedFile,
-          deferPhotoUpdate: hasExistingPhoto,
-          preferInlinePhoto: true,
-        }),
-        hasExistingPhoto
-          ? compressImageFileToDataUrl(compressedFile, {
-              maxDimension: 500,
-              quality: 0.6,
-              outputType: compressedFile.type || "image/jpeg",
-            })
-          : Promise.resolve(""),
-      ]);
-
-      if (!result.ok) {
-        const message = "Unable to upload profile picture. Please try again.";
-        console.error("[customer-profile] Profile photo upload failed.", {
-          error: result.error,
-        });
-        URL.revokeObjectURL(previewUrl);
-        setProfilePhotoPreviewUrl("");
-        setFeedback({ type: "error", message });
-        toast.error(message);
-        return;
-      }
-
-      if (hasExistingPhoto) {
-        await submitPhotoForReview({
-          id: moderationId,
-          assetType: "profile",
-          assetId: customer.uid,
-          ownerId: customer.uid,
-          ownerEmail: customer.email,
-          ownerName: result.user.fullName || result.user.name,
-          subjectName: "Profile photo",
-          photoURL: result.user.pendingPhotoURL || moderationPreviewURL,
-          storagePath: result.user.pendingProfilePhotoPath || "",
-        });
-        setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
-        toast.success(PHOTO_PENDING_MESSAGE);
-        applySavedProfile({ ...customer, photoURL: profileForm.photoURL }, PHOTO_PENDING_MESSAGE, { notify: false });
-      } else {
-        applySavedProfile(result.user, "Profile photo uploaded successfully.");
-      }
-    } catch (error) {
-      const message = "Unable to upload profile picture. Please try again.";
-      console.error("[customer-profile] Unexpected profile photo upload error.", error);
-      URL.revokeObjectURL(previewUrl);
-      setProfilePhotoPreviewUrl("");
-      setFeedback({ type: "error", message });
-      toast.error(message);
-    } finally {
-      setIsSavingPhoto(false);
-    }
-  };
-
-  const clearProfilePhoto = async () => {
-    const pendingPhotoId =
-      profilePhotoModeration?.status === "pending" ? profilePhotoModeration.id : "";
-
-    if ((!profileForm.photoURL && !pendingPhotoId) || isSavingPhoto) {
-      return;
-    }
-
-    setIsSavingPhoto(true);
-    setFeedback({ type: "", message: "" });
-    if (pendingPhotoId) {
-      setDismissedProfilePhotoModerationId(pendingPhotoId);
-    }
-
-    try {
-      const result = await updateProfile({ removePhoto: true });
-
-      if (!result.ok) {
-        setDismissedProfilePhotoModerationId("");
-        const message = "Unable to remove profile picture. Please try again.";
-        console.error("[customer-profile] Profile photo removal failed.", {
-          error: result.error,
-        });
-        setFeedback({ type: "error", message });
-        toast.error(message);
-        return;
-      }
-
-      if (pendingPhotoId) {
-        const cancelResult = await cancelPhotoForReview(pendingPhotoId);
-        if (!cancelResult.ok) {
-          setDismissedProfilePhotoModerationId("");
-          const message = cancelResult.error || "Unable to cancel the pending profile photo.";
-          setFeedback({ type: "error", message });
-          toast.error(message);
-          return;
-        }
-      }
-
-      applySavedProfile(result.user, "Profile photo removed successfully.");
-    } catch (error) {
-      setDismissedProfilePhotoModerationId("");
-      const message = "Unable to remove profile picture. Please try again.";
-      console.error("[customer-profile] Unexpected profile photo removal error.", error);
-      setFeedback({ type: "error", message });
-      toast.error(message);
-    } finally {
-      setIsSavingPhoto(false);
-    }
-  };
-
   const saveProfile = async (event) => {
     event.preventDefault();
 
-    if (isSavingProfile || isSavingPhoto) {
+    if (isSavingProfile) {
       return;
     }
 
@@ -642,7 +472,7 @@ export function CustomerProfile() {
     const file = event.target.files?.[0] || null;
     event.target.value = "";
 
-    const validationMessage = validateProfilePhoto(file);
+    const validationMessage = validatePetPhoto(file);
     if (validationMessage) {
       setFeedback({ type: "error", message: validationMessage });
       toast.error(validationMessage);
@@ -655,9 +485,10 @@ export function CustomerProfile() {
         quality: 0.6,
         outputType: file.type || "image/jpeg",
       });
+      await prescreenPetPhoto(accessToken, photoURL);
       setPetForm((current) => ({ ...current, photoURL }));
-      setFeedback({ type: "success", message: PHOTO_PENDING_MESSAGE });
-      toast.success(PHOTO_PENDING_MESSAGE);
+      setFeedback({ type: "success", message: PET_PHOTO_PENDING_MESSAGE });
+      toast.success(PET_PHOTO_PENDING_MESSAGE);
     } catch (error) {
       const message = "Unable to prepare pet photo. Please try another image.";
       console.error("[customer-profile] Pet photo compression failed.", error);
@@ -713,7 +544,7 @@ export function CustomerProfile() {
       const photoSubmitted =
         Boolean(nextRecord.photoURL) && nextRecord.photoURL !== existingRecord?.photoURL;
       const saveMessage = photoSubmitted
-        ? PHOTO_PENDING_MESSAGE
+        ? PET_PHOTO_PENDING_MESSAGE
         : "Pet record saved successfully.";
       setPetForm(buildEmptyPetForm());
       setIsSavingPet(false);
@@ -758,13 +589,6 @@ export function CustomerProfile() {
     navigate("/");
   };
 
-  const customerPhotoURL =
-    profilePhotoModeration?.status === "rejected"
-      ? ""
-      : profilePhotoModeration?.status === "pending"
-        ? profilePhotoPreviewUrl
-        : profilePhotoPreviewUrl || profileForm.photoURL;
-
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
       <div className="mx-auto max-w-[1260px] space-y-6">
@@ -777,15 +601,7 @@ export function CustomerProfile() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/12 text-xl font-bold md:h-[4.5rem] md:w-[4.5rem]">
-                {customerPhotoURL ? (
-                  <img
-                    src={customerPhotoURL}
-                    alt={`${profileForm.fullName || "Customer"} profile`}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  getCustomerInitials(profileForm.fullName)
-                )}
+                {getCustomerInitials(profileForm.fullName)}
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
@@ -809,11 +625,6 @@ export function CustomerProfile() {
             <div className="mt-6 rounded-[24px] border border-[#F4B7BE] bg-[#FFF1F3] px-5 py-4 text-sm text-[#8A3240]">
               Your account is currently suspended. You can still review your profile, but new
               bookings are disabled until the clinic reactivates your account.
-            </div>
-          )}
-          {profilePhotoModeration?.status === "pending" && (
-            <div className="mt-4 rounded-[18px] border border-[#F1D49A] bg-[#FFF8E9] px-4 py-3 text-sm font-semibold text-[#8A6117]">
-              {PHOTO_PENDING_MESSAGE}
             </div>
           )}
         </motion.section>
@@ -1105,33 +916,6 @@ export function CustomerProfile() {
                     <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                       Profile and saved pets
                     </h2>
-                    {profilePhotoModeration?.status === "pending" && (
-                      <p className="mt-2 text-sm font-semibold text-[#A56A0F]">Profile photo: Waiting for Approval</p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
-                      <Camera size={16} />
-                      {isSavingPhoto ? "Saving..." : "Change photo"}
-                      <input
-                        type="file"
-                        autoComplete="off"
-                        accept="image/png,image/jpeg,image/webp"
-                        onChange={handleProfilePhotoSelection}
-                        disabled={isSavingPhoto}
-                        className="hidden"
-                      />
-                    </label>
-                    {customerPhotoURL && (
-                      <button
-                        type="button"
-                        onClick={clearProfilePhoto}
-                        disabled={isSavingPhoto}
-                        className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949]"
-                      >
-                        Remove photo
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -1194,7 +978,7 @@ export function CustomerProfile() {
                         value={profileVerificationPassword}
                         autoComplete="current-password"
                         onChange={(event) => setProfileVerificationPassword(event.target.value)}
-                        disabled={isSavingProfile || isSavingPhoto}
+                        disabled={isSavingProfile}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
                         placeholder="Enter your password to authorize this change"
                       />
@@ -1213,7 +997,7 @@ export function CustomerProfile() {
                   </div>
                   <button
                     type="submit"
-                    disabled={isSavingProfile || isSavingPhoto}
+                        disabled={isSavingProfile}
                     className="rounded-[20px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A] disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
                   >
                     {isSavingProfile ? "Saving profile..." : "Save profile"}

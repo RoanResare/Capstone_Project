@@ -1,6 +1,6 @@
 const { auth } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
-const { USER_ROLES, USER_STATUSES } = require("../constants/auth");
+const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES } = require("../constants/auth");
 const {
   confirmPasswordResetCode,
   generatePasswordResetLink,
@@ -358,6 +358,12 @@ function assertActiveAccount(user) {
   throw new ApiError(403, `This account is ${user.accountStatus}.`);
 }
 
+function assertFraudAccess(user) {
+  if ([FRAUD_STATUSES.SUSPENDED, FRAUD_STATUSES.BANNED].includes(user.fraudStatus)) {
+    throw new ApiError(403, `This account is ${user.fraudStatus} for security review.`);
+  }
+}
+
 async function synchronizePasswordHash(user, password) {
   if (verifyPasswordHash(password, user.passwordHash)) {
     return;
@@ -526,6 +532,7 @@ function createRoleBoundLoginHandler(expectedRole) {
     await synchronizePasswordHash(user, password);
     assertRoleMatchesExpected(user, routeRole);
     assertActiveAccount(user);
+    assertFraudAccess(user);
 
     if (routeRole === USER_ROLES.CUSTOMER) {
       return res.status(200).json(await createSessionResponse(user));
@@ -648,6 +655,7 @@ async function loginUnified(req, res) {
 
   await synchronizePasswordHash(user, password);
   assertActiveAccount(user);
+  assertFraudAccess(user);
 
   if (user.role === USER_ROLES.CUSTOMER) {
     return res.status(200).json(await createSessionResponse(user));

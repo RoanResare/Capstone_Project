@@ -87,3 +87,16 @@ export async function updateMyProfile(accessToken, role, payload) {
   });
   return response.data;
 }
+
+export async function prescreenPetPhoto(accessToken, imageDataUrl) {
+  try {
+    const response = await apiClient.post(
+      "/customer/pet-photo-prescreen",
+      { imageDataUrl },
+      { headers: buildAuthHeaders(accessToken) },
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(extractApiError(error, "Pet photo screening is temporarily unavailable."));
+  }
+}

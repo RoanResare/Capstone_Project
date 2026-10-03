@@ -167,15 +167,7 @@ export function Layout() {
                     aria-haspopup="menu"
                   >
                     <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#F4C16A] text-xs font-bold text-[#173E44]">
-                      {currentUser.photoURL ? (
-                        <img
-                          src={currentUser.photoURL}
-                          alt={`${accountName} profile`}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        getInitials(currentUser)
-                      )}
+                      {getInitials(currentUser)}
                     </span>
                     <span className="max-w-36 truncate">{accountName}</span>
                     <ChevronDown size={16} />
@@ -271,15 +263,7 @@ export function Layout() {
                   <div className="rounded-2xl bg-white/10 p-3 text-white">
                     <div className="flex items-center gap-3 px-1 py-2">
                       <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#F4C16A] text-sm font-bold text-[#173E44]">
-                        {currentUser.photoURL ? (
-                          <img
-                            src={currentUser.photoURL}
-                            alt={`${accountName} profile`}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          getInitials(currentUser)
-                        )}
+                        {getInitials(currentUser)}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-semibold">{accountName}</p>

@@ -367,7 +367,7 @@ export function AppointmentBooking({ embedded = false }) {
             </div>
 
             {customerPetRecords.length === 0 ? (
-              <div className="mt-5 rounded-lg border border-dashed border-[#D9E7E7] bg-[#F8FCFC] px-5 py-6 text-sm text-[#607277]">
+              <div className="mt-5 rounded-lg border border-dashed border-[#BFDADA] bg-[#F8FCFC] px-5 py-6 text-xl font-semibold leading-7 text-[#20343B]">
                 To book a service, please fill out the 'Add pet' form.
               </div>
             ) : (

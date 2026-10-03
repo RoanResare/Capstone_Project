@@ -19,7 +19,6 @@ import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import {
   appointmentFilters,
-  appointmentStatusOptions,
   breedsByPetType,
   buildSeedAvailabilitySlots,
   petTypeOptions,
@@ -514,6 +513,24 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </div>
         </div>
 
+        <div>
+          <label className="mb-2 block text-sm font-medium text-[#425A60]">
+            Assign team member
+          </label>
+          <select
+            value={appointment.assignedStaff || ""}
+            onChange={(event) =>
+              updateAppointment(appointment.id, { assignedStaff: event.target.value })
+            }
+            className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+          >
+            <option value="">Assign staff</option>
+            {staffOptions.map((staffName) => (
+              <option key={staffName}>{staffName}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-3">
           <button
             type="button"
@@ -554,43 +571,6 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B]"
           />
         </label>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[#425A60]">
-              Appointment status
-            </label>
-            <select
-              value={appointment.status}
-              onChange={(event) =>
-                updateAppointment(appointment.id, { status: event.target.value })
-              }
-              className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-            >
-              {appointmentStatusOptions.map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[#425A60]">
-              Assign team member
-            </label>
-            <select
-              value={appointment.assignedStaff || ""}
-              onChange={(event) =>
-                updateAppointment(appointment.id, { assignedStaff: event.target.value })
-              }
-              className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
-            >
-              <option value="">Assign staff</option>
-              {staffOptions.map((staffName) => (
-                <option key={staffName}>{staffName}</option>
-              ))}
-            </select>
-          </div>
-        </div>
 
         <div className="rounded-[24px] border border-[#E6F0F0] bg-[#FCFEFE] px-5 py-5">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
@@ -678,7 +658,7 @@ function RecentNotificationList({ currentUser, notifications, openAppointment })
           message="Customer registrations and booking activity will appear here automatically."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="portal-scroll-panel max-h-[420px] space-y-3 overflow-y-auto overscroll-contain pr-1">
           {notifications.slice(0, 12).map((notification) => {
             const isUnread = !notification.readBy.includes(currentUser.id);
 
@@ -689,7 +669,7 @@ function RecentNotificationList({ currentUser, notifications, openAppointment })
                 onClick={() =>
                   openAppointment(notification.relatedAppointmentId || "", notification.id)
                 }
-                className={`w-full rounded-[22px] border px-4 py-4 text-left transition ${
+                className={`h-[132px] w-full overflow-hidden rounded-[22px] border px-4 py-4 text-left transition ${
                   isUnread
                     ? "border-[#D7ECEC] bg-[#F8FCFC] hover:border-[#BFE1E1]"
                     : "border-[#EDF2F2] bg-white hover:border-[#D7E8E8]"
@@ -698,7 +678,7 @@ function RecentNotificationList({ currentUser, notifications, openAppointment })
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-[#20343B]">{notification.title}</p>
-                    <p className="mt-1 text-sm text-[#607277]">{notification.message}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-[#607277]">{notification.message}</p>
                   </div>
                   <span
                     className={`rounded-full px-3 py-1 text-[11px] font-semibold ${

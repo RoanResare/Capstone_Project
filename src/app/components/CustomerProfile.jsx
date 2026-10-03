@@ -238,6 +238,7 @@ export function CustomerProfile() {
   const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [pendingProfilePayload, setPendingProfilePayload] = useState(null);
 
   useEffect(() => {
     const tabFromQuery = searchParams.get("tab") || "";
@@ -414,31 +415,47 @@ export function CustomerProfile() {
     }
   };
 
-  const saveProfile = async (event) => {
-    event.preventDefault();
-
+  const validateProfileForm = () => {
     if (isSavingProfile) {
-      return;
+      return false;
     }
 
     if (!profileForm.fullName.trim() || !profileForm.email.trim() || !profileForm.username.trim()) {
       const message = "Full name, username, and email are required.";
       setFeedback({ type: "error", message });
       toast.error(message);
-      return;
+      return false;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email.trim())) {
       const message = "Please enter a valid email address.";
       setFeedback({ type: "error", message });
       toast.error(message);
-      return;
+      return false;
     }
 
     if (!profileVerificationPassword) {
       const message = "Enter your current password before saving profile changes.";
       setFeedback({ type: "error", message });
       toast.error(message);
+      return false;
+    }
+
+    return true;
+  };
+
+  const saveProfile = (event) => {
+    event.preventDefault();
+
+    if (!validateProfileForm()) {
+      return;
+    }
+
+    setPendingProfilePayload(buildProfilePayload());
+  };
+
+  const confirmProfileSave = async () => {
+    if (!pendingProfilePayload || isSavingProfile) {
       return;
     }
 
@@ -446,7 +463,7 @@ export function CustomerProfile() {
 
     try {
       const result = await updateProfile({
-        ...buildProfilePayload(),
+        ...pendingProfilePayload,
         requireProfileVerification: true,
         verificationPassword: profileVerificationPassword,
       });
@@ -459,6 +476,7 @@ export function CustomerProfile() {
 
       applySavedProfile(result.user, "Customer profile updated successfully.");
       setProfileVerificationPassword("");
+      setPendingProfilePayload(null);
     } finally {
       setIsSavingProfile(false);
     }
@@ -764,7 +782,7 @@ export function CustomerProfile() {
                       <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                         Add pet
                       </h2>
-                      <p className="mt-2 rounded-[18px] bg-[#F5FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                      <p className="mt-3 max-w-2xl rounded-[18px] border border-[#BFDADA] bg-[#F5FAFA] px-5 py-4 text-xl font-semibold leading-7 text-[#20343B]">
                         To book a service, please fill out the 'Add pet' form.
                       </p>
                     </div>
@@ -934,7 +952,7 @@ export function CustomerProfile() {
                       </div>
                     </form>
 
-                    <div className="grid auto-rows-fr gap-4 md:grid-cols-2">
+                    <div className="grid content-start gap-4 md:grid-cols-2">
                       {customerPetRecords.length === 0 ? (
                         <EmptyState
                           title="No pet records yet"
@@ -947,7 +965,7 @@ export function CustomerProfile() {
                           return (
                             <div
                               key={record.id}
-                              className="flex min-h-[230px] flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-5 text-left transition hover:border-[#2D9B9B]"
+                              className="rounded-[20px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-4 text-left transition hover:border-[#2D9B9B]"
                             >
                               <div className="flex flex-wrap items-center gap-3">
                                 {record.photoURL && photoReview?.status !== "pending" ? (
@@ -970,7 +988,7 @@ export function CustomerProfile() {
                                   record.weightKg ? `${record.weightKg} kg` : "",
                                 ].filter(Boolean).join(" | ")}
                               </p>
-                              <p className="mt-3 flex-1 rounded-[18px] bg-white px-4 py-3 text-sm text-[#50666B]">
+                              <p className="mt-3 rounded-[18px] bg-white px-4 py-3 text-sm text-[#50666B]">
                                 {record.notes || "No extra notes yet."}
                               </p>
                               <div className="mt-4 flex flex-wrap gap-2">
@@ -1289,6 +1307,55 @@ export function CustomerProfile() {
                     {isSavingProfile ? "Saving profile..." : "Save profile"}
                   </button>
                 </form>
+
+                {pendingProfilePayload && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="save-profile-title"
+                    className="fixed inset-0 z-[90] flex items-center justify-center bg-[#173E44]/45 px-4 py-6 backdrop-blur-sm"
+                  >
+                    <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-[0_24px_56px_rgba(20,43,46,0.24)]">
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+                        Save changes?
+                      </p>
+                      <h3 id="save-profile-title" className="mt-2 text-2xl font-semibold text-[#20343B]">
+                        Confirm new profile details
+                      </h3>
+                      <div className="mt-5 grid gap-3 rounded-[22px] bg-[#F6FAFA] px-4 py-4 text-sm">
+                        {[
+                          ["Full name", pendingProfilePayload.fullName],
+                          ["Username", pendingProfilePayload.username],
+                          ["Email", pendingProfilePayload.email],
+                          ["Phone", pendingProfilePayload.phone || "No phone saved"],
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex items-start justify-between gap-4">
+                            <span className="font-semibold text-[#607277]">{label}</span>
+                            <span className="text-right font-semibold text-[#20343B]">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setPendingProfilePayload(null)}
+                          disabled={isSavingProfile}
+                          className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={confirmProfileSave}
+                          disabled={isSavingProfile}
+                          className="rounded-[18px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
+                        >
+                          {isSavingProfile ? "Saving profile..." : "Save changes"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <form onSubmit={savePassword} className="mt-8 rounded-[28px] bg-[#FBFDFC] p-6">
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">

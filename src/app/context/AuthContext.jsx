@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
+import { setSecuritySession } from "../utils/securitySession.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
 import {
   browserLocalPersistence,
@@ -913,6 +914,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
+    setSecuritySession();
     try {
       if (auth) {
         await signOutFromFirebase(auth);
@@ -958,11 +960,13 @@ export function AuthProvider({ children }) {
 
   const securitySignOutRef = useRef(signOut);
   securitySignOutRef.current = signOut;
+  useEffect(() => { setSecuritySession(currentUser?.uid || "", accessToken || ""); }, [currentUser?.uid, accessToken]);
   useEffect(() => {
     let terminating = false;
     const terminate = async (event) => {
       if (terminating) return;
       terminating = true;
+      setSecuritySession();
       writeSessionStorageItem("furfection-security-warning", event.detail.message);
       clearRememberedCustomerLogin();
       clearRememberedPortalLogin();

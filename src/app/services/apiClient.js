@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getSecurityEpoch, isCurrentSecurityResponse } from "../utils/securitySession.js";
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
@@ -9,14 +10,22 @@ export const apiClient = axios.create({
 
 export const SESSION_SECURITY_EVENT = "furfection:session-security-violation";
 
+apiClient.interceptors.request.use((config) => {
+  config.securityEpoch = getSecurityEpoch();
+  return config;
+});
+
+export function reportSessionSecurityViolation(error) {
+  if (error?.response?.data?.details?.code === "SESSION_SECURITY_VIOLATION"
+    && isCurrentSecurityResponse(error.config?.securityEpoch)) {
+    window.dispatchEvent(new CustomEvent(SESSION_SECURITY_EVENT, { detail: { message: error.response.data.message } }));
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.data?.details?.code === "SESSION_SECURITY_VIOLATION") {
-      window.dispatchEvent(new CustomEvent(SESSION_SECURITY_EVENT, {
-        detail: { message: error.response.data.message },
-      }));
-    }
+    reportSessionSecurityViolation(error);
     return Promise.reject(error);
   },
 );

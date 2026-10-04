@@ -33,6 +33,7 @@ const {
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
+const { waitForFreshSession } = require("../services/sessionSecurity.service");
 const { assertValidEmail, isValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
@@ -444,6 +445,7 @@ function buildAppPasswordResetLink(req, providerLink) {
 }
 
 async function createSessionResponse(user, options = {}, req) {
+  await waitForFreshSession(user.uid);
   const connectionIp = req ? getClientIp(req) : "";
   const safeUser = toPublicUser(user);
   const accessToken = signAccessToken(user, connectionIp);
@@ -549,7 +551,7 @@ function createRoleBoundLoginHandler(expectedRole) {
       requireOtp: routeRole !== USER_ROLES.CUSTOMER,
     });
     const { identifier, password } = validateLoginPayload(req.body);
-    await validateAccessSecurity(req);
+    await validateAccessSecurity(req, { fresh: true });
     const email = await resolveEmailFromIdentifier(identifier);
     const existingUser = await getUserByEmail(email);
 
@@ -629,7 +631,7 @@ function createRoleBoundSendOtpHandler(expectedRole) {
 
     assertActiveAccount(user);
     assertOtpRouteMatchesRole(user, ticket, routeRole);
-    await validateAccessSecurity(req);
+    await validateAccessSecurity(req, { fresh: true });
 
     return res.status(200).json(
       await createOtpChallengeResponse(
@@ -690,7 +692,7 @@ const verifyStaffOtp = createRoleBoundVerifyOtpHandler(USER_ROLES.STAFF);
 async function loginUnified(req, res) {
   assertAuthSetupReady({ requireOtp: true });
   const { identifier, password } = validateLoginPayload(req.body);
-  await validateAccessSecurity(req);
+  await validateAccessSecurity(req, { fresh: true });
   const email = await resolveEmailFromIdentifier(identifier);
   const existingUser = await getUserByEmail(email);
 

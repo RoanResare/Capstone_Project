@@ -179,10 +179,10 @@ function hasExplicitVpnOrProxy(result = {}) {
 
 const geoLookups = new Map();
 
-async function lookupGeo(ip) {
+async function lookupGeo(ip, { fresh = false } = {}) {
   const key = `${env.security.geoLookupUrl}:${ip}`;
   const cached = geoLookups.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.promise;
+  if (!fresh && cached && cached.expiresAt > Date.now()) return cached.promise;
   if (geoLookups.size >= 1000) geoLookups.delete(geoLookups.keys().next().value);
   const promise = callProvider(
     env.security.geoLookupUrl || "https://api.ipquery.io/{ip}",
@@ -193,12 +193,12 @@ async function lookupGeo(ip) {
   return promise;
 }
 
-async function assertNoDetectedVpnOrProxy(ip) {
+async function assertNoDetectedVpnOrProxy(ip, options) {
   if (isLocalOrPrivateIp(ip) || !isIP(ip)) return;
 
   let result;
   try {
-    result = await lookupGeo(ip);
+    result = await lookupGeo(ip, options);
   } catch (error) {
     console.warn("[registration-security] Geo/VPN provider failed.", error);
     return;
@@ -209,7 +209,7 @@ async function assertNoDetectedVpnOrProxy(ip) {
   if (result.ip && normalizeIp(result.ip) !== ip) return;
 
   if (hasExplicitVpnOrProxy(result)) {
-    throw new ApiError(403, "A VPN or proxy connection was detected. Disable it and try again.");
+    throw new ApiError(403, "Blocked VPN IP address. Disable your VPN or proxy and try again.");
   }
 }
 
@@ -232,9 +232,9 @@ async function validateRegistrationSecurity(req, email) {
   return { registrationIp: ip };
 }
 
-async function validateAccessSecurity(req) {
+async function validateAccessSecurity(req, options) {
   const ip = getClientIp(req);
-  await assertNoDetectedVpnOrProxy(ip);
+  await assertNoDetectedVpnOrProxy(ip, options);
   return { accessIp: ip };
 }
 

@@ -12,7 +12,7 @@ export function monitorSessionSecurity({ verify, router, window, document, conne
     } catch (error) {
       if (!disposed && error?.response?.data?.details?.code === "SESSION_SECURITY_VIOLATION") {
         disposed = true;
-        onViolation(error.response.data.message);
+        onViolation(error.response.data.message, error);
       }
       // Offline/timeouts are retried; they are not evidence of VPN use.
     } finally {

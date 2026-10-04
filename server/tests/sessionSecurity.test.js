@@ -169,7 +169,7 @@ test("explicit VPN detection on the same IP terminates the session", async () =>
   assert.equal(service.refreshRevocations, 1);
 });
 
-function sessionService(validateAccessSecurity, failRevocation = false) {
+function sessionService(validateAccessSecurity, failRevocation = false, clock = Date) {
   const records = new Map();
   let refreshRevocations = 0;
   let queue = Promise.resolve();
@@ -191,9 +191,66 @@ function sessionService(validateAccessSecurity, failRevocation = false) {
       if (failRevocation) throw new Error("Firebase unavailable");
     } } },
     "./registrationSecurity.service": { getClientIp: (req) => req.ip, validateAccessSecurity },
-  });
+  }, { Date: clock });
   return { ...service, records, get refreshRevocations() { return refreshRevocations; } };
 }
+
+test("fresh login lookups bypass a cached VPN result after returning to the normal network", async () => {
+  let vpn = true;
+  let calls = 0;
+  const geo = geoService(async () => { calls++; return response({ risk: { is_vpn: vpn } }); });
+  await assert.rejects(geo.validateAccessSecurity(request("1.2.3.4")),
+    { statusCode: 403, message: "Blocked VPN IP address. Disable your VPN or proxy and try again." });
+  vpn = false;
+  await geo.validateAccessSecurity(request("1.2.3.4"), { fresh: true });
+  assert.equal(calls, 2);
+});
+
+test("same-second clean recovery waits past the old cutoff for every role without clearing revocation", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    let time = 100250;
+    const service = sessionService(async () => {});
+    service.records.set(`sessionSecurity/${role}`, { revokedBefore: 100, revocationPending: true });
+    const delays = [];
+    await service.waitForFreshSession(role, { now: () => time, sleep: async (ms) => {
+      delays.push(ms);
+      time += ms;
+      service.records.get(`sessionSecurity/${role}`).revocationPending = false;
+    } });
+    assert.deepEqual(delays, [100, 650]);
+    const req = { ip: "1.2.3.4", auth: { user: { uid: role, role }, claims: { auth_time: time / 1000 }, provider: "firebase-id-token" } };
+    await service.validateSessionSecurity(req);
+    await service.validateSessionSecurity(req);
+    assert.equal(service.records.get(`sessionSecurity/${role}`).revokedBefore, 100);
+    assert.equal(service.refreshRevocations, 0);
+  }
+});
+
+test("late VPN lookup from an already revoked session cannot penalize a fresh clean session", async () => {
+  let time = 200000;
+  class Clock extends Date { static now() { return time; } }
+  let release;
+  let ready;
+  const waiting = new Promise((resolve) => { ready = resolve; });
+  let checks = 0;
+  const service = sessionService(async () => {
+    if (++checks === 1) { ready(); await new Promise((resolve) => { release = resolve; }); throw new ApiError(403, "VPN"); }
+  }, false, Clock);
+  const oldAuth = { user: { uid: "user" }, claims: { iat: 100, connectionIp: "1.2.3.4" }, provider: "server-jwt" };
+  const pending = assert.rejects(service.validateSessionSecurity({ ip: "1.2.3.4", auth: oldAuth }),
+    (error) => error.details.reason === "revoked");
+  await waiting;
+  await assert.rejects(service.validateSessionSecurity({ ip: "8.8.8.8", auth: oldAuth }),
+    (error) => error.details.reason === "ip-changed");
+  const fresh = { ip: "1.2.3.4", auth: { ...oldAuth, claims: { iat: 201, connectionIp: "1.2.3.4" } } };
+  await service.validateSessionSecurity(fresh);
+  time = 205000;
+  release();
+  await pending;
+  assert.equal(service.records.get("sessionSecurity/user").revokedBefore, 200);
+  assert.equal(service.refreshRevocations, 1);
+  await service.validateSessionSecurity(fresh);
+});
 
 test("persisted revocation blocks restored IPs and refreshed tokens; fresh logins work", async () => {
   let checks = 0;

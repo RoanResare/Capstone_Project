@@ -80,3 +80,18 @@ test("network changes during a pending check queue a fresh request without overl
   assert.equal(checks, 2);
   cleanup();
 });
+
+test("a disposed old monitor cannot emit a warning after a new clean session starts", async () => {
+  const env = environment();
+  let rejectOld;
+  let warnings = 0;
+  const cleanup = monitorSessionSecurity({ ...env, verify: () => new Promise((_resolve, reject) => { rejectOld = reject; }),
+    onViolation: () => { warnings++; } });
+  cleanup();
+  const cleanupFresh = monitorSessionSecurity({ ...env, verify: async () => {}, onViolation: () => { warnings++; } });
+  rejectOld({ response: { data: { details: { code: "SESSION_SECURITY_VIOLATION" }, message: "Old VPN warning" } } });
+  await flush();
+  env.window.poll(); await flush();
+  assert.equal(warnings, 0);
+  cleanupFresh();
+});

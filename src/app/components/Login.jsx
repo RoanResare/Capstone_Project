@@ -39,6 +39,8 @@ export function Login() {
   const nextState = requestedPath ? { from: requestedPath } : undefined;
 
   useEffect(() => {
+    const warning = readSessionStorageItem("furfection-security-warning");
+    if (warning) showErrorToast(warning);
     removeSessionStorageItem("furfection-security-warning");
   }, []);
 

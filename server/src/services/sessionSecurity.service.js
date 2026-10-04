@@ -3,7 +3,12 @@ const { ApiError } = require("../utils/ApiError");
 const { getClientIp, validateAccessSecurity } = require("./registrationSecurity.service");
 
 function violation(reason) {
-  return new ApiError(401, "VPN use is prohibited. Your session ended because a VPN/proxy was detected or your IP address changed. Disable any VPN or proxy and sign in again.",
+  const message = reason === "vpn-proxy"
+    ? "Your session was terminated because a VPN or proxy was detected. VPN use is prohibited. Disable it and sign in again."
+    : reason === "ip-changed"
+      ? "Your session was terminated because your IP address changed. VPN use is prohibited. Return to your normal network and sign in again."
+      : "This session has ended for security. Return to your normal network and sign in again.";
+  return new ApiError(401, message,
     { code: "SESSION_SECURITY_VIOLATION", reason });
 }
 
@@ -24,7 +29,7 @@ async function validateSessionSecurity(req) {
     const expectedIp = binding.exists ? binding.data().ip : claims.connectionIp;
     if (expectedIp && expectedIp !== ip) {
       transaction.set(reference, { revokedBefore: Math.max(Math.floor(Date.now() / 1000), Number(previous.revokedBefore || 0)),
-        reason: "ip-changed" }, { merge: true });
+        reason: "ip-changed", revocationPending: true }, { merge: true });
       return "ip-changed";
     }
     if (bind && !binding.exists) {
@@ -37,6 +42,11 @@ async function validateSessionSecurity(req) {
     if (reason !== "revoked") {
       try { await auth.revokeRefreshTokens(user.uid); }
       catch (error) { console.warn("[session-security] Refresh-token revocation failed; persisted revocation remains active.", error); }
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(reference);
+        transaction.set(reference, { revocationPending: false,
+          revokedBefore: Math.max(Math.floor(Date.now() / 1000), Number(snapshot.data()?.revokedBefore || 0)) }, { merge: true });
+      });
     }
     throw violation(reason);
   };
@@ -47,15 +57,31 @@ async function validateSessionSecurity(req) {
   } catch (error) {
     if (!(error instanceof ApiError) || error.statusCode !== 403) throw error;
     // Persist revocation before returning an error so old tokens cannot be replayed.
-    await db.runTransaction(async (transaction) => {
+    const newlyRevoked = await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(reference);
+      if (startedAt <= Number(snapshot.data()?.revokedBefore || 0)) return false;
       transaction.set(reference, { revokedBefore: Math.max(Math.floor(Date.now() / 1000), Number(snapshot.data()?.revokedBefore || 0)),
-        reason: "vpn-proxy" }, { merge: true });
+        reason: "vpn-proxy", revocationPending: true }, { merge: true });
+      return true;
     });
-    await terminate("vpn-proxy");
+    await terminate(newlyRevoked ? "vpn-proxy" : "revoked");
   }
   const finalViolation = await checkBinding(true);
   if (finalViolation) await terminate(finalViolation);
 }
 
-module.exports = { validateSessionSecurity };
+async function waitForFreshSession(uid, { now = Date.now, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {}) {
+  const reference = db.collection("sessionSecurity").doc(uid);
+  const deadline = now() + 10000;
+  let snapshot = await reference.get();
+  while (snapshot.data()?.revocationPending) {
+    if (now() >= deadline) throw new ApiError(503, "The previous session is still ending. Please try signing in again in a moment.");
+    await sleep(100);
+    snapshot = await reference.get();
+  }
+  // Firebase auth_time and JWT iat use seconds. A fresh login must clear the old cutoff.
+  const remainingMs = (Number(snapshot.data()?.revokedBefore || 0) + 1) * 1000 - now();
+  if (remainingMs > 0) await sleep(remainingMs);
+}
+
+module.exports = { validateSessionSecurity, waitForFreshSession };

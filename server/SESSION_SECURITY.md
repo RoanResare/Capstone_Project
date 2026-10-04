@@ -27,4 +27,10 @@ Malformed addresses, known disposable domains, domains without mail records, and
 
 Session IP bindings are stored in server-managed `sessionConnections` records; signed `connectionIp` claims protect the interval before the first poll. Sessions without that claim bind to the first successfully checked connection. Configure Firestore TTL on `sessionConnections.expiresAt` to clean up expired records. Persisted revocations still require a fresh login.
 
+## Clean-Network Recovery
+
+Login/OTP checks bypass the short-lived IP cache. An explicit positive flag displays `Blocked VPN IP address`; country/risk-only results do not block. A security logout stores a one-time warning shown as both inline feedback and a pop-up on the login page. Browser responses carry a session epoch, so delayed responses from a logged-out session cannot terminate a fresh session for the same UID.
+
+New tokens are issued only after an outstanding revocation finishes and its seconds-based cutoff has passed (normally less than one additional second). Old revocation metadata is preserved to reject token replay, but fresh sessions get new IP bindings. An already-revoked request finishing a late provider lookup cannot advance the cutoff or revoke refresh tokens again. No account-level VPN penalty is applied; after returning to a normal network, authenticate again normally.
+
 Deploy both backend and frontend changes. Tests cover silent rendering, polling/navigation/network events for every role, IP-change revocation, same-IP VPN detections, token replay, and transient lookup failures. Browsers cannot directly inspect a phone's VPN app. Detection occurs on the next request or poll, not instantaneously when a VPN icon appears. IP intelligence identifies known VPN/proxy endpoints, not every private VPN. Any IP switch is treated as unauthorized, including legitimate WiFi/mobile transitions, and requires a fresh login.

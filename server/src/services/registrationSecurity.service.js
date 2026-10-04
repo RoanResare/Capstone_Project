@@ -1,6 +1,7 @@
 const { db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
+const { isIP } = require("node:net");
 
 function normalizeIp(value = "") {
   const candidate = String(value || "").split(",")[0].trim();
@@ -31,7 +32,8 @@ function buildProviderUrl(template, params) {
 }
 
 async function callProvider(template, params, apiKey) {
-  const url = buildProviderUrl(template, params);
+  const authenticatedTemplate = template.replaceAll("{api_key}", encodeURIComponent(apiKey || ""));
+  const url = buildProviderUrl(authenticatedTemplate, params);
   const headers = { Accept: "application/json" };
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
@@ -144,15 +146,6 @@ function isLocalOrPrivateIp(ip = "") {
   );
 }
 
-function getCountryFromHeaders(headers = {}) {
-  const country =
-    headers["cf-ipcountry"] ||
-    headers["x-vercel-ip-country"] ||
-    headers["x-country-code"] ||
-    headers["cloudfront-viewer-country"];
-  return String(country || "").trim().toUpperCase();
-}
-
 function resolveGeoDecision(result = {}) {
   const country = String(
     result?.country_code ||
@@ -163,10 +156,19 @@ function resolveGeoDecision(result = {}) {
   ).toUpperCase();
   const isPhilippines = country === "PH" || country === "PHILIPPINES";
   const security = result?.security || result;
-  const isVpn = [security?.vpn, security?.proxy, security?.tor, result?.is_vpn]
-    .some((value) => value === true || value === 1 || value === "true");
+  const parseFlag = (value) => {
+    if ([true, 1, "true", "1"].includes(value)) return true;
+    if ([false, 0, "false", "0"].includes(value)) return false;
+    return undefined;
+  };
+  const vpn = parseFlag(security.vpn ?? security.isVpn ?? result.is_vpn);
+  const proxy = parseFlag(security.proxy ?? security.isProxy ?? result.is_proxy);
+  const tor = parseFlag(security.tor ?? security.isTor ?? result.is_tor);
+  const anonymous = parseFlag(security.anonymous);
+  const isVpn = [vpn, proxy, tor, anonymous].includes(true);
+  const securityVerified = anonymous === false || (vpn === false && proxy === false && tor !== true);
 
-  return { country, isPhilippines, isVpn };
+  return { country, isPhilippines, isVpn, securityVerified };
 }
 
 function shouldFailOpenGeo(ip) {
@@ -185,32 +187,36 @@ async function lookupGeo(ip) {
     { ip },
     env.security.geoLookupApiKey,
   );
-  geoLookups.set(key, { promise, expiresAt: Date.now() + 30000 });
+  geoLookups.set(key, { promise, expiresAt: Date.now() + 5000 });
   return promise;
 }
 
 async function assertPhilippineConnection(ip, { enforceConfirmed = false } = {}) {
   if (isLocalOrPrivateIp(ip)) {
+    if (enforceConfirmed && env.nodeEnv === "production") {
+      throw new ApiError(503, "A public client IP address is required for security verification.");
+    }
     return;
   }
+  if (!isIP(ip)) throw new ApiError(503, "The client IP address could not be verified.");
 
   let result;
   try {
     result = await lookupGeo(ip);
   } catch (error) {
     console.warn("[registration-security] Geo/VPN provider failed.", error);
-    if (shouldFailOpenGeo(ip)) {
+    if (!enforceConfirmed && shouldFailOpenGeo(ip)) {
       return;
     }
     throw new ApiError(503, "Location security verification is temporarily unavailable.");
   }
 
   if (!result || result.success === false) {
-    if (shouldFailOpenGeo(ip)) return;
+    if (!enforceConfirmed && shouldFailOpenGeo(ip)) return;
     throw new ApiError(503, "Location security verification is temporarily unavailable.");
   }
 
-  const { country, isPhilippines, isVpn } = resolveGeoDecision(result);
+  const { country, isPhilippines, isVpn, securityVerified } = resolveGeoDecision(result);
   if ((country && !isPhilippines) || isVpn) {
     if (!enforceConfirmed && shouldFailOpenGeo(ip)) {
       console.warn("[registration-security] Geo/VPN check did not pass; allowing because fail-closed is disabled.", {
@@ -220,8 +226,8 @@ async function assertPhilippineConnection(ip, { enforceConfirmed = false } = {})
     }
     throw new ApiError(403, "Access is available only from a non-VPN connection in the Philippines.");
   }
-  if (!country && env.security.failClosed) {
-    throw new ApiError(503, "Location security verification is temporarily unavailable.");
+  if ((!country && (enforceConfirmed || env.security.failClosed)) || (enforceConfirmed && !securityVerified)) {
+    throw new ApiError(503, "VPN/proxy verification is unavailable. Configure a security provider that returns VPN and proxy detection results.");
   }
 }
 
@@ -238,13 +244,8 @@ async function assertIpAccountLimit(ip) {
 
 async function validateRegistrationSecurity(req, email) {
   const ip = getClientIp(req);
-  const headerCountry = getCountryFromHeaders(req.headers);
   await assertEmailIsDeliverable(email);
-  if (headerCountry && (headerCountry === "PH" || headerCountry === "PHILIPPINES")) {
-    await assertIpAccountLimit(ip);
-    return { registrationIp: ip };
-  }
-  await assertPhilippineConnection(ip);
+  await assertPhilippineConnection(ip, { enforceConfirmed: true });
   await assertIpAccountLimit(ip);
   return { registrationIp: ip };
 }

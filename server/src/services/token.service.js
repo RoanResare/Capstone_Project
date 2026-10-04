@@ -16,8 +16,8 @@ function buildSessionPayload(user) {
   };
 }
 
-function signAccessToken(user) {
-  return jwt.sign(buildSessionPayload(user), env.auth.jwtSecret, {
+function signAccessToken(user, connectionIp = "") {
+  return jwt.sign({ ...buildSessionPayload(user), ...(connectionIp ? { connectionIp } : {}) }, env.auth.jwtSecret, {
     expiresIn: env.auth.jwtExpiresIn,
   });
 }

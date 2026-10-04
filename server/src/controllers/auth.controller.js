@@ -37,6 +37,7 @@ const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/p
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
 const {
+  getClientIp,
   validateAccessSecurity,
   validateRegistrationSecurity,
 } = require("../services/registrationSecurity.service");
@@ -443,13 +444,15 @@ function buildAppPasswordResetLink(req, providerLink) {
   return appResetUrl.toString();
 }
 
-async function createSessionResponse(user, options = {}) {
+async function createSessionResponse(user, options = {}, req) {
+  const connectionIp = req ? getClientIp(req) : "";
   const safeUser = toPublicUser(user);
-  const accessToken = signAccessToken(user);
+  const accessToken = signAccessToken(user, connectionIp);
   const firebaseCustomToken = await auth.createCustomToken(user.uid, {
     role: user.role,
     status: user.accountStatus,
     accountStatus: user.accountStatus,
+    ...(connectionIp ? { connectionIp } : {}),
   });
 
   await touchLastLogin(user.uid);
@@ -574,7 +577,7 @@ function createRoleBoundLoginHandler(expectedRole) {
       return res.status(200).json(
         await createSessionResponse(user, {
           rememberDevice: rememberDeviceRequest.rememberDevice,
-        }),
+        }, req),
       );
     }
 
@@ -583,7 +586,7 @@ function createRoleBoundLoginHandler(expectedRole) {
         await createSessionResponse(user, {
           rememberDevice: true,
           rememberDeviceToken: rememberDeviceRequest.rememberDeviceToken,
-        }),
+        }, req),
       );
     }
 
@@ -622,6 +625,7 @@ function createRoleBoundSendOtpHandler(expectedRole) {
 
     assertActiveAccount(user);
     assertOtpRouteMatchesRole(user, ticket, routeRole);
+    await validateAccessSecurity(req);
 
     return res.status(200).json(
       await createOtpChallengeResponse(
@@ -667,7 +671,7 @@ function createRoleBoundVerifyOtpHandler(expectedRole) {
       user,
     });
 
-    return res.status(200).json(await createSessionResponse(user, { rememberDevice }));
+    return res.status(200).json(await createSessionResponse(user, { rememberDevice }, req));
   };
 }
 
@@ -713,7 +717,7 @@ async function loginUnified(req, res) {
     return res.status(200).json(
       await createSessionResponse(user, {
         rememberDevice: rememberDeviceRequest.rememberDevice,
-      }),
+      }, req),
     );
   }
 
@@ -723,7 +727,7 @@ async function loginUnified(req, res) {
         await createSessionResponse(user, {
           rememberDevice: true,
           rememberDeviceToken: rememberDeviceRequest.rememberDeviceToken,
-        }),
+        }, req),
       );
     }
 

@@ -36,8 +36,12 @@ async function verifyFirebaseIdToken(token) {
   }
 
   try {
-    return await firebaseAdminAuth.verifyIdToken(token);
+    return await firebaseAdminAuth.verifyIdToken(token, true);
   } catch (_error) {
+    if (_error?.code === "auth/id-token-revoked") {
+      throw new ApiError(401, "Your session was revoked for security. Please sign in again.",
+        { code: "SESSION_SECURITY_VIOLATION" });
+    }
     throw new ApiError(401, "The Firebase session token is invalid or has expired.");
   }
 }

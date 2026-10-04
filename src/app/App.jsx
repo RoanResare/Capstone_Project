@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes.jsx";
 import { AppProvider } from "./context/AppContext.jsx";
@@ -7,50 +7,35 @@ import { ToastProvider } from "./context/ToastContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useToast } from "./context/ToastContext.jsx";
 import { verifyActiveSessionSecurity } from "./services/sessionSecurity.js";
+import { monitorSessionSecurity } from "./services/sessionSecurityMonitor.js";
+import { SESSION_SECURITY_EVENT } from "./services/apiClient.js";
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
 const INACTIVITY_WARNING_MS = INACTIVITY_LIMIT_MS - 30 * 1000;
 
-function SessionSecurityGuard() {
+function SessionSecurityGuard({ children }) {
   const { currentUser } = useAuth();
+  const [verifiedUid, setVerifiedUid] = useState("");
   useEffect(() => {
-    if (!currentUser?.uid) return undefined;
-    let checking = false;
-    let disposed = false;
-    const check = async () => {
-      if (checking || disposed || document.visibilityState === "hidden") return;
-      checking = true;
-      try {
-        await verifyActiveSessionSecurity();
-      } catch (error) {
-        // Only confirmed violations trigger the API client's logout event.
-        console.warn("[session-security] Session check failed.", error.message);
-      } finally {
-        checking = false;
-      }
-    };
-    let pathname = router.state.location.pathname;
-    const unsubscribe = router.subscribe((state) => {
-      if (state.location.pathname !== pathname) {
-        pathname = state.location.pathname;
-        void check();
-      }
+    if (!currentUser?.uid) { setVerifiedUid(""); return undefined; }
+    return monitorSessionSecurity({
+      verify: verifyActiveSessionSecurity,
+      onVerified: () => setVerifiedUid(currentUser.uid),
+      onNetworkChange: () => setVerifiedUid(""),
+      onFailure: (error) => {
+        setVerifiedUid("");
+        window.dispatchEvent(new CustomEvent(SESSION_SECURITY_EVENT, { detail: {
+          message: error.response?.data?.message || "Your session ended because your connection could not be verified. Please reconnect and sign in again.",
+        } }));
+      },
+      router, window, document,
+      connection: navigator.connection || navigator.mozConnection || navigator.webkitConnection,
     });
-    const interval = window.setInterval(check, 30000);
-    window.addEventListener("focus", check);
-    window.addEventListener("online", check);
-    document.addEventListener("visibilitychange", check);
-    void check();
-    return () => {
-      disposed = true;
-      unsubscribe();
-      window.clearInterval(interval);
-      window.removeEventListener("focus", check);
-      window.removeEventListener("online", check);
-      document.removeEventListener("visibilitychange", check);
-    };
   }, [currentUser?.uid]);
-  return null;
+  if (currentUser && verifiedUid !== currentUser.uid) {
+    return <div className="flex min-h-screen items-center justify-center bg-white text-[#20343B]" role="status">Verifying your connection...</div>;
+  }
+  return children;
 }
 
 function InactivityGuard() {
@@ -106,13 +91,14 @@ function InactivityGuard() {
 export default function App() {
   return (
     <AuthProvider>
+      <SessionSecurityGuard>
       <AppProvider>
         <ToastProvider>
           <InactivityGuard />
-          <SessionSecurityGuard />
           <RouterProvider router={router} />
         </ToastProvider>
       </AppProvider>
+      </SessionSecurityGuard>
     </AuthProvider>
   );
 }

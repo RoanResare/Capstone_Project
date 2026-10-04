@@ -39,7 +39,6 @@ import {
   resolveHomePath,
 } from "../utils/roleUtils.js";
 import {
-  removeStorageItem,
   resetTransientAuthStorage,
   writeSessionStorageItem,
 } from "../utils/browserState.js";
@@ -71,12 +70,6 @@ import {
 } from "../utils/portalRememberMe.js";
 
 const AuthContext = createContext(null);
-const REMEMBER_DEVICE_STORAGE_PREFIX = "furfection-remember-device";
-
-function rememberDeviceStorageKey(role = "") {
-  return `${REMEMBER_DEVICE_STORAGE_PREFIX}-${normalizeRole(role) || "portal"}`;
-}
-
 function readRememberDeviceToken(role = "") {
   return readRememberedPortalLogin(role).token || "";
 }
@@ -967,7 +960,8 @@ export function AuthProvider({ children }) {
       if (terminating) return;
       terminating = true;
       writeSessionStorageItem("furfection-security-warning", event.detail.message);
-      ["admin", "staff"].forEach((role) => removeStorageItem(rememberDeviceStorageKey(role)));
+      clearRememberedCustomerLogin();
+      clearRememberedPortalLogin();
       await securitySignOutRef.current();
       window.location.replace("/login");
     };

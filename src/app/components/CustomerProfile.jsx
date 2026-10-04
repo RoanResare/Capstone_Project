@@ -725,7 +725,7 @@ export function CustomerProfile() {
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
-      <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
+      <div className="w-full min-w-0 space-y-6">
         <motion.section
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
@@ -831,7 +831,7 @@ export function CustomerProfile() {
                     </button>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[40rem]:grid-cols-2">
+                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[40rem]:grid-cols-[320px_minmax(0,1fr)]">
                     <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
@@ -988,7 +988,7 @@ export function CustomerProfile() {
                       </div>
                     </form>
 
-                    <div className="flex min-w-0 flex-col items-stretch gap-4">
+                    <div className="grid min-w-0 auto-rows-max grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] items-start gap-4">
                       {customerPetRecords.length === 0 ? (
                         <p className="text-sm leading-6 text-[#607277]">No pet records yet.</p>
                       ) : (

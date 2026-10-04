@@ -3,6 +3,14 @@ const ADMIN_ROLE = "admin";
 const STAFF_ROLE = "staff";
 const PORTAL_ROLES = [ADMIN_ROLE, STAFF_ROLE];
 const ALL_ROLES = [CUSTOMER_ROLE, ADMIN_ROLE, STAFF_ROLE];
+const PORTAL_PATHS = new Set([
+  "/portal",
+  "/portal/appointments",
+  "/portal/schedule",
+  "/portal/pet-records",
+  "/portal/photo-moderation",
+  "/portal/manage-users",
+]);
 const HOME_PATHS = Object.freeze({
   [CUSTOMER_ROLE]: "/customer/dashboard",
   [ADMIN_ROLE]: "/admin/dashboard",
@@ -53,6 +61,19 @@ function normalizePath(path = "") {
   return typeof path === "string" ? path.trim() : "";
 }
 
+export function normalizeRoutePath(path = "") {
+  const value = normalizePath(path);
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "";
+  const pathname = new URL(value, "http://routing.local").pathname;
+  return pathname.replace(/\/+$/, "") || "/";
+}
+
+export function isRegisteredPortalPath(path = "") {
+  const pathname = normalizeRoutePath(path);
+  return PORTAL_PATHS.has(pathname) || matchesPath(pathname, "/portal/admin") ||
+    matchesPath(pathname, HOME_PATHS.admin) || matchesPath(pathname, HOME_PATHS.staff);
+}
+
 function matchesPath(pathname = "", targetPath = "") {
   const normalizedPathname = normalizePath(pathname);
   const normalizedTargetPath = normalizePath(targetPath);
@@ -71,7 +92,7 @@ function matchesPath(pathname = "", targetPath = "") {
 
 export function canAccessPath(role = "", path = "") {
   const normalizedRole = normalizeRole(role);
-  const normalizedPath = normalizePath(path);
+  const normalizedPath = normalizeRoutePath(path);
 
   if (!normalizedRole || !normalizedPath) {
     return false;
@@ -83,7 +104,8 @@ export function canAccessPath(role = "", path = "") {
 
   if (normalizedRole === ADMIN_ROLE) {
     return (
-      matchesPath(normalizedPath, HOME_PATHS.admin) || matchesPath(normalizedPath, "/portal")
+      matchesPath(normalizedPath, HOME_PATHS.admin) || PORTAL_PATHS.has(normalizedPath) ||
+      matchesPath(normalizedPath, "/portal/admin")
     );
   }
 
@@ -92,11 +114,7 @@ export function canAccessPath(role = "", path = "") {
       return true;
     }
 
-    if (!matchesPath(normalizedPath, "/portal")) {
-      return false;
-    }
-
-    return !matchesPath(normalizedPath, "/portal/manage-users");
+    return PORTAL_PATHS.has(normalizedPath) && normalizedPath !== "/portal/manage-users";
   }
 
   return false;

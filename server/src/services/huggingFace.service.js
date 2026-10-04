@@ -15,11 +15,11 @@ function decodeImageDataUrl(value = "") {
     throw new ApiError(400, "Pet images must be 5 MB or smaller.");
   }
 
-  return { buffer, contentType: match[1].toLowerCase() };
+  return { base64: match[2], buffer };
 }
 
 async function prescreenPetImage(imageDataUrl) {
-  const { buffer, contentType } = decodeImageDataUrl(imageDataUrl);
+  const { base64 } = decodeImageDataUrl(imageDataUrl);
 
   if (!env.security.huggingFaceApiKey) {
     return {
@@ -38,10 +38,18 @@ async function prescreenPetImage(imageDataUrl) {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.security.huggingFaceApiKey}`,
-      "Content-Type": contentType,
+      "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: buffer,
+    body: JSON.stringify({
+      inputs: base64,
+      parameters: {
+        top_k: 10,
+      },
+      options: {
+        wait_for_model: true,
+      },
+    }),
   });
 
   const result = await response.json().catch(() => null);

@@ -76,10 +76,14 @@ export async function compressImageFile(file, options = {}) {
 export async function compressImageFileToDataUrl(file, options = {}) {
   const compressedFile = await compressImageFile(file, options);
 
+  return fileToDataUrl(compressedFile || file);
+}
+
+export function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
     reader.onerror = () => reject(new Error("The selected image could not be read."));
-    reader.readAsDataURL(compressedFile || file);
+    reader.readAsDataURL(file);
   });
 }

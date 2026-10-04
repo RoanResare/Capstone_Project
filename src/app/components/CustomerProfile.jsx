@@ -20,7 +20,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
-import { compressImageFileToDataUrl } from "../utils/imageCompression.js";
+import { compressImageFile, fileToDataUrl } from "../utils/imageCompression.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
 import { prescreenPetPhoto } from "../services/userApi.js";
 
@@ -587,18 +587,22 @@ export function CustomerProfile() {
     }
 
     try {
-      const photoURL = await compressImageFileToDataUrl(file, {
+      const compressedFile = await compressImageFile(file, {
         maxDimension: 500,
         quality: 0.6,
         outputType: file.type || "image/jpeg",
       });
+      const photoURL = await fileToDataUrl(compressedFile || file);
       await prescreenPetPhoto(accessToken, photoURL);
       setPetForm((current) => ({ ...current, photoURL }));
       setFeedback({ type: "success", message: PET_PHOTO_PENDING_MESSAGE });
       toast.success(PET_PHOTO_PENDING_MESSAGE);
     } catch (error) {
-      const message = "Unable to prepare pet photo. Please try another image.";
-      console.error("[customer-profile] Pet photo compression failed.", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Unable to prepare pet photo. Please try another image.";
+      console.error("[customer-profile] Pet photo preparation failed.", error);
       setFeedback({ type: "error", message });
       toast.error(message);
     }

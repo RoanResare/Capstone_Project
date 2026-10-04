@@ -201,7 +201,7 @@ export function CustomerLogin() {
             </button>
 
             <label className="flex items-start justify-end gap-3 text-right text-sm font-semibold text-[#415D62]">
-              <span>Remember this device for two weeks</span>
+              <span>Remember me</span>
               <input
                 type="checkbox"
                 checked={form.rememberDevice}

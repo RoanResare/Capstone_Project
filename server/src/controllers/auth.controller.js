@@ -33,7 +33,7 @@ const {
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
-const { waitForFreshSession } = require("../services/sessionSecurity.service");
+const { createFreshSessionBinding } = require("../services/sessionSecurity.service");
 const { assertValidEmail, isValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
@@ -445,14 +445,15 @@ function buildAppPasswordResetLink(req, providerLink) {
 }
 
 async function createSessionResponse(user, options = {}, req) {
-  await waitForFreshSession(user.uid);
   const connectionIp = req ? getClientIp(req) : "";
+  const sessionId = await createFreshSessionBinding(user.uid, connectionIp);
   const safeUser = toPublicUser(user);
-  const accessToken = signAccessToken(user, connectionIp);
+  const accessToken = signAccessToken(user, connectionIp, sessionId);
   const firebaseCustomToken = await auth.createCustomToken(user.uid, {
     role: user.role,
     status: user.accountStatus,
     accountStatus: user.accountStatus,
+    sessionId,
     ...(connectionIp ? { connectionIp } : {}),
   });
 

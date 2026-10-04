@@ -1,3 +1,4 @@
+const { randomUUID } = require("node:crypto");
 const { db, auth } = require("../config/firebaseAdmin");
 const { ApiError } = require("../utils/ApiError");
 const { getClientIp, validateAccessSecurity } = require("./registrationSecurity.service");
@@ -21,11 +22,18 @@ async function validateSessionSecurity(req) {
   }
   const ip = getClientIp(req);
   const reference = db.collection("sessionSecurity").doc(user.uid);
-  const connection = db.collection("sessionConnections").doc(`${user.uid}-${provider}-${startedAt}`);
+  const sessionId = claims.sessionId;
+  if (sessionId !== undefined && (typeof sessionId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(sessionId))) {
+    throw violation("invalid-session");
+  }
+  // New logins share one unique binding across JWT and Firebase tokens; legacy tokens retain their old binding.
+  const connection = db.collection("sessionConnections").doc(sessionId
+    ? `${user.uid}-${sessionId}` : `${user.uid}-${provider}-${startedAt}`);
   const checkBinding = (bind = false) => db.runTransaction(async (transaction) => {
     const [snapshot, binding] = await Promise.all([transaction.get(reference), transaction.get(connection)]);
     const previous = snapshot.data() || {};
     if (startedAt <= Number(previous.revokedBefore || 0)) return "revoked";
+    if (sessionId && (!binding.exists || binding.data().uid !== user.uid || binding.data().sessionId !== sessionId)) return "revoked";
     const expectedIp = binding.exists ? binding.data().ip : claims.connectionIp;
     if (expectedIp && expectedIp !== ip) {
       transaction.set(reference, { revokedBefore: Math.max(Math.floor(Date.now() / 1000), Number(previous.revokedBefore || 0)),
@@ -100,4 +108,23 @@ async function waitForFreshSession(uid, { now = Date.now, sleep = (ms) => new Pr
   if (remainingMs > 0) await sleep(remainingMs);
 }
 
-module.exports = { validateSessionSecurity, waitForFreshSession };
+async function createFreshSessionBinding(uid, ip) {
+  await waitForFreshSession(uid);
+  // Every verified login establishes its own baseline; never reuse a previous session's IP.
+  const sessionId = randomUUID();
+  const reference = db.collection("sessionSecurity").doc(uid);
+  const connection = db.collection("sessionConnections").doc(`${uid}-${sessionId}`);
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const previous = snapshot.data() || {};
+    // Fence a revocation that started after the wait, rather than issuing an already-invalid token.
+    if (previous.revocationPending || Math.floor(Date.now() / 1000) <= Number(previous.revokedBefore || 0)) {
+      throw new ApiError(503, "The previous session is still ending. Please try signing in again in a moment.");
+    }
+    transaction.set(connection, { uid, sessionId, ip, startedAt: Math.floor(Date.now() / 1000),
+      expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000) });
+  });
+  return sessionId;
+}
+
+module.exports = { validateSessionSecurity, waitForFreshSession, createFreshSessionBinding };

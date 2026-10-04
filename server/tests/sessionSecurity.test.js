@@ -195,6 +195,112 @@ function sessionService(validateAccessSecurity, failRevocation = false, clock = 
   return { ...service, records, get refreshRevocations() { return refreshRevocations; } };
 }
 
+test("fresh session IDs ignore stale server bindings across all roles and both token providers", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    const service = sessionService(async () => {});
+    const startedAt = Math.floor(Date.now() / 1000);
+    service.records.set(`sessionSecurity/${role}`, { revokedBefore: startedAt - 1, reason: "vpn-proxy" });
+    for (const provider of ["server-jwt", "firebase-id-token"]) {
+      service.records.set(`sessionConnections/${role}-${provider}-${startedAt}`, { ip: "9.9.9.9" });
+    }
+    const sessionId = await service.createFreshSessionBinding(role, "1.2.3.4");
+    for (const provider of ["server-jwt", "firebase-id-token"]) {
+      const req = { ip: "1.2.3.4", auth: { user: { uid: role, role }, provider,
+        claims: { iat: startedAt, auth_time: startedAt, sessionId, connectionIp: "1.2.3.4" } } };
+      await service.validateSessionSecurity(req);
+      await service.validateSessionSecurity(req);
+    }
+    assert.equal(service.records.get(`sessionConnections/${role}-${sessionId}`).ip, "1.2.3.4");
+    assert.equal(service.records.get(`sessionSecurity/${role}`).revokedBefore, startedAt - 1);
+    assert.equal(service.refreshRevocations, 0);
+  }
+});
+
+test("fresh login IDs are distinct even with the same user and issuance timestamp", async () => {
+  const service = sessionService(async () => {});
+  const startedAt = Math.floor(Date.now() / 1000);
+  const first = await service.createFreshSessionBinding("user", "1.2.3.4");
+  const second = await service.createFreshSessionBinding("user", "5.6.7.8");
+  assert.notEqual(first, second);
+  for (const [sessionId, ip] of [[first, "1.2.3.4"], [second, "5.6.7.8"]]) {
+    await service.validateSessionSecurity({ ip, auth: { user: { uid: "user" }, provider: "server-jwt",
+      claims: { iat: startedAt, sessionId } } });
+  }
+});
+
+test("VPN logout followed by fresh clean login replaces the binding without reviving revoked tokens", async () => {
+  let time = 1000000;
+  const clock = class extends Date { static now() { return time; } };
+  const service = sessionService(async () => {}, false, clock);
+  const oldId = await service.createFreshSessionBinding("user", "1.2.3.4");
+  const req = { ip: "9.9.9.9", auth: { user: { uid: "user" }, provider: "server-jwt",
+    claims: { iat: 1000, sessionId: oldId } } };
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "ip-changed");
+  time += 2000;
+  const newId = await service.createFreshSessionBinding("user", "1.2.3.4");
+  const fresh = { ip: "1.2.3.4", auth: { ...req.auth, claims: { iat: 1002, sessionId: newId } } };
+  await service.validateSessionSecurity(fresh);
+  await service.validateSessionSecurity(fresh);
+  req.ip = "1.2.3.4";
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "revoked");
+  await service.validateSessionSecurity(fresh);
+  assert.equal(service.refreshRevocations, 1);
+  assert.equal(service.records.get(`sessionConnections/user-${oldId}`).ip, "1.2.3.4");
+});
+
+test("repeated VPN termination and clean recovery automatically adopt each new IP for all roles and token types", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    for (const provider of ["server-jwt", "firebase-id-token"]) {
+      let time = 1000000;
+      let vpn = false;
+      const clock = class extends Date { static now() { return time; } };
+      const service = sessionService(async () => {
+        if (vpn) throw new ApiError(403, "Blocked VPN IP address");
+      }, false, clock);
+      const terminated = [];
+      const sessionIds = new Set();
+      const networks = ["1.2.3.4", "5.6.7.8", "8.8.8.8", "1.2.3.4"];
+      for (let cycle = 0; cycle < networks.length; cycle++) {
+        const ip = networks[cycle];
+        const sessionId = await service.createFreshSessionBinding(role, ip);
+        assert.equal(sessionIds.has(sessionId), false);
+        sessionIds.add(sessionId);
+        const req = { ip, auth: { user: { uid: role, role }, provider,
+          claims: { sessionId, connectionIp: ip, iat: time / 1000, auth_time: time / 1000 } } };
+        assert.equal(service.records.get(`sessionConnections/${role}-${sessionId}`).ip, ip);
+        for (const old of terminated) {
+          await assert.rejects(service.validateSessionSecurity(old), (error) => error.details.reason === "revoked");
+        }
+        await service.validateSessionSecurity(req);
+        await service.validateSessionSecurity(req);
+        if (cycle === networks.length - 1) continue;
+        // Exercise both explicit VPN detection on the same IP and a VPN-induced IP switch.
+        if (cycle % 2 === 0) vpn = true;
+        else req.ip = "9.9.9.9";
+        await assert.rejects(service.validateSessionSecurity(req),
+          (error) => error.details.reason === (vpn ? "vpn-proxy" : "ip-changed"));
+        vpn = false;
+        terminated.push(req);
+        time += 2000;
+      }
+      assert.equal(sessionIds.size, networks.length);
+      assert.equal(service.refreshRevocations, networks.length - 1);
+      assert.equal(service.records.get(`sessionSecurity/${role}`).revocationPending, false);
+    }
+  }
+});
+
+test("missing or malformed new-session bindings cannot be silently rebound by dashboard requests", async () => {
+  const service = sessionService(async () => assert.fail("Invalid binding must be rejected before lookup"));
+  const req = { ip: "1.2.3.4", auth: { user: { uid: "user" }, provider: "server-jwt",
+    claims: { iat: Math.floor(Date.now() / 1000), sessionId: "../../other-user" } } };
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "invalid-session");
+  req.auth.claims.sessionId = require("node:crypto").randomUUID();
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "revoked");
+  assert.equal(service.records.size, 0);
+  assert.equal(service.refreshRevocations, 0);
+});
+
 test("fresh login lookups bypass a cached VPN result after returning to the normal network", async () => {
   let vpn = true;
   let calls = 0;

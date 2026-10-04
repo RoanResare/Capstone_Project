@@ -405,7 +405,7 @@ export function CustomerProfile() {
       );
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
-    "grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2";
+    "grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-[repeat(2,minmax(0,17rem))]";
 
   useEffect(() => {
     if (!selectedAppointmentId && customerAppointments[0]) {
@@ -1002,22 +1002,22 @@ export function CustomerProfile() {
                             return (
                               <div
                                 key={record.id}
-                                className="flex aspect-square min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-4 text-left transition hover:border-[#2D9B9B]"
+                                className="flex min-h-[13rem] min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-3.5 text-left transition hover:border-[#2D9B9B]"
                               >
                                 <div className="flex min-w-0 items-start gap-3">
                                   {record.photoURL && photoReview?.status !== "pending" ? (
                                     <img
                                       src={record.photoURL}
                                       alt={`${record.petName} profile`}
-                                      className="h-12 w-12 shrink-0 rounded-2xl object-cover"
+                                      className="h-10 w-10 shrink-0 rounded-2xl object-cover"
                                     />
                                   ) : (
-                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
-                                      <PawPrint size={20} />
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
+                                      <PawPrint size={18} />
                                     </div>
                                   )}
                                   <div className="min-w-0">
-                                    <h3 className="truncate text-lg font-semibold text-[#20343B]">
+                                    <h3 className="truncate text-base font-semibold text-[#20343B]">
                                       {record.petName}
                                     </h3>
                                     <div className="mt-1 flex flex-wrap gap-1.5">
@@ -1026,7 +1026,7 @@ export function CustomerProfile() {
                                     </div>
                                   </div>
                                 </div>
-                                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#607277]">
+                                <p className="mt-3 line-clamp-2 text-sm leading-5 text-[#607277]">
                                   {[
                                     record.breed || "Breed not specified",
                                     record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",

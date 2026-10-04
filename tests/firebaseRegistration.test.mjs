@@ -14,6 +14,7 @@ const state = {
 };
 globalThis.__firebaseRegistrationTest = state;
 const mocks = {
+  "sessionSecurity.js": "export async function verifyActiveSessionSecurity() {}",
   "firebase.js": `const state = globalThis.__firebaseRegistrationTest;
     export const auth = state.auth, db = {}, firebaseConfigError = '', isFirebaseConfigured = true;
     export const authPersistenceReadyPromise = state.persistence.promise;`,

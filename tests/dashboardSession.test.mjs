@@ -6,6 +6,7 @@ import { renderToString } from "react-dom/server";
 import { createServer } from "vite";
 
 const mocks = {
+  "./services/sessionSecurity.js": "export async function verifyActiveSessionSecurity() {}",
   "./context/AuthContext.jsx": `export const AuthProvider = ({ children }) => children;
     export function useAuth() { return { currentUser: globalThis.__dashboardTestUser, signOut() {} }; }`,
   "./context/AppContext.jsx": "export const AppProvider = ({ children }) => children;",
@@ -34,12 +35,14 @@ test("authenticated dashboards render immediately for all roles without a connec
   }
 });
 
-test("dashboard and save workflows have no connection preflights; inactivity timeout remains", () => {
+test("silent monitoring and save preflights are active; inactivity timeout remains", () => {
   for (const file of ["App.jsx", "services/customerAccount.js", "services/firebaseAuth.js", "services/scheduleData.js"]) {
     const source = readFileSync(new URL(`../src/app/${file}`, import.meta.url), "utf8");
-    assert.doesNotMatch(source, /verifyActiveSessionSecurity|monitorSessionSecurity|SessionSecurityGuard/);
+    assert.match(source, /verifyActiveSessionSecurity/);
+    assert.doesNotMatch(source, /SessionSecurityGuard|Verifying your connection/);
   }
   const app = readFileSync(new URL("../src/app/App.jsx", import.meta.url), "utf8");
   assert.match(app, /INACTIVITY_LIMIT_MS = 30 \* 60 \* 1000/);
   assert.match(app, /<InactivityGuard \/>/);
+  assert.match(app, /<SessionSecurityMonitor \/>/);
 });

@@ -966,8 +966,8 @@ export function AuthProvider({ children }) {
       writeSessionStorageItem("furfection-security-warning", event.detail.message);
       clearRememberedCustomerLogin();
       clearRememberedPortalLogin();
-      await securitySignOutRef.current();
-      window.location.replace("/login");
+      try { await securitySignOutRef.current(); }
+      finally { window.location.replace("/login"); }
     };
     window.addEventListener(SESSION_SECURITY_EVENT, terminate);
     return () => window.removeEventListener(SESSION_SECURITY_EVENT, terminate);

@@ -85,15 +85,15 @@ test("configured email providers cannot bypass mailbox validation for common dom
     { statusCode: 400, message: "Illegitimate email cannot be verified" });
 });
 
-test("Customer, Admin, and Staff sessions stay active after an IP switch", async () => {
+test("Customer, Admin, and Staff sessions revoke after an IP switch", async () => {
   for (const role of ["customer", "admin", "staff"]) {
     const service = sessionService(async () => {});
     const req = { ip: "1.2.3.4", auth: { user: { uid: role, role },
       claims: { auth_time: 1 }, provider: "firebase-id-token" } };
     await service.validateSessionSecurity(req);
     req.ip = "8.8.8.8";
-    await service.validateSessionSecurity(req);
-    assert.equal(service.refreshRevocations, 0);
+    await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "ip-changed");
+    assert.equal(service.refreshRevocations, 1);
   }
 });
 
@@ -159,17 +159,17 @@ test("local/private or unavailable IPs are not VPN evidence; client headers cann
   }
 });
 
-test("VPN state is not rechecked after successful authentication", async () => {
+test("explicit VPN detection on the same IP terminates the session", async () => {
   let vpn = false;
   const service = sessionService(async () => { if (vpn) throw new ApiError(403, "VPN detected"); });
   const req = { ip: "1.2.3.4", auth: { user: { uid: "user" }, claims: { auth_time: 1 }, provider: "firebase-id-token" } };
   await service.validateSessionSecurity(req);
   vpn = true;
-  await service.validateSessionSecurity(req);
-  assert.equal(service.refreshRevocations, 0);
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "vpn-proxy");
+  assert.equal(service.refreshRevocations, 1);
 });
 
-function sessionService(validateAccessSecurity) {
+function sessionService(validateAccessSecurity, failRevocation = false) {
   const records = new Map();
   let refreshRevocations = 0;
   let queue = Promise.resolve();
@@ -186,7 +186,10 @@ function sessionService(validateAccessSecurity) {
     },
   };
   const service = loadService("sessionSecurity.service.js", {
-    "../config/firebaseAdmin": { db, auth: { revokeRefreshTokens: async () => { refreshRevocations++; } } },
+    "../config/firebaseAdmin": { db, auth: { revokeRefreshTokens: async () => {
+      refreshRevocations++;
+      if (failRevocation) throw new Error("Firebase unavailable");
+    } } },
     "./registrationSecurity.service": { getClientIp: (req) => req.ip, validateAccessSecurity },
   });
   return { ...service, records, get refreshRevocations() { return refreshRevocations; } };
@@ -196,7 +199,6 @@ test("persisted revocation blocks restored IPs and refreshed tokens; fresh login
   let checks = 0;
   const service = sessionService(async () => {
       checks++;
-      if (checks === 1) throw new ApiError(403, "VPN");
   });
   const req = { ip: "1.2.3.4", auth: { user: { uid: "user" }, claims: { auth_time: 1, iat: 1 }, provider: "firebase-id-token" } };
   const isViolation = (error) => error.statusCode === 401 && error.details.code === "SESSION_SECURITY_VIOLATION";
@@ -210,19 +212,20 @@ test("persisted revocation blocks restored IPs and refreshed tokens; fresh login
   await assert.rejects(service.validateSessionSecurity(req), isViolation);
   req.auth.claims.iat = revokedBefore + 1;
   await service.validateSessionSecurity(req);
-  assert.equal(checks, 0);
+  assert.equal(checks, 1);
   assert.equal(service.refreshRevocations, 0);
 });
 
 test("provider unavailability does not revoke active sessions or refresh tokens", async () => {
-  const service = sessionService(async () => { throw new ApiError(503, "Unavailable"); });
+  const geo = geoService(async () => { throw new Error("Unavailable"); });
+  const service = sessionService(geo.validateAccessSecurity);
   await service.validateSessionSecurity({ ip: "1.2.3.4",
     auth: { user: { uid: "user" }, claims: { iat: 1 }, provider: "server-jwt" } });
   assert.equal(service.records.has("sessionSecurity/user"), false);
   assert.equal(service.refreshRevocations, 0);
 });
 
-test("all roles avoid provider calls during authenticated requests, even when a provider would reject", async () => {
+test("all roles stay active for ambiguous data, but explicit VPN flags revoke", async () => {
   for (const role of ["customer", "admin", "staff"]) {
     for (const data of [{ country_code: "US" }, { risk: { risk_score: 100, anonymous: true } }, null]) {
       const geo = geoService(async () => response(data), true, "production");
@@ -234,29 +237,57 @@ test("all roles avoid provider calls during authenticated requests, even when a 
     }
     const geo = geoService(async () => response({ ip: "1.2.3.4", risk: { is_vpn: true } }));
     const service = sessionService(geo.validateAccessSecurity);
-    await service.validateSessionSecurity({ ip: "1.2.3.4", auth: { user: { uid: role, role },
-      claims: { auth_time: 1 }, provider: "firebase-id-token" } });
-    assert.equal(service.refreshRevocations, 0);
+    await assert.rejects(service.validateSessionSecurity({ ip: "1.2.3.4", auth: { user: { uid: role, role },
+      claims: { auth_time: 1 }, provider: "firebase-id-token" } }), (error) => error.details.reason === "vpn-proxy");
+    assert.equal(service.refreshRevocations, 1);
   }
 });
 
-test("IP switches do not trigger provider calls or revoke an active session", async () => {
+test("IP switches revoke before provider lookup and returning to the old IP cannot revive the token", async () => {
   let checks = 0;
   const service = sessionService(async () => { checks++; });
   const req = { ip: "1.2.3.4", auth: { user: { uid: "user" }, claims: { auth_time: 1 }, provider: "firebase-id-token" } };
   await service.validateSessionSecurity(req);
   req.ip = "8.8.8.8";
-  await service.validateSessionSecurity(req);
-  assert.equal(checks, 0);
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "ip-changed");
+  assert.equal(checks, 1);
   req.ip = "1.2.3.4";
-  await service.validateSessionSecurity(req);
-  assert.equal(service.refreshRevocations, 0);
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "revoked");
+  assert.equal(service.refreshRevocations, 1);
 });
 
-test("legacy signed login IP claims no longer block a changed connection", async () => {
+test("signed login IP claims block a switch before the first poll", async () => {
   const service = sessionService(async () => assert.fail("Changed IP must be rejected before provider lookup"));
-  await service.validateSessionSecurity({ ip: "8.8.8.8", auth: { user: { uid: "user" },
-    claims: { iat: 1, connectionIp: "1.2.3.4" }, provider: "server-jwt" } });
+  await assert.rejects(service.validateSessionSecurity({ ip: "8.8.8.8", auth: { user: { uid: "user" },
+    claims: { iat: 1, connectionIp: "1.2.3.4" }, provider: "server-jwt" } }), (error) => error.details.reason === "ip-changed");
+});
+
+test("persisted revocation blocks replay even when Firebase refresh-token revocation fails", async () => {
+  const service = sessionService(async () => {}, true);
+  const req = { ip: "8.8.8.8", auth: { user: { uid: "user" },
+    claims: { iat: 1, connectionIp: "1.2.3.4" }, provider: "server-jwt" } };
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "ip-changed");
+  req.ip = "1.2.3.4";
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "revoked");
+  assert.equal(service.refreshRevocations, 1);
+});
+
+test("an in-flight lookup cannot authorize a session revoked by another request", async () => {
+  let release;
+  let ready;
+  const waiting = new Promise((resolve) => { ready = resolve; });
+  const service = sessionService(async () => {
+    ready();
+    await new Promise((resolve) => { release = resolve; });
+  });
+  const auth = { user: { uid: "user" }, claims: { iat: 1, connectionIp: "1.2.3.4" }, provider: "server-jwt" };
+  const first = assert.rejects(service.validateSessionSecurity({ ip: "1.2.3.4", auth }),
+    (error) => error.details.reason === "revoked");
+  await waiting;
+  await assert.rejects(service.validateSessionSecurity({ ip: "8.8.8.8", auth }),
+    (error) => error.details.reason === "ip-changed");
+  release();
+  await first;
 });
 
 test("both token middlewares stop the request before an action on security violation", async () => {

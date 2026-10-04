@@ -6,9 +6,28 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useToast } from "./context/ToastContext.jsx";
+import { verifyActiveSessionSecurity } from "./services/sessionSecurity.js";
+import { monitorSessionSecurity } from "./services/sessionSecurityMonitor.js";
+import { SESSION_SECURITY_EVENT } from "./services/apiClient.js";
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
 const INACTIVITY_WARNING_MS = INACTIVITY_LIMIT_MS - 30 * 1000;
+
+function SessionSecurityMonitor() {
+  const { currentUser, accessToken } = useAuth();
+  const tokenRef = useRef(accessToken);
+  tokenRef.current = accessToken;
+  useEffect(() => {
+    if (!currentUser?.uid) return undefined;
+    return monitorSessionSecurity({
+      verify: () => verifyActiveSessionSecurity(tokenRef.current),
+      onViolation: (message) => window.dispatchEvent(new CustomEvent(SESSION_SECURITY_EVENT, { detail: { message } })),
+      router, window, document,
+      connection: navigator.connection || navigator.mozConnection || navigator.webkitConnection,
+    });
+  }, [currentUser?.uid]);
+  return null;
+}
 
 function InactivityGuard() {
   const { currentUser, signOut } = useAuth();
@@ -65,6 +84,7 @@ export default function App() {
     <AuthProvider>
       <AppProvider>
         <ToastProvider>
+          <SessionSecurityMonitor />
           <InactivityGuard />
           <RouterProvider router={router} />
         </ToastProvider>

@@ -404,6 +404,10 @@ export function CustomerProfile() {
           petForm.photoURL,
       );
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
+  const petCardGridClass =
+    customerPetRecords.length > 1
+      ? "grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-2"
+      : "grid min-w-0 max-w-xl grid-cols-1 items-start gap-4";
 
   useEffect(() => {
     if (!selectedAppointmentId && customerAppointments[0]) {
@@ -831,7 +835,7 @@ export function CustomerProfile() {
                     </button>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[40rem]:grid-cols-[320px_minmax(0,1fr)]">
+                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[56rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
                     <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
@@ -988,64 +992,66 @@ export function CustomerProfile() {
                       </div>
                     </form>
 
-                    <div className="grid min-w-0 auto-rows-max grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] items-start gap-4">
+                    <div className="min-w-0">
                       {customerPetRecords.length === 0 ? (
                         <p className="text-sm leading-6 text-[#607277]">No pet records yet.</p>
                       ) : (
-                        customerPetRecords.map((record) => {
-                          const photoReview = petPhotoModerationById.get(record.photoModerationId);
+                        <div className={petCardGridClass}>
+                          {customerPetRecords.map((record) => {
+                            const photoReview = petPhotoModerationById.get(record.photoModerationId);
 
-                          return (
-                            <div
-                              key={record.id}
-                              className="min-w-0 break-words rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-4 text-left transition hover:border-[#2D9B9B]"
-                            >
-                              <div className="flex flex-wrap items-center gap-3">
-                                {record.photoURL && photoReview?.status !== "pending" ? (
-                                  <img
-                                    src={record.photoURL}
-                                    alt={`${record.petName} profile`}
-                                    className="h-12 w-12 rounded-2xl object-cover"
-                                  />
-                                ) : (
-                                  <PawPrint size={18} className="text-[#2D6B73]" />
-                                )}
-                                <h3 className="min-w-0 text-lg font-semibold text-[#20343B]">{record.petName}</h3>
-                                <StatusChip label={record.petType} />
-                                {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
-                              </div>
-                              <p className="mt-3 text-sm text-[#607277]">
-                                {[
-                                  record.breed || "Breed not specified",
-                                  record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
-                                  record.weightKg ? `${record.weightKg} kg` : "",
-                                ].filter(Boolean).join(" | ")}
-                              </p>
-                              {record.notes && (
-                                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#50666B]">
-                                  {record.notes}
+                            return (
+                              <div
+                                key={record.id}
+                                className="min-w-0 break-words rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-4 text-left transition hover:border-[#2D9B9B]"
+                              >
+                                <div className="flex flex-wrap items-center gap-3">
+                                  {record.photoURL && photoReview?.status !== "pending" ? (
+                                    <img
+                                      src={record.photoURL}
+                                      alt={`${record.petName} profile`}
+                                      className="h-12 w-12 rounded-2xl object-cover"
+                                    />
+                                  ) : (
+                                    <PawPrint size={18} className="text-[#2D6B73]" />
+                                  )}
+                                  <h3 className="min-w-0 text-lg font-semibold text-[#20343B]">{record.petName}</h3>
+                                  <StatusChip label={record.petType} />
+                                  {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
+                                </div>
+                                <p className="mt-3 text-sm text-[#607277]">
+                                  {[
+                                    record.breed || "Breed not specified",
+                                    record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
+                                    record.weightKg ? `${record.weightKg} kg` : "",
+                                  ].filter(Boolean).join(" | ")}
                                 </p>
-                              )}
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setPetForm(buildPetFormFromRecord(record))}
-                                  className="rounded-xl bg-[#EEF6F6] px-4 py-2 text-sm font-semibold text-[#2B555C]"
-                                >
-                                  Edit pet
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removePet(record)}
-                                  className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-4 py-2 text-sm font-semibold text-[#B23949]"
-                                >
-                                  <Trash2 size={15} />
-                                  Delete pet
-                                </button>
+                                {record.notes && (
+                                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#50666B]">
+                                    {record.notes}
+                                  </p>
+                                )}
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPetForm(buildPetFormFromRecord(record))}
+                                    className="rounded-xl bg-[#EEF6F6] px-4 py-2 text-sm font-semibold text-[#2B555C]"
+                                  >
+                                    Edit pet
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removePet(record)}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-4 py-2 text-sm font-semibold text-[#B23949]"
+                                  >
+                                    <Trash2 size={15} />
+                                    Delete pet
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   </div>

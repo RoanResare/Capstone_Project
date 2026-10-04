@@ -119,11 +119,12 @@ export async function resendPortalOtp(role, otpTicket) {
   }
 }
 
-export async function verifyPortalOtp(role, otpTicket, otpCode) {
+export async function verifyPortalOtp(role, otpTicket, otpCode, options = {}) {
   try {
     const response = await apiClient.post(`/${normalizePortalRole(role)}/verify-otp`, {
       otpTicket,
       otpCode,
+      rememberDevice: options.rememberDevice === true,
     });
     return response.data;
   } catch (error) {

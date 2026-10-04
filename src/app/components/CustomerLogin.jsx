@@ -15,15 +15,15 @@ export function CustomerLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    signIn,
+    beginUnifiedLogin,
     currentUser,
     firebaseConfigError,
     isAuthenticated,
     isLoading,
     isOnline,
   } = useAuth();
-  const { error: showErrorToast } = useToast();
-  const [form, setForm] = useState({ identifier: "", password: "" });
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -64,15 +64,22 @@ export function CustomerLogin() {
     setFeedback({ type: "", message: "" });
 
     try {
-      const result = await signIn({
+      const result = await beginUnifiedLogin({
         identifier: form.identifier.trim(),
         password: form.password,
-        roleHint: "customer",
+        requestedPath,
+        rememberDevice: form.rememberDevice,
       });
 
       if (!result.ok) {
         setFeedback({ type: "error", message: result.error });
         showErrorToast(result.error);
+        return;
+      }
+
+      if (result.requiresTwoFactor) {
+        showSuccessToast(result.message || "Verification code sent to your email.");
+        navigate(result.verificationPath || "/verify-otp", { replace: true });
         return;
       }
 
@@ -104,12 +111,12 @@ export function CustomerLogin() {
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/64">
-              Standard Firebase flow
+              Terms and Conditions
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
               <p>1. Enter the email address or username linked to your customer account.</p>
               <p>2. The account lookup resolves the identifier to Firebase Authentication.</p>
-              <p>3. Your customer profile loads from Firestore after sign-in succeeds.</p>
+              <p>3. Remembered devices must be private, trusted browsers for your own account.</p>
             </div>
           </div>
 
@@ -192,6 +199,19 @@ export function CustomerLogin() {
               Sign in as customer
               <ShieldCheck size={16} />
             </button>
+
+            <label className="flex items-start justify-end gap-3 text-right text-sm font-semibold text-[#415D62]">
+              <span>Remember this device for two weeks</span>
+              <input
+                type="checkbox"
+                checked={form.rememberDevice}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, rememberDevice: event.target.checked }))
+                }
+                disabled={isSubmitting}
+                className="mt-1 h-4 w-4 accent-[#2D9B9B]"
+              />
+            </label>
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <Link

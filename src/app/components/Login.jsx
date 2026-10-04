@@ -20,7 +20,7 @@ export function Login() {
     isOnline,
   } = useAuth();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
-  const [form, setForm] = useState({ identifier: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [fieldErrors, setFieldErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +68,7 @@ export function Login() {
         identifier: form.identifier.trim(),
         password: form.password,
         requestedPath,
+        rememberDevice: form.rememberDevice,
       });
 
       if (!result.ok) {
@@ -117,14 +118,19 @@ export function Login() {
             detects the saved role, and sends each user to the correct existing dashboard.
           </p>
 
-          <div className="mt-7 grid gap-3 text-sm text-white/80">
-            <div className="flex items-center gap-3 rounded-lg border border-white/12 bg-white/8 px-4 py-3">
-              <ShieldCheck size={18} />
-              Customer, Staff, and Admin dashboards remain separate.
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-white/12 bg-white/8 px-4 py-3">
-              <UserPlus size={18} />
-              New customers can still create an account.
+          <div className="mt-7 rounded-lg border border-white/12 bg-white/8 px-4 py-4 text-sm text-white/80">
+            <p className="font-semibold uppercase tracking-[0.16em] text-white/64">
+              Terms and Conditions
+            </p>
+            <div className="mt-3 grid gap-3">
+              <div className="flex items-center gap-3">
+                <ShieldCheck size={18} />
+                Customer, Staff, and Admin dashboards remain separate.
+              </div>
+              <div className="flex items-center gap-3">
+                <UserPlus size={18} />
+                Remembered devices must be private, trusted browsers.
+              </div>
             </div>
           </div>
         </motion.section>
@@ -211,6 +217,19 @@ export function Login() {
               {isSubmitting ? "Logging in..." : "Log In"}
               <LogIn size={16} />
             </button>
+
+            <label className="flex items-start justify-end gap-3 text-right text-sm font-semibold text-[#415D62]">
+              <span>Remember this device for two weeks</span>
+              <input
+                type="checkbox"
+                checked={form.rememberDevice}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, rememberDevice: event.target.checked }))
+                }
+                disabled={isSubmitting}
+                className="mt-1 h-4 w-4 accent-[#2D9B9B]"
+              />
+            </label>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
               <Link

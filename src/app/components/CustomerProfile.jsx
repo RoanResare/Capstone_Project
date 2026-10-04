@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Camera,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   Eye,
   EyeOff,
@@ -183,6 +184,74 @@ function MetricCard({ label, value, description }) {
   );
 }
 
+function NotificationDropdown({ notifications, currentUserId, onReadNotification }) {
+  const [isOpen, setIsOpen] = useState(true);
+  const visibleCount = Math.min(notifications.length, 3);
+
+  return (
+    <section className="rounded-[24px] bg-white p-5 shadow-[0_16px_32px_rgba(102,91,72,0.12)]">
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        className="flex w-full items-center justify-between gap-3 text-left"
+        aria-expanded={isOpen}
+      >
+        <span className="inline-flex items-center gap-3">
+          <Bell size={20} className="text-[#2D6B73]" />
+          <span className="text-lg font-semibold text-[#20343B]">Notifications</span>
+        </span>
+        <ChevronDown
+          size={20}
+          className={`text-[#607277] transition ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="mt-4 max-h-[330px] space-y-3 overflow-y-auto pr-1">
+          {notifications.length === 0 ? (
+            <EmptyState
+              title="No notifications yet"
+              message="Booking confirmations and appointment updates will appear here."
+            />
+          ) : (
+            notifications.map((notification) => {
+              const isUnread = !notification.readBy.includes(currentUserId);
+
+              return (
+                <button
+                  key={notification.id}
+                  type="button"
+                  onClick={() => onReadNotification(notification.id)}
+                  className={`w-full rounded-[18px] border px-4 py-3 text-left transition ${
+                    isUnread
+                      ? "border-[#2D9B9B] bg-[#F5FBFB]"
+                      : "border-[#E6EFEE] bg-[#FBFDFC]"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-[#20343B]">{notification.title}</p>
+                    <StatusChip label={notification.actionLabel} />
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[#607277]">{notification.message}</p>
+                  <p className="mt-3 text-xs text-[#7A9297]">
+                    {formatNotificationDate(notification.createdAt)}
+                  </p>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {isOpen && notifications.length > visibleCount && (
+        <p className="mt-3 text-xs font-semibold text-[#607277]">
+          Showing 3 at a time. Scroll inside this panel for newer appointment updates.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function MetricButton({ label, value, description, onClick }) {
   return (
     <button
@@ -299,9 +368,7 @@ export function CustomerProfile() {
     customerAppointments.find((appointment) => appointment.id === selectedAppointmentId) ||
     customerAppointments[0] ||
     null;
-  const unreadNotificationCount = visibleNotifications.filter(
-    (notification) => !notification.readBy.includes(customer?.id || customer?.uid),
-  ).length;
+  const currentCustomerId = customer?.id || customer?.uid;
   const petPhotoModerationById = useMemo(
     () =>
       new Map(
@@ -723,55 +790,54 @@ export function CustomerProfile() {
           <main className="min-w-0">
             {activeTab === "overview" && (
               <div className="space-y-5">
-                <div className="grid gap-5 md:grid-cols-3">
-                  <MetricButton
-                    label="Upcoming"
-                    value={upcomingAppointments.length}
-                    description="Pending or confirmed visits."
-                    onClick={() => openTab("appointments")}
-                  />
-                  <MetricButton
-                    label="Pets"
-                    value={customerPetRecords.length}
-                    description="Pet profiles connected to your account."
-                    onClick={() => openTab("profile")}
-                  />
-                  <MetricButton
-                    label="Unread"
-                    value={unreadNotificationCount}
-                    description="Clinic updates and booking notices."
-                    onClick={() => openTab("overview")}
-                  />
-                </div>
-
-                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                  <section className="rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Next step
                       </p>
                       <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
+                        To book a service, please fill out the 'Add Pet' form.
+                      </h2>
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-[#607277]">
+                        Add your pet details first, then continue to service selection and appointment booking.
+                      </p>
+                    </div>
+                  </section>
+
+                  <div className="space-y-5 xl:-mt-28">
+                    <section className="rounded-[24px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
+                        Booking
+                      </p>
+                      <h2 className="mt-2 text-xl font-semibold text-[#20343B]">
                         Continue with services or book a new appointment.
                       </h2>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openTab("services")}
-                        className="rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]"
-                      >
-                        View services
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openTab("booking")}
-                        className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:scale-[1.03] hover:bg-[#235A61]"
-                      >
-                        Book appointment
-                      </button>
-                    </div>
+                      <div className="mt-5 grid gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openTab("services")}
+                          className="rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]"
+                        >
+                          View services
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openTab("booking")}
+                          className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:scale-[1.03] hover:bg-[#235A61]"
+                        >
+                          Book appointment
+                        </button>
+                      </div>
+                    </section>
+
+                    <NotificationDropdown
+                      notifications={visibleNotifications}
+                      currentUserId={currentCustomerId}
+                      onReadNotification={markNotificationRead}
+                    />
                   </div>
-                </section>
+                </div>
 
                 <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -782,9 +848,6 @@ export function CustomerProfile() {
                       <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                         Add pet
                       </h2>
-                      <p className="mt-3 max-w-2xl rounded-[18px] border border-[#BFDADA] bg-[#F5FAFA] px-5 py-4 text-xl font-semibold leading-7 text-[#20343B]">
-                        To book a service, please fill out the 'Add pet' form.
-                      </p>
                     </div>
                     <button
                       type="button"
@@ -1016,48 +1079,6 @@ export function CustomerProfile() {
                   </div>
                 </section>
 
-                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
-                  <div className="flex items-center gap-3">
-                    <Bell size={20} className="text-[#2D6B73]" />
-                    <h2 className="text-xl font-semibold text-[#20343B]">Notifications</h2>
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    {visibleNotifications.length === 0 ? (
-                      <EmptyState
-                        title="No notifications yet"
-                        message="Booking confirmations and appointment updates will appear here."
-                      />
-                    ) : (
-                      visibleNotifications.slice(0, 4).map((notification) => {
-                        const isUnread = !notification.readBy.includes(customer?.id || customer?.uid);
-
-                        return (
-                          <button
-                            key={notification.id}
-                            type="button"
-                            onClick={() => markNotificationRead(notification.id)}
-                            className={`w-full rounded-[24px] border px-5 py-4 text-left transition ${
-                              isUnread
-                                ? "border-[#2D9B9B] bg-[#F5FBFB]"
-                                : "border-[#E6EFEE] bg-[#FBFDFC]"
-                            }`}
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <p className="font-semibold text-[#20343B]">{notification.title}</p>
-                              <StatusChip label={notification.actionLabel} />
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-[#607277]">
-                              {notification.message}
-                            </p>
-                            <p className="mt-3 text-xs text-[#7A9297]">
-                              {formatNotificationDate(notification.createdAt)}
-                            </p>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </section>
               </div>
             )}
 

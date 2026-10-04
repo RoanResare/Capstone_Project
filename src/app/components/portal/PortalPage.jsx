@@ -127,6 +127,24 @@ function formatDateLabel(value, fallback = "Not set") {
   }).format(parsed);
 }
 
+function formatTimeLabel(value, fallback = "Time unavailable") {
+  const normalizedTime = normalizeScheduleTime(value);
+
+  if (!normalizedTime) {
+    return fallback;
+  }
+
+  const parsed = new Date(`2000-01-01T${normalizedTime}:00`);
+  if (!isValidDateInstance(parsed)) {
+    return normalizedTime;
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
 function formatAppointmentSchedule(appointment, fallback = "Schedule pending") {
   const parsed = parseDateTimeParts(appointment?.scheduleDate, appointment?.scheduleTime);
   if (parsed) {
@@ -934,20 +952,6 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Slots This Day" value={selectedDateSlots.length} />
-        <MetricCard
-          label="Open"
-          value={selectedDateSlots.filter((slot) => slot.isOpen !== false).length}
-          tone="teal"
-        />
-        <MetricCard
-          label="Disabled"
-          value={selectedDateSlots.filter((slot) => slot.isOpen === false).length}
-          tone="rose"
-        />
-      </div>
-
       <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
         <PanelCard
           title="Manage schedule"
@@ -1482,6 +1486,8 @@ function ManageUsersWorkspace({
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pendingUserStatus, setPendingUserStatus] = useState(null);
+  const [pendingUserSave, setPendingUserSave] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState(() => buildPortalUserForm());
   const [originalForm, setOriginalForm] = useState(() => buildPortalUserForm());
@@ -1510,11 +1516,21 @@ function ManageUsersWorkspace({
         portalUsers[0] ||
         null;
 
-  const changeUserStatus = async (user, status) => {
+  const requestUserStatusChange = (user, status) => {
     if (isSaving || !user?.id || user.status === status) {
       return;
     }
 
+    setPendingUserStatus({ user, status });
+    setFeedback({ type: "", message: "" });
+  };
+
+  const confirmUserStatusChange = async () => {
+    if (!pendingUserStatus || isSaving) {
+      return;
+    }
+
+    const { user, status } = pendingUserStatus;
     setIsSaving(true);
     setFeedback({ type: "", message: "" });
 
@@ -1530,6 +1546,7 @@ function ManageUsersWorkspace({
 
       const message = `${user.name} is now ${formatUserStatusLabel(status)}.`;
       setFeedback({ type: "success", message });
+      setPendingUserStatus(null);
       toast.success(message);
     } finally {
       setIsSaving(false);
@@ -1567,6 +1584,8 @@ function ManageUsersWorkspace({
 
     setSearchParams(nextParams);
     setFeedback({ type: "", message: "" });
+    setPendingUserSave(null);
+    setPendingUserStatus(null);
   };
 
   const startNewUser = () => {
@@ -1629,13 +1648,27 @@ function ManageUsersWorkspace({
       return;
     }
 
+    setPendingUserSave({
+      fullPayload,
+      payload,
+      mode: isCreatingNew ? "create" : "update",
+      userId: selectedUser?.id || "",
+    });
+    setFeedback({ type: "", message: "" });
+  };
+
+  const confirmSaveUser = async () => {
+    if (!pendingUserSave || isSaving) {
+      return;
+    }
+
     setIsSaving(true);
     setFeedback({ type: "", message: "" });
 
     try {
-      const result = isCreatingNew
-        ? await createStaff(payload)
-        : await updateUser(selectedUser?.id || "", payload);
+      const result = pendingUserSave.mode === "create"
+        ? await createStaff(pendingUserSave.payload)
+        : await updateUser(pendingUserSave.userId, pendingUserSave.payload);
 
       if (!result?.ok) {
         setFeedback({
@@ -1645,7 +1678,7 @@ function ManageUsersWorkspace({
         return;
       }
 
-      if (isCreatingNew && result.id) {
+      if (pendingUserSave.mode === "create" && result.id) {
         openUser(result.id, selectedNotificationId);
       }
 
@@ -1654,17 +1687,18 @@ function ManageUsersWorkspace({
           ? { ...result.user, password: "" }
           : {
               ...selectedUser,
-              ...fullPayload,
+              ...pendingUserSave.fullPayload,
               id: selectedUser?.id || result.id || "",
               password: "",
             },
       );
-      const successMessage = isCreatingNew
+      const successMessage = pendingUserSave.mode === "create"
         ? "Employee account created successfully."
         : "Employee account updated successfully.";
 
       setForm(savedForm);
       setOriginalForm(savedForm);
+      setPendingUserSave(null);
       setFeedback({
         type: "success",
         message: successMessage,
@@ -1715,12 +1749,15 @@ function ManageUsersWorkspace({
     if (isCreatingNew) {
       setForm(buildPortalUserForm());
       setFeedback({ type: "", message: "" });
+      setPendingUserSave(null);
       return;
     }
 
     setForm(originalForm);
     setFeedback({ type: "", message: "" });
     setConfirmDelete(false);
+    setPendingUserSave(null);
+    setPendingUserStatus(null);
   };
 
   const selectedUserIsCurrentAdmin = selectedUser?.id === currentUser.id;
@@ -1818,7 +1855,7 @@ function ManageUsersWorkspace({
                         onClick={(event) => event.stopPropagation()}
                         onChange={(event) => {
                           event.stopPropagation();
-                          changeUserStatus(user, event.target.value);
+                          requestUserStatusChange(user, event.target.value);
                         }}
                         disabled={isSaving || user.id === currentUser.id}
                         className="rounded-full border border-[#D9E7E7] bg-white px-3 py-1.5 text-xs font-semibold text-[#365057] outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:opacity-60"
@@ -2030,6 +2067,91 @@ function ManageUsersWorkspace({
                       className="rounded-2xl bg-[#B23949] px-4 py-2.5 text-sm font-semibold text-white"
                     >
                       {isSaving ? "Deleting..." : "Delete account"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {pendingUserStatus && (
+                <div
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-labelledby="status-employee-title"
+                  className="rounded-[22px] border border-[#BFE1E1] bg-[#F8FCFC] px-4 py-4"
+                >
+                  <h4 id="status-employee-title" className="font-semibold text-[#20343B]">
+                    Confirm status change
+                  </h4>
+                  <p className="mt-2 text-sm text-[#607277]">
+                    Save {pendingUserStatus.user.name} as{" "}
+                    <span className="font-semibold text-[#20343B]">
+                      {formatUserStatusLabel(pendingUserStatus.status)}
+                    </span>
+                    ?
+                  </p>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setPendingUserStatus(null)}
+                      disabled={isSaving}
+                      className="rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmUserStatusChange}
+                      disabled={isSaving}
+                      className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {isSaving ? "Saving..." : "Save status"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {pendingUserSave && (
+                <div
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-labelledby="save-employee-title"
+                  className="rounded-[22px] border border-[#BFE1E1] bg-[#F8FCFC] px-4 py-4"
+                >
+                  <h4 id="save-employee-title" className="font-semibold text-[#20343B]">
+                    Confirm employee changes
+                  </h4>
+                  <p className="mt-2 text-sm text-[#607277]">
+                    Review this {pendingUserSave.mode === "create" ? "new account" : "account update"} before saving.
+                  </p>
+                  <div className="mt-4 grid gap-2 rounded-2xl bg-white px-4 py-3 text-sm">
+                    {[
+                      ["Name", pendingUserSave.fullPayload.name],
+                      ["Email", pendingUserSave.fullPayload.email],
+                      ["Username", pendingUserSave.fullPayload.username],
+                      ["Role", formatRoleLabel(pendingUserSave.fullPayload.role)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-start justify-between gap-4">
+                        <span className="font-semibold text-[#607277]">{label}</span>
+                        <span className="text-right font-semibold text-[#20343B]">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setPendingUserSave(null)}
+                      disabled={isSaving}
+                      className="rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmSaveUser}
+                      disabled={isSaving}
+                      className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {isSaving ? "Saving..." : "Save changes"}
                     </button>
                   </div>
                 </div>

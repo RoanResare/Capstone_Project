@@ -13,7 +13,11 @@ function getPhoneSubscriberDigits(value = "") {
     ? withoutCountryCode.slice(1)
     : withoutCountryCode;
 
-  return withoutLeadingZero.slice(0, 10);
+  const normalized = withoutLeadingZero.startsWith("9")
+    ? withoutLeadingZero
+    : withoutLeadingZero.replace(/^[^9]*/, "");
+
+  return normalized.slice(0, 10);
 }
 
 function formatSignupPhone(value = "") {
@@ -84,10 +88,10 @@ export function CustomerSignup() {
     setFeedback({ type: "", message: "" });
 
     try {
-      if (form.phone.length !== 10) {
+      if (!/^9\d{9}$/.test(form.phone)) {
         setFeedback({
           type: "error",
-          message: "Enter exactly 10 digits after +63 for your contact number.",
+          message: "Enter exactly 10 digits after +63, starting with 9.",
         });
         return;
       }
@@ -234,14 +238,14 @@ export function CustomerSignup() {
                   type="tel"
                   inputMode="numeric"
                   maxLength={10}
-                  pattern="[0-9]{10}"
+                  pattern="9[0-9]{9}"
                   autoComplete="tel"
                   className="min-w-0 flex-1 px-4 py-3 outline-none"
-                  placeholder="XXXXXXXXXX"
+                  placeholder="9XXXXXXXXX"
                 />
               </label>
               <p className="mt-2 text-xs text-[#7A9297]">
-                Numbers only. Format: {formatSignupPhone(form.phone || "XXXXXXXXXX")}.
+                Numbers only. Format: {formatSignupPhone(form.phone || "9XXXXXXXXX")}.
               </p>
             </div>
 

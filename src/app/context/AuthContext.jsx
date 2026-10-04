@@ -34,7 +34,12 @@ import {
   normalizeRole,
   resolveHomePath,
 } from "../utils/roleUtils.js";
-import { resetTransientAuthStorage } from "../utils/browserState.js";
+import {
+  readStorageItem,
+  removeStorageItem,
+  resetTransientAuthStorage,
+  writeStorageItem,
+} from "../utils/browserState.js";
 import {
   clearPendingOtpSession,
   clearPortalSession,
@@ -51,6 +56,31 @@ import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { getPasswordRecoveryEmailError } from "../utils/passwordRecovery.js";
 
 const AuthContext = createContext(null);
+const REMEMBER_DEVICE_STORAGE_PREFIX = "furfection-remember-device";
+
+function rememberDeviceStorageKey(role = "") {
+  return `${REMEMBER_DEVICE_STORAGE_PREFIX}-${normalizeRole(role) || "portal"}`;
+}
+
+function readRememberDeviceToken(role = "") {
+  return readStorageItem(rememberDeviceStorageKey(role)) || "";
+}
+
+function persistRememberDeviceToken(role = "", token = "") {
+  const normalizedRole = normalizeRole(role);
+  const value = typeof token === "string" ? token.trim() : "";
+
+  if (!normalizedRole) {
+    return;
+  }
+
+  if (value) {
+    writeStorageItem(rememberDeviceStorageKey(normalizedRole), value);
+    return;
+  }
+
+  removeStorageItem(rememberDeviceStorageKey(normalizedRole));
+}
 
 function isTimestampExpired(value = "") {
   const timestamp = typeof value === "string" ? value.trim() : "";
@@ -84,6 +114,7 @@ function normalizePendingOtpRecord(record) {
     resendAvailableAt:
       typeof record.resendAvailableAt === "string" ? record.resendAvailableAt : "",
     role: typeof record.role === "string" ? record.role.trim().toLowerCase() : "",
+    rememberDevice: record.rememberDevice === true,
   };
 
   if (
@@ -527,7 +558,13 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function beginLogin({ identifier, password, role = "", requestedPath = "" }) {
+  async function beginLogin({
+    identifier,
+    password,
+    role = "",
+    requestedPath = "",
+    rememberDevice = false,
+  }) {
     const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
 
     if (normalizedRole === "admin" || normalizedRole === "staff") {
@@ -559,10 +596,21 @@ export function AuthProvider({ children }) {
         const response = await loginPortalUser(normalizedRole, {
           identifier: identifier.trim(),
           password,
+          rememberDevice,
+          rememberDeviceToken: readRememberDeviceToken(normalizedRole),
         });
 
         clearPortalSession();
         clearPendingOtpSession();
+
+        if (!response.requiresTwoFactor) {
+          return await finalizePortalLogin(response, {
+            requestedPath,
+            rememberDevice,
+            role: normalizedRole,
+          });
+        }
+
         const nextPendingOtp = normalizePendingOtpRecord({
           deliveryMode: response.deliveryMode || "",
           email: response.user?.email || "",
@@ -571,6 +619,7 @@ export function AuthProvider({ children }) {
           requestedPath,
           resendAvailableAt: response.otpResendAvailableAt || "",
           role: normalizedRole,
+          rememberDevice,
         });
 
         if (!nextPendingOtp) {
@@ -611,7 +660,12 @@ export function AuthProvider({ children }) {
     });
   }
 
-  async function beginUnifiedLogin({ identifier, password, requestedPath = "" }) {
+  async function beginUnifiedLogin({
+    identifier,
+    password,
+    requestedPath = "",
+    rememberDevice = false,
+  }) {
     if (!isFirebaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
@@ -636,6 +690,9 @@ export function AuthProvider({ children }) {
       const response = await loginUnifiedUser({
         identifier: identifier.trim(),
         password,
+        rememberDevice,
+        rememberDeviceToken:
+          readRememberDeviceToken("admin") || readRememberDeviceToken("staff"),
       });
       const responseRole = normalizeRole(response.user?.role);
 
@@ -651,6 +708,7 @@ export function AuthProvider({ children }) {
           requestedPath,
           resendAvailableAt: response.otpResendAvailableAt || "",
           role: responseRole,
+          rememberDevice,
         });
 
         if (!nextPendingOtp) {
@@ -946,6 +1004,7 @@ export function AuthProvider({ children }) {
       throw new Error("The portal session token could not be matched to the signed-in user.");
     }
 
+    persistRememberDeviceToken(hydratedSession.user.role, response?.rememberDeviceToken || "");
     clearPendingOtpSession();
     setPendingOtp(null);
     setCurrentUser(hydratedSession.user);
@@ -985,6 +1044,7 @@ export function AuthProvider({ children }) {
         requestedPath: activePendingOtp.requestedPath || "",
         resendAvailableAt: response.otpResendAvailableAt || activePendingOtp.resendAvailableAt,
         role: activePendingOtp.role,
+        rememberDevice: activePendingOtp.rememberDevice,
       });
 
       if (!nextPendingOtp) {
@@ -1048,6 +1108,7 @@ export function AuthProvider({ children }) {
         activePendingOtp.role,
         activePendingOtp.otpTicket,
         normalizedCode,
+        { rememberDevice: activePendingOtp.rememberDevice },
       );
 
       return await finalizePortalLogin(response, activePendingOtp);

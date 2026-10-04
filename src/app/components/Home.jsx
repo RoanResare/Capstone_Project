@@ -102,12 +102,6 @@ export function Home() {
                     Start booking
                     <ArrowRight size={16} />
                   </button>
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#B8DADA] bg-transparent px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#245B62]"
-                  >
-                    Log in
-                  </Link>
                 </div>
               </div>
             </div>

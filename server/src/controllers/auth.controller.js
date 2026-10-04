@@ -27,13 +27,18 @@ const {
 } = require("../services/user.service");
 const {
   signAccessToken,
+  signRememberDeviceToken,
   signOtpTicket,
+  verifyRememberDeviceToken,
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
-const { validateRegistrationSecurity } = require("../services/registrationSecurity.service");
+const {
+  validateAccessSecurity,
+  validateRegistrationSecurity,
+} = require("../services/registrationSecurity.service");
 
 function normalizeEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -182,8 +187,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
 
-  if (phone && !/^(?:09\d{9}|639\d{9}|63\d{10})$/.test(phone)) {
-    throw new ApiError(400, "Phone number must use the format +63 XXXXXXXXXX.");
+  if (phone && !/^(?:09\d{9}|639\d{9})$/.test(phone)) {
+    throw new ApiError(400, "Phone number must use the format +63 9XXXXXXXXX.");
   }
 
   const storedEmailUser = await findUserByEmailCaseInsensitive(email);
@@ -436,7 +441,7 @@ function buildAppPasswordResetLink(req, providerLink) {
   return appResetUrl.toString();
 }
 
-async function createSessionResponse(user) {
+async function createSessionResponse(user, options = {}) {
   const safeUser = toPublicUser(user);
   const accessToken = signAccessToken(user);
   const firebaseCustomToken = await auth.createCustomToken(user.uid, {
@@ -452,8 +457,32 @@ async function createSessionResponse(user) {
     requiresTwoFactor: false,
     accessToken,
     firebaseCustomToken,
+    rememberDeviceToken: options.rememberDevice ? signRememberDeviceToken(user) : "",
     user: safeUser,
   };
+}
+
+function readRememberDeviceRequest(req) {
+  return {
+    rememberDevice: req.body?.rememberDevice === true,
+    rememberDeviceToken:
+      typeof req.body?.rememberDeviceToken === "string" ? req.body.rememberDeviceToken.trim() : "",
+  };
+}
+
+function isRememberedPortalDevice(user, token) {
+  if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(user?.role)) {
+    return false;
+  }
+
+  const payload = verifyRememberDeviceToken(token);
+
+  return Boolean(
+    payload &&
+      payload.sub === user.uid &&
+      payload.role === user.role &&
+      normalizeEmail(payload.email || "") === normalizeEmail(user.email || ""),
+  );
 }
 
 async function createOtpChallengeResponse(user, message, options = {}) {
@@ -508,6 +537,7 @@ function createRoleBoundLoginHandler(expectedRole) {
       requireOtp: routeRole !== USER_ROLES.CUSTOMER,
     });
     const { identifier, password } = validateLoginPayload(req.body);
+    await validateAccessSecurity(req);
     const email = await resolveEmailFromIdentifier(identifier);
     const existingUser = await getUserByEmail(email);
 
@@ -533,9 +563,22 @@ function createRoleBoundLoginHandler(expectedRole) {
     assertRoleMatchesExpected(user, routeRole);
     assertActiveAccount(user);
     assertFraudAccess(user);
+    const rememberDeviceRequest = readRememberDeviceRequest(req);
 
     if (routeRole === USER_ROLES.CUSTOMER) {
-      return res.status(200).json(await createSessionResponse(user));
+      return res.status(200).json(
+        await createSessionResponse(user, {
+          rememberDevice: rememberDeviceRequest.rememberDevice,
+        }),
+      );
+    }
+
+    if (isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
+      return res.status(200).json(
+        await createSessionResponse(user, {
+          rememberDevice: true,
+        }),
+      );
     }
 
     return res.status(202).json(
@@ -592,6 +635,7 @@ function createRoleBoundVerifyOtpHandler(expectedRole) {
     assertAuthSetupReady({ requireOtp: true });
     const otpTicket = typeof req.body?.otpTicket === "string" ? req.body.otpTicket.trim() : "";
     const otpCode = validateOtpCode(req.body?.otpCode);
+    const rememberDevice = req.body?.rememberDevice === true;
 
     if (!otpTicket) {
       throw new ApiError(400, "An OTP ticket is required.");
@@ -617,7 +661,7 @@ function createRoleBoundVerifyOtpHandler(expectedRole) {
       user,
     });
 
-    return res.status(200).json(await createSessionResponse(user));
+    return res.status(200).json(await createSessionResponse(user, { rememberDevice }));
   };
 }
 
@@ -632,6 +676,7 @@ const verifyStaffOtp = createRoleBoundVerifyOtpHandler(USER_ROLES.STAFF);
 async function loginUnified(req, res) {
   assertAuthSetupReady({ requireOtp: true });
   const { identifier, password } = validateLoginPayload(req.body);
+  await validateAccessSecurity(req);
   const email = await resolveEmailFromIdentifier(identifier);
   const existingUser = await getUserByEmail(email);
 
@@ -656,12 +701,25 @@ async function loginUnified(req, res) {
   await synchronizePasswordHash(user, password);
   assertActiveAccount(user);
   assertFraudAccess(user);
+  const rememberDeviceRequest = readRememberDeviceRequest(req);
 
   if (user.role === USER_ROLES.CUSTOMER) {
-    return res.status(200).json(await createSessionResponse(user));
+    return res.status(200).json(
+      await createSessionResponse(user, {
+        rememberDevice: rememberDeviceRequest.rememberDevice,
+      }),
+    );
   }
 
   if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.STAFF) {
+    if (isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
+      return res.status(200).json(
+        await createSessionResponse(user, {
+          rememberDevice: true,
+        }),
+      );
+    }
+
     return res.status(202).json(
       await createOtpChallengeResponse(
         user,

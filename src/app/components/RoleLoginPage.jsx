@@ -43,7 +43,7 @@ export function RoleLoginPage({
     isOnline,
   } = useAuth();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
-  const [form, setForm] = useState({ identifier: "", password: "" });
+  const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -90,6 +90,7 @@ export function RoleLoginPage({
         identifier: form.identifier.trim(),
         password: form.password,
         requestedPath,
+        rememberDevice: form.rememberDevice,
         role,
       });
 
@@ -136,15 +137,15 @@ export function RoleLoginPage({
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/64">
-              Protected portal flow
+              Terms and Conditions
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
               <p>1. Credentials are validated against Firebase Authentication on the server.</p>
               <p>
-                2. Admin and staff accounts must complete an emailed OTP before any portal route
-                opens.
+                2. Admin and staff accounts must complete an emailed OTP unless this trusted device
+                was remembered within the last two weeks.
               </p>
-              <p>3. Protected portal APIs accept only the verified post-OTP session token.</p>
+              <p>3. Protected portal APIs accept only verified portal session tokens.</p>
             </div>
           </div>
 
@@ -256,6 +257,19 @@ export function RoleLoginPage({
               {submitLabel}
               <ShieldCheck size={16} />
             </button>
+
+            <label className="flex items-start justify-end gap-3 text-right text-sm font-semibold text-[#415D62]">
+              <span>Remember this device for two weeks</span>
+              <input
+                type="checkbox"
+                checked={form.rememberDevice}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, rememberDevice: event.target.checked }))
+                }
+                disabled={isSubmitting}
+                className="mt-1 h-4 w-4 accent-[#2D9B9B]"
+              />
+            </label>
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <Link

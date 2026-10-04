@@ -75,26 +75,26 @@ async function assertEmailIsDeliverable(email) {
 
 async function assertPhilippineConnection(ip) {
   if (!env.security.geoLookupUrl) {
-    console.warn("[registration-security] Geo/VPN provider is not configured; skipping location verification.");
-    return;
+    throw new ApiError(
+      503,
+      "Location security verification is required before registration. Configure the Geo/VPN provider.",
+    );
   }
 
   let result;
   try {
     result = await callProvider(env.security.geoLookupUrl, { ip }, env.security.geoLookupApiKey);
   } catch (error) {
-    if (env.security.failClosed) {
-      throw new ApiError(503, "Location security verification is temporarily unavailable.");
-    }
     console.warn("[registration-security] Geo/VPN provider failed.", error);
-    return;
+    throw new ApiError(503, "Location security verification is temporarily unavailable.");
   }
 
   const country = String(result?.country_code || result?.countryCode || result?.country || "").toUpperCase();
+  const isPhilippines = country === "PH" || country === "PHILIPPINES";
   const security = result?.security || result;
   const isVpn = Boolean(security?.vpn || security?.proxy || security?.tor || security?.hosting || result?.is_vpn);
-  if (country !== "PH" || isVpn) {
-    throw new ApiError(403, "Registration is available only from a non-VPN connection in the Philippines.");
+  if (!isPhilippines || isVpn) {
+    throw new ApiError(403, "Access is available only from a non-VPN connection in the Philippines.");
   }
 }
 
@@ -117,4 +117,10 @@ async function validateRegistrationSecurity(req, email) {
   return { registrationIp: ip };
 }
 
-module.exports = { getClientIp, validateRegistrationSecurity };
+async function validateAccessSecurity(req) {
+  const ip = getClientIp(req);
+  await assertPhilippineConnection(ip);
+  return { accessIp: ip };
+}
+
+module.exports = { getClientIp, validateAccessSecurity, validateRegistrationSecurity };

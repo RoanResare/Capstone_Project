@@ -146,6 +146,7 @@ export function readPendingOtpSession() {
     requestedPath: typeof parsed.requestedPath === "string" ? parsed.requestedPath : "",
     resendAvailableAt: normalizeTimestamp(parsed.resendAvailableAt),
     role: typeof parsed.role === "string" ? parsed.role.trim().toLowerCase() : "",
+    rememberDevice: parsed.rememberDevice === true,
   };
 }
 

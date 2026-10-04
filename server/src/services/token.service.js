@@ -22,6 +22,21 @@ function signAccessToken(user) {
   });
 }
 
+function signRememberDeviceToken(user) {
+  return jwt.sign(
+    {
+      sub: user.uid,
+      email: user.email,
+      role: user.role,
+      type: "remember_device",
+    },
+    env.auth.jwtSecret,
+    {
+      expiresIn: "14d",
+    },
+  );
+}
+
 function verifyAccessToken(token) {
   try {
     const payload = jwt.verify(token, env.auth.jwtSecret);
@@ -33,6 +48,26 @@ function verifyAccessToken(token) {
     return payload;
   } catch (error) {
     throw new ApiError(401, "The session token is invalid or has expired.");
+  }
+}
+
+function verifyRememberDeviceToken(token) {
+  const value = typeof token === "string" ? token.trim() : "";
+
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const payload = jwt.verify(value, env.auth.jwtSecret);
+
+    if (payload?.type !== "remember_device") {
+      return null;
+    }
+
+    return payload;
+  } catch {
+    return null;
   }
 }
 
@@ -76,7 +111,9 @@ function verifyOtpTicket(token) {
 
 module.exports = {
   signAccessToken,
+  signRememberDeviceToken,
   signOtpTicket,
   verifyAccessToken,
+  verifyRememberDeviceToken,
   verifyOtpTicket,
 };

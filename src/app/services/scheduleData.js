@@ -6,7 +6,6 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
-import { verifyActiveSessionSecurity } from "./sessionSecurity.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 
 const COLLECTIONS = {
@@ -54,7 +53,6 @@ async function saveDocument(collectionName, payload = {}) {
     return true;
   }
 
-  await verifyActiveSessionSecurity();
   await setDoc(doc(db, collectionName, id), removeUndefinedFields(payload), { merge: true });
   return true;
 }
@@ -70,7 +68,6 @@ async function deleteDocument(collectionName, id = "") {
     return true;
   }
 
-  await verifyActiveSessionSecurity();
   await deleteDoc(doc(db, collectionName, normalizedId));
   return true;
 }

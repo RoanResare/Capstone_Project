@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes.jsx";
 import { AppProvider } from "./context/AppContext.jsx";
@@ -6,37 +6,9 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useToast } from "./context/ToastContext.jsx";
-import { verifyActiveSessionSecurity } from "./services/sessionSecurity.js";
-import { monitorSessionSecurity } from "./services/sessionSecurityMonitor.js";
-import { SESSION_SECURITY_EVENT } from "./services/apiClient.js";
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
 const INACTIVITY_WARNING_MS = INACTIVITY_LIMIT_MS - 30 * 1000;
-
-function SessionSecurityGuard({ children }) {
-  const { currentUser } = useAuth();
-  const [verifiedUid, setVerifiedUid] = useState("");
-  useEffect(() => {
-    if (!currentUser?.uid) { setVerifiedUid(""); return undefined; }
-    return monitorSessionSecurity({
-      verify: verifyActiveSessionSecurity,
-      onVerified: () => setVerifiedUid(currentUser.uid),
-      onNetworkChange: () => setVerifiedUid(""),
-      onFailure: (error) => {
-        setVerifiedUid("");
-        window.dispatchEvent(new CustomEvent(SESSION_SECURITY_EVENT, { detail: {
-          message: error.response?.data?.message || "Your session ended because your connection could not be verified. Please reconnect and sign in again.",
-        } }));
-      },
-      router, window, document,
-      connection: navigator.connection || navigator.mozConnection || navigator.webkitConnection,
-    });
-  }, [currentUser?.uid]);
-  if (currentUser && verifiedUid !== currentUser.uid) {
-    return <div className="flex min-h-screen items-center justify-center bg-white text-[#20343B]" role="status">Verifying your connection...</div>;
-  }
-  return children;
-}
 
 function InactivityGuard() {
   const { currentUser, signOut } = useAuth();
@@ -91,14 +63,12 @@ function InactivityGuard() {
 export default function App() {
   return (
     <AuthProvider>
-      <SessionSecurityGuard>
       <AppProvider>
         <ToastProvider>
           <InactivityGuard />
           <RouterProvider router={router} />
         </ToastProvider>
       </AppProvider>
-      </SessionSecurityGuard>
     </AuthProvider>
   );
 }

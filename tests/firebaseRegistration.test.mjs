@@ -59,7 +59,6 @@ const mocks = {
         throw new Error('Profile UID does not match Firebase session');
       }
     }`,
-  "sessionSecurity.js": "export async function verifyActiveSessionSecurity() {}",
 };
 const server = await createServer({
   configFile: false, server: { middlewareMode: true }, appType: "custom", logLevel: "silent",

@@ -405,8 +405,7 @@ export function CustomerProfile() {
       );
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
-    "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(190px,1fr))] items-start gap-4";
-  const savedPetPlaceholderCount = Math.max(0, 4 - customerPetRecords.length);
+    "grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-2";
 
   useEffect(() => {
     if (!selectedAppointmentId && customerAppointments[0]) {
@@ -1059,13 +1058,6 @@ export function CustomerProfile() {
                               </div>
                             );
                           })}
-                          {Array.from({ length: savedPetPlaceholderCount }).map((_, index) => (
-                            <div
-                              key={`saved-pet-placeholder-${index}`}
-                              aria-hidden="true"
-                              className="aspect-square rounded-lg border border-dashed border-[#D7E5E5] bg-[#FBFDFC]"
-                            />
-                          ))}
                         </div>
                       </div>
                     </div>

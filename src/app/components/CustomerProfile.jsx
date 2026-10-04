@@ -406,6 +406,7 @@ export function CustomerProfile() {
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
     "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(190px,1fr))] items-start gap-4";
+  const savedPetPlaceholderCount = Math.max(0, 4 - customerPetRecords.length);
 
   useEffect(() => {
     if (!selectedAppointmentId && customerAppointments[0]) {
@@ -995,120 +996,77 @@ export function CustomerProfile() {
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                           Saved pets
                         </p>
-                        {customerPetRecords.length === 0 ? (
-                          <div className="mt-3 rounded-lg border border-dashed border-[#D7E5E5] bg-[#FBFDFC] p-5 text-sm leading-6 text-[#607277]">
-                            No pet records yet.
-                          </div>
-                        ) : (
-                          <div className={`mt-3 ${petCardGridClass}`}>
-                            {customerPetRecords.map((record) => {
-                              const photoReview = petPhotoModerationById.get(record.photoModerationId);
+                        <div className={`mt-3 ${petCardGridClass}`}>
+                          {customerPetRecords.map((record) => {
+                            const photoReview = petPhotoModerationById.get(record.photoModerationId);
 
-                              return (
-                                <div
-                                  key={record.id}
-                                  className="flex aspect-square min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-4 text-left transition hover:border-[#2D9B9B]"
-                                >
-                                  <div className="flex min-w-0 items-start gap-3">
-                                    {record.photoURL && photoReview?.status !== "pending" ? (
-                                      <img
-                                        src={record.photoURL}
-                                        alt={`${record.petName} profile`}
-                                        className="h-12 w-12 shrink-0 rounded-2xl object-cover"
-                                      />
-                                    ) : (
-                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
-                                        <PawPrint size={20} />
-                                      </div>
-                                    )}
-                                    <div className="min-w-0">
-                                      <h3 className="truncate text-lg font-semibold text-[#20343B]">
-                                        {record.petName}
-                                      </h3>
-                                      <div className="mt-1 flex flex-wrap gap-1.5">
-                                        <StatusChip label={record.petType} />
-                                        {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
-                                      </div>
+                            return (
+                              <div
+                                key={record.id}
+                                className="flex aspect-square min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-4 text-left transition hover:border-[#2D9B9B]"
+                              >
+                                <div className="flex min-w-0 items-start gap-3">
+                                  {record.photoURL && photoReview?.status !== "pending" ? (
+                                    <img
+                                      src={record.photoURL}
+                                      alt={`${record.petName} profile`}
+                                      className="h-12 w-12 shrink-0 rounded-2xl object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
+                                      <PawPrint size={20} />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <h3 className="truncate text-lg font-semibold text-[#20343B]">
+                                      {record.petName}
+                                    </h3>
+                                    <div className="mt-1 flex flex-wrap gap-1.5">
+                                      <StatusChip label={record.petType} />
+                                      {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
                                     </div>
                                   </div>
-                                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#607277]">
-                                    {[
-                                      record.breed || "Breed not specified",
-                                      record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
-                                      record.weightKg ? `${record.weightKg} kg` : "",
-                                    ].filter(Boolean).join(" | ")}
+                                </div>
+                                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#607277]">
+                                  {[
+                                    record.breed || "Breed not specified",
+                                    record.ageValue ? `${record.ageValue} ${record.ageUnit || "months"} old` : "",
+                                    record.weightKg ? `${record.weightKg} kg` : "",
+                                  ].filter(Boolean).join(" | ")}
+                                </p>
+                                {record.notes && (
+                                  <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[#50666B]">
+                                    {record.notes}
                                   </p>
-                                  {record.notes && (
-                                    <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[#50666B]">
-                                      {record.notes}
-                                    </p>
-                                  )}
-                                  <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPetForm(buildPetFormFromRecord(record))}
-                                      className="rounded-xl bg-[#EEF6F6] px-3 py-2 text-sm font-semibold text-[#2B555C]"
-                                    >
-                                      Edit pet
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => removePet(record)}
-                                      className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-3 py-2 text-sm font-semibold text-[#B23949]"
-                                    >
-                                      <Trash2 size={15} />
-                                      Delete
-                                    </button>
-                                  </div>
+                                )}
+                                <div className="mt-auto flex flex-wrap gap-2 pt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPetForm(buildPetFormFromRecord(record))}
+                                    className="rounded-xl bg-[#EEF6F6] px-3 py-2 text-sm font-semibold text-[#2B555C]"
+                                  >
+                                    Edit pet
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removePet(record)}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-[#FBECEF] px-3 py-2 text-sm font-semibold text-[#B23949]"
+                                  >
+                                    <Trash2 size={15} />
+                                    Delete
+                                  </button>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
-                          Booked services
-                        </p>
-                        {customerAppointments.length === 0 ? (
-                          <div className="mt-3 rounded-lg border border-dashed border-[#D7E5E5] bg-[#FBFDFC] p-5 text-sm leading-6 text-[#607277]">
-                            Your booked appointments will appear here.
-                          </div>
-                        ) : (
-                          <div className={`mt-3 ${petCardGridClass}`}>
-                            {customerAppointments.map((appointment) => (
-                              <button
-                                key={appointment.id}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedAppointmentId(appointment.id);
-                                  openTab("appointments");
-                                }}
-                                className="flex aspect-square min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-4 text-left transition hover:border-[#2D9B9B] hover:bg-[#F5FBFB]"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
-                                    <CalendarDays size={19} />
-                                  </div>
-                                  <StatusChip label={appointment.status} />
-                                </div>
-                                <h3 className="mt-3 truncate text-lg font-semibold text-[#20343B]">
-                                  {appointment.petName}
-                                </h3>
-                                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-[#2D6B73]">
-                                  {appointment.service}
-                                </p>
-                                <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#607277]">
-                                  {formatDateTimeLabel(appointment.scheduleDate, appointment.scheduleTime)}
-                                </p>
-                                <p className="mt-auto pt-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#7A979C]">
-                                  View details
-                                </p>
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                              </div>
+                            );
+                          })}
+                          {Array.from({ length: savedPetPlaceholderCount }).map((_, index) => (
+                            <div
+                              key={`saved-pet-placeholder-${index}`}
+                              aria-hidden="true"
+                              className="aspect-square rounded-lg border border-dashed border-[#D7E5E5] bg-[#FBFDFC]"
+                            />
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>

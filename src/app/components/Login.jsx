@@ -166,7 +166,7 @@ export function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {firebaseConfigError && (
               <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-3 text-sm text-[#8A6410]">
                 Firebase setup is incomplete. Fill the required environment values to enable login.
@@ -184,7 +184,7 @@ export function Login() {
               </label>
               <input
                 value={form.identifier}
-                autoComplete="username"
+                autoComplete="off"
                 onChange={updateField("identifier")}
                 disabled={isSubmitting}
                 className={`w-full rounded-lg border px-4 py-3 outline-none transition focus:border-[#2D9B9B] ${
@@ -203,7 +203,7 @@ export function Login() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={form.password}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   onChange={updateField("password")}
                   disabled={isSubmitting}
                   className={`w-full rounded-lg border px-4 py-3 pr-11 outline-none transition focus:border-[#2D9B9B] ${

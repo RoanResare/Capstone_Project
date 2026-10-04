@@ -179,7 +179,7 @@ export function RoleLoginPage({
           transition={{ duration: 0.55, delay: 0.08 }}
           className="rounded-[34px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-10"
         >
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
             {firebaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
                 Firebase client setup is incomplete. The public site will still load, but complete
@@ -217,7 +217,7 @@ export function RoleLoginPage({
               </label>
               <input
                 value={form.identifier}
-                autoComplete="username"
+                autoComplete="off"
                 onChange={(event) =>
                   setForm((current) => ({ ...current, identifier: event.target.value }))
                 }
@@ -233,7 +233,7 @@ export function RoleLoginPage({
                 <input
                   type={showPassword ? "text" : "password"}
                   value={form.password}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }

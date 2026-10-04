@@ -722,7 +722,7 @@ export function CustomerProfile() {
 
   return (
     <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
-      <div className="mx-auto max-w-[1260px] space-y-6">
+      <div className="w-full min-w-0 space-y-6">
         <motion.section
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
@@ -757,7 +757,7 @@ export function CustomerProfile() {
           )}
         </motion.section>
 
-        <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="grid items-start gap-5 lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-6">
           <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             <nav className="grid gap-2">
               {dashboardTabs.map((tab) => {
@@ -794,7 +794,7 @@ export function CustomerProfile() {
             {activeTab === "overview" && (
               <div className="space-y-5">
                 <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] xl:gap-x-8">
-                  <section className="rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                  <section className="min-w-0 rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Next step
@@ -808,7 +808,7 @@ export function CustomerProfile() {
                     </div>
                   </section>
 
-                  <div className="space-y-5 xl:col-start-2 xl:row-span-2">
+                  <div className="min-w-0 space-y-5 xl:col-start-2 xl:row-span-2">
                     <section className="rounded-[24px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Booking
@@ -841,7 +841,7 @@ export function CustomerProfile() {
                     />
                   </div>
 
-                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)] xl:col-start-1">
+                <section className="min-w-0 rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6 xl:col-start-1">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -860,8 +860,8 @@ export function CustomerProfile() {
                     </button>
                   </div>
 
-                  <div className="mt-6 grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-                    <form onSubmit={savePet} className="rounded-[20px] bg-[#FBFDFC] p-5">
+                  <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] items-start gap-6">
+                    <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
                           value={petForm.petName}
@@ -912,7 +912,7 @@ export function CustomerProfile() {
                             placeholder="Specify breed"
                           />
                         )}
-                        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                           <input
                             value={petForm.ageValue}
                             autoComplete="off"
@@ -1017,7 +1017,7 @@ export function CustomerProfile() {
                       </div>
                     </form>
 
-                    <div className="grid content-start gap-4 md:grid-cols-2">
+                    <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] content-start gap-4">
                       {customerPetRecords.length === 0 ? (
                         <EmptyState
                           title="No pet records yet"
@@ -1030,7 +1030,7 @@ export function CustomerProfile() {
                           return (
                             <div
                               key={record.id}
-                              className="rounded-[20px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-4 text-left transition hover:border-[#2D9B9B]"
+                              className="min-w-0 break-words rounded-[20px] border border-[#E6EFEE] bg-[#FBFDFC] px-5 py-4 text-left transition hover:border-[#2D9B9B]"
                             >
                               <div className="flex flex-wrap items-center gap-3">
                                 {record.photoURL && photoReview?.status !== "pending" ? (

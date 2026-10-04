@@ -793,7 +793,7 @@ export function CustomerProfile() {
           <main className="min-w-0">
             {activeTab === "overview" && (
               <div className="space-y-5">
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] xl:gap-x-8">
                   <section className="rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -808,7 +808,7 @@ export function CustomerProfile() {
                     </div>
                   </section>
 
-                  <div className="space-y-5 xl:-mt-28">
+                  <div className="space-y-5 xl:col-start-2 xl:row-span-2">
                     <section className="rounded-[24px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Booking
@@ -840,9 +840,8 @@ export function CustomerProfile() {
                       onReadNotification={markNotificationRead}
                     />
                   </div>
-                </div>
 
-                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)] xl:col-start-1">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -1081,6 +1080,7 @@ export function CustomerProfile() {
                     </div>
                   </div>
                 </section>
+                </div>
 
               </div>
             )}

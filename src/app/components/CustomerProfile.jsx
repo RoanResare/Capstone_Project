@@ -369,6 +369,9 @@ export function CustomerProfile() {
     customerAppointments[0] ||
     null;
   const currentCustomerId = customer?.id || customer?.uid;
+  const unreadNotificationCount = currentCustomerId
+    ? visibleNotifications.filter((notification) => !notification.readBy.includes(currentCustomerId)).length
+    : 0;
   const petPhotoModerationById = useMemo(
     () =>
       new Map(

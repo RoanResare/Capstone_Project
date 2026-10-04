@@ -63,6 +63,7 @@ const mocks = {
 };
 const server = await createServer({
   configFile: false, server: { middlewareMode: true }, appType: "custom", logLevel: "silent",
+  ssr: { noExternal: ["firebase"] },
   plugins: [{ name: "firebase-registration-test-services", enforce: "pre",
     resolveId(source) {
       const key = Object.keys(mocks).find((value) => source === value || source.endsWith(`/${value}`));
@@ -93,7 +94,7 @@ test("registration waits for initialization, UID and token; restoration cannot r
   await pause(20);
   assert.equal(creationCalls, 0);
   initialization.resolve();
-  await creation.promise;
+  await Promise.race([creation.promise, registration.then(() => assert.fail("Registration completed before account creation"))]);
   await pause(20);
   assert.equal(state.reads.length, 0);
   state.auth.currentUser = user;

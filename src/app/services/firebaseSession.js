@@ -20,23 +20,25 @@ function waitForIdTokenSync(expectedUid = "", timeoutMs = 250) {
     let settled = false;
     let unsubscribe = () => {};
 
+    let timer;
     const finish = () => {
       if (settled) {
         return;
       }
 
       settled = true;
+      globalThis.clearTimeout(timer);
       unsubscribe();
       resolve();
     };
 
+    timer = globalThis.setTimeout(finish, timeoutMs);
     unsubscribe = onIdTokenChanged(auth, (user) => {
-      if (!expectedUid || !user?.uid || user.uid === expectedUid) {
+      if (user?.uid && (!expectedUid || user.uid === expectedUid)) {
         finish();
       }
-    });
-
-    globalThis.setTimeout(finish, timeoutMs);
+    }, finish);
+    if (settled) unsubscribe();
   });
 }
 
@@ -68,18 +70,17 @@ export async function waitForFirebaseUserSession(
 
     if (matchesUser) {
       try {
-        await currentUser.getIdToken(forceRefresh);
+        const token = await currentUser.getIdToken(forceRefresh);
+        if (!token) throw new Error("Firebase did not return an ID token.");
 
         if (settleMs > 0) {
           await wait(settleMs);
         }
 
         const refreshedUser = auth.currentUser;
-        if (refreshedUser?.uid && (!normalizedUid || refreshedUser.uid === normalizedUid)) {
+        if (refreshedUser === currentUser && (!normalizedUid || refreshedUser.uid === normalizedUid)) {
           return refreshedUser;
         }
-
-        return currentUser;
       } catch (_error) {
         // Wait for the next auth/id-token event below.
       }
@@ -90,14 +91,10 @@ export async function waitForFirebaseUserSession(
       break;
     }
 
-    await Promise.race([
-      wait(Math.min(remainingMs, 125)),
-      waitForIdTokenSync(normalizedUid, Math.min(remainingMs, 400)),
-    ]);
+    await waitForIdTokenSync(normalizedUid, Math.min(remainingMs, 125));
+    // A token event can arrive immediately even while token retrieval is failing.
+    await wait(Math.min(Math.max(deadline - Date.now(), 0), 125));
   }
 
-  const currentUser = auth.currentUser;
-  return currentUser?.uid && (!normalizedUid || currentUser.uid === normalizedUid)
-    ? currentUser
-    : null;
+  return null;
 }

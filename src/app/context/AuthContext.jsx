@@ -57,6 +57,7 @@ import {
 import { waitForFirebaseUserSession } from "../services/firebaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } from "../utils/phoneNumber.js";
+import { waitForCustomerRegistration } from "../utils/customerRegistration.js";
 import { getPasswordRecoveryEmailError } from "../utils/passwordRecovery.js";
 import {
   clearRememberedCustomerLogin,
@@ -166,12 +167,16 @@ async function hydrateAuthenticatedUser(firebaseUser) {
     };
   }
 
-  const authenticatedUser =
-    (await waitForFirebaseUserSession(firebaseUser.uid, {
+  const authenticatedUser = await waitForFirebaseUserSession(firebaseUser.uid, {
       forceRefresh: false,
       settleMs: 150,
       timeoutMs: 7000,
-    })) || firebaseUser;
+    });
+  if (!authenticatedUser) {
+    throw Object.assign(new Error("Firebase Authentication is not ready to load this profile."), {
+      code: "customer/auth-not-ready",
+    });
+  }
   const accessToken = await authenticatedUser.getIdToken();
   const tokenResult = await authenticatedUser.getIdTokenResult();
   const tokenRole = normalizeRole(tokenResult?.claims?.role);
@@ -309,6 +314,8 @@ export function AuthProvider({ children }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
+        await waitForCustomerRegistration();
+        if (!active || (auth.currentUser?.uid || "") !== (firebaseUser?.uid || "")) return;
         if (!firebaseUser) {
           const restoredPendingOtp = normalizePendingOtpRecord(readPendingOtpSession());
 
@@ -329,7 +336,7 @@ export function AuthProvider({ children }) {
         }
 
         const session = await hydrateAuthenticatedUser(firebaseUser);
-        if (!active) {
+        if (!active || auth.currentUser?.uid !== firebaseUser.uid) {
           return;
         }
 
@@ -360,7 +367,7 @@ export function AuthProvider({ children }) {
         setAuthHydrationError("");
       } catch (error) {
         console.error("Unable to restore the Firebase auth session.", error);
-        if (!active) {
+        if (!active || auth.currentUser?.uid !== firebaseUser?.uid) {
           return;
         }
 

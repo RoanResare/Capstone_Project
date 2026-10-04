@@ -19,9 +19,10 @@ import {
   setDoc,
   writeBatch,
 } from "firebase/firestore";
-import { auth, db, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
+import { auth, authPersistenceReadyPromise, db, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";
+import { beginCustomerRegistration, waitForCustomerRegistration } from "../utils/customerRegistration.js";
 
 const USERS_COLLECTION = "users";
 
@@ -203,7 +204,10 @@ async function requireCustomerFirebaseSession(firebaseUser, options = {}) {
     );
   }
 
-  await authenticatedUser.getIdToken(options.forceRefresh === true);
+  const token = await authenticatedUser.getIdToken(options.forceRefresh === true);
+  if (!token || auth.currentUser !== authenticatedUser) {
+    throw createCustomerAppError("customer/auth-not-ready", "The customer session changed before the profile could be saved. Please sign in again.");
+  }
   return authenticatedUser;
 }
 
@@ -310,6 +314,7 @@ function buildCustomerProfilePayload(firebaseUser, profile = {}) {
 }
 
 async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options = {}) {
+  firebaseUser = await requireCustomerFirebaseSession(firebaseUser);
   const reference = customerProfileReference(firebaseUser.uid);
   const payload = buildCustomerProfilePayload(firebaseUser, profile);
   const usernameReference = doc(db, "usernames", payload.username);
@@ -343,6 +348,7 @@ async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options
     { merge: true },
   );
   try {
+    await requireCustomerFirebaseSession(firebaseUser);
     await batch.commit();
   } catch (error) {
     throw normalizeCustomerServiceError(error);
@@ -389,6 +395,7 @@ async function safeDeleteCustomerAuthUser(firebaseUser) {
 
 export async function loadOrCreateCustomerProfile(firebaseUser, defaults = {}) {
   ensureCustomerFirebaseReady();
+  await waitForCustomerRegistration();
 
   const authenticatedUser = await requireCustomerFirebaseSession(firebaseUser, {
     forceRefresh: false,
@@ -478,8 +485,11 @@ export async function signUpCustomerWithEmailPassword({
   });
 
   let credentials = null;
+  const finishRegistration = beginCustomerRegistration();
 
   try {
+    await authPersistenceReadyPromise;
+    await auth.authStateReady();
     credentials = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
     const authenticatedUser = await requireCustomerFirebaseSession(credentials.user, {
       forceRefresh: true,
@@ -530,6 +540,8 @@ export async function signUpCustomerWithEmailPassword({
     }
 
     throw normalizeCustomerServiceError(error);
+  } finally {
+    finishRegistration();
   }
 }
 

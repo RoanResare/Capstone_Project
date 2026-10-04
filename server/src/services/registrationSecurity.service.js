@@ -163,16 +163,7 @@ function isLocalOrPrivateIp(ip = "") {
   );
 }
 
-function resolveGeoDecision(result = {}) {
-  const country = String(
-    result?.country_code ||
-      result?.location?.country_code ||
-      result?.countryCode ||
-      result?.country ||
-      result?.country_code2 ||
-      "",
-  ).toUpperCase();
-  const isPhilippines = country === "PH" || country === "PHILIPPINES";
+function hasExplicitVpnOrProxy(result = {}) {
   const security = result?.security || result?.risk || result;
   const parseFlag = (value) => {
     if ([true, 1, "true", "1"].includes(value)) return true;
@@ -182,15 +173,8 @@ function resolveGeoDecision(result = {}) {
   const vpn = parseFlag(security.vpn ?? security.isVpn ?? security.is_vpn ?? result.is_vpn);
   const proxy = parseFlag(security.proxy ?? security.isProxy ?? security.is_proxy ?? result.is_proxy);
   const tor = parseFlag(security.tor ?? security.isTor ?? security.is_tor ?? result.is_tor);
-  const anonymous = parseFlag(security.anonymous);
-  const isVpn = [vpn, proxy, tor, anonymous].includes(true);
-  const securityVerified = anonymous === false || (vpn === false && proxy === false && tor !== true);
-
-  return { country, isPhilippines, isVpn, securityVerified };
-}
-
-function shouldFailOpenGeo(ip) {
-  return !env.security.failClosed || isLocalOrPrivateIp(ip);
+  // Geography, hosting, risk scores, and generic anonymity are not VPN evidence.
+  return [vpn, proxy, tor].includes(true);
 }
 
 const geoLookups = new Map();
@@ -209,43 +193,23 @@ async function lookupGeo(ip) {
   return promise;
 }
 
-async function assertPhilippineConnection(ip, { enforceConfirmed = false } = {}) {
-  if (isLocalOrPrivateIp(ip)) {
-    if (enforceConfirmed && env.nodeEnv === "production") {
-      throw new ApiError(503, "A public client IP address is required for security verification.");
-    }
-    return;
-  }
-  if (!isIP(ip)) throw new ApiError(503, "The client IP address could not be verified.");
+async function assertNoDetectedVpnOrProxy(ip) {
+  if (isLocalOrPrivateIp(ip) || !isIP(ip)) return;
 
   let result;
   try {
     result = await lookupGeo(ip);
   } catch (error) {
     console.warn("[registration-security] Geo/VPN provider failed.", error);
-    if (!enforceConfirmed && shouldFailOpenGeo(ip)) {
-      return;
-    }
-    throw new ApiError(503, "Location security verification is temporarily unavailable.");
+    return;
   }
 
-  if (!result || result.success === false) {
-    if (!enforceConfirmed && shouldFailOpenGeo(ip)) return;
-    throw new ApiError(503, "Location security verification is temporarily unavailable.");
-  }
+  if (!result || result.success === false || result.error) return;
+  // Ignore responses for a different IP instead of attributing their flags to this client.
+  if (result.ip && normalizeIp(result.ip) !== ip) return;
 
-  const { country, isPhilippines, isVpn, securityVerified } = resolveGeoDecision(result);
-  if ((country && !isPhilippines) || isVpn) {
-    if (!enforceConfirmed && shouldFailOpenGeo(ip)) {
-      console.warn("[registration-security] Geo/VPN check did not pass; allowing because fail-closed is disabled.", {
-        ip,
-      });
-      return;
-    }
-    throw new ApiError(403, "Access is available only from a non-VPN connection in the Philippines.");
-  }
-  if ((!country && (enforceConfirmed || env.security.failClosed)) || (enforceConfirmed && !securityVerified)) {
-    throw new ApiError(503, "VPN/proxy verification is unavailable. Configure a security provider that returns VPN and proxy detection results.");
+  if (hasExplicitVpnOrProxy(result)) {
+    throw new ApiError(403, "A VPN or proxy connection was detected. Disable it and try again.");
   }
 }
 
@@ -263,14 +227,14 @@ async function assertIpAccountLimit(ip) {
 async function validateRegistrationSecurity(req, email) {
   const ip = getClientIp(req);
   await assertEmailIsDeliverable(email);
-  await assertPhilippineConnection(ip, { enforceConfirmed: true });
+  await assertNoDetectedVpnOrProxy(ip);
   await assertIpAccountLimit(ip);
   return { registrationIp: ip };
 }
 
 async function validateAccessSecurity(req) {
   const ip = getClientIp(req);
-  await assertPhilippineConnection(ip, { enforceConfirmed: true });
+  await assertNoDetectedVpnOrProxy(ip);
   return { accessIp: ip };
 }
 

@@ -2,7 +2,7 @@ const { db, auth } = require("../config/firebaseAdmin");
 const { ApiError } = require("../utils/ApiError");
 const { getClientIp, validateAccessSecurity } = require("./registrationSecurity.service");
 
-const SECURITY_MESSAGE = "Your session ended because your IP address changed or a VPN/proxy connection was detected. Disable your VPN and sign in again using a Philippine connection.";
+const SECURITY_MESSAGE = "Your session ended because your IP address changed or a VPN/proxy connection was detected. Disable any VPN or proxy and sign in again.";
 const UNVERIFIED_MESSAGE = "Your session ended because the security of your connection could not be verified. Please reconnect and sign in again.";
 
 function terminatedSessionError(reason) {
@@ -47,15 +47,19 @@ async function validateSessionSecurity(req) {
     await validateAccessSecurity(req);
   } catch (error) {
     if (!(error instanceof ApiError) || ![403, 503].includes(error.statusCode)) throw error;
-    // Persist revocation so switching back to an allowed IP cannot revive old tokens.
-    const reason = error.statusCode === 503 ? "unverified" : "vpn-proxy";
-    await db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(reference);
-      const revokedBefore = Math.max(Math.floor(Date.now() / 1000), Number(snapshot.data()?.revokedBefore || 0));
-      transaction.set(reference, { revokedBefore, reason }, { merge: true });
-    });
-    await revokeRefreshTokens();
-    throw terminatedSessionError(reason);
+    if (error.statusCode === 503) {
+      console.warn("[session-security] Connection lookup unavailable; keeping the session active.", error);
+    } else {
+      // Persist revocation so switching back to an allowed IP cannot revive old tokens.
+      const reason = "vpn-proxy";
+      await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(reference);
+        const revokedBefore = Math.max(Math.floor(Date.now() / 1000), Number(snapshot.data()?.revokedBefore || 0));
+        transaction.set(reference, { revokedBefore, reason }, { merge: true });
+      });
+      await revokeRefreshTokens();
+      throw terminatedSessionError(reason);
+    }
   }
   const finalViolation = await checkBinding(true);
   if (finalViolation) {

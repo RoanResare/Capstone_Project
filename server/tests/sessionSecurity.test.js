@@ -98,7 +98,7 @@ test("Customer, Admin, and Staff sessions all revoke immediately on an observed 
   }
 });
 
-test("foreign locations block with fail-open enabled; changed IP bypasses cached checks", async () => {
+test("country mismatches never block access; changed IP uses a fresh lookup", async () => {
   const urls = [];
   const service = geoService(async (url) => {
     urls.push(url.href);
@@ -106,12 +106,12 @@ test("foreign locations block with fail-open enabled; changed IP bypasses cached
   });
   await service.validateAccessSecurity(request("1.2.3.4"));
   await service.validateAccessSecurity(request("1.2.3.4"));
-  await assert.rejects(service.validateAccessSecurity(request("8.8.8.8")), { statusCode: 403 });
+  await service.validateAccessSecurity(request("8.8.8.8"));
   assert.deepEqual(urls, ["https://api.ipquery.io/1.2.3.4", "https://api.ipquery.io/8.8.8.8"]);
 });
 
-test("VPN flags block PH connections; false strings and hosting alone do not", async () => {
-  for (const field of ["vpn", "proxy", "tor", "anonymous"]) {
+test("explicit VPN/proxy/Tor flags block regardless of fail-closed; generic risk does not", async () => {
+  for (const field of ["vpn", "proxy", "tor"]) {
     for (const flag of [true, 1, "true", "1"]) {
       const service = geoService(async () => response({ country_code: "PH", security: { [field]: flag } }));
       await assert.rejects(service.validateAccessSecurity(request("1.2.3.4")), { statusCode: 403 });
@@ -119,27 +119,45 @@ test("VPN flags block PH connections; false strings and hosting alone do not", a
   }
   await geoService(async () => response({ country_code: "PH", security: { vpn: "false", proxy: false, hosting: true } }))
     .validateAccessSecurity(request("1.2.3.4"));
+  for (const data of [{ country_code: "US", security: { anonymous: true, hosting: true } },
+    { location: { country_code: "SG" }, risk: { risk_score: 100, is_datacenter: true, is_mobile: true } },
+    { security: { vpn: "unknown", proxy: "likely" } }]) {
+    const service = geoService(async () => response(data), true, "production");
+    await service.validateAccessSecurity(request("1.2.3.4"));
+    await service.validateRegistrationSecurity(request("1.2.3.4"), "test@gmail.com");
+  }
 });
 
-test("outages, quotas, and missing VPN/proxy flags reject access even with fail-open configured", async () => {
+test("outages, quotas, and missing detection data do not block login or registration", async () => {
   const results = [
     async () => { throw new Error("offline"); },
     async () => ({ ok: false, status: 429 }),
     async () => response({ success: false }),
     async () => response({}),
     async () => response({ country_code: "PH" }),
+    async () => response({ success: false, security: { vpn: true } }),
+    async () => response({ error: "invalid query", security: { vpn: true } }),
+    async () => response({ ip: "8.8.8.8", risk: { is_vpn: true } }),
   ];
-  for (const fetch of results) await assert.rejects(geoService(fetch).validateAccessSecurity(request("1.2.3.4")), { statusCode: 503 });
-  await assert.rejects(geoService(results[0], true).validateAccessSecurity(request("1.2.3.4")), { statusCode: 503 });
+  for (const fetch of results) {
+    for (const failClosed of [false, true]) {
+      const service = geoService(fetch, failClosed, "production");
+      await service.validateAccessSecurity(request("1.2.3.4"));
+      await service.validateRegistrationSecurity(request("1.2.3.4"), "test@gmail.com");
+    }
+  }
 });
 
-test("local development bypasses lookup; client country headers cannot override it", async () => {
-  const service = geoService(async () => response({ country_code: "US" }));
+test("local/private or unavailable IPs are not VPN evidence; client headers cannot bypass explicit flags", async () => {
+  const service = geoService(async () => response({ country_code: "US", risk: { is_vpn: true } }));
   for (const ip of ["127.0.0.1", "::1", "fd00::1"]) await service.validateAccessSecurity(request(ip));
   await assert.rejects(service.validateAccessSecurity({ ip: "8.8.8.8", headers: { "cf-ipcountry": "PH" } }), { statusCode: 403 });
   await assert.rejects(service.validateRegistrationSecurity({ ip: "8.8.8.8", headers: { "cf-ipcountry": "PH" } }, "test@gmail.com"), { statusCode: 403 });
-  await assert.rejects(geoService(async () => assert.fail("Private IP must not reach provider"), false, "production")
-    .validateAccessSecurity(request("127.0.0.1")), { statusCode: 503 });
+  const production = geoService(async () => assert.fail("Unavailable public IP must not reach provider"), false, "production");
+  for (const ip of ["127.0.0.1", "10.0.0.1", "fd00::1", "unknown", "", "invalid-ip"]) {
+    await production.validateAccessSecurity(request(ip));
+    await production.validateRegistrationSecurity(request(ip), "test@gmail.com");
+  }
 });
 
 test("VPN activation on an unchanged IP still revokes the authenticated session", async () => {
@@ -195,13 +213,31 @@ test("persisted revocation blocks restored IPs and refreshed tokens; fresh login
   assert.equal(service.refreshRevocations, 1);
 });
 
-test("unverifiable active connections revoke the session instead of silently allowing access", async () => {
+test("provider unavailability does not revoke active sessions or refresh tokens", async () => {
   const service = sessionService(async () => { throw new ApiError(503, "Unavailable"); });
-  await assert.rejects(service.validateSessionSecurity({ ip: "1.2.3.4",
-    auth: { user: { uid: "user" }, claims: { iat: 1 }, provider: "server-jwt" } }),
-    (error) => error.statusCode === 401 && error.details.reason === "unverified");
-  assert.equal(service.records.get("sessionSecurity/user").reason, "unverified");
-  assert.equal(service.refreshRevocations, 1);
+  await service.validateSessionSecurity({ ip: "1.2.3.4",
+    auth: { user: { uid: "user" }, claims: { iat: 1 }, provider: "server-jwt" } });
+  assert.equal(service.records.has("sessionSecurity/user"), false);
+  assert.equal(service.refreshRevocations, 0);
+});
+
+test("all roles stay signed in on country-only results or lookup failures, but explicit VPN flags revoke", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    for (const data of [{ country_code: "US" }, { risk: { risk_score: 100, anonymous: true } }, null]) {
+      const geo = geoService(async () => response(data), true, "production");
+      const service = sessionService(geo.validateAccessSecurity);
+      await service.validateSessionSecurity({ ip: "1.2.3.4", auth: { user: { uid: role, role },
+        claims: { auth_time: 1 }, provider: "firebase-id-token" } });
+      assert.equal(service.records.has(`sessionSecurity/${role}`), false);
+      assert.equal(service.refreshRevocations, 0);
+    }
+    const geo = geoService(async () => response({ ip: "1.2.3.4", risk: { is_vpn: true } }));
+    const service = sessionService(geo.validateAccessSecurity);
+    await assert.rejects(service.validateSessionSecurity({ ip: "1.2.3.4", auth: { user: { uid: role, role },
+      claims: { auth_time: 1 }, provider: "firebase-id-token" } }),
+      (error) => error.details.reason === "vpn-proxy");
+    assert.equal(service.refreshRevocations, 1);
+  }
 });
 
 test("any IP switch revokes the session before geo lookup, including another clean Philippine IP", async () => {

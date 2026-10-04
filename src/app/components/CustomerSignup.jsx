@@ -5,24 +5,7 @@ import { Eye, EyeOff, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
-
-function getPhoneSubscriberDigits(value = "") {
-  const digits = String(value || "").replace(/\D/g, "");
-  const withoutCountryCode = digits.startsWith("63") ? digits.slice(2) : digits;
-  const withoutLeadingZero = withoutCountryCode.startsWith("0")
-    ? withoutCountryCode.slice(1)
-    : withoutCountryCode;
-
-  const normalized = withoutLeadingZero.startsWith("9")
-    ? withoutLeadingZero
-    : withoutLeadingZero.replace(/^[^9]*/, "");
-
-  return normalized.slice(0, 10);
-}
-
-function formatSignupPhone(value = "") {
-  return `+63 ${getPhoneSubscriberDigits(value)}`;
-}
+import { getPhoneSubscriberInput, normalizePhilippineMobileNumber, PH_MOBILE_ERROR } from "../utils/phoneNumber.js";
 
 function getPasswordStrength(password = "") {
   const checks = [
@@ -72,7 +55,7 @@ export function CustomerSignup() {
 
   const handleChange = (field) => (event) => {
     const value = field === "phone"
-      ? getPhoneSubscriberDigits(event.target.value)
+      ? getPhoneSubscriberInput(event.target.value)
       : event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
   };
@@ -88,10 +71,11 @@ export function CustomerSignup() {
     setFeedback({ type: "", message: "" });
 
     try {
-      if (!/^9\d{9}$/.test(form.phone)) {
+      const normalizedPhone = normalizePhilippineMobileNumber(form.phone);
+      if (!normalizedPhone) {
         setFeedback({
           type: "error",
-          message: "Enter exactly 10 digits after +63, starting with 9.",
+          message: PH_MOBILE_ERROR,
         });
         return;
       }
@@ -100,7 +84,7 @@ export function CustomerSignup() {
         fullName: form.fullName,
         username: form.username,
         email: form.email,
-        phone: formatSignupPhone(form.phone),
+        phone: normalizedPhone,
         password: form.password,
         confirmPassword: form.confirmPassword,
       });
@@ -237,7 +221,6 @@ export function CustomerSignup() {
                   disabled={isSubmitting}
                   type="tel"
                   inputMode="numeric"
-                  maxLength={10}
                   pattern="9[0-9]{9}"
                   autoComplete="tel"
                   className="min-w-0 flex-1 px-4 py-3 outline-none"
@@ -245,7 +228,7 @@ export function CustomerSignup() {
                 />
               </label>
               <p className="mt-2 text-xs text-[#7A9297]">
-                Numbers only. Format: {formatSignupPhone(form.phone || "9XXXXXXXXX")}.
+                Format: +63 9XXXXXXXXX or 09XXXXXXXXX.
               </p>
             </div>
 

@@ -56,6 +56,7 @@ import {
 } from "../utils/portalSession.js";
 import { waitForFirebaseUserSession } from "../services/firebaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
+import { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } from "../utils/phoneNumber.js";
 import { getPasswordRecoveryEmailError } from "../utils/passwordRecovery.js";
 import {
   clearRememberedCustomerLogin,
@@ -535,11 +536,11 @@ export function AuthProvider({ children }) {
       };
     }
 
-    const normalizedPhone = typeof phone === "string" ? phone.trim() : "";
-    if (normalizedPhone && !/^\d{1,11}$/.test(normalizedPhone)) {
+    const normalizedPhone = normalizePhilippineMobileNumber(phone);
+    if (phone && !normalizedPhone) {
       return {
         ok: false,
-        error: "Phone number must contain numbers only and be no more than 11 digits.",
+        error: PH_MOBILE_ERROR,
       };
     }
 
@@ -560,7 +561,7 @@ export function AuthProvider({ children }) {
         fullName,
         email,
         password,
-        phone,
+        phone: normalizedPhone,
         username,
         registrationIp: registrationCheck.registrationIp || "",
       });

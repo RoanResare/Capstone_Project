@@ -2,6 +2,7 @@ const { auth, db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
+const { normalizePhilippineMobileNumber } = require("../utils/phoneNumber");
 const USERNAMES_COLLECTION = "usernames";
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -289,7 +290,8 @@ async function getUserByEmail(email) {
 }
 
 async function getUserByPhone(phone) {
-  const normalizedPhone = typeof phone === "string" ? phone.replace(/\D/g, "") : "";
+  const normalizedPhone = typeof phone === "string"
+    ? (normalizePhilippineMobileNumber(phone) || phone).replace(/\D/g, "") : "";
 
   if (!normalizedPhone) {
     return null;
@@ -307,7 +309,10 @@ async function getUserByPhone(phone) {
 
   const fallbackSnapshot = await db.collection(USERS_COLLECTION).limit(200).get();
   const document = fallbackSnapshot.docs.find(
-    (doc) => String(doc.data()?.phone || "").replace(/\D/g, "") === normalizedPhone,
+    (doc) => {
+      const storedPhone = String(doc.data()?.phone || "");
+      return (normalizePhilippineMobileNumber(storedPhone) || storedPhone).replace(/\D/g, "") === normalizedPhone;
+    },
   );
 
   return document ? normalizeUserPayload(document.data(), document.id) : null;

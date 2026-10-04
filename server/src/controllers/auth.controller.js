@@ -33,6 +33,7 @@ const {
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
+const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
 const {
@@ -175,7 +176,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
   assertAuthSetupReady();
 
   const email = normalizeEmail(req.body?.email);
-  const phone = normalizeString(req.body?.phone).replace(/\D/g, "");
+  const rawPhone = normalizeString(req.body?.phone);
+  const phone = normalizePhilippineMobileNumber(rawPhone);
 
   if (!email) {
     throw new ApiError(400, "Email is required.");
@@ -187,8 +189,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
 
-  if (phone && !/^(?:09\d{9}|639\d{9})$/.test(phone)) {
-    throw new ApiError(400, "Phone number must use the format +63 9XXXXXXXXX.");
+  if (rawPhone && !phone) {
+    throw new ApiError(400, PH_MOBILE_ERROR);
   }
 
   const storedEmailUser = await findUserByEmailCaseInsensitive(email);

@@ -108,6 +108,7 @@ export function readPortalSession() {
 
 export function clearPortalSession() {
   removeStorageItem(PORTAL_SESSION_STORAGE_KEY);
+  removeSessionStorageItem(PORTAL_SESSION_STORAGE_KEY);
 }
 
 export function persistPendingOtpSession(session) {

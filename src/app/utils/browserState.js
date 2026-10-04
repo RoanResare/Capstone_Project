@@ -107,6 +107,7 @@ export function resetTransientAuthStorage() {
   removeStorageItem(PORTAL_SESSION_STORAGE_KEY);
   removeStorageItem(PENDING_OTP_STORAGE_KEY);
   removeSessionStorageItem(CUSTOMER_SESSION_KEY);
+  removeSessionStorageItem(PORTAL_SESSION_STORAGE_KEY);
   removeSessionStorageItem(PENDING_OTP_STORAGE_KEY);
   LEGACY_AUTH_STORAGE_KEYS.forEach((key) => {
     removeStorageItem(key);

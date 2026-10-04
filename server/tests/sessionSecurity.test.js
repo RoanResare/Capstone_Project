@@ -226,6 +226,21 @@ test("same-second clean recovery waits past the old cutoff for every role withou
   }
 });
 
+test("stuck pending revocation is repaired for a verified fresh login without reviving old tokens", async () => {
+  let time = 200250;
+  const service = sessionService(async () => {});
+  service.records.set("sessionSecurity/user", { revokedBefore: 100, revocationPending: true });
+  await service.waitForFreshSession("user", { now: () => time, sleep: async (ms) => { time += ms; } });
+  assert.equal(service.records.get("sessionSecurity/user").revocationPending, false);
+  assert.equal(service.records.get("sessionSecurity/user").revokedBefore, 200);
+  assert.equal(service.refreshRevocations, 1);
+  const req = { ip: "1.2.3.4", auth: { user: { uid: "user" }, claims: { iat: 100 }, provider: "server-jwt" } };
+  await assert.rejects(service.validateSessionSecurity(req), (error) => error.details.reason === "revoked");
+  req.auth.claims.iat = Math.floor(time / 1000);
+  await service.validateSessionSecurity(req);
+  await service.validateSessionSecurity(req);
+});
+
 test("late VPN lookup from an already revoked session cannot penalize a fresh clean session", async () => {
   let time = 200000;
   class Clock extends Date { static now() { return time; } }

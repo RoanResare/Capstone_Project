@@ -42,6 +42,8 @@ import {
 } from "../utils/roleUtils.js";
 import {
   resetTransientAuthStorage,
+  removeSessionStorageItem,
+  removeStorageItem,
   writeSessionStorageItem,
 } from "../utils/browserState.js";
 import {
@@ -246,6 +248,8 @@ function restorePortalAccessToken(user) {
 }
 
 export function AuthProvider({ children }) {
+  const authGenerationRef = useRef(0);
+  const loginHandoffRef = useRef(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [accessToken, setAccessToken] = useState("");
   const [authHydrationError, setAuthHydrationError] = useState("");
@@ -308,9 +312,13 @@ export function AuthProvider({ children }) {
     let active = true;
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      const generation = ++authGenerationRef.current;
+      if (loginHandoffRef.current) return;
+      const isCurrent = () => active && generation === authGenerationRef.current
+        && !loginHandoffRef.current && auth.currentUser === firebaseUser;
       try {
         await waitForCustomerRegistration();
-        if (!active || (auth.currentUser?.uid || "") !== (firebaseUser?.uid || "")) return;
+        if (!isCurrent()) return;
         if (!firebaseUser) {
           const restoredPendingOtp = normalizePendingOtpRecord(readPendingOtpSession());
 
@@ -331,7 +339,7 @@ export function AuthProvider({ children }) {
         }
 
         const session = await hydrateAuthenticatedUser(firebaseUser);
-        if (!active || auth.currentUser?.uid !== firebaseUser.uid) {
+        if (!isCurrent()) {
           return;
         }
 
@@ -362,7 +370,7 @@ export function AuthProvider({ children }) {
         setAuthHydrationError("");
       } catch (error) {
         console.error("Unable to restore the Firebase auth session.", error);
-        if (!active || auth.currentUser?.uid !== firebaseUser?.uid) {
+        if (!isCurrent()) {
           return;
         }
 
@@ -388,7 +396,7 @@ export function AuthProvider({ children }) {
           // Ignore secondary cleanup failures and clear local state below.
         }
 
-        if (!active) {
+        if (!isCurrent()) {
           return;
         }
 
@@ -408,7 +416,7 @@ export function AuthProvider({ children }) {
         setAccessToken("");
         setHasFirebaseSession(false);
       } finally {
-        if (active) {
+        if (isCurrent()) {
           setIsLoading(false);
         }
       }
@@ -799,12 +807,9 @@ export function AuthProvider({ children }) {
 
       if (isPortalRole(responseRole)) {
         return await finalizePortalLogin(response, { requestedPath, rememberDevice, identifier: identifier.trim() });
-      } else {
-        await configureCustomerAuthPersistence(rememberDevice);
       }
 
-      const credentials = await signInWithCustomToken(auth, response.firebaseCustomToken);
-      const hydratedSession = await hydrateAuthenticatedUser(credentials.user);
+      const hydratedSession = await installFreshFirebaseSession(response.firebaseCustomToken, rememberDevice);
       const sessionToken = isPortalRole(hydratedSession.user?.role)
         ? response.accessToken
         : hydratedSession.accessToken;
@@ -914,7 +919,14 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
+    authGenerationRef.current++;
     setSecuritySession();
+    resetTransientAuthStorage();
+    setPendingOtp(null);
+    setCurrentUser(null);
+    setAccessToken("");
+    setAuthHydrationError("");
+    setHasFirebaseSession(false);
     try {
       if (auth) {
         await signOutFromFirebase(auth);
@@ -930,6 +942,30 @@ export function AuthProvider({ children }) {
       setAccessToken("");
       setAuthHydrationError("");
       setHasFirebaseSession(false);
+    }
+  }
+
+  async function prepareFreshLogin() {
+    await signOut();
+    removeSessionStorageItem("furfection-security-warning");
+    removeStorageItem("furfection-security-warning");
+  }
+
+  async function installFreshFirebaseSession(customToken, rememberDevice, portalSession = null) {
+    loginHandoffRef.current = true;
+    try {
+      await prepareFreshLogin();
+      if (portalSession) {
+        await configurePortalAuthPersistence(rememberDevice);
+        persistPortalSession(portalSession);
+      } else {
+        await configureCustomerAuthPersistence(rememberDevice);
+      }
+      const credentials = await signInWithCustomToken(auth, customToken);
+      await credentials.user.getIdToken(true);
+      return await hydrateAuthenticatedUser(credentials.user);
+    } finally {
+      loginHandoffRef.current = false;
     }
   }
 
@@ -1108,10 +1144,8 @@ export function AuthProvider({ children }) {
       throw new Error("The portal session token could not be validated.");
     }
 
-    await configurePortalAuthPersistence(pendingSession?.rememberDevice === true);
-    persistPortalSession(portalSession);
-    const credentials = await signInWithCustomToken(auth, firebaseCustomToken);
-    const hydratedSession = await hydrateAuthenticatedUser(credentials.user);
+    const hydratedSession = await installFreshFirebaseSession(firebaseCustomToken,
+      pendingSession?.rememberDevice === true, portalSession);
 
     if (
       portalSession.uid !== hydratedSession.user?.uid ||

@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
 import {
   onAuthStateChanged,
   signInWithCustomToken,
@@ -39,6 +40,7 @@ import {
   removeStorageItem,
   resetTransientAuthStorage,
   writeStorageItem,
+  writeSessionStorageItem,
 } from "../utils/browserState.js";
 import {
   clearPendingOtpSession,
@@ -860,6 +862,22 @@ export function AuthProvider({ children }) {
       setHasFirebaseSession(false);
     }
   }
+
+  const securitySignOutRef = useRef(signOut);
+  securitySignOutRef.current = signOut;
+  useEffect(() => {
+    let terminating = false;
+    const terminate = async (event) => {
+      if (terminating) return;
+      terminating = true;
+      writeSessionStorageItem("furfection-security-warning", event.detail.message);
+      ["admin", "staff"].forEach((role) => removeStorageItem(rememberDeviceStorageKey(role)));
+      await securitySignOutRef.current();
+      window.location.replace("/login");
+    };
+    window.addEventListener(SESSION_SECURITY_EVENT, terminate);
+    return () => window.removeEventListener(SESSION_SECURITY_EVENT, terminate);
+  }, []);
 
   async function requestPasswordReset(identifier) {
     setAuthHydrationError("");

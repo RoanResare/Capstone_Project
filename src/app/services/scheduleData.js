@@ -3,12 +3,11 @@ import {
   deleteDoc,
   doc,
   getDocs,
-  query,
-  runTransaction,
   setDoc,
-  where,
 } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
+import { verifyActiveSessionSecurity } from "./sessionSecurity.js";
+import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 
 const COLLECTIONS = {
   appointments: "appointments",
@@ -55,6 +54,7 @@ async function saveDocument(collectionName, payload = {}) {
     return true;
   }
 
+  await verifyActiveSessionSecurity();
   await setDoc(doc(db, collectionName, id), removeUndefinedFields(payload), { merge: true });
   return true;
 }
@@ -70,6 +70,7 @@ async function deleteDocument(collectionName, id = "") {
     return true;
   }
 
+  await verifyActiveSessionSecurity();
   await deleteDoc(doc(db, collectionName, normalizedId));
   return true;
 }
@@ -95,48 +96,20 @@ function logSyncError(action, error) {
 export function saveAppointmentDocument(appointment) {
   const save = async () => {
     if (!canSyncScheduleData()) {
-      return true;
+      throw new Error("You must be signed in to save an appointment.");
     }
 
     const id = normalizeString(appointment?.id);
-    const slotId = normalizeString(appointment?.slotId);
-    if (!id || !slotId) {
-      return saveDocument(COLLECTIONS.appointments, appointment);
-    }
-
-    const appointmentRef = doc(db, COLLECTIONS.appointments, id);
+    if (!id) throw new Error("An appointment ID is required.");
+    const token = await auth.currentUser.getIdToken();
     try {
-      await runTransaction(db, async (transaction) => {
-        const existing = await transaction.get(appointmentRef);
-        if (!existing.exists()) {
-          const slotQuery = query(
-            collection(db, COLLECTIONS.appointments),
-            where("slotId", "==", slotId),
-          );
-          const matchingAppointments = await transaction.get(slotQuery);
-          const activeCount = matchingAppointments.docs.filter((entry) =>
-            ["Pending", "Confirmed", "Accepted"].includes(entry.data()?.status),
-          ).length;
-          const capacity = Math.max(Number(appointment.slotCapacity) || 1, 1);
-
-          if (activeCount >= capacity) {
-            const error = new Error("That time slot is already full. Please choose another slot.");
-            error.code = "SLOT_FULL";
-            throw error;
-          }
-        }
-
-        transaction.set(appointmentRef, removeUndefinedFields(appointment), { merge: true });
+      await apiClient.put(`/auth/appointments/${encodeURIComponent(id)}`, removeUndefinedFields(appointment), {
+        headers: buildAuthHeaders(token),
       });
     } catch (error) {
-      if (error?.code === "SLOT_FULL") {
-        throw error;
-      }
-
-      // The booking ID is deterministic, so a direct idempotent write is safe
-      // when a transaction is rejected by a temporary Firestore client state.
-      console.warn("[schedule-data] Appointment transaction failed; retrying direct save.", error);
-      await setDoc(appointmentRef, removeUndefinedFields(appointment), { merge: true });
+      const requestError = new Error(extractApiError(error, "Unable to save the appointment."));
+      requestError.code = error?.response?.data?.details?.code;
+      throw requestError;
     }
     return true;
   };

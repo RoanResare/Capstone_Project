@@ -7,6 +7,20 @@ export const apiClient = axios.create({
   },
 });
 
+export const SESSION_SECURITY_EVENT = "furfection:session-security-violation";
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.data?.details?.code === "SESSION_SECURITY_VIOLATION") {
+      window.dispatchEvent(new CustomEvent(SESSION_SECURITY_EVENT, {
+        detail: { message: error.response.data.message },
+      }));
+    }
+    return Promise.reject(error);
+  },
+);
+
 export function buildAuthHeaders(accessToken) {
   return {
     Authorization: `Bearer ${accessToken}`,

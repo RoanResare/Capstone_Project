@@ -8,18 +8,25 @@ function normalizeIp(value = "") {
 }
 
 function getClientIp(req) {
-  return normalizeIp(req.ip || req.socket?.remoteAddress || "unknown");
+  return normalizeIp(
+    req.ip ||
+      req.socket?.remoteAddress ||
+      "unknown",
+  );
 }
 
 function buildProviderUrl(template, params) {
-  const url = new URL(template);
+  let expanded = template;
+  const queryParams = {};
   Object.entries(params).forEach(([key, value]) => {
-    if (url.href.includes(`{${key}}`)) {
-      url.href = url.href.replaceAll(`{${key}}`, encodeURIComponent(value));
+    if (expanded.includes(`{${key}}`)) {
+      expanded = expanded.replaceAll(`{${key}}`, encodeURIComponent(value));
     } else {
-      url.searchParams.set(key, value);
+      queryParams[key] = value;
     }
   });
+  const url = new URL(expanded);
+  Object.entries(queryParams).forEach(([key, value]) => url.searchParams.set(key, value));
   return url;
 }
 
@@ -31,14 +38,65 @@ async function callProvider(template, params, apiKey) {
     headers["X-API-Key"] = apiKey;
   }
 
-  const response = await fetch(url, { headers });
-  if (!response.ok) {
-    throw new Error(`Provider returned HTTP ${response.status}.`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3500);
+
+  try {
+    const response = await fetch(url, { headers, signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Provider returned HTTP ${response.status}.`);
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
   }
-  return response.json();
+}
+
+const trustedEmailDomains = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "yahoo.com.ph",
+  "ymail.com",
+  "rocketmail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "zoho.com",
+]);
+
+const disposableEmailDomains = new Set([
+  "10minutemail.com",
+  "guerrillamail.com",
+  "mailinator.com",
+  "tempmail.com",
+  "temp-mail.org",
+  "throwawaymail.com",
+  "yopmail.com",
+]);
+
+function getEmailDomain(email = "") {
+  return String(email || "").trim().toLowerCase().split("@").pop() || "";
 }
 
 async function assertEmailIsDeliverable(email) {
+  const domain = getEmailDomain(email);
+
+  if (trustedEmailDomains.has(domain)) {
+    return;
+  }
+
+  if (disposableEmailDomains.has(domain)) {
+    throw new ApiError(400, "Please use a genuine, deliverable email address.");
+  }
+
   if (!env.security.emailValidationUrl) {
     return;
   }
@@ -63,7 +121,6 @@ async function assertEmailIsDeliverable(email) {
     result?.is_valid,
     result?.is_valid_format,
     result?.is_mx_found,
-    result?.is_smtp_valid,
     result?.deliverable,
   ].filter((value) => typeof value === "boolean");
   const valid = validityChecks.length > 0 ? validityChecks.every(Boolean) : undefined;
@@ -73,33 +130,103 @@ async function assertEmailIsDeliverable(email) {
   }
 }
 
-async function assertPhilippineConnection(ip) {
-  if (!env.security.geoLookupUrl) {
-    throw new ApiError(
-      503,
-      "Location security verification is required before registration. Configure the Geo/VPN provider.",
-    );
+function isLocalOrPrivateIp(ip = "") {
+  const value = normalizeIp(ip);
+  return (
+    !value ||
+    value === "unknown" ||
+    value === "::1" ||
+    value === "127.0.0.1" ||
+    /^(fc|fd|fe80:)/i.test(value) ||
+    value.startsWith("10.") ||
+    value.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(value)
+  );
+}
+
+function getCountryFromHeaders(headers = {}) {
+  const country =
+    headers["cf-ipcountry"] ||
+    headers["x-vercel-ip-country"] ||
+    headers["x-country-code"] ||
+    headers["cloudfront-viewer-country"];
+  return String(country || "").trim().toUpperCase();
+}
+
+function resolveGeoDecision(result = {}) {
+  const country = String(
+    result?.country_code ||
+      result?.countryCode ||
+      result?.country ||
+      result?.country_code2 ||
+      "",
+  ).toUpperCase();
+  const isPhilippines = country === "PH" || country === "PHILIPPINES";
+  const security = result?.security || result;
+  const isVpn = [security?.vpn, security?.proxy, security?.tor, result?.is_vpn]
+    .some((value) => value === true || value === 1 || value === "true");
+
+  return { country, isPhilippines, isVpn };
+}
+
+function shouldFailOpenGeo(ip) {
+  return !env.security.failClosed || isLocalOrPrivateIp(ip);
+}
+
+const geoLookups = new Map();
+
+async function lookupGeo(ip) {
+  const key = `${env.security.geoLookupUrl}:${ip}`;
+  const cached = geoLookups.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.promise;
+  if (geoLookups.size >= 1000) geoLookups.delete(geoLookups.keys().next().value);
+  const promise = callProvider(
+    env.security.geoLookupUrl || "https://ipwho.is/{ip}",
+    { ip },
+    env.security.geoLookupApiKey,
+  );
+  geoLookups.set(key, { promise, expiresAt: Date.now() + 30000 });
+  return promise;
+}
+
+async function assertPhilippineConnection(ip, { enforceConfirmed = false } = {}) {
+  if (isLocalOrPrivateIp(ip)) {
+    return;
   }
 
   let result;
   try {
-    result = await callProvider(env.security.geoLookupUrl, { ip }, env.security.geoLookupApiKey);
+    result = await lookupGeo(ip);
   } catch (error) {
     console.warn("[registration-security] Geo/VPN provider failed.", error);
+    if (shouldFailOpenGeo(ip)) {
+      return;
+    }
     throw new ApiError(503, "Location security verification is temporarily unavailable.");
   }
 
-  const country = String(result?.country_code || result?.countryCode || result?.country || "").toUpperCase();
-  const isPhilippines = country === "PH" || country === "PHILIPPINES";
-  const security = result?.security || result;
-  const isVpn = Boolean(security?.vpn || security?.proxy || security?.tor || security?.hosting || result?.is_vpn);
-  if (!isPhilippines || isVpn) {
+  if (!result || result.success === false) {
+    if (shouldFailOpenGeo(ip)) return;
+    throw new ApiError(503, "Location security verification is temporarily unavailable.");
+  }
+
+  const { country, isPhilippines, isVpn } = resolveGeoDecision(result);
+  if ((country && !isPhilippines) || isVpn) {
+    if (!enforceConfirmed && shouldFailOpenGeo(ip)) {
+      console.warn("[registration-security] Geo/VPN check did not pass; allowing because fail-closed is disabled.", {
+        ip,
+      });
+      return;
+    }
     throw new ApiError(403, "Access is available only from a non-VPN connection in the Philippines.");
+  }
+  if (!country && env.security.failClosed) {
+    throw new ApiError(503, "Location security verification is temporarily unavailable.");
   }
 }
 
 async function assertIpAccountLimit(ip) {
-  if (!db || !ip || ip === "unknown") {
+  if (!db || isLocalOrPrivateIp(ip) || !env.security.failClosed) {
     return;
   }
 
@@ -111,7 +238,12 @@ async function assertIpAccountLimit(ip) {
 
 async function validateRegistrationSecurity(req, email) {
   const ip = getClientIp(req);
+  const headerCountry = getCountryFromHeaders(req.headers);
   await assertEmailIsDeliverable(email);
+  if (headerCountry && (headerCountry === "PH" || headerCountry === "PHILIPPINES")) {
+    await assertIpAccountLimit(ip);
+    return { registrationIp: ip };
+  }
   await assertPhilippineConnection(ip);
   await assertIpAccountLimit(ip);
   return { registrationIp: ip };
@@ -119,7 +251,7 @@ async function validateRegistrationSecurity(req, email) {
 
 async function validateAccessSecurity(req) {
   const ip = getClientIp(req);
-  await assertPhilippineConnection(ip);
+  await assertPhilippineConnection(ip, { enforceConfirmed: true });
   return { accessIp: ip };
 }
 

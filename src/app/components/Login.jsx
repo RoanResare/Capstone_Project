@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { readSessionStorageItem, removeSessionStorageItem } from "../utils/browserState.js";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, ShieldCheck, UserPlus } from "lucide-react";
@@ -22,11 +23,18 @@ export function Login() {
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [fieldErrors, setFieldErrors] = useState({});
-  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [feedback, setFeedback] = useState(() => {
+    const message = readSessionStorageItem("furfection-security-warning") || "";
+    return { type: message ? "error" : "", message };
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
+
+  useEffect(() => {
+    removeSessionStorageItem("furfection-security-warning");
+  }, []);
 
   if (!isLoading && isAuthenticated && currentUser) {
     return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;

@@ -6,9 +6,52 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useToast } from "./context/ToastContext.jsx";
+import { verifyActiveSessionSecurity } from "./services/sessionSecurity.js";
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
 const INACTIVITY_WARNING_MS = INACTIVITY_LIMIT_MS - 30 * 1000;
+
+function SessionSecurityGuard() {
+  const { currentUser } = useAuth();
+  useEffect(() => {
+    if (!currentUser?.uid) return undefined;
+    let checking = false;
+    let disposed = false;
+    const check = async () => {
+      if (checking || disposed || document.visibilityState === "hidden") return;
+      checking = true;
+      try {
+        await verifyActiveSessionSecurity();
+      } catch (error) {
+        // Only confirmed violations trigger the API client's logout event.
+        console.warn("[session-security] Session check failed.", error.message);
+      } finally {
+        checking = false;
+      }
+    };
+    let pathname = router.state.location.pathname;
+    const unsubscribe = router.subscribe((state) => {
+      if (state.location.pathname !== pathname) {
+        pathname = state.location.pathname;
+        void check();
+      }
+    });
+    const interval = window.setInterval(check, 30000);
+    window.addEventListener("focus", check);
+    window.addEventListener("online", check);
+    document.addEventListener("visibilitychange", check);
+    void check();
+    return () => {
+      disposed = true;
+      unsubscribe();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", check);
+      window.removeEventListener("online", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [currentUser?.uid]);
+  return null;
+}
 
 function InactivityGuard() {
   const { currentUser, signOut } = useAuth();
@@ -66,6 +109,7 @@ export default function App() {
       <AppProvider>
         <ToastProvider>
           <InactivityGuard />
+          <SessionSecurityGuard />
           <RouterProvider router={router} />
         </ToastProvider>
       </AppProvider>

@@ -4,6 +4,7 @@ const { verifyAccessToken } = require("../services/token.service");
 const { getUserByUid, toPublicUser } = require("../services/user.service");
 const { FRAUD_STATUSES, USER_STATUSES } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
+const { validateSessionSecurity } = require("../services/sessionSecurity.service");
 
 function buildFirebaseSetupError() {
   const missingVariables = [];
@@ -105,6 +106,7 @@ async function attachAuthenticatedUser(req, token, claims, provider) {
     claims,
     provider,
   };
+  await validateSessionSecurity(req);
 }
 
 async function verifyToken(req, _res, next) {

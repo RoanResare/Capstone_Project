@@ -2337,7 +2337,7 @@ export function AppProvider({ children }) {
       });
       return true;
     },
-    updateAppointment(id, updates, actorName) {
+    async updateAppointment(id, updates, actorName) {
       const existingAppointment = state.appointments.find((appointment) => appointment.id === id);
       const nextUpdates = {
         ...updates,
@@ -2353,6 +2353,8 @@ export function AppProvider({ children }) {
         ? normalizeAppointment({ ...existingAppointment, ...nextUpdates })
         : null;
 
+      if (!nextAppointment) return false;
+      await saveAppointmentDocument(nextAppointment);
       dispatch({
         type: "UPDATE_APPOINTMENT",
         payload: { id, updates: nextUpdates },
@@ -2362,11 +2364,7 @@ export function AppProvider({ children }) {
         },
       });
 
-      if (nextAppointment) {
-        return saveAppointmentDocument(nextAppointment);
-      }
-
-      return Promise.resolve(false);
+      return true;
     },
     savePetRecord(payload, actorName) {
       const existingRecord = state.petRecords.find((record) => record.id === payload.id);

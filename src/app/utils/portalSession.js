@@ -141,6 +141,7 @@ export function readPendingOtpSession() {
   return {
     deliveryMode: typeof parsed.deliveryMode === "string" ? parsed.deliveryMode : "",
     email: typeof parsed.email === "string" ? parsed.email : "",
+    identifier: typeof parsed.identifier === "string" ? parsed.identifier : "",
     otpExpiresAt: normalizeTimestamp(parsed.otpExpiresAt),
     otpTicket: typeof parsed.otpTicket === "string" ? parsed.otpTicket : "",
     requestedPath: typeof parsed.requestedPath === "string" ? parsed.requestedPath : "",

@@ -1,9 +1,12 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   onAuthStateChanged,
   signInWithCustomToken,
   signOut as signOutFromFirebase,
+  setPersistence,
 } from "firebase/auth";
 import { auth, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
 import {
@@ -36,10 +39,8 @@ import {
   resolveHomePath,
 } from "../utils/roleUtils.js";
 import {
-  readStorageItem,
   removeStorageItem,
   resetTransientAuthStorage,
-  writeStorageItem,
   writeSessionStorageItem,
 } from "../utils/browserState.js";
 import {
@@ -56,6 +57,16 @@ import {
 import { waitForFirebaseUserSession } from "../services/firebaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { getPasswordRecoveryEmailError } from "../utils/passwordRecovery.js";
+import {
+  clearRememberedCustomerLogin,
+  getRememberedCustomerLoginExpiry,
+  rememberCustomerLogin,
+} from "../utils/customerRememberMe.js";
+import {
+  clearRememberedPortalLogin,
+  persistRememberedPortalLogin,
+  readRememberedPortalLogin,
+} from "../utils/portalRememberMe.js";
 
 const AuthContext = createContext(null);
 const REMEMBER_DEVICE_STORAGE_PREFIX = "furfection-remember-device";
@@ -65,10 +76,10 @@ function rememberDeviceStorageKey(role = "") {
 }
 
 function readRememberDeviceToken(role = "") {
-  return readStorageItem(rememberDeviceStorageKey(role)) || "";
+  return readRememberedPortalLogin(role).token || "";
 }
 
-function persistRememberDeviceToken(role = "", token = "") {
+function persistRememberDeviceToken(role = "", token = "", identifier = "") {
   const normalizedRole = normalizeRole(role);
   const value = typeof token === "string" ? token.trim() : "";
 
@@ -77,11 +88,11 @@ function persistRememberDeviceToken(role = "", token = "") {
   }
 
   if (value) {
-    writeStorageItem(rememberDeviceStorageKey(normalizedRole), value);
+    persistRememberedPortalLogin(normalizedRole, value, identifier);
     return;
   }
 
-  removeStorageItem(rememberDeviceStorageKey(normalizedRole));
+  clearRememberedPortalLogin(normalizedRole);
 }
 
 function isTimestampExpired(value = "") {
@@ -109,6 +120,7 @@ function normalizePendingOtpRecord(record) {
   const normalized = {
     deliveryMode: typeof record.deliveryMode === "string" ? record.deliveryMode : "",
     email: typeof record.email === "string" ? record.email : "",
+    identifier: typeof record.identifier === "string" ? record.identifier : "",
     otpExpiresAt: typeof record.otpExpiresAt === "string" ? record.otpExpiresAt : "",
     otpTicket: typeof record.otpTicket === "string" ? record.otpTicket : "",
     otpTicketExpiresAt,
@@ -192,6 +204,25 @@ function buildConfigErrorResult() {
       firebaseConfigError ||
       "Firebase Authentication is not configured. Fill the VITE_FIREBASE_* values first.",
   };
+}
+
+async function configureCustomerAuthPersistence(rememberDevice = false) {
+  if (!auth || !isFirebaseConfigured) {
+    return;
+  }
+
+  await setPersistence(
+    auth,
+    rememberDevice ? browserLocalPersistence : browserSessionPersistence,
+  );
+}
+
+async function configurePortalAuthPersistence(rememberDevice = false) {
+  if (!auth || !isFirebaseConfigured) {
+    return;
+  }
+
+  await setPersistence(auth, rememberDevice ? browserLocalPersistence : browserSessionPersistence);
 }
 
 function restorePortalAccessToken(user) {
@@ -386,7 +417,7 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  async function signIn({ identifier, email, password, roleHint = "" }) {
+  async function signIn({ identifier, email, password, roleHint = "", rememberDevice = false }) {
     if (!isFirebaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
@@ -401,7 +432,14 @@ export function AuthProvider({ children }) {
           : typeof email === "string"
             ? email.trim()
             : "";
-      const signInResult = !normalizedRoleHint || isCustomerRole(normalizedRoleHint)
+      const isCustomerLogin = !normalizedRoleHint || isCustomerRole(normalizedRoleHint);
+      if (isCustomerLogin) {
+        await configureCustomerAuthPersistence(rememberDevice);
+      } else {
+        await configurePortalAuthPersistence(rememberDevice);
+      }
+
+      const signInResult = isCustomerLogin
         ? await signInCustomerWithEmailPassword({
             email: loginIdentifier,
             password,
@@ -414,6 +452,10 @@ export function AuthProvider({ children }) {
       const { firebaseUser, profile } = signInResult;
       const token = await firebaseUser.getIdToken();
 
+      if (isCustomerRole(profile.role)) {
+        if (rememberDevice) rememberCustomerLogin(loginIdentifier, password);
+        else clearRememberedCustomerLogin();
+      }
       clearPortalSession();
       clearPendingOtpSession();
       setPendingOtp(null);
@@ -595,11 +637,12 @@ export function AuthProvider({ children }) {
           role: normalizedRole,
           identifierType: identifier.includes("@") ? "email" : "username",
         });
+        if (!rememberDevice) clearRememberedPortalLogin(normalizedRole);
         const response = await loginPortalUser(normalizedRole, {
           identifier: identifier.trim(),
           password,
           rememberDevice,
-          rememberDeviceToken: readRememberDeviceToken(normalizedRole),
+          rememberDeviceToken: rememberDevice ? readRememberDeviceToken(normalizedRole) : "",
         });
 
         clearPortalSession();
@@ -610,10 +653,12 @@ export function AuthProvider({ children }) {
             requestedPath,
             rememberDevice,
             role: normalizedRole,
+            identifier: identifier.trim(),
           });
         }
 
         const nextPendingOtp = normalizePendingOtpRecord({
+          identifier: identifier.trim(),
           deliveryMode: response.deliveryMode || "",
           email: response.user?.email || "",
           otpExpiresAt: response.otpExpiresAt || "",
@@ -659,6 +704,7 @@ export function AuthProvider({ children }) {
       identifier,
       password,
       roleHint: normalizedRole,
+      rememberDevice,
     });
   }
 
@@ -689,12 +735,18 @@ export function AuthProvider({ children }) {
     setAuthHydrationError("");
 
     try {
+      if (!rememberDevice) {
+        clearRememberedCustomerLogin();
+        clearRememberedPortalLogin();
+      }
       const response = await loginUnifiedUser({
         identifier: identifier.trim(),
         password,
         rememberDevice,
-        rememberDeviceToken:
-          readRememberDeviceToken("admin") || readRememberDeviceToken("staff"),
+        rememberDeviceTokens: {
+          admin: rememberDevice ? readRememberDeviceToken("admin") : "",
+          staff: rememberDevice ? readRememberDeviceToken("staff") : "",
+        },
       });
       const responseRole = normalizeRole(response.user?.role);
 
@@ -703,6 +755,7 @@ export function AuthProvider({ children }) {
 
       if (response.requiresTwoFactor && isPortalRole(responseRole)) {
         const nextPendingOtp = normalizePendingOtpRecord({
+          identifier: identifier.trim(),
           deliveryMode: response.deliveryMode || "",
           email: response.user?.email || "",
           otpExpiresAt: response.otpExpiresAt || "",
@@ -738,12 +791,22 @@ export function AuthProvider({ children }) {
         };
       }
 
+      if (isPortalRole(responseRole)) {
+        return await finalizePortalLogin(response, { requestedPath, rememberDevice, identifier: identifier.trim() });
+      } else {
+        await configureCustomerAuthPersistence(rememberDevice);
+      }
+
       const credentials = await signInWithCustomToken(auth, response.firebaseCustomToken);
       const hydratedSession = await hydrateAuthenticatedUser(credentials.user);
       const sessionToken = isPortalRole(hydratedSession.user?.role)
         ? response.accessToken
         : hydratedSession.accessToken;
 
+      if (isCustomerRole(hydratedSession.user?.role)) {
+        if (rememberDevice) rememberCustomerLogin(identifier.trim(), password);
+        else clearRememberedCustomerLogin();
+      }
       setPendingOtp(null);
       setCurrentUser(hydratedSession.user);
       setAccessToken(sessionToken);
@@ -862,6 +925,31 @@ export function AuthProvider({ children }) {
       setHasFirebaseSession(false);
     }
   }
+
+  useEffect(() => {
+    if (!isCustomerRole(currentUser?.role) && !isPortalRole(currentUser?.role)) {
+      return undefined;
+    }
+
+    const expiresAt = isCustomerRole(currentUser.role)
+      ? getRememberedCustomerLoginExpiry()
+      : readRememberedPortalLogin(currentUser.role).credentials?.expiresAt;
+    if (!expiresAt) {
+      return undefined;
+    }
+
+    const remainingMs = expiresAt - Date.now();
+    if (remainingMs <= 0) {
+      void signOut();
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void signOut();
+    }, remainingMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [currentUser?.uid, currentUser?.role]);
 
   const securitySignOutRef = useRef(signOut);
   securitySignOutRef.current = signOut;
@@ -1010,6 +1098,7 @@ export function AuthProvider({ children }) {
       throw new Error("The portal session token could not be validated.");
     }
 
+    await configurePortalAuthPersistence(pendingSession?.rememberDevice === true);
     persistPortalSession(portalSession);
     const credentials = await signInWithCustomToken(auth, firebaseCustomToken);
     const hydratedSession = await hydrateAuthenticatedUser(credentials.user);
@@ -1022,7 +1111,11 @@ export function AuthProvider({ children }) {
       throw new Error("The portal session token could not be matched to the signed-in user.");
     }
 
-    persistRememberDeviceToken(hydratedSession.user.role, response?.rememberDeviceToken || "");
+    persistRememberDeviceToken(
+      hydratedSession.user.role,
+      pendingSession?.rememberDevice ? response?.rememberDeviceToken || "" : "",
+      pendingSession?.identifier || hydratedSession.user.email,
+    );
     clearPendingOtpSession();
     setPendingOtp(null);
     setCurrentUser(hydratedSession.user);

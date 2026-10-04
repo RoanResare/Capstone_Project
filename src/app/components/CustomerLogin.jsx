@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRememberedLogin } from "../utils/useRememberedLogin.js";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ShieldCheck } from "lucide-react";
@@ -9,6 +10,9 @@ import {
   normalizeRole,
   resolveAuthorizedPath,
 } from "../utils/roleUtils.js";
+import {
+  clearRememberedCustomerLogin,
+} from "../utils/customerRememberMe.js";
 
 export function CustomerLogin() {
   const expectedRole = "customer";
@@ -22,7 +26,7 @@ export function CustomerLogin() {
     isLoading,
     isOnline,
   } = useAuth();
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const { error: showErrorToast, success: showSuccessToast, info: showInfoToast } = useToast();
   const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,6 +37,8 @@ export function CustomerLogin() {
     typeof location.state?.from === "string" && location.state.from
       ? { from: location.state.from }
       : undefined;
+
+  useRememberedLogin("customer", setForm, setFeedback, showInfoToast);
 
   if (!isLoading && isAuthenticated && currentUser) {
     const actualRole = normalizeRole(currentUser.role);
@@ -205,9 +211,15 @@ export function CustomerLogin() {
               <input
                 type="checkbox"
                 checked={form.rememberDevice}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, rememberDevice: event.target.checked }))
-                }
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  if (!checked) {
+                    clearRememberedCustomerLogin();
+                    setForm((current) => ({ ...current, password: "", rememberDevice: false }));
+                    return;
+                  }
+                  setForm((current) => ({ ...current, rememberDevice: checked }));
+                }}
                 disabled={isSubmitting}
                 className="mt-1 h-4 w-4 accent-[#2D9B9B]"
               />

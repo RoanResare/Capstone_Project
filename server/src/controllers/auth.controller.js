@@ -457,16 +457,19 @@ async function createSessionResponse(user, options = {}) {
     requiresTwoFactor: false,
     accessToken,
     firebaseCustomToken,
-    rememberDeviceToken: options.rememberDevice ? signRememberDeviceToken(user) : "",
+    rememberDeviceToken: options.rememberDevice
+      ? options.rememberDeviceToken || signRememberDeviceToken(user)
+      : "",
     user: safeUser,
   };
 }
 
-function readRememberDeviceRequest(req) {
+function readRememberDeviceRequest(req, role) {
+  const token = req.body?.rememberDeviceTokens?.[role] ?? req.body?.rememberDeviceToken;
   return {
     rememberDevice: req.body?.rememberDevice === true,
     rememberDeviceToken:
-      typeof req.body?.rememberDeviceToken === "string" ? req.body.rememberDeviceToken.trim() : "",
+      typeof token === "string" ? token.trim() : "",
   };
 }
 
@@ -563,7 +566,7 @@ function createRoleBoundLoginHandler(expectedRole) {
     assertRoleMatchesExpected(user, routeRole);
     assertActiveAccount(user);
     assertFraudAccess(user);
-    const rememberDeviceRequest = readRememberDeviceRequest(req);
+    const rememberDeviceRequest = readRememberDeviceRequest(req, user.role);
 
     if (routeRole === USER_ROLES.CUSTOMER) {
       return res.status(200).json(
@@ -573,10 +576,11 @@ function createRoleBoundLoginHandler(expectedRole) {
       );
     }
 
-    if (isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
+    if (rememberDeviceRequest.rememberDevice && isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
       return res.status(200).json(
         await createSessionResponse(user, {
           rememberDevice: true,
+          rememberDeviceToken: rememberDeviceRequest.rememberDeviceToken,
         }),
       );
     }
@@ -701,7 +705,7 @@ async function loginUnified(req, res) {
   await synchronizePasswordHash(user, password);
   assertActiveAccount(user);
   assertFraudAccess(user);
-  const rememberDeviceRequest = readRememberDeviceRequest(req);
+  const rememberDeviceRequest = readRememberDeviceRequest(req, user.role);
 
   if (user.role === USER_ROLES.CUSTOMER) {
     return res.status(200).json(
@@ -712,10 +716,11 @@ async function loginUnified(req, res) {
   }
 
   if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.STAFF) {
-    if (isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
+    if (rememberDeviceRequest.rememberDevice && isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
       return res.status(200).json(
         await createSessionResponse(user, {
           rememberDevice: true,
+          rememberDeviceToken: rememberDeviceRequest.rememberDeviceToken,
         }),
       );
     }

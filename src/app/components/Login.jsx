@@ -7,6 +7,12 @@ import { BrandMark } from "./BrandMark.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
+import { useRememberedLogin } from "../utils/useRememberedLogin.js";
+import { clearRememberedPortalLogin } from "../utils/portalRememberMe.js";
+import {
+  clearRememberedCustomerLogin,
+  readRememberedCustomerLogin,
+} from "../utils/customerRememberMe.js";
 
 export function Login() {
   const navigate = useNavigate();
@@ -20,7 +26,7 @@ export function Login() {
     isLoading,
     isOnline,
   } = useAuth();
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const { error: showErrorToast, success: showSuccessToast, info: showInfoToast } = useToast();
   const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [fieldErrors, setFieldErrors] = useState({});
   const [feedback, setFeedback] = useState(() => {
@@ -35,6 +41,8 @@ export function Login() {
   useEffect(() => {
     removeSessionStorageItem("furfection-security-warning");
   }, []);
+
+  useRememberedLogin(undefined, setForm, setFeedback, showInfoToast);
 
   if (!isLoading && isAuthenticated && currentUser) {
     return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;
@@ -231,9 +239,26 @@ export function Login() {
               <input
                 type="checkbox"
                 checked={form.rememberDevice}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, rememberDevice: event.target.checked }))
-                }
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  if (!checked) {
+                    clearRememberedPortalLogin();
+                    const remembered = readRememberedCustomerLogin();
+                    clearRememberedCustomerLogin();
+                    setForm((current) => ({
+                      ...current,
+                      password:
+                        remembered.status === "active" &&
+                        current.identifier.trim() === remembered.credentials.identifier &&
+                        current.password === remembered.credentials.password
+                          ? ""
+                          : current.password,
+                      rememberDevice: false,
+                    }));
+                    return;
+                  }
+                  setForm((current) => ({ ...current, rememberDevice: checked }));
+                }}
                 disabled={isSubmitting}
                 className="mt-1 h-4 w-4 accent-[#2D9B9B]"
               />

@@ -15,46 +15,56 @@ function decodeImageDataUrl(value = "") {
     throw new ApiError(400, "Pet images must be 5 MB or smaller.");
   }
 
-  return { base64: match[2], buffer };
+  return { buffer, mimeType: match[1].toLowerCase() };
 }
 
 async function prescreenPetImage(imageDataUrl) {
-  const { base64 } = decodeImageDataUrl(imageDataUrl);
+  const { buffer, mimeType } = decodeImageDataUrl(imageDataUrl);
 
   if (!env.security.huggingFaceApiKey) {
     return {
       configured: false,
-      allowed: env.nodeEnv !== "production",
-      reason:
-        env.nodeEnv === "production"
-          ? "Automated pet photo screening is not configured."
-          : "Automated pre-screening is not configured; admin review is required.",
+      allowed: true,
+      reason: "Automated pre-screening is not configured; admin review is required.",
       labels: [],
     };
   }
 
   const endpoint = `https://api-inference.huggingface.co/models/${encodeURIComponent(env.security.huggingFaceModel).replace("%2F", "/")}`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.security.huggingFaceApiKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      inputs: base64,
-      parameters: {
-        top_k: 10,
+  let response;
+
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.security.huggingFaceApiKey}`,
+        "Content-Type": mimeType,
+        Accept: "application/json",
       },
-      options: {
-        wait_for_model: true,
-      },
-    }),
-  });
+      body: buffer,
+    });
+  } catch (error) {
+    console.warn("[photo-screening] Hugging Face request failed; falling back to admin review.", error);
+    return {
+      configured: false,
+      allowed: true,
+      reason: "Automated pre-screening is temporarily unavailable; admin review is required.",
+      labels: [],
+    };
+  }
 
   const result = await response.json().catch(() => null);
   if (!response.ok || !Array.isArray(result)) {
-    throw new ApiError(503, "Automated pet photo screening is temporarily unavailable.");
+    console.warn("[photo-screening] Hugging Face returned an unusable response; falling back to admin review.", {
+      status: response.status,
+      result,
+    });
+    return {
+      configured: false,
+      allowed: true,
+      reason: "Automated pre-screening is temporarily unavailable; admin review is required.",
+      labels: [],
+    };
   }
 
   const labels = result

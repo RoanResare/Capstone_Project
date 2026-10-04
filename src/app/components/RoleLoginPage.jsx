@@ -4,6 +4,8 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { useRememberedLogin } from "../utils/useRememberedLogin.js";
+import { clearRememberedPortalLogin } from "../utils/portalRememberMe.js";
 import {
   createAccessDeniedState,
   normalizeRole,
@@ -42,7 +44,7 @@ export function RoleLoginPage({
     isLoading,
     isOnline,
   } = useAuth();
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const { error: showErrorToast, success: showSuccessToast, info: showInfoToast } = useToast();
   const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,6 +52,7 @@ export function RoleLoginPage({
   const links = supportLinks(role);
   const expectedRole = normalizeRole(role);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
+  useRememberedLogin(expectedRole, setForm, setFeedback, showInfoToast);
 
   if (!isLoading && isAuthenticated && currentUser) {
     const actualRole = normalizeRole(currentUser.role);
@@ -263,9 +266,11 @@ export function RoleLoginPage({
               <input
                 type="checkbox"
                 checked={form.rememberDevice}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, rememberDevice: event.target.checked }))
-                }
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  if (!checked) clearRememberedPortalLogin(expectedRole);
+                  setForm((current) => ({ ...current, rememberDevice: checked }));
+                }}
                 disabled={isSubmitting}
                 className="mt-1 h-4 w-4 accent-[#2D9B9B]"
               />

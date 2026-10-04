@@ -192,6 +192,7 @@ const env = {
     ttlMinutes: readNumber("PASSWORD_RESET_TTL_MINUTES", 30),
   },
   security: {
+    trustedProxyCidrs: readOptional("TRUSTED_PROXY_CIDRS"),
     maxAccountsPerIp: readNumber("MAX_ACCOUNTS_PER_IP", 2),
     geoLookupUrl: readOptional("FRAUD_GEO_LOOKUP_URL"),
     geoLookupApiKey: readOptional("FRAUD_GEO_LOOKUP_API_KEY"),

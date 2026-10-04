@@ -33,11 +33,13 @@ const {
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
+const { assertValidEmail, isValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
 const {
   getClientIp,
+  assertEmailIsDeliverable,
   validateAccessSecurity,
   validateRegistrationSecurity,
 } = require("../services/registrationSecurity.service");
@@ -151,6 +153,7 @@ async function resolveEmailFromIdentifier(identifier = "") {
   }
 
   if (isEmailLike(normalizedIdentifier)) {
+    await assertEmailIsDeliverable(normalizedIdentifier);
     return normalizedIdentifier;
   }
 
@@ -184,8 +187,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
     throw new ApiError(400, "Email is required.");
   }
 
-  if (!isEmailLike(email)) {
-    throw new ApiError(400, "Please enter a valid email address.");
+  if (!isValidEmail(email)) {
+    throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
   }
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
@@ -258,6 +261,7 @@ async function resolveAuthenticatedFirestoreUser({ identifier, email, firebaseUi
 function validateLoginPayload(payload = {}) {
   const identifier = normalizeString(payload.identifier || payload.email);
   const password = typeof payload.password === "string" ? payload.password : "";
+  if (identifier.includes("@")) assertValidEmail(identifier);
 
   if (!identifier || !password) {
     throw new ApiError(400, "Email or username and password are required.");
@@ -268,19 +272,14 @@ function validateLoginPayload(payload = {}) {
 
 function validateForgotPasswordPayload(payload = {}) {
   const identifier = normalizeString(payload.identifier || payload.email);
-  const isEmail =
-    identifier.length <= 254 &&
-    /^[^\s@]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.com$/i.test(identifier) &&
-    !identifier.includes("..") &&
-    !identifier.startsWith(".") &&
-    !identifier.endsWith(".");
+  const isEmail = isValidEmail(identifier);
 
   if (!identifier) {
     throw new ApiError(400, "Email address is required.");
   }
 
   if (!isEmail) {
-    throw new ApiError(400, "Enter a valid .com email address, such as name@example.com.");
+    throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
   }
 
   return { identifier };
@@ -467,6 +466,11 @@ async function createSessionResponse(user, options = {}, req) {
       : "",
     user: safeUser,
   };
+}
+
+async function validateEmail(req, res) {
+  await assertEmailIsDeliverable(normalizeEmail(req.body?.email));
+  return res.status(200).json({ success: true });
 }
 
 function readRememberDeviceRequest(req, role) {
@@ -745,6 +749,7 @@ async function loginUnified(req, res) {
 async function forgotPassword(req, res) {
   assertAuthSetupReady({ requirePasswordReset: true });
   const { identifier } = validateForgotPasswordPayload(req.body);
+  await assertEmailIsDeliverable(identifier);
   const normalizedIdentifier = identifier.toLowerCase();
   const isEmail = normalizedIdentifier.includes("@");
   const storedUser = isEmail
@@ -905,6 +910,7 @@ async function me(req, res) {
 }
 
 module.exports = {
+  validateEmail,
   checkCustomerRegistrationAvailability,
   forgotPassword,
   loginAdmin,

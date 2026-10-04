@@ -7,6 +7,7 @@ const {
   me,
   resetPassword,
   validateResetCode,
+  validateEmail,
 } = require("../controllers/auth.controller");
 const { verifyToken } = require("../middlewares/authenticate");
 const { authRateLimiter } = require("../middlewares/authRateLimiter");
@@ -21,6 +22,7 @@ router.post("/login", authRateLimiter, asyncHandler(loginUnified));
 router.post("/validate-reset-code", authRateLimiter, asyncHandler(validateResetCode));
 router.post("/reset-password", authRateLimiter, asyncHandler(resetPassword));
 router.get("/me", verifyToken, asyncHandler(me));
+router.post("/validate-email", authRateLimiter, verifyToken, asyncHandler(validateEmail));
 router.get("/session-security", verifyToken, (_req, res) => {
   res.set("Cache-Control", "no-store").json({ success: true });
 });

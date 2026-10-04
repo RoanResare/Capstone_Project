@@ -2,6 +2,8 @@ const { db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 const { isIP } = require("node:net");
+const { Resolver } = require("node:dns/promises");
+const { assertValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 
 function normalizeIp(value = "") {
   const candidate = String(value || "").split(",")[0].trim();
@@ -89,17 +91,31 @@ function getEmailDomain(email = "") {
 }
 
 async function assertEmailIsDeliverable(email) {
+  assertValidEmail(email);
   const domain = getEmailDomain(email);
 
-  if (trustedEmailDomains.has(domain)) {
+  if (trustedEmailDomains.has(domain) && !env.security.emailValidationUrl) {
     return;
   }
 
   if (disposableEmailDomains.has(domain)) {
-    throw new ApiError(400, "Please use a genuine, deliverable email address.");
+    throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
   }
 
   if (!env.security.emailValidationUrl) {
+    const resolver = new Resolver({ timeout: 1500, tries: 2 });
+    try {
+      const records = await resolver.resolveMx(domain);
+      if (!records.some((record) => record.exchange && record.exchange !== ".")) {
+        throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
+      }
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      if (["ENOTFOUND", "ENODATA", "ENONAME"].includes(error.code)) {
+        throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
+      }
+      throw new ApiError(503, "Email validation is temporarily unavailable. Please try again later.");
+    }
     return;
   }
 
@@ -128,7 +144,7 @@ async function assertEmailIsDeliverable(email) {
   const valid = validityChecks.length > 0 ? validityChecks.every(Boolean) : undefined;
   const disposable = result?.disposable ?? result?.is_disposable;
   if (valid === false || disposable === true || result?.success === false) {
-    throw new ApiError(400, "Please use a genuine, deliverable email address.");
+    throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
   }
 }
 
@@ -138,7 +154,8 @@ function isLocalOrPrivateIp(ip = "") {
     !value ||
     value === "unknown" ||
     value === "::1" ||
-    value === "127.0.0.1" ||
+    value.startsWith("127.") ||
+    value.startsWith("169.254.") ||
     /^(fc|fd|fe80:)/i.test(value) ||
     value.startsWith("10.") ||
     value.startsWith("192.168.") ||
@@ -149,21 +166,22 @@ function isLocalOrPrivateIp(ip = "") {
 function resolveGeoDecision(result = {}) {
   const country = String(
     result?.country_code ||
+      result?.location?.country_code ||
       result?.countryCode ||
       result?.country ||
       result?.country_code2 ||
       "",
   ).toUpperCase();
   const isPhilippines = country === "PH" || country === "PHILIPPINES";
-  const security = result?.security || result;
+  const security = result?.security || result?.risk || result;
   const parseFlag = (value) => {
     if ([true, 1, "true", "1"].includes(value)) return true;
     if ([false, 0, "false", "0"].includes(value)) return false;
     return undefined;
   };
-  const vpn = parseFlag(security.vpn ?? security.isVpn ?? result.is_vpn);
-  const proxy = parseFlag(security.proxy ?? security.isProxy ?? result.is_proxy);
-  const tor = parseFlag(security.tor ?? security.isTor ?? result.is_tor);
+  const vpn = parseFlag(security.vpn ?? security.isVpn ?? security.is_vpn ?? result.is_vpn);
+  const proxy = parseFlag(security.proxy ?? security.isProxy ?? security.is_proxy ?? result.is_proxy);
+  const tor = parseFlag(security.tor ?? security.isTor ?? security.is_tor ?? result.is_tor);
   const anonymous = parseFlag(security.anonymous);
   const isVpn = [vpn, proxy, tor, anonymous].includes(true);
   const securityVerified = anonymous === false || (vpn === false && proxy === false && tor !== true);
@@ -183,7 +201,7 @@ async function lookupGeo(ip) {
   if (cached && cached.expiresAt > Date.now()) return cached.promise;
   if (geoLookups.size >= 1000) geoLookups.delete(geoLookups.keys().next().value);
   const promise = callProvider(
-    env.security.geoLookupUrl || "https://ipwho.is/{ip}",
+    env.security.geoLookupUrl || "https://api.ipquery.io/{ip}",
     { ip },
     env.security.geoLookupApiKey,
   );
@@ -256,4 +274,4 @@ async function validateAccessSecurity(req) {
   return { accessIp: ip };
 }
 
-module.exports = { getClientIp, validateAccessSecurity, validateRegistrationSecurity };
+module.exports = { getClientIp, assertEmailIsDeliverable, validateAccessSecurity, validateRegistrationSecurity };

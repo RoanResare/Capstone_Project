@@ -299,7 +299,7 @@ export function formatFirebaseAuthError(error, fallbackMessage) {
     case "auth/invalid-credential":
       return "The email or password is incorrect.";
     case "auth/invalid-email":
-      return "Please enter a valid email address.";
+      return "Illegitimate email cannot be verified";
     case "auth/missing-password":
       return "Password is required.";
     case "auth/email-already-in-use":

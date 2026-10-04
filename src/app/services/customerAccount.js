@@ -1,4 +1,5 @@
 import { verifyActiveSessionSecurity } from "./sessionSecurity.js";
+import { validateBackendEmail } from "./authApi.js";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -641,6 +642,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
 
   try {
     if (nextEmail !== normalizeEmail(activeAuthUser.email || "")) {
+      await validateBackendEmail(nextEmail);
       await updateEmail(activeAuthUser, nextEmail);
       await activeAuthUser.getIdToken(true);
     }

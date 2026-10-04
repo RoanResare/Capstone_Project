@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
 import {
   appointmentFilters,
   breedsByPetType,
@@ -1139,10 +1140,10 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
-    if (form.customerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail.trim())) {
+    if (form.customerEmail.trim() && !isValidEmail(form.customerEmail)) {
       setFeedback({
         type: "error",
-        message: "Enter a valid customer email address.",
+        message: ILLEGITIMATE_EMAIL_ERROR,
       });
       return;
     }
@@ -1270,7 +1271,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
           bodyClassName="min-h-0 xl:flex-1 xl:overflow-y-auto"
         >
           {selectedRecord ? (
-            <form onSubmit={saveRecord} className="space-y-5">
+            <form noValidate onSubmit={saveRecord} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
@@ -1614,10 +1615,10 @@ function ManageUsersWorkspace({
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fullPayload.email)) {
+    if (!isValidEmail(fullPayload.email)) {
       setFeedback({
         type: "error",
-        message: "Enter a valid employee email address.",
+        message: ILLEGITIMATE_EMAIL_ERROR,
       });
       return;
     }
@@ -1884,7 +1885,7 @@ function ManageUsersWorkspace({
           }
         >
           {isCreatingNew || selectedUser ? (
-            <form onSubmit={saveUser} className="space-y-5">
+            <form noValidate onSubmit={saveUser} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">Name</label>

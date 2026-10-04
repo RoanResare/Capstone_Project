@@ -2,6 +2,7 @@ const { auth, db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
+const { assertEmailIsDeliverable } = require("./registrationSecurity.service");
 const { normalizePhilippineMobileNumber } = require("../utils/phoneNumber");
 const USERNAMES_COLLECTION = "usernames";
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -653,6 +654,7 @@ async function updateStoredPasswordHash(uid, passwordHash) {
 
 async function createPortalUser(payload) {
   const email = payload.email.trim().toLowerCase();
+  await assertEmailIsDeliverable(email);
   const fullName = payload.fullName.trim();
   const password = payload.password;
   const username = assertValidUsername(payload.username || deriveUsernameFromEmail(email));
@@ -818,6 +820,9 @@ async function updatePortalUser(uid, updates) {
     ? nextUser.updatedAt
     : existingUser.statusChangedAt || existingUser.updatedAt || nextUser.updatedAt;
 
+  if (nextUser.email !== existingUser.email) {
+    await assertEmailIsDeliverable(nextUser.email);
+  }
   await assertEmailAvailable(nextUser.email, uid);
   await assertUsernameAvailable(nextUser.username, uid);
 
@@ -1015,6 +1020,9 @@ async function updateOwnUser(uid, updates) {
     updatedAt: new Date().toISOString(),
   };
 
+  if (nextEmail !== existingUser.email) {
+    await assertEmailIsDeliverable(nextEmail);
+  }
   await auth.updateUser(uid, {
     email: nextUser.email,
     displayName: nextUser.fullName,

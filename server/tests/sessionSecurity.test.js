@@ -10,7 +10,8 @@ function loadService(filename, dependencies, globals = {}) {
     module: { exports: {} },
     require: (name) => {
       if (name === "../utils/ApiError") return { ApiError };
-      if (name.startsWith("node:")) return require(name);
+      if (name === "../utils/emailValidation") return require("../src/utils/emailValidation");
+      if (name.startsWith("node:") && !(name in dependencies)) return require(name);
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
       return dependencies[name];
     },
@@ -31,6 +32,72 @@ function geoService(fetch, failClosed = false, nodeEnv = "development") {
 const request = (ip) => ({ ip, headers: {} });
 const response = (data) => ({ ok: true, json: async () => data });
 
+test("default no-key provider authorizes normal production login and registration", async () => {
+  const service = geoService(async (url) => {
+    assert.equal(url.href, "https://api.ipquery.io/1.2.3.4");
+    return response({ location: { country_code: "PH" }, risk: { is_vpn: false, is_proxy: false, is_tor: false } });
+  }, false, "production");
+  await service.validateAccessSecurity(request("1.2.3.4"));
+  await service.validateRegistrationSecurity(request("1.2.3.4"), "customer@gmail.com");
+});
+
+test("default provider VPN, proxy, and Tor results reject both login and registration", async () => {
+  for (const field of ["is_vpn", "is_proxy", "is_tor"]) {
+    const service = geoService(async () => response({ location: { country_code: "PH" },
+      risk: { is_vpn: false, is_proxy: false, is_tor: false, [field]: true } }), false, "production");
+    await assert.rejects(service.validateAccessSecurity(request("1.2.3.4")), { statusCode: 403 });
+    await assert.rejects(service.validateRegistrationSecurity(request("1.2.3.4"), "test@gmail.com"), { statusCode: 403 });
+  }
+});
+
+test("malformed and disposable email errors are exactly the required message", async () => {
+  const service = geoService(async () => assert.fail("Invalid email must not reach IP lookup"));
+  for (const email of ["fake", "fake@@gmail.com", ".fake@gmail.com", "fake@-domain.com", "fake@yopmail.com"]) {
+    await assert.rejects(service.validateRegistrationSecurity(request("1.2.3.4"), email),
+      { statusCode: 400, message: "Illegitimate email cannot be verified" });
+  }
+});
+
+test("unknown email domains require mail records; DNS outages are not mislabeled as fake emails", async () => {
+  for (const [records, code, statusCode] of [[[{ exchange: "mx.example.org" }], null, null],
+    [[], null, 400], [[{ exchange: "." }], null, 400], [null, "ENOTFOUND", 400], [null, "ETIMEOUT", 503]]) {
+    const service = loadService("registrationSecurity.service.js", {
+      "../config/firebaseAdmin": { db: null },
+      "../config/env": { env: { security: {} } },
+      "node:dns/promises": { Resolver: class { async resolveMx() {
+        if (code) throw Object.assign(new Error(code), { code });
+        return records;
+      } } },
+    });
+    if (statusCode) {
+      await assert.rejects(service.assertEmailIsDeliverable("test@example.org"),
+        statusCode === 400 ? { statusCode, message: "Illegitimate email cannot be verified" } : { statusCode });
+    } else await service.assertEmailIsDeliverable("test@example.org");
+  }
+});
+
+test("configured email providers cannot bypass mailbox validation for common domains", async () => {
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/firebaseAdmin": { db: null },
+    "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}" } } },
+  }, { fetch: async () => response({ deliverable: false }) });
+  await assert.rejects(service.assertEmailIsDeliverable("fake@gmail.com"),
+    { statusCode: 400, message: "Illegitimate email cannot be verified" });
+});
+
+test("Customer, Admin, and Staff sessions all revoke immediately on an observed IP switch", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    const service = sessionService(async () => {});
+    const req = { ip: "1.2.3.4", auth: { user: { uid: role, role },
+      claims: { auth_time: 1 }, provider: "firebase-id-token" } };
+    await service.validateSessionSecurity(req);
+    req.ip = "8.8.8.8";
+    await assert.rejects(service.validateSessionSecurity(req),
+      (error) => error.details.code === "SESSION_SECURITY_VIOLATION" && error.details.reason === "ip-changed");
+    assert.equal(service.refreshRevocations, 1);
+  }
+});
+
 test("foreign locations block with fail-open enabled; changed IP bypasses cached checks", async () => {
   const urls = [];
   const service = geoService(async (url) => {
@@ -40,7 +107,7 @@ test("foreign locations block with fail-open enabled; changed IP bypasses cached
   await service.validateAccessSecurity(request("1.2.3.4"));
   await service.validateAccessSecurity(request("1.2.3.4"));
   await assert.rejects(service.validateAccessSecurity(request("8.8.8.8")), { statusCode: 403 });
-  assert.deepEqual(urls, ["https://ipwho.is/1.2.3.4", "https://ipwho.is/8.8.8.8"]);
+  assert.deepEqual(urls, ["https://api.ipquery.io/1.2.3.4", "https://api.ipquery.io/8.8.8.8"]);
 });
 
 test("VPN flags block PH connections; false strings and hosting alone do not", async () => {

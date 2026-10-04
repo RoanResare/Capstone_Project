@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
+import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
 import {
   browserLocalPersistence,
   browserSessionPersistence,
@@ -434,6 +435,9 @@ export function AuthProvider({ children }) {
             ? email.trim()
             : "";
       const isCustomerLogin = !normalizedRoleHint || isCustomerRole(normalizedRoleHint);
+      if (loginIdentifier.includes("@") && !isValidEmail(loginIdentifier)) {
+        return { ok: false, error: ILLEGITIMATE_EMAIL_ERROR };
+      }
       if (isCustomerLogin) {
         await configureCustomerAuthPersistence(rememberDevice);
       } else {
@@ -507,10 +511,10 @@ export function AuthProvider({ children }) {
       };
     }
 
-    if (!email?.trim()) {
+    if (!isValidEmail(email)) {
       return {
         ok: false,
-        error: "Email is required.",
+        error: ILLEGITIMATE_EMAIL_ERROR,
       };
     }
 

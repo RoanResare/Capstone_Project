@@ -1,5 +1,13 @@
 import { apiClient, extractApiError } from "./apiClient.js";
 
+export async function validateBackendEmail(email) {
+  try {
+    await apiClient.post("/auth/validate-email", { email });
+  } catch (error) {
+    throw createApiRequestError(error, "Unable to verify the email address right now.", "email-validation");
+  }
+}
+
 function normalizePortalRole(role = "") {
   const normalized = typeof role === "string" ? role.trim().toLowerCase() : "";
 

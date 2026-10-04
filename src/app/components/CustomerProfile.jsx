@@ -23,6 +23,7 @@ import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemD
 import { compressImageFile, fileToDataUrl } from "../utils/imageCompression.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
 import { prescreenPetPhoto } from "../services/userApi.js";
+import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
@@ -502,8 +503,8 @@ export function CustomerProfile() {
       return false;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email.trim())) {
-      const message = "Please enter a valid email address.";
+    if (!isValidEmail(profileForm.email)) {
+      const message = ILLEGITIMATE_EMAIL_ERROR;
       setFeedback({ type: "error", message });
       toast.error(message);
       return false;
@@ -1266,7 +1267,7 @@ export function CustomerProfile() {
                   </div>
                 </div>
 
-                <form onSubmit={saveProfile} className="mt-6 space-y-5">
+                <form noValidate onSubmit={saveProfile} className="mt-6 space-y-5">
                   <div className="grid gap-5 md:grid-cols-2">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Full Name</label>

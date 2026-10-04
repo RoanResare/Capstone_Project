@@ -86,7 +86,7 @@ export function ForgotPassword() {
           transition={{ duration: 0.55, delay: 0.08 }}
           className="rounded-[34px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-10"
         >
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="space-y-5">
             <div className="rounded-[24px] bg-[#F5FAFA] px-5 py-5">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#EEF6F6] text-[#2D6B73]">

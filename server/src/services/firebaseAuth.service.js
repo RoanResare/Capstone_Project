@@ -1,6 +1,7 @@
 const { auth: firebaseAdminAuth } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
+const { ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 
 const IDENTITY_TOOLKIT_URL =
   "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
@@ -9,6 +10,8 @@ const PASSWORD_RESET_URL =
 
 function mapFirebaseAuthError(code = "") {
   switch (code) {
+    case "INVALID_EMAIL":
+      return ILLEGITIMATE_EMAIL_ERROR;
     case "EMAIL_NOT_FOUND":
     case "INVALID_PASSWORD":
     case "INVALID_LOGIN_CREDENTIALS":

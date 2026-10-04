@@ -11,9 +11,10 @@ const customerRoutes = require("./routes/customer.routes");
 const groqRoutes = require("./routes/groq.routes");
 const staffRoutes = require("./routes/staff.routes");
 const { errorHandler } = require("./middlewares/errorHandler");
+const { getTrustedProxies } = require("./utils/proxyTrust");
 
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", getTrustedProxies(env.security.trustedProxyCidrs));
 const projectRoot = path.resolve(__dirname, "../..");
 const frontendIndexCandidates = [
   path.join(__dirname, "../dist/index.html"),

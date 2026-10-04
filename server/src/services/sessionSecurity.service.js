@@ -6,9 +6,7 @@ const { getClientIp, validateAccessSecurity } = require("./registrationSecurity.
 function violation(reason) {
   const message = reason === "vpn-proxy"
     ? "Your session was terminated because a VPN or proxy was detected. VPN use is prohibited. Disable it and sign in again."
-    : reason === "ip-changed"
-      ? "Your session was terminated because your IP address changed. VPN use is prohibited. Return to your normal network and sign in again."
-      : "This session has ended for security. Return to your normal network and sign in again.";
+    : "This session has ended for security. Return to your normal network and sign in again.";
   return new ApiError(401, message,
     { code: "SESSION_SECURITY_VIOLATION", reason });
 }
@@ -29,17 +27,15 @@ async function validateSessionSecurity(req) {
   // New logins share one unique binding across JWT and Firebase tokens; legacy tokens retain their old binding.
   const connection = db.collection("sessionConnections").doc(sessionId
     ? `${user.uid}-${sessionId}` : `${user.uid}-${provider}-${startedAt}`);
+  let observedIp;
   const checkBinding = (bind = false) => db.runTransaction(async (transaction) => {
     const [snapshot, binding] = await Promise.all([transaction.get(reference), transaction.get(connection)]);
     const previous = snapshot.data() || {};
     if (startedAt <= Number(previous.revokedBefore || 0)) return "revoked";
     if (sessionId && (!binding.exists || binding.data().uid !== user.uid || binding.data().sessionId !== sessionId)) return "revoked";
-    const expectedIp = binding.exists ? binding.data().ip : claims.connectionIp;
-    if (expectedIp && expectedIp !== ip) {
-      transaction.set(reference, { revokedBefore: Math.max(Math.floor(Date.now() / 1000), Number(previous.revokedBefore || 0)),
-        reason: "ip-changed", revocationPending: true }, { merge: true });
-      return "ip-changed";
-    }
+    observedIp = binding.exists ? binding.data().ip : claims.connectionIp;
+    // IP changes alone are not VPN evidence (mobile routing, WiFi handoffs, and dual-stack networks).
+    if (bind && binding.exists && ip && observedIp !== ip) transaction.set(connection, { ip }, { merge: true });
     if (bind && !binding.exists) {
       transaction.set(connection, { uid: user.uid, ip, startedAt, provider,
         expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000) });
@@ -62,7 +58,7 @@ async function validateSessionSecurity(req) {
   const existingViolation = await checkBinding();
   if (existingViolation) await terminate(existingViolation);
   try {
-    await validateAccessSecurity(req);
+    await validateAccessSecurity(req, { fresh: Boolean(observedIp && observedIp !== ip) });
   } catch (error) {
     if (!(error instanceof ApiError) || error.statusCode !== 403) throw error;
     // Persist revocation before returning an error so old tokens cannot be replayed.

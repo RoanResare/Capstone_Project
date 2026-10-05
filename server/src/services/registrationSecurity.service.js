@@ -2,6 +2,7 @@ const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 const { Resolver } = require("node:dns/promises");
 const { assertValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
+const { isDisposableEmailDomain } = require("./disposableEmailDomains.service");
 const DISPOSABLE_EMAIL_ERROR = "Temporary or disposable email addresses are not allowed";
 
 function normalizeIp(value = "") {
@@ -73,55 +74,11 @@ const trustedEmailDomains = new Set([
   "proton.me",
   "protonmail.com",
   "zoho.com",
-]);
-
-// Curated from https://github.com/disposable-email-domains/disposable-email-domains.
-const disposableEmailDomains = new Set([
-  "10-minute-mail.com",
-  "10minemail.com",
-  "10minute.email",
-  "10minutemail.com",
-  "10minutemail.net",
-  "1secmail.com",
-  "1secmail.net",
-  "1secmail.org",
-  "20minutemail.com",
-  "getnada.com",
-  "grr.la",
-  "guerillamail.com",
-  "guerillamail.net",
-  "guerrillamail.biz",
-  "guerrillamail.com",
-  "guerrillamail.de",
-  "guerrillamail.info",
-  "guerrillamail.net",
-  "guerrillamail.org",
-  "guerrillamailblock.com",
-  "hudzer.com",
-  "maildrop.cc",
-  "mailinator.co.uk",
-  "mailinator.com",
-  "mailinator.net",
-  "mailinator.org",
-  "tempmail.com",
-  "temp-mail.org",
-  "throwawaymail.com",
-  "yopmail.com",
-  "yopmail.fr",
-  "yopmail.net",
-  "yzcalo.com",
+  "sti.edu",
 ]);
 
 function getEmailDomain(email = "") {
   return String(email || "").trim().toLowerCase().split("@").pop() || "";
-}
-
-function isDisposableEmailDomain(domain) {
-  const labels = domain.split(".");
-  for (let index = 0; index < labels.length - 1; index++) {
-    if (disposableEmailDomains.has(labels.slice(index).join("."))) return true;
-  }
-  return false;
 }
 
 function assertRegistrationEmailAllowed(email) {
@@ -181,10 +138,7 @@ async function assertEmailIsDeliverable(email) {
     result?.deliverable,
   ].filter((value) => typeof value === "boolean");
   const valid = validityChecks.length > 0 ? validityChecks.every(Boolean) : undefined;
-  const disposable = result?.disposable ?? result?.is_disposable;
-  if (disposable === true && !trustedEmailDomains.has(domain)) {
-    throw new ApiError(400, DISPOSABLE_EMAIL_ERROR, { code: "DISPOSABLE_EMAIL_DOMAIN" });
-  }
+  // Disposable classification comes only from our known-domain database.
   if (valid === false || result?.success === false) {
     throw new ApiError(400, ILLEGITIMATE_EMAIL_ERROR);
   }

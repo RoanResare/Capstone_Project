@@ -2,6 +2,7 @@ const { logEnvLoadSummary } = require("./config/loadEnv");
 const { app } = require("./app");
 const { env, validateStartupEnvironment } = require("./config/env");
 const { getMailTransportSettings, verifyMailerConnection } = require("./config/mailer");
+const { startDisposableEmailUpdates } = require("./services/disposableEmailDomains.service");
 
 logEnvLoadSummary();
 
@@ -13,6 +14,8 @@ try {
   });
   process.exit(1);
 }
+
+startDisposableEmailUpdates();
 
 app.listen(env.port, () => {
   console.info("[startup] Server ready.", {

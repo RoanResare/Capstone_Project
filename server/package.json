@@ -9,6 +9,7 @@
     "start": "node server.js",
     "repair:profiles": "node scripts/repairUserProfiles.js",
     "repair:usernames": "node scripts/backfillUsernames.js",
+    "update:disposable-domains": "node scripts/updateDisposableEmailDomains.js",
     "test": "echo \"No backend tests configured yet\""
   },
   "keywords": [],

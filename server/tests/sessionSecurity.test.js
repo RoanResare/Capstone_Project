@@ -402,11 +402,57 @@ test("historic pending revocations recover at login", async () => {
   assert.equal(revocations, 1);
 });
 
-test("malformed and disposable email errors are exactly the required message", async () => {
+test("malformed email errors retain the validation message", async () => {
   const service = registrationService();
-  for (const email of ["fake", "fake@@gmail.com", ".fake@gmail.com", "fake@-domain.com", "fake@yopmail.com"]) {
+  for (const email of ["fake", "fake@@gmail.com", ".fake@gmail.com", "fake@-domain.com"]) {
     await assert.rejects(service.validateRegistrationSecurity({ ip: "1.2.3.4" }, email),
       { statusCode: 400, message: "Illegitimate email cannot be verified" });
+  }
+});
+
+test("built-in disposable domains and subdomains reject before DNS or provider requests", async () => {
+  for (const emailValidationUrl of ["", "https://example.org/check?email={email}"]) {
+    const service = loadService("registrationSecurity.service.js", {
+      "../config/env": { env: { security: { emailValidationUrl } } },
+      "node:dns/promises": { Resolver: class { async resolveMx() { assert.fail("Disposable domains must not query DNS"); } } },
+    }, { fetch: async () => assert.fail("Disposable domains must not query the provider") });
+    for (const domain of ["hudzer.com", "mailinator.com", "tempmail.com", "temp-mail.org",
+      "10minutemail.com", "throwawaymail.com", "guerrillamail.com", "guerrillamail.net",
+      "yopmail.com", "1secmail.com", "maildrop.cc", "getnada.com", "inbox.mailinator.com"]) {
+      await assert.rejects(service.validateRegistrationSecurity({ ip: "1.2.3.4" }, ` User@${domain.toUpperCase()} `),
+        (error) => error.statusCode === 400 && error.message === "Temporary or disposable email addresses are not allowed"
+          && error.details.code === "DISPOSABLE_EMAIL_DOMAIN");
+    }
+  }
+});
+
+test("legitimate providers and custom business domains pass without substring-based false positives", async () => {
+  const dnsCalls = [];
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: {} } },
+    "node:dns/promises": { Resolver: class { async resolveMx(domain) {
+      dnsCalls.push(domain);
+      return [{ exchange: "mx.business.example" }];
+    } } },
+  });
+  for (const domain of ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"]) {
+    await service.validateRegistrationSecurity({}, `user+tag@${domain}`);
+  }
+  assert.equal(dnsCalls.length, 0);
+  for (const domain of ["business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.com"]) {
+    await service.validateRegistrationSecurity({}, `user@${domain}`);
+  }
+  assert.deepEqual(dnsCalls, ["business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.com"]);
+});
+
+test("provider-reported disposable domains use the new error without falsely classifying established providers", async () => {
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}" } } },
+  }, { fetch: async () => response({ valid: true, deliverable: true, disposable: true }) });
+  await assert.rejects(service.assertEmailIsDeliverable("user@new-disposable.example"),
+    { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
+  for (const domain of ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"]) {
+    await service.assertEmailIsDeliverable(`user@${domain}`);
   }
 });
 

@@ -61,17 +61,7 @@ function readBooleanFlag(value) {
   return false;
 }
 
-function getProviderCountries(data) {
-  return [data?.location?.country, data?.location?.country_code, data?.country, data?.country_code]
-    .filter((value) => typeof value === "string" && value.trim())
-    .map((value) => value.trim().toLowerCase());
-}
-
 function isBlockedProviderResult(data) {
-  const countries = getProviderCountries(data);
-  if (!countries.length || countries.some((country) => !["philippines", "ph", "phl"].includes(country))) {
-    return true;
-  }
   const containers = [data, data?.security, data?.risk, data?.privacy, data?.threat].filter(Boolean);
   return containers.some((item) => ["is_vpn", "is_proxy", "is_tor", "is_hosting", "vpn", "proxy", "tor", "hosting"]
     .some((key) => readBooleanFlag(item?.[key])));
@@ -94,7 +84,7 @@ async function lookupIpSecurity(ip) {
     const blocked = isBlockedProviderResult(data);
     if (blocked) {
       console.warn("[session-security] Connection blocked.", {
-        ip, countries: getProviderCountries(data), blocked: true,
+        ip, blocked: true,
       });
     }
     return { checked: true, blocked, data };

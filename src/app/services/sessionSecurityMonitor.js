@@ -1,4 +1,4 @@
-export function monitorSessionSecurity({ verify, router, window, document, connection, onViolation, intervalMs = 5000 }) {
+export function monitorSessionSecurity({ verify, router, window, document, connection, onViolation, intervalMs = 2000 }) {
   let disposed = false;
   let checking = false;
   let queued = false;
@@ -21,10 +21,28 @@ export function monitorSessionSecurity({ verify, router, window, document, conne
     }
   };
   let locationKey = router.state.location.key;
+  let navigationState = router.state.navigation?.state;
+  let revalidationState = router.state.revalidation;
   const unsubscribe = router.subscribe((state) => {
-    if (locationKey !== state.location.key) { locationKey = state.location.key; void check(); }
+    const changed = locationKey !== state.location.key
+      || navigationState !== state.navigation?.state || revalidationState !== state.revalidation;
+    locationKey = state.location.key;
+    navigationState = state.navigation?.state;
+    revalidationState = state.revalidation;
+    if (changed) void check();
   });
+  let lastActivityCheck = -Infinity;
+  const checkActivity = () => {
+    if (disposed || !isDashboard() || document.visibilityState === "hidden") return;
+    const now = Date.now();
+    if (now - lastActivityCheck < 1000) return;
+    lastActivityCheck = now;
+    void check();
+  };
+  const activityEvents = ["pointerdown", "keydown", "change"];
+  activityEvents.forEach((event) => document.addEventListener(event, checkActivity, { passive: true }));
   const timer = window.setInterval(check, intervalMs);
+  window.addEventListener("pageshow", check);
   window.addEventListener("focus", check);
   window.addEventListener("online", check);
   document.addEventListener("visibilitychange", check);
@@ -34,6 +52,8 @@ export function monitorSessionSecurity({ verify, router, window, document, conne
     disposed = true;
     unsubscribe();
     window.clearInterval(timer);
+    window.removeEventListener("pageshow", check);
+    activityEvents.forEach((event) => document.removeEventListener(event, checkActivity));
     window.removeEventListener("focus", check);
     window.removeEventListener("online", check);
     document.removeEventListener("visibilitychange", check);

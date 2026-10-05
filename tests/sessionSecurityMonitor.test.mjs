@@ -10,7 +10,7 @@ function events() {
 }
 function environment(role = "customer") {
   const window = events();
-  window.setInterval = (callback, ms) => { assert.equal(ms, 5000); window.poll = callback; return 1; };
+  window.setInterval = (callback, ms) => { assert.equal(ms, 2000); window.poll = callback; return 1; };
   window.clearInterval = () => { window.poll = null; };
   const document = { ...events(), visibilityState: "visible" };
   const connection = events();
@@ -66,6 +66,38 @@ test("transient failures retry silently; confirmed security violations terminate
   cleanup();
 });
 
+test("dashboard interactions are throttled and router state changes check immediately", async (t) => {
+  let time = 1000;
+  t.mock.method(Date, "now", () => time);
+  const env = environment();
+  let checks = 0;
+  const cleanup = monitorSessionSecurity({ ...env, verify: async () => { checks++; }, onViolation: assert.fail });
+  await flush();
+  env.document.emit("pointerdown"); await flush();
+  assert.equal(checks, 2);
+  env.document.emit("keydown"); env.document.emit("change"); await flush();
+  assert.equal(checks, 2);
+  time += 1000;
+  env.document.emit("change"); await flush();
+  assert.equal(checks, 3);
+  env.router.state.navigation = { state: "loading" };
+  env.router.callback(env.router.state); await flush();
+  assert.equal(checks, 4);
+  env.router.callback(env.router.state); await flush();
+  assert.equal(checks, 4);
+  env.router.state.revalidation = "loading";
+  env.router.callback(env.router.state); await flush();
+  env.window.emit("pageshow"); await flush();
+  assert.equal(checks, 6);
+  env.document.visibilityState = "hidden";
+  time += 1000;
+  env.document.emit("pointerdown"); await flush();
+  assert.equal(checks, 6);
+  cleanup();
+  assert.equal(env.document.callbacks.size, 0);
+  assert.equal(env.window.callbacks.size, 0);
+});
+
 test("network changes during a pending check queue a fresh request without overlapping polls", async () => {
   const env = environment();
   let finish;
@@ -74,7 +106,7 @@ test("network changes during a pending check queue a fresh request without overl
     checks++;
     if (checks === 1) await new Promise((resolve) => { finish = resolve; });
   }, onViolation: assert.fail });
-  env.connection.emit("change"); env.window.poll();
+  env.connection.emit("change"); env.window.poll(); env.document.emit("pointerdown");
   assert.equal(checks, 1);
   finish(); await flush();
   assert.equal(checks, 2);

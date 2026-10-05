@@ -79,22 +79,22 @@ test("login and session security call ipapi.is and block explicit VPN, proxy, To
   }
 });
 
-test("foreign or missing countries block login and revoke active sessions without VPN flags", async () => {
+test("foreign or missing countries allow login and active sessions without explicit flags", async () => {
   for (const data of [
     { company: "Cloudflare, Inc.", country: "Japan", is_vpn: false },
     { country: "Singapore", is_proxy: false, is_hosting: false },
+    { country: "Hong Kong", is_vpn: false, is_tor: false },
     { location: { country: "Japan", country_code: "JP" } },
     { location: { country: "Philippines", country_code: "JP" } },
     {},
   ]) {
     const revocations = [];
     const service = sessionSecurityService({ fetch: async () => response(data), revocations });
-    await assert.rejects(service.validateAccessSecurity({ ip: "172.70.223.199" }),
-      { statusCode: 403, message: "Blocked VPN IP address" });
-    await assert.rejects(service.validateSessionSecurity({
+    assert.equal((await service.validateAccessSecurity({ ip: "172.70.223.199" })).checked, true);
+    await service.validateSessionSecurity({
       ip: "172.70.223.199", auth: { user: { uid: "user" }, claims: { iat: 10 } },
-    }), { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
-    assert.deepEqual(revocations, ["user"]);
+    });
+    assert.deepEqual(revocations, []);
   }
 });
 
@@ -119,7 +119,7 @@ test("clean IP changes update the session baseline; VPN activation terminates th
     records,
     revocations,
     fetch: async (url) => response({
-      country: "Philippines",
+      country: url.includes("9.9.9.9") ? "Japan" : "Hong Kong",
       is_vpn: url.includes("9.9.9.9"),
       is_proxy: false,
       is_tor: false,
@@ -131,6 +131,13 @@ test("clean IP changes update the session baseline; VPN activation terminates th
     auth: { user: { uid: "user" }, claims: { sub: "user", iat: 10, sessionId: "session-1" } },
   };
 
+  await service.validateSessionSecurity(req);
+  assert.equal(records.get("sessionConnections/session-1").ip, "1.1.1.1");
+  assert.deepEqual(revocations, []);
+
+  req.ip = "8.8.8.8";
+  await service.validateSessionSecurity(req);
+  req.ip = "1.1.1.1";
   await service.validateSessionSecurity(req);
   assert.equal(records.get("sessionConnections/session-1").ip, "1.1.1.1");
   assert.deepEqual(revocations, []);

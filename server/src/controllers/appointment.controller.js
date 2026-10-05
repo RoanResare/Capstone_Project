@@ -25,14 +25,29 @@ async function saveAppointment(req, res) {
     } else if (!["admin", "staff"].includes(user.role)) {
       throw new ApiError(403, "You cannot save appointments.");
     }
-    if (!existing.exists && appointment.slotId) {
+    const nextStatus = appointment.status || existing.data?.()?.status;
+    const assignedStaff = String(appointment.assignedStaff ?? existing.data?.()?.assignedStaff ?? "").trim();
+    if (["Confirmed", "Accepted"].includes(nextStatus) && !assignedStaff) {
+      throw new ApiError(400, "Assign a staff member before confirming the appointment.", { code: "STAFF_ASSIGNMENT_REQUIRED" });
+    }
+    if (user.role === "customer" && existing.exists &&
+        (appointment.status !== existing.data().status && appointment.status !== "Cancelled")) {
+      throw new ApiError(403, "Customers cannot confirm or approve appointments.");
+    }
+    if (appointment.slotId && (!existing.exists || appointment.slotId !== existing.data()?.slotId)) {
+      const slot = await transaction.get(db.collection("availabilitySlots").doc(appointment.slotId));
+      const availability = slot.data?.() || {};
+      if (slot.exists && (availability.isOpen === false || availability.disabled === true ||
+          ["cancelled", "disabled", "closed"].includes(String(availability.status || "").toLowerCase()))) {
+        throw new ApiError(409, "That time slot is no longer available. Please choose another slot.", { code: "SLOT_UNAVAILABLE" });
+      }
       const slots = await transaction.get(
         db.collection("appointments").where("slotId", "==", appointment.slotId),
       );
       const activeCount = slots.docs.filter((entry) =>
-        ["Pending", "Confirmed", "Accepted"].includes(entry.data().status),
+        entry.id !== id && ["Pending", "Confirmed", "Accepted"].includes(entry.data().status),
       ).length;
-      if (activeCount >= Math.max(Number(appointment.slotCapacity) || 1, 1)) {
+      if (activeCount >= Math.max(Number(availability.capacity ?? appointment.slotCapacity) || 1, 1)) {
         throw new ApiError(409, "That time slot is already full. Please choose another slot.", { code: "SLOT_FULL" });
       }
     }

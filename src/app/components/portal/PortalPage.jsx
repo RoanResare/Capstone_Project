@@ -6,7 +6,6 @@ import {
   Eye,
   EyeOff,
   Clock3,
-  Image,
   Mail,
   PawPrint,
   Phone,
@@ -371,6 +370,7 @@ function buildPetRecordForm(record = null) {
     customPetType,
     breed,
     customBreed,
+    gender: ["Male", "Female"].includes(current.gender) ? current.gender : "",
     lastVisit: typeof current.lastVisit === "string" ? current.lastVisit : "",
     notes: typeof current.notes === "string" ? current.notes : "",
     visitRecordsText: Array.isArray(current.visitRecords)
@@ -534,16 +534,20 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
 
         <div>
           <label className="mb-2 block text-sm font-medium text-[#425A60]">
-            Assign team member
+            Assign staff
           </label>
           <select
             value={appointment.assignedStaff || ""}
+            disabled={staffOptions.length === 0 || ["Completed", "Cancelled", "Rejected"].includes(appointment.status)}
             onChange={(event) =>
               updateAppointment(appointment.id, { assignedStaff: event.target.value })
             }
             className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
           >
-            <option value="">Assign staff</option>
+            <option value="" disabled>{staffOptions.length ? "Select staff" : "No active staff available"}</option>
+            {appointment.assignedStaff && !staffOptions.includes(appointment.assignedStaff) && (
+              <option value={appointment.assignedStaff} disabled>{appointment.assignedStaff}</option>
+            )}
             {staffOptions.map((staffName) => (
               <option key={staffName}>{staffName}</option>
             ))}
@@ -554,7 +558,9 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           <button
             type="button"
             onClick={() => updateAppointment(appointment.id, { status: "Confirmed" })}
-            className="rounded-2xl bg-[#E8F7EE] px-4 py-3 text-sm font-semibold text-[#1D7C45]"
+            disabled={!appointment.assignedStaff?.trim() || appointment.status !== "Pending"}
+            title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Confirm appointment"}
+            className="rounded-2xl bg-[#E8F7EE] px-4 py-3 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Approve appointment
           </button>
@@ -733,7 +739,8 @@ function AppointmentsWorkspace({
   visibleNotifications,
   updateAppointment,
 }) {
-  const { success: showSuccessToast } = useToast();
+  const toast = useToast();
+  const { success: showSuccessToast } = toast;
   const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState("All");
   const [searchValue, setSearchValue] = useState("");
@@ -742,11 +749,16 @@ function AppointmentsWorkspace({
     .filter((appointment) => appointment && typeof appointment === "object")
     .slice()
     .sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"]));
-  const staffOptions = (Array.isArray(state.users) ? state.users : [])
-    .filter((user) => user && user.status === "active" && ["admin", "staff"].includes(user.role))
-    .map((user) => user.name);
-  const handleAppointmentUpdate = (appointmentId, updates) => {
-    updateAppointment(appointmentId, updates, currentUser.name);
+  const staffOptions = [...new Set((Array.isArray(state.users) ? state.users : [])
+    .filter((user) => user && user.status === "active" && user.role === "staff")
+    .map((user) => user.name?.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+  const handleAppointmentUpdate = async (appointmentId, updates) => {
+    try {
+      await updateAppointment(appointmentId, updates, currentUser.name);
+    } catch (error) {
+      toast.error(error.message || "Unable to update appointment.");
+      return;
+    }
 
     if (updates?.status === "Rejected") {
       showSuccessToast("Appointment rejected successfully.");
@@ -943,12 +955,18 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
     const nextSlot = {
       ...slot,
       isOpen,
+      disabled: !isOpen,
+      status: isOpen ? "Open" : "Cancelled",
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser?.name || "Staff",
     };
 
-    await Promise.resolve(saveAvailabilitySlot(nextSlot));
-    toast.success(`${formatDateLabel(slot.date)} ${formatTimeLabel(slot.time)} is now ${isOpen ? "open" : "disabled"}.`);
+    try {
+      await saveAvailabilitySlot(nextSlot);
+      toast.success(`${formatDateLabel(slot.date)} ${formatTimeLabel(slot.time)} is now ${isOpen ? "open" : "disabled"}.`);
+    } catch (error) {
+      toast.error(error.message || "Unable to update this slot. Please try again.");
+    }
   };
 
   return (
@@ -1132,6 +1150,11 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
+    if (!["Male", "Female"].includes(form.gender)) {
+      setFeedback({ type: "error", message: "Select Male or Female for pet gender." });
+      return;
+    }
+
     if (form.breed === "Other" && !form.customBreed.trim()) {
       setFeedback({
         type: "error",
@@ -1161,6 +1184,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
         petName: form.petName.trim(),
         petType: resolvedPetType,
         breed: resolvedBreed,
+        gender: form.gender,
         lastVisit: form.lastVisit.trim(),
         notes: form.notes.trim(),
         visitRecords: normalizeLineItems(form.visitRecordsText),
@@ -1365,6 +1389,17 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   )}
                 </div>
 
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Pet gender
+                  </label>
+                  <select required value={form.gender} onChange={updateField("gender")}
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none focus:border-[#2D9B9B]">
+                    <option value="" disabled>Select pet gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
                     Last visit
@@ -2182,89 +2217,6 @@ function ManageUsersWorkspace({
   );
 }
 
-function PhotoModerationWorkspace({ currentUser, state, moderatePhoto }) {
-  const toast = useToast();
-  const [reviewNote, setReviewNote] = useState("");
-  const [savingId, setSavingId] = useState("");
-  const queue = (state.photoModeration || []).filter(
-    (photo) => photo.assetType === "pet" && photo.status === "pending",
-  );
-  const reviewed = (state.photoModeration || []).filter(
-    (photo) => photo.assetType === "pet" && !["pending", "cancelled"].includes(photo.status),
-  );
-
-  const review = async (photo, status) => {
-    setSavingId(photo.id);
-    const result = await moderatePhoto(photo.id, status, reviewNote.trim());
-    setSavingId("");
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
-    setReviewNote("");
-    toast.success(status === "approved" ? "Photo approved." : "Photo rejected and removed.");
-  };
-
-  if (currentUser?.role !== "admin") {
-    return <EmptyState title="Administrator access required" message="Only administrators can review pet photos." />;
-  }
-
-  return (
-    <div className="space-y-5">
-      <PanelCard
-        title="Pet photo approval queue"
-        description="Review cat and dog photos for inappropriate content before they are shown to customers."
-      >
-        {queue.length === 0 ? (
-          <EmptyState title="Queue is clear" message="New cat and dog photos will appear here while they await review." />
-        ) : (
-          <div className="space-y-4">
-            {queue.map((photo) => (
-              <article key={photo.id} className="grid gap-4 rounded-2xl border border-[#E2EBEB] bg-[#FBFDFC] p-4 lg:grid-cols-[132px_minmax(0,1fr)_220px] lg:items-center">
-                <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-xl bg-[#EAF4F4] text-[#2D6B73]">
-                  {photo.photoURL ? <img src={photo.photoURL} alt={`${photo.subjectName} submitted photo`} className="h-full w-full object-cover" /> : <Image size={30} />}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-semibold text-[#20343B]">{photo.subjectName}</h3>
-                    <StatusBadge status="Pet photo" />
-                  </div>
-                  <p className="mt-2 text-sm text-[#607277]">Submitted by {photo.ownerName} | {photo.ownerEmail || "Customer account"}</p>
-                  <p className="mt-2 text-xs text-[#7A9297]">Uploaded {formatDateTime(photo.createdAt)}</p>
-                  <input
-                    value={reviewNote}
-                    autoComplete="off"
-                    onChange={(event) => setReviewNote(event.target.value)}
-                    maxLength={180}
-                    placeholder="Optional rejection note"
-                    className="mt-3 w-full rounded-xl border border-[#D9E7E7] bg-white px-3 py-2 text-sm outline-none focus:border-[#2D9B9B]"
-                  />
-                </div>
-                <div className="flex gap-2 lg:flex-col">
-                  <button type="button" onClick={() => review(photo, "approved")} disabled={savingId === photo.id} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#1D7C45] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Check size={16} /> Approve</button>
-                  <button type="button" onClick={() => review(photo, "rejected")} disabled={savingId === photo.id} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#B23949] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><X size={16} /> Reject / Remove</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </PanelCard>
-
-      {reviewed.length > 0 && (
-        <PanelCard title="Recently reviewed" description="A short audit trail of completed photo decisions.">
-          <div className="space-y-2">
-            {reviewed.slice(0, 8).map((photo) => (
-              <div key={photo.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#EDF2F2] px-4 py-3">
-                <div><p className="font-semibold text-[#20343B]">{photo.subjectName} | {photo.assetType} photo</p><p className="text-sm text-[#607277]">{photo.ownerName} | {photo.reviewedBy || "Administrator"}</p></div>
-                <StatusBadge status={photo.status === "approved" ? "Approved" : "Rejected"} />
-              </div>
-            ))}
-          </div>
-        </PanelCard>
-      )}
-    </div>
-  );
-}
 
 export function PortalPage() {
   const location = useLocation();
@@ -2278,14 +2230,11 @@ export function PortalPage() {
     createStaff,
     updateUser,
     deleteUser,
-    moderatePhoto,
   } = useApp();
   const activeModule = location.pathname.endsWith("/pet-records")
     ? "pet-records"
     : location.pathname.endsWith("/schedule")
       ? "schedule"
-    : location.pathname.endsWith("/photo-moderation")
-      ? "photo-moderation"
     : location.pathname.endsWith("/manage-users")
       ? "manage-users"
       : "appointments";
@@ -2321,10 +2270,6 @@ export function PortalPage() {
         deleteUser={deleteUser}
       />
     );
-  }
-
-  if (activeModule === "photo-moderation") {
-    return <PhotoModerationWorkspace currentUser={currentUser} state={state} moderatePhoto={moderatePhoto} />;
   }
 
   return (

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer, useState } from "react";
 import {
   buildSeedAvailabilitySlots,
   isServiceAvailableOnDate,
@@ -14,11 +14,10 @@ import {
 } from "../utils/browserState.js";
 import { useAuth } from "./AuthContext.jsx";
 import {
-  deleteAvailabilitySlotDocument,
   deletePetRecordDocument,
   loadNotificationDocuments,
   loadAppointmentDocuments,
-  loadAvailabilitySlotDocuments,
+  subscribeAvailabilitySlots,
   loadPetRecordDocuments,
   loadPhotoModerationDocuments,
   saveAppointmentDocument,
@@ -528,6 +527,7 @@ function normalizePetRecord(record) {
     petName: typeof current.petName === "string" ? current.petName.trim() : "",
     petType: typeof current.petType === "string" ? current.petType.trim() : "",
     breed: typeof current.breed === "string" ? current.breed.trim() : "",
+    gender: ["Male", "Female"].includes(current.gender) ? current.gender : "",
     ageValue: typeof current.ageValue === "string" ? current.ageValue.trim() : "",
     ageUnit: current.ageUnit === "years" ? "years" : "months",
     weightKg: typeof current.weightKg === "string" ? current.weightKg.trim() : "",
@@ -1703,6 +1703,7 @@ export function AppProvider({ children }) {
     signOut: signOutFromAuth,
   } = useAuth();
   const [state, dispatch] = useReducer(appReducer, undefined, loadInitialState);
+  const [availabilityUserId, setAvailabilityUserId] = useState(null);
   const currentUser = authenticatedUser ? normalizeSessionUser(authenticatedUser) : null;
 
   useEffect(() => {
@@ -1751,18 +1752,17 @@ export function AppProvider({ children }) {
     Promise.all([
       loadAppointmentDocuments(),
       loadPetRecordDocuments(),
-      loadAvailabilitySlotDocuments(),
       loadPhotoModerationDocuments(),
       loadNotificationDocuments(),
     ]).then(
-      ([appointments, petRecords, availabilitySlots, photoRecords, notificationRecords]) => {
+      ([appointments, petRecords, photoRecords, notificationRecords]) => {
         if (cancelled) {
           return;
         }
 
         dispatch({
           type: "HYDRATE_SCHEDULE_DATA",
-          payload: { appointments, petRecords, availabilitySlots },
+          payload: { appointments, petRecords },
         });
 
         if (photoRecords.length > 0) {
@@ -1782,6 +1782,15 @@ export function AppProvider({ children }) {
     return () => {
       cancelled = true;
     };
+  }, [currentUser?.uid, currentUser?.role]);
+
+  useEffect(() => {
+    setAvailabilityUserId(null);
+    if (!currentUser) return undefined;
+    return subscribeAvailabilitySlots((availabilitySlots) => {
+      dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { availabilitySlots } });
+      setAvailabilityUserId(currentUser.uid);
+    });
   }, [currentUser?.uid, currentUser?.role]);
 
   useEffect(() => {
@@ -1938,6 +1947,7 @@ export function AppProvider({ children }) {
 
   const value = {
     state,
+    availabilityReady: Boolean(currentUser?.uid && availabilityUserId === currentUser.uid),
     currentUser,
     visibleNotifications,
     accessibleModules: currentUser
@@ -2354,6 +2364,9 @@ export function AppProvider({ children }) {
         : null;
 
       if (!nextAppointment) return false;
+      if (["Confirmed", "Accepted"].includes(nextAppointment.status) && !nextAppointment.assignedStaff?.trim()) {
+        throw new Error("Assign a staff member before confirming the appointment.");
+      }
       await saveAppointmentDocument(nextAppointment);
       dispatch({
         type: "UPDATE_APPOINTMENT",
@@ -2367,34 +2380,18 @@ export function AppProvider({ children }) {
       return true;
     },
     savePetRecord(payload, actorName) {
-      const existingRecord = state.petRecords.find((record) => record.id === payload.id);
-      const hasNewPhoto = Boolean(payload.photoURL) && payload.photoURL !== existingRecord?.photoURL;
-      const photoModerationId = hasNewPhoto ? createId("photo") : payload.photoModerationId || existingRecord?.photoModerationId || "";
+      if (!["Male", "Female"].includes(payload.gender)) {
+        throw new Error("Pet gender must be Male or Female.");
+      }
       const nextRecord = normalizePetRecord({
         id: payload.id || createId("pet"),
         visitRecords: [],
         medicalRecords: [],
         notes: "",
         ...payload,
-        photoModerationId,
       });
-
-      if (hasNewPhoto) {
-        const nextPhoto = normalizePhotoModeration({
-          id: photoModerationId,
-          assetType: "pet",
-          assetId: nextRecord.id,
-          ownerId: nextRecord.customerId,
-          ownerEmail: nextRecord.customerEmail,
-          ownerName: nextRecord.ownerName,
-          subjectName: nextRecord.petName,
-          photoURL: nextRecord.photoURL,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-        });
-        dispatch({ type: "SUBMIT_PHOTO_MODERATION", payload: nextPhoto });
-        void savePhotoModerationDocument(nextPhoto);
-      }
+      delete nextRecord.photoURL;
+      delete nextRecord.photoModerationId;
 
       dispatch({
         type: "UPSERT_PET_RECORD",
@@ -2411,7 +2408,7 @@ export function AppProvider({ children }) {
       });
       return deletePetRecordDocument(id);
     },
-    saveAvailabilitySlot(payload) {
+    async saveAvailabilitySlot(payload) {
       const nextSlot = {
         id: payload.id || createId("slot"),
         capacity: Number(payload.capacity) || 1,
@@ -2419,20 +2416,23 @@ export function AppProvider({ children }) {
         ...payload,
       };
 
+      await saveAvailabilitySlotDocument(nextSlot);
       dispatch({
         type: "UPSERT_AVAILABILITY_SLOT",
         payload: nextSlot,
         meta: { actorName: currentUser?.name || "Staff" },
       });
-      return saveAvailabilitySlotDocument(nextSlot);
+      return true;
     },
     deleteAvailabilitySlot(id) {
-      dispatch({
-        type: "DELETE_AVAILABILITY_SLOT",
-        payload: { id },
-        meta: { actorName: currentUser?.name || "Staff" },
+      // Keep an override so forecast slots cannot reappear after removal.
+      return value.saveAvailabilitySlot({
+        ...state.availabilitySlots.find((slot) => slot.id === id),
+        id,
+        isOpen: false,
+        disabled: true,
+        status: "Cancelled",
       });
-      return deleteAvailabilitySlotDocument(id);
     },
     logChatbotInquiry(payload) {
       dispatch({

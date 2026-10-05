@@ -75,7 +75,8 @@ function formatDateTimeLabel(date, time) {
 }
 
 function isBookableFutureSlot(slot) {
-  if (!slot?.date || !slot?.time || !slot.isOpen) return false;
+  if (!slot?.date || !slot?.time || slot.isOpen !== true || slot.disabled === true ||
+      ["cancelled", "disabled", "closed"].includes(String(slot.status || "").toLowerCase())) return false;
   const parsed = new Date(`${slot.date}T${String(slot.time).slice(0, 5)}:00`);
   return !Number.isNaN(parsed.getTime()) && parsed.getTime() > Date.now();
 }
@@ -127,7 +128,7 @@ export function AppointmentBooking({ embedded = false }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { state, createAppointment, getPendingAppointmentCount } = useApp();
+  const { state, availabilityReady, createAppointment, getPendingAppointmentCount } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
@@ -159,8 +160,8 @@ export function AppointmentBooking({ embedded = false }) {
   const appointmentServiceId = allSelectedServicesDaily ? "pet-grooming" : "consultation";
   const forecastAvailabilitySlots = useMemo(() => buildSeedAvailabilitySlots({ days: 120 }), []);
   const availabilitySlots = useMemo(
-    () => mergeSlotsById(forecastAvailabilitySlots, state.availabilitySlots || []),
-    [forecastAvailabilitySlots, state.availabilitySlots],
+    () => availabilityReady ? mergeSlotsById(forecastAvailabilitySlots, state.availabilitySlots || []) : [],
+    [availabilityReady, forecastAvailabilitySlots, state.availabilitySlots],
   );
   const availableSlots = useMemo(
     () =>
@@ -570,7 +571,7 @@ export function AppointmentBooking({ embedded = false }) {
                   </div>
                 ) : (
                   <p className="mt-5 text-sm leading-6 text-[#607277]">
-                    Choose a highlighted date to see available times.
+                    {availabilityReady ? "Choose a highlighted date to see available times." : "Loading available times..."}
                   </p>
                 )}
                 {errors.selectedDate && <p className="mt-3 text-sm text-[#B23949]">{errors.selectedDate}</p>}

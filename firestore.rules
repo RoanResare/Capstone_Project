@@ -50,6 +50,11 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    match /availabilitySlots/{slotId} {
+      allow read: if hasActiveSession();
+      allow write: if hasActiveSession() && request.auth.token.role in ['admin', 'staff'];
+    }
+
     // OTHER COLLECTIONS (Appointments, Pets, Notifications, etc.)
     match /appointments/{document=**} {
       allow read: if hasActiveSession();
@@ -58,7 +63,9 @@ service cloud.firestore {
     }
 
     match /pets/{document=**} {
-      allow read, write: if hasActiveSession();
+      allow read, delete: if hasActiveSession();
+      allow create, update: if hasActiveSession()
+        && request.resource.data.gender in ['Male', 'Female'];
     }
 
     match /notifications/{document=**} {

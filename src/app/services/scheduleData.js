@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   setDoc,
 } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
@@ -118,7 +119,11 @@ export function saveAppointmentDocument(appointment) {
 }
 
 export function savePetRecordDocument(record) {
-  return saveDocument(COLLECTIONS.petRecords, record).catch((error) => {
+  if (!["Male", "Female"].includes(record?.gender)) return Promise.reject(new Error("Pet gender must be Male or Female."));
+  const petData = { ...record };
+  delete petData.photoURL;
+  delete petData.photoModerationId;
+  return saveDocument(COLLECTIONS.petRecords, petData).catch((error) => {
     logSyncError("Pet record sync", error);
     throw error;
   });
@@ -158,6 +163,13 @@ export function loadAvailabilitySlotDocuments() {
   return loadScheduleDocuments(COLLECTIONS.availabilitySlots);
 }
 
+export function subscribeAvailabilitySlots(onChange) {
+  if (!canSyncScheduleData()) return () => {};
+  return onSnapshot(collection(db, COLLECTIONS.availabilitySlots),
+    (snapshot) => onChange(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }))),
+    (error) => logSyncError("Availability subscription", error));
+}
+
 export function saveNotificationDocument(notification) {
   return saveDocument(COLLECTIONS.notifications, notification).catch((error) => {
     logSyncError("Notification sync", error);
@@ -168,7 +180,7 @@ export function saveNotificationDocument(notification) {
 export function saveAvailabilitySlotDocument(slot) {
   return saveDocument(COLLECTIONS.availabilitySlots, slot).catch((error) => {
     logSyncError("Availability slot sync", error);
-    return false;
+    throw error;
   });
 }
 

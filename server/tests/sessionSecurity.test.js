@@ -545,3 +545,59 @@ test("booking transaction enforces ownership and capacity before writing", async
   await controller.saveAppointment(req, { json() {} });
   assert.equal(writes, 1);
 });
+
+function appointmentFixture({ existing, slot, active = [] } = {}) {
+  const writes = [];
+  const controller = loadService("../controllers/appointment.controller.js", {
+    "../config/firebaseAdmin": { db: {
+      collection: (name) => ({ doc: (id) => ({ name, id }), where: () => ({ query: true }) }),
+      runTransaction: async (action) => action({
+        get: async (ref) => ref.query ? { docs: active.map((data, index) => ({ id: `other-${index}`, data: () => data })) }
+          : { exists: Boolean(ref.name === "appointments" ? existing : slot),
+            data: () => ref.name === "appointments" ? existing : slot },
+        set: (ref, data) => writes.push(data),
+      }),
+    } },
+  });
+  return { writes, save: (body, role = "customer") => controller.saveAppointment({
+    params: { id: "booking" }, auth: { user: { uid: "user", role } },
+    body: { id: "booking", customerId: "user", status: "Pending", ...body },
+  }, { json() {} }) };
+}
+
+test("admin and staff must assign staff before confirmation or acceptance", async () => {
+  for (const role of ["admin", "staff"]) {
+    for (const status of ["Confirmed", "Accepted"]) {
+      const fixture = appointmentFixture({ existing: { status: "Pending" } });
+      for (const assignedStaff of [undefined, "", "   "]) {
+        await assert.rejects(fixture.save({ status, assignedStaff }, role), { statusCode: 400 });
+      }
+      assert.equal(fixture.writes.length, 0);
+      await fixture.save({ status, assignedStaff: "Active Staff" }, role);
+      assert.equal(fixture.writes.length, 1);
+    }
+  }
+  const fixture = appointmentFixture({ existing: { status: "Confirmed", assignedStaff: "Staff" } });
+  await assert.rejects(fixture.save({ status: "Confirmed", assignedStaff: "" }, "admin"), { statusCode: 400 });
+});
+
+test("disabled slots reject new bookings and rescheduling; reopened slots accept bookings", async () => {
+  for (const slot of [{ isOpen: false }, { disabled: true }, { status: "Cancelled" }, { status: "disabled" }, { status: "Closed" }]) {
+    for (const existing of [undefined, { customerId: "user", status: "Pending", slotId: "old" }]) {
+      const fixture = appointmentFixture({ slot, existing });
+      await assert.rejects(fixture.save({ slotId: "closed" }), { statusCode: 409 });
+      assert.equal(fixture.writes.length, 0);
+    }
+  }
+  const reopened = appointmentFixture({ slot: { isOpen: true, disabled: false, status: "Open", capacity: 3 } });
+  await reopened.save({ slotId: "reopened" });
+  assert.equal(reopened.writes.length, 1);
+});
+
+test("stored slot capacity overrides customer input and customers cannot confirm appointments", async () => {
+  const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending" }] });
+  await assert.rejects(full.save({ slotId: "slot", slotCapacity: 99 }), { statusCode: 409 });
+  const customer = appointmentFixture({ existing: { customerId: "user", status: "Pending" } });
+  await assert.rejects(customer.save({ status: "Confirmed", assignedStaff: "Staff" }), { statusCode: 403 });
+  assert.equal(customer.writes.length, 0);
+});

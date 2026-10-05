@@ -184,7 +184,6 @@ export const router = createBrowserRouter([
       { path: "appointments", element: <RouteLoader Component={PortalPage} /> },
       { path: "schedule", element: <RouteLoader Component={PortalPage} /> },
       { path: "pet-records", element: <RouteLoader Component={PortalPage} /> },
-      { path: "photo-moderation", element: <RouteLoader Component={PortalPage} /> },
       {
         path: "manage-users",
         element: (

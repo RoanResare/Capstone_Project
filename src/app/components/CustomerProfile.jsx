@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import {
   Bell,
   CalendarDays,
-  Camera,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -20,9 +19,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
-import { compressImageFile, fileToDataUrl } from "../utils/imageCompression.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
-import { prescreenPetPhoto } from "../services/userApi.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
 
 const dashboardTabs = [
@@ -33,10 +30,6 @@ const dashboardTabs = [
   { id: "profile", label: "Profile", icon: UserRound },
 ];
 
-const PET_PHOTO_PENDING_MESSAGE =
-  "Pet photo uploaded successfully. Waiting for admin approval.";
-const allowedPetPhotoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const maxPetPhotoSizeBytes = 5 * 1024 * 1024;
 
 function statusTone(status) {
   if (["Completed", "active"].includes(status)) {
@@ -132,7 +125,7 @@ function buildEmptyPetForm() {
     ageUnit: "months",
     weightKg: "",
     notes: "",
-    photoURL: "",
+    gender: "",
   };
 }
 
@@ -156,7 +149,7 @@ function buildPetFormFromRecord(record = {}) {
     ageUnit: record.ageUnit || "months",
     weightKg: record.weightKg || "",
     notes: record.notes || "",
-    photoURL: record.photoURL || "",
+    gender: ["Male", "Female"].includes(record.gender) ? record.gender : "",
   };
 }
 
@@ -281,7 +274,7 @@ export function CustomerProfile() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const toast = useToast();
-  const { accessToken, currentUser, isAuthenticated, isLoading, signOut, updateProfile } = useAuth();
+  const { currentUser, isAuthenticated, isLoading, signOut, updateProfile } = useAuth();
   const {
     markNotificationRead,
     deletePetRecord,
@@ -376,15 +369,6 @@ export function CustomerProfile() {
   const unreadNotificationCount = currentCustomerId
     ? visibleNotifications.filter((notification) => !notification.readBy.includes(currentCustomerId)).length
     : 0;
-  const petPhotoModerationById = useMemo(
-    () =>
-      new Map(
-        (state.photoModeration || [])
-          .filter((photo) => photo.assetType === "pet")
-          .map((photo) => [photo.id, photo]),
-      ),
-    [state.photoModeration],
-  );
   const upcomingAppointments = customerAppointments.filter((appointment) =>
     ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
   );
@@ -402,7 +386,7 @@ export function CustomerProfile() {
           petForm.ageValue.trim() ||
           petForm.weightKg.trim() ||
           petForm.notes.trim() ||
-          petForm.photoURL,
+          petForm.gender,
       );
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
@@ -460,22 +444,6 @@ export function CustomerProfile() {
     phone: profileForm.phone.trim(),
     ...overrides,
   });
-
-  const validatePetPhoto = (file) => {
-    if (!file) {
-      return "Please select a valid image file.";
-    }
-
-    if (!allowedPetPhotoTypes.has(file.type)) {
-      return "Please select a JPG, PNG, or WEBP pet image.";
-    }
-
-    if (file.size > maxPetPhotoSizeBytes) {
-      return "Pet pictures must be 5 MB or smaller.";
-    }
-
-    return "";
-  };
 
   const applySavedProfile = (user, message, options = {}) => {
     setProfileForm({
@@ -576,39 +544,6 @@ export function CustomerProfile() {
     }
   };
 
-  const handlePetPhotoSelection = async (event) => {
-    const file = event.target.files?.[0] || null;
-    event.target.value = "";
-
-    const validationMessage = validatePetPhoto(file);
-    if (validationMessage) {
-      setFeedback({ type: "error", message: validationMessage });
-      toast.error(validationMessage);
-      return;
-    }
-
-    try {
-      const compressedFile = await compressImageFile(file, {
-        maxDimension: 500,
-        quality: 0.6,
-        outputType: file.type || "image/jpeg",
-      });
-      const photoURL = await fileToDataUrl(compressedFile || file);
-      await prescreenPetPhoto(accessToken, photoURL);
-      setPetForm((current) => ({ ...current, photoURL }));
-      setFeedback({ type: "success", message: PET_PHOTO_PENDING_MESSAGE });
-      toast.success(PET_PHOTO_PENDING_MESSAGE);
-    } catch (error) {
-      const message =
-        error instanceof Error && error.message
-          ? error.message
-          : "Unable to prepare pet photo. Please try another image.";
-      console.error("[customer-profile] Pet photo preparation failed.", error);
-      setFeedback({ type: "error", message });
-      toast.error(message);
-    }
-  };
-
   const savePet = async (event) => {
     event.preventDefault();
     if (isSavingPet) {
@@ -624,6 +559,13 @@ export function CustomerProfile() {
 
     if (petForm.breed === "Other" && !petForm.customBreed.trim()) {
       const message = "Specify the custom breed.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
+    if (!["Male", "Female"].includes(petForm.gender)) {
+      const message = "Select Male or Female for pet gender.";
       setFeedback({ type: "error", message });
       toast.error(message);
       return;
@@ -650,17 +592,13 @@ export function CustomerProfile() {
       visitRecords: existingRecord?.visitRecords || [],
       medicalRecords: existingRecord?.medicalRecords || [],
       notes: petForm.notes,
-      photoURL: petForm.photoURL || existingRecord?.photoURL || "",
+      gender: petForm.gender,
       updatedAt: new Date().toISOString(),
     };
 
     try {
       const savePromise = savePetRecord(nextRecord, profileForm.fullName);
-      const photoSubmitted =
-        Boolean(nextRecord.photoURL) && nextRecord.photoURL !== existingRecord?.photoURL;
-      const saveMessage = photoSubmitted
-        ? PET_PHOTO_PENDING_MESSAGE
-        : "Pet record saved successfully.";
+      const saveMessage = "Pet record saved successfully.";
       setPetForm(buildEmptyPetForm());
       setIsSavingPet(false);
       setFeedback({ type: "success", message: saveMessage });
@@ -668,9 +606,7 @@ export function CustomerProfile() {
 
       const didSync = await savePromise;
       if (!didSync) {
-        const message = photoSubmitted
-          ? "Photo is waiting for approval, but Firestore sync is delayed. It will retry with your next session."
-          : "Pet record was saved locally, but Firestore sync failed. Please check your connection.";
+        const message = "Pet record was saved locally, but Firestore sync failed. Please check your connection.";
         setFeedback({ type: "error", message });
         toast.error(message);
       }
@@ -936,6 +872,16 @@ export function CustomerProfile() {
                             kg
                           </span>
                         </label>
+                        <label className="grid gap-2 text-sm font-medium text-[#425A60]">
+                          Pet gender
+                          <select required value={petForm.gender}
+                            onChange={(event) => setPetForm((current) => ({ ...current, gender: event.target.value }))}
+                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none focus:border-[#2D9B9B]">
+                            <option value="" disabled>Select pet gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </select>
+                        </label>
                         <textarea
                           value={petForm.notes}
                           onChange={(event) =>
@@ -945,32 +891,6 @@ export function CustomerProfile() {
                           className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                           placeholder="Notes for staff or future visits"
                         />
-                        <div className="flex flex-col gap-3 rounded-[20px] border border-dashed border-[#D9E7E7] bg-white p-4 sm:flex-row sm:items-center">
-                          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#EEF6F6] text-[#5E777C]">
-                            {petForm.photoURL ? (
-                              <img
-                                src={petForm.photoURL}
-                                alt={`${petForm.petName || "Pet"} preview`}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <PawPrint size={26} />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
-                              <Camera size={16} />
-                              Pet photo
-                              <input
-                                type="file"
-                                autoComplete="off"
-                                accept="image/png,image/jpeg,image/webp"
-                                onChange={handlePetPhotoSelection}
-                                className="hidden"
-                              />
-                            </label>
-                          </div>
-                        </div>
                         <div className="flex flex-wrap gap-3">
                           <button
                             type="submit"
@@ -1002,32 +922,22 @@ export function CustomerProfile() {
                         </p>
                         <div className={`mt-3 ${petCardGridClass}`}>
                           {customerPetRecords.map((record) => {
-                            const photoReview = petPhotoModerationById.get(record.photoModerationId);
-
                             return (
                               <div
                                 key={record.id}
                                 className="flex min-h-[13rem] min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-3.5 text-left transition hover:border-[#2D9B9B]"
                               >
                                 <div className="flex min-w-0 items-start gap-3">
-                                  {record.photoURL && photoReview?.status !== "pending" ? (
-                                    <img
-                                      src={record.photoURL}
-                                      alt={`${record.petName} profile`}
-                                      className="h-10 w-10 shrink-0 rounded-2xl object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
-                                      <PawPrint size={18} />
-                                    </div>
-                                  )}
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
+                                    <PawPrint size={18} />
+                                  </div>
                                   <div className="min-w-0">
                                     <h3 className="truncate text-base font-semibold text-[#20343B]">
                                       {record.petName}
                                     </h3>
                                     <div className="mt-1 flex flex-wrap gap-1.5">
                                       <StatusChip label={record.petType} />
-                                      {photoReview?.status === "pending" && <StatusChip label="Waiting for Approval" />}
+                                      {record.gender && <StatusChip label={record.gender} />}
                                     </div>
                                   </div>
                                 </div>

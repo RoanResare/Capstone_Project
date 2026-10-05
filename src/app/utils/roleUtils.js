@@ -8,7 +8,6 @@ const PORTAL_PATHS = new Set([
   "/portal/appointments",
   "/portal/schedule",
   "/portal/pet-records",
-  "/portal/photo-moderation",
   "/portal/manage-users",
 ]);
 const HOME_PATHS = Object.freeze({

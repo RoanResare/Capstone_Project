@@ -89,13 +89,15 @@ test("each role resolves to its own dashboard and portal guards accept both logi
 
 test("return destinations agree with registered routes and preserve role restrictions", () => {
   for (const role of ["admin", "staff"]) {
-    for (const path of ["/portal", "/portal/appointments", "/portal/schedule", "/portal/pet-records", "/portal/photo-moderation"]) {
+    for (const path of ["/portal", "/portal/appointments", "/portal/schedule", "/portal/pet-records"]) {
       const requested = `${path}/?filter=pending#details`;
       assert.equal(resolveAuthorizedPath(role, requested), requested);
       assert.equal(isValidPortalSessionRoute(role, path), true);
     }
     assert.equal(canAccessPath(role, "/portal/appointments/unknown"), false);
     assert.equal(isValidPortalSessionRoute(role, "/portal/unknown"), false);
+    assert.equal(canAccessPath(role, "/portal/photo-moderation"), false);
+    assert.equal(resolveAuthorizedPath(role, "/portal/photo-moderation"), resolveHomePath(role));
   }
   assert.equal(canAccessPath("staff", "/portal/manage-users"), false);
   assert.equal(canAccessPath("staff", "/portal/admin/users"), false);

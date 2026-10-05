@@ -194,7 +194,7 @@ const env = {
   security: {
     trustedProxyCidrs: readOptional("TRUSTED_PROXY_CIDRS"),
     maxAccountsPerIp: readNumber("MAX_ACCOUNTS_PER_IP", 2),
-    geoLookupUrl: readOptional("FRAUD_GEO_LOOKUP_URL"),
+    geoLookupUrl: readOptional("FRAUD_GEO_LOOKUP_URL", "https://api.ipapi.is/?q={ip}&key={api_key}"),
     geoLookupApiKey: readOptional("FRAUD_GEO_LOOKUP_API_KEY"),
     emailValidationUrl: readOptional("EMAIL_VALIDATION_API_URL"),
     emailValidationApiKey: readOptional("EMAIL_VALIDATION_API_KEY"),

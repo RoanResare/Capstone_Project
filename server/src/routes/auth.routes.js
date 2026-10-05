@@ -6,6 +6,7 @@ const {
   logout,
   me,
   resetPassword,
+  sessionSecurity,
   validateResetCode,
   validateEmail,
 } = require("../controllers/auth.controller");
@@ -23,9 +24,7 @@ router.post("/validate-reset-code", authRateLimiter, asyncHandler(validateResetC
 router.post("/reset-password", authRateLimiter, asyncHandler(resetPassword));
 router.get("/me", verifyToken, asyncHandler(me));
 router.post("/validate-email", authRateLimiter, verifyToken, asyncHandler(validateEmail));
-router.get("/session-security", verifyToken, (_req, res) => {
-  res.set("Cache-Control", "no-store").json({ success: true });
-});
+router.get("/session-security", verifyToken, asyncHandler(sessionSecurity));
 router.put("/appointments/:id", verifyToken, asyncHandler(saveAppointment));
 router.post("/logout", verifyToken, asyncHandler(logout));
 

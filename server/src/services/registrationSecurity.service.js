@@ -1,7 +1,5 @@
-const { db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
-const { isIP } = require("node:net");
 const { Resolver } = require("node:dns/promises");
 const { assertValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 

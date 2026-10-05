@@ -33,7 +33,11 @@ const {
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
-const { waitForFreshSession } = require("../services/sessionSecurity.service");
+const {
+  createFreshSessionBinding,
+  validateAccessSecurity,
+  waitForFreshSession,
+} = require("../services/sessionSecurity.service");
 const { assertValidEmail, isValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
@@ -444,12 +448,15 @@ function buildAppPasswordResetLink(req, providerLink) {
 
 async function createSessionResponse(user, options = {}, req) {
   await waitForFreshSession(user.uid);
+  const connection = await createFreshSessionBinding(user, req);
   const safeUser = toPublicUser(user);
-  const accessToken = signAccessToken(user);
+  const accessToken = signAccessToken(user, connection.ip, connection.sessionId);
   const firebaseCustomToken = await auth.createCustomToken(user.uid, {
     role: user.role,
     status: user.accountStatus,
     accountStatus: user.accountStatus,
+    connectionIp: connection.ip,
+    sessionId: connection.sessionId,
   });
 
   await touchLastLogin(user.uid);
@@ -546,6 +553,7 @@ function createRoleBoundLoginHandler(expectedRole) {
     assertAuthSetupReady({
       requireOtp: routeRole !== USER_ROLES.CUSTOMER,
     });
+    await validateAccessSecurity(req);
     const { identifier, password } = validateLoginPayload(req.body);
     const email = await resolveEmailFromIdentifier(identifier);
     const existingUser = await getUserByEmail(email);
@@ -685,6 +693,7 @@ const verifyStaffOtp = createRoleBoundVerifyOtpHandler(USER_ROLES.STAFF);
 
 async function loginUnified(req, res) {
   assertAuthSetupReady({ requireOtp: true });
+  await validateAccessSecurity(req);
   const { identifier, password } = validateLoginPayload(req.body);
   const email = await resolveEmailFromIdentifier(identifier);
   const existingUser = await getUserByEmail(email);
@@ -896,6 +905,11 @@ async function logout(req, res) {
   });
 }
 
+async function sessionSecurity(req, res) {
+  assertAuthSetupReady();
+  return res.status(200).set("Cache-Control", "no-store").json({ success: true });
+}
+
 async function me(req, res) {
   assertAuthSetupReady();
   return res.status(200).json({
@@ -917,6 +931,7 @@ module.exports = {
   resetPassword,
   sendAdminOtp,
   sendStaffOtp,
+  sessionSecurity,
   validateResetCode,
   verifyAdminOtp,
   verifyStaffOtp,

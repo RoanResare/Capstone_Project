@@ -90,6 +90,15 @@ export async function loginPortalUser(role, payload) {
   }
 }
 
+export async function loginCustomerUser(payload) {
+  try {
+    const response = await apiClient.post("/customer/login", payload);
+    return response.data;
+  } catch (error) {
+    throw createApiRequestError(error, "Unable to sign in right now.", "customer-login");
+  }
+}
+
 export async function loginUnifiedUser(payload) {
   try {
     const response = await apiClient.post("/auth/login", payload);

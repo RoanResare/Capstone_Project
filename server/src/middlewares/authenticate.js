@@ -1,6 +1,7 @@
 const { auth: firebaseAdminAuth } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { verifyAccessToken } = require("../services/token.service");
+const { validateSessionSecurity } = require("../services/sessionSecurity.service");
 const { getUserByUid, toPublicUser } = require("../services/user.service");
 const { FRAUD_STATUSES, USER_STATUSES } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
@@ -118,11 +119,13 @@ async function verifyToken(req, _res, next) {
 
     if (legacyPayload) {
       await attachAuthenticatedUser(req, token, legacyPayload, "server-jwt");
+      await validateSessionSecurity(req);
       return next();
     }
 
     const firebasePayload = await verifyFirebaseIdToken(token);
     await attachAuthenticatedUser(req, token, firebasePayload, "firebase-id-token");
+    await validateSessionSecurity(req);
     return next();
   } catch (error) {
     return next(error);
@@ -134,6 +137,7 @@ async function verifySessionToken(req, _res, next) {
     const token = extractBearerToken(req);
     const legacyPayload = verifyAccessToken(token);
     await attachAuthenticatedUser(req, token, legacyPayload, "server-jwt");
+    await validateSessionSecurity(req);
     return next();
   } catch (error) {
     return next(error);

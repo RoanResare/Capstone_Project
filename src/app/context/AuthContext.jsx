@@ -27,6 +27,7 @@ import {
 import {
   completeBackendPasswordReset,
   checkCustomerRegistrationAvailability,
+  loginCustomerUser,
   loginUnifiedUser,
   loginPortalUser,
   requestBackendPasswordReset,
@@ -714,12 +715,73 @@ export function AuthProvider({ children }) {
       }
     }
 
-    return signIn({
-      identifier,
-      password,
-      roleHint: normalizedRole,
-      rememberDevice,
-    });
+    if (!isFirebaseConfigured || !auth) {
+      return buildConfigErrorResult();
+    }
+
+    if (!identifier?.trim()) {
+      return {
+        ok: false,
+        error: "Email or username is required.",
+      };
+    }
+
+    if (!password) {
+      return {
+        ok: false,
+        error: "Password is required.",
+      };
+    }
+
+    try {
+      if (!rememberDevice) clearRememberedCustomerLogin();
+      const response = await loginCustomerUser({
+        identifier: identifier.trim(),
+        password,
+        rememberDevice,
+      });
+      const hydratedSession = await installFreshFirebaseSession(response.firebaseCustomToken, rememberDevice);
+      if (!isCustomerRole(hydratedSession.user?.role)) {
+        return {
+          ok: false,
+          error: "This login portal only accepts customer accounts.",
+        };
+      }
+      if (rememberDevice) rememberCustomerLogin(identifier.trim(), password);
+      else clearRememberedCustomerLogin();
+      setPendingOtp(null);
+      setCurrentUser(hydratedSession.user);
+      setAccessToken(hydratedSession.accessToken);
+      setAuthHydrationError("");
+      setHasFirebaseSession(true);
+
+      return {
+        ok: true,
+        user: hydratedSession.user,
+        homePath: resolveHomePath(hydratedSession.user.role),
+      };
+    } catch (error) {
+      try {
+        if (auth?.currentUser) {
+          await signOutFromFirebase(auth);
+        }
+      } catch (_signOutError) {
+        // Ignore cleanup failures; the UI still shows the original sign-in error.
+      }
+
+      resetTransientAuthStorage();
+      clearPortalSession();
+      clearPendingOtpSession();
+      setPendingOtp(null);
+      setHasFirebaseSession(false);
+      setCurrentUser(null);
+      setAccessToken("");
+
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : "Unable to sign in right now.",
+      };
+    }
   }
 
   async function beginUnifiedLogin({

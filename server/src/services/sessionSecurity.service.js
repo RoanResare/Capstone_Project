@@ -68,22 +68,39 @@ function isBlockedProviderResult(data) {
 }
 
 async function lookupIpSecurity(ip) {
-  if (!shouldLookupIp(ip)) return { checked: false, blocked: false };
+  console.log("[session-security] ipapi.is client IP check.", { ip });
+  if (!shouldLookupIp(ip)) {
+    console.log("[session-security] ipapi.is security evaluation.", {
+      ip, checked: false, blocked: false, reason: "private-or-invalid-ip",
+    });
+    return { checked: false, blocked: false };
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
   try {
     const response = await fetch(buildProviderUrl(ip), { signal: controller.signal });
     if (!response.ok) {
       console.warn("[session-security] IP provider returned a non-OK response.", {
+        ip,
         status: response.status,
+      });
+      console.log("[session-security] ipapi.is security evaluation.", {
+        ip, checked: false, blocked: false, reason: "provider-http-error",
       });
       return { checked: false, blocked: false };
     }
     const data = await response.json();
-    return { checked: true, blocked: isBlockedProviderResult(data), data };
+    console.log("[session-security] ipapi.is JSON response.", JSON.stringify({ ip, response: data }));
+    const blocked = isBlockedProviderResult(data);
+    console.log("[session-security] ipapi.is security evaluation.", { ip, checked: true, blocked });
+    return { checked: true, blocked, data };
   } catch (error) {
     console.warn("[session-security] IP provider lookup failed.", {
+      ip,
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
+    console.log("[session-security] ipapi.is security evaluation.", {
+      ip, checked: false, blocked: false, reason: "provider-lookup-failed",
     });
     return { checked: false, blocked: false };
   } finally {

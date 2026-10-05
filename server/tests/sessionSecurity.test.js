@@ -40,7 +40,7 @@ test("registration records IP only and never blocks on VPN, geography, unknown I
   }
 });
 
-function sessionSecurityService({ fetch = async () => response({}), records = new Map(), revocations = [] } = {}) {
+function sessionSecurityService({ fetch = async () => response({ country: "Philippines" }), records = new Map(), revocations = [] } = {}) {
   const db = {
     collection: (name) => ({ doc: (id) => ({
       id,
@@ -70,12 +70,42 @@ test("login and session security call ipapi.is and block explicit VPN, proxy, To
     const service = sessionSecurityService({
       fetch: async (url) => {
         calls.push(url);
-        return response({ ip: "8.8.8.8", [flag]: true });
+        return response({ ip: "8.8.8.8", country: "Philippines", [flag]: true });
       },
     });
     await assert.rejects(service.validateAccessSecurity({ ip: "8.8.8.8" }),
       { statusCode: 403, message: "Blocked VPN IP address" });
     assert.deepEqual(calls, ["https://api.ipapi.is/?q=8.8.8.8&key=test-key"]);
+  }
+});
+
+test("foreign or missing countries block login and revoke active sessions without VPN flags", async () => {
+  for (const data of [
+    { company: "Cloudflare, Inc.", country: "Japan", is_vpn: false },
+    { country: "Singapore", is_proxy: false, is_hosting: false },
+    { location: { country: "Japan", country_code: "JP" } },
+    { location: { country: "Philippines", country_code: "JP" } },
+    {},
+  ]) {
+    const revocations = [];
+    const service = sessionSecurityService({ fetch: async () => response(data), revocations });
+    await assert.rejects(service.validateAccessSecurity({ ip: "172.70.223.199" }),
+      { statusCode: 403, message: "Blocked VPN IP address" });
+    await assert.rejects(service.validateSessionSecurity({
+      ip: "172.70.223.199", auth: { user: { uid: "user" }, claims: { iat: 10 } },
+    }), { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
+    assert.deepEqual(revocations, ["user"]);
+  }
+});
+
+test("clean Philippine country names and codes allow access", async () => {
+  for (const data of [
+    { country: "Philippines" }, { country: " philippines " },
+    { country_code: "PH" }, { country: "PHL" },
+    { location: { country: "Philippines", country_code: "PH" } },
+  ]) {
+    const service = sessionSecurityService({ fetch: async () => response(data) });
+    assert.equal((await service.validateAccessSecurity({ ip: "8.8.8.8" })).checked, true);
   }
 });
 
@@ -89,6 +119,7 @@ test("clean IP changes update the session baseline; VPN activation terminates th
     records,
     revocations,
     fetch: async (url) => response({
+      country: "Philippines",
       is_vpn: url.includes("9.9.9.9"),
       is_proxy: false,
       is_tor: false,

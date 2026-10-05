@@ -61,20 +61,24 @@ function readBooleanFlag(value) {
   return false;
 }
 
+function getProviderCountries(data) {
+  return [data?.location?.country, data?.location?.country_code, data?.country, data?.country_code]
+    .filter((value) => typeof value === "string" && value.trim())
+    .map((value) => value.trim().toLowerCase());
+}
+
 function isBlockedProviderResult(data) {
+  const countries = getProviderCountries(data);
+  if (!countries.length || countries.some((country) => !["philippines", "ph", "phl"].includes(country))) {
+    return true;
+  }
   const containers = [data, data?.security, data?.risk, data?.privacy, data?.threat].filter(Boolean);
   return containers.some((item) => ["is_vpn", "is_proxy", "is_tor", "is_hosting", "vpn", "proxy", "tor", "hosting"]
     .some((key) => readBooleanFlag(item?.[key])));
 }
 
 async function lookupIpSecurity(ip) {
-  console.log("[session-security] ipapi.is client IP check.", { ip });
-  if (!shouldLookupIp(ip)) {
-    console.log("[session-security] ipapi.is security evaluation.", {
-      ip, checked: false, blocked: false, reason: "private-or-invalid-ip",
-    });
-    return { checked: false, blocked: false };
-  }
+  if (!shouldLookupIp(ip)) return { checked: false, blocked: false };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
   try {
@@ -84,23 +88,20 @@ async function lookupIpSecurity(ip) {
         ip,
         status: response.status,
       });
-      console.log("[session-security] ipapi.is security evaluation.", {
-        ip, checked: false, blocked: false, reason: "provider-http-error",
-      });
       return { checked: false, blocked: false };
     }
     const data = await response.json();
-    console.log("[session-security] ipapi.is JSON response.", JSON.stringify({ ip, response: data }));
     const blocked = isBlockedProviderResult(data);
-    console.log("[session-security] ipapi.is security evaluation.", { ip, checked: true, blocked });
+    if (blocked) {
+      console.warn("[session-security] Connection blocked.", {
+        ip, countries: getProviderCountries(data), blocked: true,
+      });
+    }
     return { checked: true, blocked, data };
   } catch (error) {
     console.warn("[session-security] IP provider lookup failed.", {
       ip,
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
-    });
-    console.log("[session-security] ipapi.is security evaluation.", {
-      ip, checked: false, blocked: false, reason: "provider-lookup-failed",
     });
     return { checked: false, blocked: false };
   } finally {

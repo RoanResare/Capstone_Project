@@ -1704,6 +1704,7 @@ export function AppProvider({ children }) {
   } = useAuth();
   const [state, dispatch] = useReducer(appReducer, undefined, loadInitialState);
   const [availabilityUserId, setAvailabilityUserId] = useState(null);
+  const [availabilityError, setAvailabilityError] = useState("");
   const currentUser = authenticatedUser ? normalizeSessionUser(authenticatedUser) : null;
 
   useEffect(() => {
@@ -1786,10 +1787,15 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     setAvailabilityUserId(null);
+    setAvailabilityError("");
     if (!currentUser) return undefined;
     return subscribeAvailabilitySlots((availabilitySlots) => {
       dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { availabilitySlots } });
       setAvailabilityUserId(currentUser.uid);
+      setAvailabilityError("");
+    }, (error) => {
+      setAvailabilityUserId(null);
+      setAvailabilityError(error.message || "Unable to load appointment slots.");
     });
   }, [currentUser?.uid, currentUser?.role]);
 
@@ -1948,6 +1954,7 @@ export function AppProvider({ children }) {
   const value = {
     state,
     availabilityReady: Boolean(currentUser?.uid && availabilityUserId === currentUser.uid),
+    availabilityError,
     currentUser,
     visibleNotifications,
     accessibleModules: currentUser

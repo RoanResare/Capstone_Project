@@ -128,7 +128,7 @@ export function AppointmentBooking({ embedded = false }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { state, availabilityReady, createAppointment, getPendingAppointmentCount } = useApp();
+  const { state, availabilityReady, availabilityError, createAppointment, getPendingAppointmentCount } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
@@ -571,7 +571,7 @@ export function AppointmentBooking({ embedded = false }) {
                   </div>
                 ) : (
                   <p className="mt-5 text-sm leading-6 text-[#607277]">
-                    {availabilityReady ? "Choose a highlighted date to see available times." : "Loading available times..."}
+                    {availabilityError || (availabilityReady ? "Choose a highlighted date to see available times." : "Loading available times...")}
                   </p>
                 )}
                 {errors.selectedDate && <p className="mt-3 text-sm text-[#B23949]">{errors.selectedDate}</p>}

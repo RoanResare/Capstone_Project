@@ -6,11 +6,19 @@ service cloud.firestore {
       return request.auth != null
         && (!exists(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid))
           || request.auth.token.auth_time >
-            get(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid)).data.revokedBefore);
+            get(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid)).data.get('revokedBefore', 0));
     }
 
     function isPortalAdmin() {
       return hasActiveSession() && request.auth.token.role == 'admin';
+    }
+
+    function canManageSchedules() {
+      // Only server-issued claims grant access, never an editable profile role.
+      return hasActiveSession()
+        && request.auth.token.get('role', '') in ['admin', 'staff']
+        && request.auth.token.get('accountStatus', request.auth.token.get('status', 'active')) == 'active'
+        && !(request.auth.token.get('fraudStatus', 'clean') in ['suspended', 'banned']);
     }
 
     // USERS COLLECTION
@@ -50,9 +58,24 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    match /availabilitySlots/{slotId} {
+    match /availabilitySlots/{document=**} {
       allow read: if hasActiveSession();
-      allow write: if hasActiveSession() && request.auth.token.role in ['admin', 'staff'];
+      allow write: if canManageSchedules();
+    }
+
+    match /schedules/{document=**} {
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
+    }
+
+    match /timeSlots/{document=**} {
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
+    }
+
+    match /slotManagement/{document=**} {
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
     }
 
     // OTHER COLLECTIONS (Appointments, Pets, Notifications, etc.)

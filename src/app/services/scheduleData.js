@@ -160,14 +160,83 @@ export function loadPetRecordDocuments() {
 }
 
 export function loadAvailabilitySlotDocuments() {
-  return loadScheduleDocuments(COLLECTIONS.availabilitySlots);
+  return requestAvailabilitySlots("get").then((data) => data.slots);
 }
 
-export function subscribeAvailabilitySlots(onChange) {
+async function requestAvailabilitySlots(method, id = "", payload) {
+  const user = auth?.currentUser;
+  if (!isFirebaseConfigured || !user) throw new Error("You must be signed in to access appointment slots.");
+  try {
+    const token = await user.getIdToken();
+    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
+    const url = `/auth/availability-slots${id ? `/${encodeURIComponent(id)}` : ""}`;
+    const options = { headers: buildAuthHeaders(token) };
+    const response = method === "put"
+      ? await apiClient.put(url, removeUndefinedFields(payload), options)
+      : await apiClient[method](url, options);
+    return response.data;
+  } catch (error) {
+    throw new Error(extractApiError(error, "Unable to access appointment slots."));
+  }
+}
+
+function isPermissionDenied(error) {
+  return ["permission-denied", "firestore/permission-denied"].includes(error?.code);
+}
+
+function schedulePermissionError(error) {
+  if (!isPermissionDenied(error)) return error;
+  const result = new Error("Schedule access was denied. Please sign in again. If the problem continues, the administrator must publish the updated Firestore rules.");
+  result.code = error.code;
+  return result;
+}
+
+export function subscribeAvailabilitySlots(onChange, onError = () => {}) {
   if (!canSyncScheduleData()) return () => {};
-  return onSnapshot(collection(db, COLLECTIONS.availabilitySlots),
-    (snapshot) => onChange(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }))),
-    (error) => logSyncError("Availability subscription", error));
+  const user = auth.currentUser;
+  let disposed = false;
+  let retried = false;
+  let unsubscribe = () => {};
+  let pollingTimer;
+  const fail = (error) => {
+    if (disposed) return;
+    logSyncError("Availability subscription", error);
+    onError(schedulePermissionError(error));
+  };
+  const poll = async () => {
+    if (disposed || auth.currentUser !== user) return;
+    try {
+      const slots = await loadAvailabilitySlotDocuments();
+      if (!disposed && auth.currentUser === user) onChange(slots);
+    } catch (error) { fail(error); }
+    if (!disposed && auth.currentUser === user) pollingTimer = setTimeout(poll, 5000);
+  };
+  const listen = () => {
+    unsubscribe = onSnapshot(collection(db, COLLECTIONS.availabilitySlots),
+      (snapshot) => {
+        if (!disposed) onChange(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id })));
+      },
+      async (error) => {
+        if (disposed) return;
+        if (!retried && isPermissionDenied(error)) {
+          retried = true;
+          unsubscribe();
+          try {
+            await user.getIdToken(true);
+            if (!disposed && auth.currentUser === user) listen();
+          } catch (refreshError) { fail(refreshError); }
+          return;
+        }
+        if (isPermissionDenied(error)) {
+          unsubscribe();
+          await poll();
+          return;
+        }
+        fail(error);
+      });
+  };
+  listen();
+  return () => { disposed = true; clearTimeout(pollingTimer); unsubscribe(); };
 }
 
 export function saveNotificationDocument(notification) {
@@ -177,16 +246,16 @@ export function saveNotificationDocument(notification) {
   });
 }
 
-export function saveAvailabilitySlotDocument(slot) {
-  return saveDocument(COLLECTIONS.availabilitySlots, slot).catch((error) => {
-    logSyncError("Availability slot sync", error);
-    throw error;
-  });
+export async function saveAvailabilitySlotDocument(slot) {
+  const id = normalizeString(slot?.id);
+  if (!id) throw new Error("A slot ID is required.");
+  await requestAvailabilitySlots("put", id, slot);
+  return true;
 }
 
-export function deleteAvailabilitySlotDocument(id) {
-  return deleteDocument(COLLECTIONS.availabilitySlots, id).catch((error) => {
-    logSyncError("Availability slot delete sync", error);
-    return false;
-  });
+export async function deleteAvailabilitySlotDocument(id) {
+  const slotId = normalizeString(id);
+  if (!slotId) throw new Error("A slot ID is required.");
+  await requestAvailabilitySlots("delete", slotId);
+  return true;
 }

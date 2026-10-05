@@ -148,94 +148,10 @@ async function assertEmailIsDeliverable(email) {
   }
 }
 
-function isLocalOrPrivateIp(ip = "") {
-  const value = normalizeIp(ip);
-  return (
-    !value ||
-    value === "unknown" ||
-    value === "::1" ||
-    value.startsWith("127.") ||
-    value.startsWith("169.254.") ||
-    /^(fc|fd|fe80:)/i.test(value) ||
-    value.startsWith("10.") ||
-    value.startsWith("192.168.") ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(value)
-  );
-}
-
-function hasExplicitVpnOrProxy(result = {}) {
-  const security = result?.security || result?.risk || result;
-  const parseFlag = (value) => {
-    if ([true, 1, "true", "1"].includes(value)) return true;
-    if ([false, 0, "false", "0"].includes(value)) return false;
-    return undefined;
-  };
-  const vpn = parseFlag(security.vpn ?? security.isVpn ?? security.is_vpn ?? result.is_vpn);
-  const proxy = parseFlag(security.proxy ?? security.isProxy ?? security.is_proxy ?? result.is_proxy);
-  const tor = parseFlag(security.tor ?? security.isTor ?? security.is_tor ?? result.is_tor);
-  // Geography, hosting, risk scores, and generic anonymity are not VPN evidence.
-  return [vpn, proxy, tor].includes(true);
-}
-
-const geoLookups = new Map();
-
-async function lookupGeo(ip, { fresh = false } = {}) {
-  const key = `${env.security.geoLookupUrl}:${ip}`;
-  const cached = geoLookups.get(key);
-  if (!fresh && cached && cached.expiresAt > Date.now()) return cached.promise;
-  if (geoLookups.size >= 1000) geoLookups.delete(geoLookups.keys().next().value);
-  const promise = callProvider(
-    env.security.geoLookupUrl || "https://api.ipquery.io/{ip}",
-    { ip },
-    env.security.geoLookupApiKey,
-  );
-  geoLookups.set(key, { promise, expiresAt: Date.now() + 5000 });
-  return promise;
-}
-
-async function assertNoDetectedVpnOrProxy(ip, options) {
-  if (isLocalOrPrivateIp(ip) || !isIP(ip)) return;
-
-  let result;
-  try {
-    result = await lookupGeo(ip, options);
-  } catch (error) {
-    console.warn("[registration-security] Geo/VPN provider failed.", error);
-    return;
-  }
-
-  if (!result || result.success === false || result.error) return;
-  // Ignore responses for a different IP instead of attributing their flags to this client.
-  if (result.ip && normalizeIp(result.ip) !== ip) return;
-
-  if (hasExplicitVpnOrProxy(result)) {
-    throw new ApiError(403, "Blocked VPN IP address. Disable your VPN or proxy and try again.");
-  }
-}
-
-async function assertIpAccountLimit(ip) {
-  if (!db || isLocalOrPrivateIp(ip) || !env.security.failClosed) {
-    return;
-  }
-
-  const snapshot = await db.collection("users").where("registrationIp", "==", ip).limit(env.security.maxAccountsPerIp).get();
-  if (snapshot.size >= env.security.maxAccountsPerIp) {
-    throw new ApiError(429, "The maximum number of accounts for this network has been reached.");
-  }
-}
-
 async function validateRegistrationSecurity(req, email) {
-  const ip = getClientIp(req);
   await assertEmailIsDeliverable(email);
-  await assertNoDetectedVpnOrProxy(ip);
-  await assertIpAccountLimit(ip);
-  return { registrationIp: ip };
+  // Retain IP as registration metadata only, never as an access restriction.
+  return { registrationIp: getClientIp(req) };
 }
 
-async function validateAccessSecurity(req, options) {
-  const ip = getClientIp(req);
-  await assertNoDetectedVpnOrProxy(ip, options);
-  return { accessIp: ip };
-}
-
-module.exports = { getClientIp, assertEmailIsDeliverable, validateAccessSecurity, validateRegistrationSecurity };
+module.exports = { getClientIp, assertEmailIsDeliverable, validateRegistrationSecurity };

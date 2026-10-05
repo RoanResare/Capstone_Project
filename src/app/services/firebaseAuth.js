@@ -1,4 +1,3 @@
-import { verifyActiveSessionSecurity } from "./sessionSecurity.js";
 import {
   confirmPasswordReset,
   createUserWithEmailAndPassword,
@@ -673,7 +672,6 @@ export async function validateFirebasePasswordResetCode(oobCode) {
 
 export async function updateFirebaseUserProfile(currentUser, updates = {}) {
   ensureFirebaseReady();
-  await verifyActiveSessionSecurity();
 
   if (!currentUser?.uid) {
     throw new Error("You must be signed in to update your profile.");

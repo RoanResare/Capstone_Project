@@ -33,15 +33,13 @@ const {
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
-const { createFreshSessionBinding } = require("../services/sessionSecurity.service");
+const { waitForFreshSession } = require("../services/sessionSecurity.service");
 const { assertValidEmail, isValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertStrongPassword, hashPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
 const {
-  getClientIp,
   assertEmailIsDeliverable,
-  validateAccessSecurity,
   validateRegistrationSecurity,
 } = require("../services/registrationSecurity.service");
 
@@ -445,16 +443,13 @@ function buildAppPasswordResetLink(req, providerLink) {
 }
 
 async function createSessionResponse(user, options = {}, req) {
-  const connectionIp = req ? getClientIp(req) : "";
-  const sessionId = await createFreshSessionBinding(user.uid, connectionIp);
+  await waitForFreshSession(user.uid);
   const safeUser = toPublicUser(user);
-  const accessToken = signAccessToken(user, connectionIp, sessionId);
+  const accessToken = signAccessToken(user);
   const firebaseCustomToken = await auth.createCustomToken(user.uid, {
     role: user.role,
     status: user.accountStatus,
     accountStatus: user.accountStatus,
-    sessionId,
-    ...(connectionIp ? { connectionIp } : {}),
   });
 
   await touchLastLogin(user.uid);
@@ -552,7 +547,6 @@ function createRoleBoundLoginHandler(expectedRole) {
       requireOtp: routeRole !== USER_ROLES.CUSTOMER,
     });
     const { identifier, password } = validateLoginPayload(req.body);
-    await validateAccessSecurity(req, { fresh: true });
     const email = await resolveEmailFromIdentifier(identifier);
     const existingUser = await getUserByEmail(email);
 
@@ -632,7 +626,6 @@ function createRoleBoundSendOtpHandler(expectedRole) {
 
     assertActiveAccount(user);
     assertOtpRouteMatchesRole(user, ticket, routeRole);
-    await validateAccessSecurity(req, { fresh: true });
 
     return res.status(200).json(
       await createOtpChallengeResponse(
@@ -693,7 +686,6 @@ const verifyStaffOtp = createRoleBoundVerifyOtpHandler(USER_ROLES.STAFF);
 async function loginUnified(req, res) {
   assertAuthSetupReady({ requireOtp: true });
   const { identifier, password } = validateLoginPayload(req.body);
-  await validateAccessSecurity(req, { fresh: true });
   const email = await resolveEmailFromIdentifier(identifier);
   const existingUser = await getUserByEmail(email);
 

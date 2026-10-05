@@ -1,5 +1,4 @@
 import { validateBackendEmail } from "./authApi.js";
-import { verifyActiveSessionSecurity } from "./sessionSecurity.js";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -266,7 +265,6 @@ export async function verifyCustomerPassword(password) {
     throw new Error("Enter your current password to verify this profile change.");
   }
 
-  await verifyActiveSessionSecurity();
   await reauthenticateWithCredential(
     activeUser,
     EmailAuthProvider.credential(activeUser.email, normalizedPassword),
@@ -290,7 +288,6 @@ export async function changeCustomerPassword(currentPassword, newPassword, confi
     throw new Error("You must be signed in to change your password.");
   }
 
-  await verifyActiveSessionSecurity();
   await reauthenticateWithCredential(
     activeUser,
     EmailAuthProvider.credential(activeUser.email, currentPassword),
@@ -604,7 +601,6 @@ export async function signInCustomerWithEmailPassword({ email, password }) {
 
 export async function updateCustomerProfile(currentUser, updates = {}) {
   ensureCustomerFirebaseReady();
-  await verifyActiveSessionSecurity();
 
   const activeAuthUser = await waitForFirebaseUserSession(currentUser?.uid || "", {
     forceRefresh: false,

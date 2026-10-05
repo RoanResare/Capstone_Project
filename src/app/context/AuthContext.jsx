@@ -565,6 +565,7 @@ export function AuthProvider({ children }) {
       };
     }
 
+    const previousSignupUid = auth.currentUser?.uid || "";
     try {
       const registrationCheck = await checkCustomerRegistrationAvailability({
         email: email.trim(),
@@ -595,6 +596,12 @@ export function AuthProvider({ children }) {
         homePath: resolveHomePath(profile.role),
       };
     } catch (error) {
+      if ((auth.currentUser?.uid || "") === previousSignupUid) {
+        return {
+          ok: false,
+          error: formatFirebaseAuthError(error, "Unable to create your account right now."),
+        };
+      }
       try {
         if (auth?.currentUser) {
           await signOutFromFirebase(auth);

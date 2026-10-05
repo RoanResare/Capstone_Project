@@ -10,10 +10,17 @@ function deferred() {
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const state = {
   auth: { currentUser: null, authStateReady: async () => {} },
-  persistence: deferred(), listeners: new Set(), documents: new Map(), reads: [], commits: [],
+  persistence: deferred(), listeners: new Set(), documents: new Map(), reads: [], commits: [], validationChecks: [],
 };
 globalThis.__firebaseRegistrationTest = state;
 const mocks = {
+  "authApi.js": `export async function validateBackendEmail() {}
+    export async function checkCustomerRegistrationAvailability(data) {
+      const state = globalThis.__firebaseRegistrationTest;
+      state.validationChecks.push(data);
+      if (data.email.endsWith('@yzcalo.com')) throw new Error('Temporary or disposable email addresses are not allowed');
+      return {registrationIp: '1.2.3.4'};
+    }`,
   "sessionSecurity.js": "export async function verifyActiveSessionSecurity() {}",
   "firebase.js": `const state = globalThis.__firebaseRegistrationTest;
     export const auth = state.auth, db = {}, firebaseConfigError = '', isFirebaseConfigured = true;
@@ -25,6 +32,10 @@ const mocks = {
     }
     export async function createUserWithEmailAndPassword() {return state.createUser();}
     export async function deleteUser(user) {if (state.auth.currentUser === user) state.auth.currentUser = null;}
+    export async function confirmPasswordReset() {}
+    export async function fetchSignInMethodsForEmail() {}
+    export async function sendPasswordResetEmail() {}
+    export async function verifyPasswordResetCode() {}
     export const EmailAuthProvider = {};
     export async function getIdTokenResult() {return {claims: {}};}
     export async function reauthenticateWithCredential() {}
@@ -43,6 +54,7 @@ const mocks = {
     }
     export const getDocFromCache = getDoc;
     export async function setDoc() {throw new Error('Unexpected standalone write');}
+    export async function updateDoc() {}
     export function writeBatch() {
       const writes = [];
       return {set(reference, value) {writes.push({reference, value});}, async commit() {
@@ -76,6 +88,7 @@ after(async () => {await server.close(); delete globalThis.__firebaseRegistratio
 const { waitForFirebaseUserSession } = await server.ssrLoadModule("/src/app/services/firebaseSession.js");
 const { signUpCustomerWithEmailPassword, loadOrCreateCustomerProfile } =
   await server.ssrLoadModule("/src/app/services/customerAccount.js");
+const { signUpWithEmailPassword } = await server.ssrLoadModule("/src/app/services/firebaseAuth.js");
 
 test("registration waits for initialization, UID and token; restoration cannot race the profile write", async () => {
   const initialization = deferred();
@@ -110,6 +123,26 @@ test("registration waits for initialization, UID and token; restoration cannot r
   assert.equal(state.documents.get(`users/${user.uid}`).username, "chosen_username");
   assert.equal(state.documents.has("usernames/customer"), false);
   assert.equal(state.listeners.size, 0);
+});
+
+test("both Firebase signup helpers validate every attempt before creation and preserve an existing session on rejection", async () => {
+  const existing = state.auth.currentUser;
+  const reads = state.reads.length;
+  const commits = state.commits.length;
+  const checks = state.validationChecks.length;
+  state.createUser = () => assert.fail("A rejected email must never create a Firebase account");
+  for (const signUp of [signUpCustomerWithEmailPassword, signUpWithEmailPassword]) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await assert.rejects(signUp({
+        fullName: "Customer", email: "same@yzcalo.com", password: "Test123!",
+        username: "chosen_username", phone: "09620614953", registrationIp: "previous-approved-ip",
+      }), { message: "Temporary or disposable email addresses are not allowed" });
+    }
+  }
+  assert.equal(state.validationChecks.length, checks + 6);
+  assert.equal(state.auth.currentUser, existing);
+  assert.equal(state.reads.length, reads);
+  assert.equal(state.commits.length, commits);
 });
 
 test("session readiness rejects token failures, null sessions, and account switches", async () => {

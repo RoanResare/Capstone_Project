@@ -21,6 +21,7 @@ import {
 import { auth, db, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
 import { buildRoleMismatchMessage, formatRoleLabel } from "../utils/roleUtils.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";
+import { checkCustomerRegistrationAvailability } from "./authApi.js";
 
 const VALID_USER_ROLES = ["customer", "admin", "staff"];
 const USERS_COLLECTION = "users";
@@ -577,6 +578,7 @@ export async function signUpWithEmailPassword({
   const normalizedEmail = normalizeEmail(email);
   const normalizedFullName = normalizeString(fullName);
   const normalizedPhone = normalizeString(phone);
+  await checkCustomerRegistrationAvailability({ email: normalizedEmail, phone: normalizedPhone });
   const normalizedUsername = await ensureUsernameAvailable(
     username || deriveDefaultUsername(normalizedEmail),
   );

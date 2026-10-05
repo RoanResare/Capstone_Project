@@ -1,4 +1,4 @@
-import { validateBackendEmail } from "./authApi.js";
+import { checkCustomerRegistrationAvailability, validateBackendEmail } from "./authApi.js";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -478,6 +478,8 @@ export async function signUpCustomerWithEmailPassword({
     username || deriveDefaultUsername(normalizedEmail),
   );
 
+  const registrationCheck = await checkCustomerRegistrationAvailability({ email: normalizedEmail, phone: normalizedPhone });
+
   console.info("[customer-auth] Starting customer sign-up.", {
     email: normalizedEmail,
     username: normalizedUsername,
@@ -512,7 +514,7 @@ export async function signUpCustomerWithEmailPassword({
         role: "customer",
         accountStatus: "active",
         status: "active",
-        registrationIp: normalizeString(registrationIp),
+        registrationIp: normalizeString(registrationCheck.registrationIp || registrationIp),
       },
       {
         isNew: true,

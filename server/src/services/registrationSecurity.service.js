@@ -109,6 +109,7 @@ const disposableEmailDomains = new Set([
   "yopmail.com",
   "yopmail.fr",
   "yopmail.net",
+  "yzcalo.com",
 ]);
 
 function getEmailDomain(email = "") {
@@ -123,13 +124,18 @@ function isDisposableEmailDomain(domain) {
   return false;
 }
 
-async function assertEmailIsDeliverable(email) {
+function assertRegistrationEmailAllowed(email) {
   assertValidEmail(email);
   const domain = getEmailDomain(email);
 
   if (isDisposableEmailDomain(domain)) {
     throw new ApiError(400, DISPOSABLE_EMAIL_ERROR, { code: "DISPOSABLE_EMAIL_DOMAIN" });
   }
+}
+
+async function assertEmailIsDeliverable(email) {
+  assertRegistrationEmailAllowed(email);
+  const domain = getEmailDomain(email);
 
   if (trustedEmailDomains.has(domain) && !env.security.emailValidationUrl) {
     return;
@@ -185,9 +191,9 @@ async function assertEmailIsDeliverable(email) {
 }
 
 async function validateRegistrationSecurity(req, email) {
-  await assertEmailIsDeliverable(email);
+  assertRegistrationEmailAllowed(email);
   // Retain IP as registration metadata only, never as an access restriction.
   return { registrationIp: getClientIp(req) };
 }
 
-module.exports = { getClientIp, assertEmailIsDeliverable, validateRegistrationSecurity };
+module.exports = { getClientIp, assertRegistrationEmailAllowed, assertEmailIsDeliverable, validateRegistrationSecurity };

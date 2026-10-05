@@ -418,7 +418,7 @@ test("built-in disposable domains and subdomains reject before DNS or provider r
     }, { fetch: async () => assert.fail("Disposable domains must not query the provider") });
     for (const domain of ["hudzer.com", "mailinator.com", "tempmail.com", "temp-mail.org",
       "10minutemail.com", "throwawaymail.com", "guerrillamail.com", "guerrillamail.net",
-      "yopmail.com", "1secmail.com", "maildrop.cc", "getnada.com", "inbox.mailinator.com"]) {
+      "yopmail.com", "1secmail.com", "maildrop.cc", "getnada.com", "inbox.mailinator.com", "yzcalo.com"]) {
       await assert.rejects(service.validateRegistrationSecurity({ ip: "1.2.3.4" }, ` User@${domain.toUpperCase()} `),
         (error) => error.statusCode === 400 && error.message === "Temporary or disposable email addresses are not allowed"
           && error.details.code === "DISPOSABLE_EMAIL_DOMAIN");
@@ -426,7 +426,7 @@ test("built-in disposable domains and subdomains reject before DNS or provider r
   }
 });
 
-test("legitimate providers and custom business domains pass without substring-based false positives", async () => {
+test("registration allows real providers and institutional/custom domains without DNS or heuristic false positives", async () => {
   const dnsCalls = [];
   const service = loadService("registrationSecurity.service.js", {
     "../config/env": { env: { security: {} } },
@@ -439,10 +439,23 @@ test("legitimate providers and custom business domains pass without substring-ba
     await service.validateRegistrationSecurity({}, `user+tag@${domain}`);
   }
   assert.equal(dnsCalls.length, 0);
-  for (const domain of ["business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.com"]) {
+  for (const domain of ["sti.edu", "school.edu.ph", "business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.com"]) {
     await service.validateRegistrationSecurity({}, `user@${domain}`);
   }
-  assert.deepEqual(dnsCalls, ["business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.com"]);
+  assert.deepEqual(dnsCalls, []);
+});
+
+test("every registration checks disposable domains regardless of reused personal details or provider classification", async () => {
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}", failClosed: true } } },
+    "node:dns/promises": { Resolver: class { async resolveMx() { assert.fail("Registration does not classify custom domains by DNS"); } } },
+  }, { fetch: async () => assert.fail("Registration does not trust external disposable heuristics") });
+  const req = { ip: "1.2.3.4", body: { fullName: "Same Name", password: "Test123!", phone: "09620614953" } };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await service.validateRegistrationSecurity(req, "student@sti.edu");
+    await assert.rejects(service.validateRegistrationSecurity(req, "same@yzcalo.com"),
+      { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
+  }
 });
 
 test("provider-reported disposable domains use the new error without falsely classifying established providers", async () => {
@@ -453,6 +466,26 @@ test("provider-reported disposable domains use the new error without falsely cla
     { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
   for (const domain of ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"]) {
     await service.assertEmailIsDeliverable(`user@${domain}`);
+  }
+});
+
+test("backend account creation rejects disposable email before checking duplicates or creating identities", async () => {
+  const registration = registrationService();
+  const service = loadService("user.service.js", {
+    "../config/env": { env: { nodeEnv: "test" } },
+    "../config/firebaseAdmin": {
+      auth: { createUser: () => assert.fail("A disposable address must not create an identity") },
+      db: { collection: () => assert.fail("Disposable validation must precede duplicate checks") },
+    },
+    "../constants/auth": require("../src/constants/auth"),
+    "../utils/phoneNumber": require("../src/utils/phoneNumber"),
+    "./registrationSecurity.service": registration,
+  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await assert.rejects(service.createPortalUser({
+      email: "same@yzcalo.com", fullName: "Same Name", username: "same_user", password: "Test123!",
+      role: "staff", phone: "09620614953",
+    }), { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
   }
 });
 

@@ -36,7 +36,7 @@ const mocks = {
     export async function updateCustomerProfile() {}`,
   "authApi.js": ["completeBackendPasswordReset", "checkCustomerRegistrationAvailability", "loginUnifiedUser", "loginPortalUser",
     "requestBackendPasswordReset", "resendPortalOtp", "validateBackendPasswordResetCode", "verifyPortalOtp"]
-    .map((name) => `export async function ${name}() { ${name === "loginUnifiedUser" ? "return globalThis.__authRecovery.loginResponse;" : ""} }`).join("\n"),
+    .map((name) => `export async function ${name}() { ${name === "loginUnifiedUser" ? "return globalThis.__authRecovery.loginResponse;" : name === "checkCustomerRegistrationAvailability" ? "throw new Error('Temporary or disposable email addresses are not allowed');" : ""} }`).join("\n"),
 };
 const server = await createServer({ configFile: false, server: { middlewareMode: true }, appType: "custom", logLevel: "silent",
   plugins: [{ name: "auth-recovery-test", enforce: "pre",
@@ -120,4 +120,21 @@ test("verified fresh login replaces cached tokens and warnings for every role de
     assert.equal(window.sessionStorage.getItem("furfection-portal-session"), null);
     for (const area of [window.localStorage, window.sessionStorage]) assert.equal(area.getItem("furfection-security-warning"), null);
   }
+});
+
+test("rejected signup leaves the existing identity, token, and stored session untouched", async () => {
+  const existingUser = state.auth.currentUser;
+  const existingProfile = state.values[0];
+  const existingToken = state.values[1];
+  window.localStorage.setItem("furfection-portal-session", "existing-session");
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = await value.signUp({ fullName: "Reused Name", email: "same@yzcalo.com",
+      username: "reused_name", phone: "09620614953", password: "Test123!", confirmPassword: "Test123!" });
+    assert.equal(result.ok, false);
+    assert.equal(result.error, "Temporary or disposable email addresses are not allowed");
+  }
+  assert.equal(state.auth.currentUser, existingUser);
+  assert.equal(state.values[0], existingProfile);
+  assert.equal(state.values[1], existingToken);
+  assert.equal(window.localStorage.getItem("furfection-portal-session"), "existing-session");
 });

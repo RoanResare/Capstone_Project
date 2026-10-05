@@ -196,6 +196,7 @@ const env = {
     maxAccountsPerIp: readNumber("MAX_ACCOUNTS_PER_IP", 2),
     geoLookupUrl: readOptional("FRAUD_GEO_LOOKUP_URL", "https://api.ipapi.is/?q={ip}&key={api_key}"),
     geoLookupApiKey: readOptional("FRAUD_GEO_LOOKUP_API_KEY"),
+    blockedNetworkCidrs: readOptional("SESSION_BLOCKED_NETWORK_CIDRS"),
     emailValidationUrl: readOptional("EMAIL_VALIDATION_API_URL"),
     emailValidationApiKey: readOptional("EMAIL_VALIDATION_API_KEY"),
     failClosed: readBoolean("FRAUD_FAIL_CLOSED", false),

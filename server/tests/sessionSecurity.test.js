@@ -40,28 +40,35 @@ test("registration records IP only and never blocks on VPN, geography, unknown I
   }
 });
 
-function sessionSecurityService({ fetch = async () => response({ country: "Philippines" }), records = new Map(), revocations = [] } = {}) {
+function sessionSecurityService({ fetch = async () => response({ country: "Philippines" }), records = new Map(), revocations = [], security = {}, globals = {} } = {}) {
+  let transactionTail = Promise.resolve();
   const db = {
     collection: (name) => ({ doc: (id) => ({
       id,
+      key: `${name}/${id}`,
       get: async () => ({ data: () => records.get(`${name}/${id}`) }),
       set: async (value, options = {}) => {
         const key = `${name}/${id}`;
         records.set(key, options.merge ? { ...records.get(key), ...value } : value);
       },
     }) }),
-    runTransaction: async (action) => action({
-      get: async (ref) => ({ data: () => records.get(`sessionSecurity/${ref.uid}`) }),
-      set: (ref, value) => records.set(`sessionSecurity/${ref.uid}`, { ...records.get(`sessionSecurity/${ref.uid}`), ...value }),
-    }),
+    runTransaction: (action) => {
+      const operation = transactionTail.then(() => action({
+        get: async (ref) => ({ data: () => records.get(ref.key) }),
+        set: (ref, value) => records.set(ref.key, { ...records.get(ref.key), ...value }),
+      }));
+      transactionTail = operation.catch(() => {});
+      return operation;
+    },
   };
   return loadService("sessionSecurity.service.js", {
     "../config/firebaseAdmin": { db, auth: { revokeRefreshTokens: async (uid) => { revocations.push(uid); } } },
     "../config/env": { env: { security: {
       geoLookupUrl: "https://api.ipapi.is/?q={ip}&key={api_key}",
       geoLookupApiKey: "test-key",
+      ...security,
     } } },
-  }, { fetch });
+  }, { fetch, ...globals });
 }
 
 test("login and session security call ipapi.is and block explicit VPN, proxy, Tor, or hosting flags", async () => {
@@ -98,7 +105,7 @@ test("foreign or missing countries allow login and active sessions without expli
   }
 });
 
-test("company and ASN names alone never block login or terminate active sessions", async () => {
+test("known VPN and hosting names or classifications block even with false VPN flags", async () => {
   for (const data of [
     { company: "Proton AG" },
     { company: { name: "Proton Technologies AG" } },
@@ -108,16 +115,24 @@ test("company and ASN names alone never block login or terminate active sessions
     { company_name: "Privado Networks AG" },
     { asn_org: "TunnelBear, LLC" },
     { company: { name: "  PROTON, AG  " } },
+    { company: { name: "Unlisted hosting provider", type: "hosting" } },
+    { asn: { org: "Unlisted data center", type: "HOSTING" } },
+    { company: "Hetzner Online GmbH" },
+    { asn: { org: "DigitalOcean, LLC" } },
+    { company: "Amazon Data Services Japan" },
+    { is_datacenter: true },
+    { egress_service: { type: "private_relay", provider: "Cloudflare WARP" } },
+    { egress_service: { type: "secure_web_gateway", provider: "Zscaler" } },
   ]) {
     const revocations = [];
     const service = sessionSecurityService({ fetch: async () => response({
       ...data, is_vpn: false, is_proxy: false, is_tor: false, is_hosting: false,
     }), revocations });
-    await service.validateAccessSecurity({ ip: "8.8.8.8" });
-    await service.validateSessionSecurity({
+    await assert.rejects(service.validateAccessSecurity({ ip: "8.8.8.8" }), { statusCode: 403 });
+    await assert.rejects(service.validateSessionSecurity({
       ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10 } },
-    });
-    assert.deepEqual(revocations, []);
+    }), { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
+    assert.deepEqual(revocations, ["user"]);
   }
 });
 
@@ -133,9 +148,10 @@ test("local carriers and unrelated shared networks allow clean re-baselining", a
     { asn: { org: "Sky Broadband" }, country: "philippines" },
     { company: "An unlisted residential ISP", country: "pHiLiPpInEs" },
     { company: "Philippine Long Distance Telephone Company" },
-    { company: "DITO Telecommunity", asn: "AS123 Proton AG" },
+    { company: "DITO Telecommunity", asn: "AS123 DITO Telecommunity" },
+    { company: { name: "Unknown local fiber network", type: "isp" }, asn: { type: "isp" }, country: "Singapore" },
+    { egress_service: { type: "satellite", provider: "Starlink" } },
     { company: "Cloudflare, Inc." },
-    { company: "Amazon Web Services" },
     { company: "Proton Automotive" },
     { company: "NotWindscribe Networks" },
   ]) {
@@ -217,6 +233,84 @@ test("clean IP changes update the session baseline; VPN activation terminates th
   await assert.rejects(service.validateSessionSecurity(req),
     { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
   assert.deepEqual(revocations, ["user"]);
+});
+
+test("configured IPv4 and IPv6 VPN ranges block without a provider lookup and leave adjacent IPs clean", async () => {
+  const calls = [];
+  const service = sessionSecurityService({
+    security: { blockedNetworkCidrs: "8.8.8.0/24, 2001:4860:abcd::/48" },
+    fetch: async (url) => { calls.push(url); return response({ company: { type: "isp" } }); },
+  });
+  for (const ip of ["8.8.8.0", "8.8.8.255", "2001:4860:abcd::1234"]) {
+    await assert.rejects(service.validateAccessSecurity({ ip }), { statusCode: 403 });
+  }
+  assert.equal(calls.length, 0);
+  for (const ip of ["8.8.9.1", "2001:4860:abce::1234"]) {
+    await service.validateAccessSecurity({ ip });
+  }
+  assert.equal(calls.length, 2);
+  for (const cidr of ["invalid/24", "8.8.8.0/33", "2001:4860::/129", "8.8.8.0/", "8.8.8.0/24/1"]) {
+    assert.throws(() => sessionSecurityService({ security: { blockedNetworkCidrs: cidr } }), /invalid IP address or CIDR/);
+  }
+});
+
+test("late VPN checks and replayed tokens cannot revoke a fresh clean session", async () => {
+  let time = 100000;
+  let finishLate;
+  let startLate;
+  const started = new Promise((resolve) => { startLate = resolve; });
+  const records = new Map();
+  const revocations = [];
+  const service = sessionSecurityService({ records, revocations,
+    globals: { Date: class extends Date { static now() { return time; } } },
+    fetch: async (url) => {
+      if (url.includes("9.9.9.9")) {
+        startLate();
+        await new Promise((resolve) => { finishLate = resolve; });
+        return response({ company: "Proton AG", is_vpn: false });
+      }
+      return response(url.includes("8.8.8.8") ? { is_datacenter: true } : { company: { type: "isp" } });
+    },
+  });
+  const oldAuth = { user: { uid: "user" }, claims: { iat: 10 } };
+  const late = assert.rejects(service.validateSessionSecurity({ ip: "9.9.9.9", auth: oldAuth }), { statusCode: 403 });
+  await started;
+  await assert.rejects(service.validateSessionSecurity({ ip: "8.8.8.8", auth: oldAuth }), { statusCode: 403 });
+  const cutoff = records.get("sessionSecurity/user").revokedBefore;
+  time = 101100;
+  await service.waitForFreshSession("user", { now: () => time, sleep: () => assert.fail("Clean recovery should not wait past the cutoff") });
+  const binding = await service.createFreshSessionBinding({ uid: "user" }, { ip: "1.1.1.1" });
+  const freshRequest = { ip: "1.1.1.1", auth: { user: { uid: "user" }, claims: { iat: 101, sessionId: binding.sessionId } } };
+  await service.validateSessionSecurity(freshRequest);
+  time = 102000;
+  finishLate();
+  await late;
+  assert.equal(records.get("sessionSecurity/user").revokedBefore, cutoff);
+  assert.deepEqual(revocations, ["user"]);
+  await assert.rejects(service.validateSessionSecurity({ ip: "1.1.1.1", auth: oldAuth }), { statusCode: 401 });
+  await service.validateSessionSecurity(freshRequest);
+});
+
+test("simultaneous VPN violations revoke refresh tokens only once", async () => {
+  const revocations = [];
+  const service = sessionSecurityService({ fetch: async () => response({ is_vpn: true }), revocations });
+  const req = { ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10 } } };
+  await Promise.all([assert.rejects(service.validateSessionSecurity(req), { statusCode: 403 }),
+    assert.rejects(service.validateSessionSecurity(req), { statusCode: 403 })]);
+  assert.deepEqual(revocations, ["user"]);
+});
+
+test("anonymous provider responses produce one concise warning without logging credentials", async () => {
+  const warnings = [];
+  const service = sessionSecurityService({
+    fetch: async () => response({ company: "Local ISP", docs: "https://ipapi.is/free-tier.html" }),
+    globals: { console: { warn: (...args) => warnings.push(args) } },
+  });
+  await service.validateAccessSecurity({ ip: "8.8.8.8" });
+  await service.validateAccessSecurity({ ip: "1.1.1.1" });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0][0], /FRAUD_GEO_LOOKUP_API_KEY/);
+  assert.doesNotMatch(JSON.stringify(warnings), /test-key/);
 });
 
 test("login, OTP, and session middleware create and validate clean session bindings", () => {

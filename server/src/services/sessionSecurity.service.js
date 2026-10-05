@@ -10,6 +10,21 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const LOOKUP_TIMEOUT_MS = 5000;
 const VPN_BLOCK_MESSAGE = "Blocked VPN IP address";
 const SESSION_TERMINATED_MESSAGE = "Your session was terminated because your IP address changed...";
+const BLOCKED_NETWORK_NAMES = [
+  /\b(?:proton (?:technologies )?ag|proton ?vpn|windscribe|privado networks|privado ?vpn|tunnel ?bear)\b/,
+  /\b(?:hetzner|leaseweb|digitalocean|digital ocean|vultr|ovhcloud|ovh sas|amazon data services|amazon web services|microsoft azure)\b/,
+];
+const blockedNetworks = new net.BlockList();
+for (const cidr of (env.security.blockedNetworkCidrs || "").split(",").map((value) => value.trim()).filter(Boolean)) {
+  const [address, prefix, extra] = cidr.split("/");
+  const version = net.isIP(address);
+  const bits = prefix === undefined ? (version === 4 ? 32 : 128) : Number(prefix);
+  if (!version || extra !== undefined || (prefix !== undefined && !/^\d+$/.test(prefix)) || !Number.isInteger(bits) || bits < 0 || bits > (version === 4 ? 32 : 128)) {
+    throw new Error("SESSION_BLOCKED_NETWORK_CIDRS contains an invalid IP address or CIDR.");
+  }
+  blockedNetworks.addSubnet(address, bits, version === 4 ? "ipv4" : "ipv6");
+}
+let warnedAnonymousResponse = false;
 
 function normalizeIp(value = "") {
   const ip = String(value || "").trim().replace(/^::ffff:/, "");
@@ -63,13 +78,31 @@ function readBooleanFlag(value) {
 
 function getProviderBlockReason(data) {
   const containers = [data, data?.security, data?.risk, data?.privacy, data?.threat].filter(Boolean);
-  const flagged = containers.some((item) => ["is_vpn", "is_proxy", "is_tor", "is_hosting", "vpn", "proxy", "tor", "hosting"]
+  const flagged = containers.some((item) => ["is_vpn", "is_proxy", "is_tor", "is_hosting", "is_datacenter", "vpn", "proxy", "tor", "hosting", "datacenter"]
     .some((key) => readBooleanFlag(item?.[key])));
-  return flagged ? "explicit-network-flag" : "";
+  if (flagged) return "explicit-network-flag";
+  const egressType = String(data?.egress_service?.type || "").trim().toLowerCase();
+  if (["private_relay", "secure_web_gateway"].includes(egressType)) return "proxy-egress-service";
+  const types = [data?.company?.type, data?.asn?.type];
+  if (types.some((type) => typeof type === "string" && type.trim().toLowerCase() === "hosting")) {
+    return "hosting-network-type";
+  }
+  const names = [data?.company, data?.company?.name, data?.company_name,
+    data?.asn, data?.asn?.org, data?.asn?.name, data?.asn_org, data?.asn_name]
+    .filter((value) => typeof value === "string")
+    .map((value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim());
+  if (names.some((name) => BLOCKED_NETWORK_NAMES.some((pattern) => pattern.test(name)))) {
+    return "vpn-or-hosting-provider-name";
+  }
+  return "";
 }
 
 async function lookupIpSecurity(ip) {
   if (!shouldLookupIp(ip)) return { checked: false, blocked: false };
+  if (blockedNetworks.check(ip, net.isIP(ip) === 4 ? "ipv4" : "ipv6")) {
+    console.warn("[session-security] Connection blocked.", { ip, blocked: true, reason: "configured-network-range" });
+    return { checked: true, blocked: true };
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
   try {
@@ -82,6 +115,10 @@ async function lookupIpSecurity(ip) {
       return { checked: false, blocked: false };
     }
     const data = await response.json();
+    if (typeof data?.docs === "string" && data.docs.startsWith("https://ipapi.is/free-tier.html") && !warnedAnonymousResponse) {
+      warnedAnonymousResponse = true;
+      console.warn("[session-security] Anonymous ipapi.is response lacks threat detection. Configure FRAUD_GEO_LOOKUP_API_KEY on the backend.");
+    }
     const reason = getProviderBlockReason(data);
     const blocked = Boolean(reason);
     if (blocked) {
@@ -101,22 +138,34 @@ async function lookupIpSecurity(ip) {
   }
 }
 
-async function revokeUserSession(uid, details = {}) {
+async function revokeUserSession(uid, details = {}, claims = {}) {
   const now = Date.now();
-  await db.collection(SECURITY_COLLECTION).doc(uid).set({
-    revocationPending: true,
-    revokedBefore: Math.floor(now / 1000),
-    reason: details.reason || "session-security",
-    lastViolationIp: details.ip || "",
-    updatedAt: new Date(now),
-  }, { merge: true });
+  const reference = db.collection(SECURITY_COLLECTION).doc(uid);
+  const cutoff = Math.max(Math.floor(now / 1000), getTokenIssuedAt(claims));
+  // Only the first violation revokes this token; late requests cannot revoke a fresh login.
+  const started = await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const previousCutoff = Number(snapshot.data()?.revokedBefore || 0);
+    if (snapshot.data()?.revocationPending || (previousCutoff && getTokenIssuedAt(claims) <= previousCutoff)) return false;
+    transaction.set(reference, {
+      revocationPending: true, revokedBefore: cutoff,
+      reason: details.reason || "session-security", lastViolationIp: details.ip || "",
+      updatedAt: new Date(now),
+    }, { merge: true });
+    return true;
+  });
+  if (!started) return;
   try {
     await auth.revokeRefreshTokens(uid);
-    await db.collection(SECURITY_COLLECTION).doc(uid).set({
-      revocationPending: false,
-      revokedBefore: Math.floor(Date.now() / 1000),
-      updatedAt: new Date(),
-    }, { merge: true });
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      if (snapshot.data()?.revocationPending && Number(snapshot.data()?.revokedBefore || 0) === cutoff) {
+        transaction.set(reference, {
+          revocationPending: false, revokedBefore: Math.max(cutoff, Math.floor(Date.now() / 1000)),
+          updatedAt: new Date(),
+        }, { merge: true });
+      }
+    });
   } catch (error) {
     console.warn("[session-security] Firebase token revocation failed.", {
       uid,
@@ -176,10 +225,11 @@ async function validateSessionSecurity(req) {
     security = await validateAccessSecurity(req, { message: SESSION_TERMINATED_MESSAGE });
   } catch (error) {
     if (error instanceof ApiError && error.details?.code === "SESSION_SECURITY_VIOLATION") {
-      await revokeUserSession(user.uid, { ip: error.details.ip || getClientIp(req), reason: "blocked-network" });
+      await revokeUserSession(user.uid, { ip: error.details.ip || getClientIp(req), reason: "blocked-network" }, claims);
     }
     throw error;
   }
+  await assertTokenNotRevoked(user.uid, claims);
   const sessionId = typeof claims.sessionId === "string" ? claims.sessionId : "";
 
   if (!sessionId) return;
@@ -188,7 +238,7 @@ async function validateSessionSecurity(req) {
   const snapshot = await reference.get();
   const connection = snapshot.data() || {};
   if (connection.uid && connection.uid !== user.uid) {
-    await revokeUserSession(user.uid, { ip: security.ip, reason: "session-owner-mismatch" });
+    await revokeUserSession(user.uid, { ip: security.ip, reason: "session-owner-mismatch" }, claims);
     throw new ApiError(401, SESSION_TERMINATED_MESSAGE, { code: "SESSION_SECURITY_VIOLATION" });
   }
 

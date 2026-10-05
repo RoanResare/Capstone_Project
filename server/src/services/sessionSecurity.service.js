@@ -61,10 +61,11 @@ function readBooleanFlag(value) {
   return false;
 }
 
-function isBlockedProviderResult(data) {
+function getProviderBlockReason(data) {
   const containers = [data, data?.security, data?.risk, data?.privacy, data?.threat].filter(Boolean);
-  return containers.some((item) => ["is_vpn", "is_proxy", "is_tor", "is_hosting", "vpn", "proxy", "tor", "hosting"]
+  const flagged = containers.some((item) => ["is_vpn", "is_proxy", "is_tor", "is_hosting", "vpn", "proxy", "tor", "hosting"]
     .some((key) => readBooleanFlag(item?.[key])));
+  return flagged ? "explicit-network-flag" : "";
 }
 
 async function lookupIpSecurity(ip) {
@@ -81,10 +82,11 @@ async function lookupIpSecurity(ip) {
       return { checked: false, blocked: false };
     }
     const data = await response.json();
-    const blocked = isBlockedProviderResult(data);
+    const reason = getProviderBlockReason(data);
+    const blocked = Boolean(reason);
     if (blocked) {
       console.warn("[session-security] Connection blocked.", {
-        ip, blocked: true,
+        ip, blocked: true, reason,
       });
     }
     return { checked: true, blocked, data };

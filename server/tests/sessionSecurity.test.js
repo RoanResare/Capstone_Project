@@ -98,6 +98,77 @@ test("foreign or missing countries allow login and active sessions without expli
   }
 });
 
+test("company and ASN names alone never block login or terminate active sessions", async () => {
+  for (const data of [
+    { company: "Proton AG" },
+    { company: { name: "Proton Technologies AG" } },
+    { asn: "AS209103 Proton AG" },
+    { asn: { org: "ProtonVPN AG" } },
+    { asn: { name: "Windscribe Limited" } },
+    { company_name: "Privado Networks AG" },
+    { asn_org: "TunnelBear, LLC" },
+    { company: { name: "  PROTON, AG  " } },
+  ]) {
+    const revocations = [];
+    const service = sessionSecurityService({ fetch: async () => response({
+      ...data, is_vpn: false, is_proxy: false, is_tor: false, is_hosting: false,
+    }), revocations });
+    await service.validateAccessSecurity({ ip: "8.8.8.8" });
+    await service.validateSessionSecurity({
+      ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10 } },
+    });
+    assert.deepEqual(revocations, []);
+  }
+});
+
+test("local carriers and unrelated shared networks allow clean re-baselining", async () => {
+  for (const data of [
+    { company: "DITO Telecommunity Corporation", country: "Hong Kong" },
+    { asn: "AS4775 Globe Telecoms", country: "Singapore" },
+    { company: { name: "Globe Telecom, Inc." } },
+    { asn: { org: "Smart Communications, Inc." } },
+    { company: "PLDT Inc." },
+    { company: "Converge ICT Solutions", country: "PHILIPPINES" },
+    { company: { name: "Sky Cable Corporation" }, country: "Philippines" },
+    { asn: { org: "Sky Broadband" }, country: "philippines" },
+    { company: "An unlisted residential ISP", country: "pHiLiPpInEs" },
+    { company: "Philippine Long Distance Telephone Company" },
+    { company: "DITO Telecommunity", asn: "AS123 Proton AG" },
+    { company: "Cloudflare, Inc." },
+    { company: "Amazon Web Services" },
+    { company: "Proton Automotive" },
+    { company: "NotWindscribe Networks" },
+  ]) {
+    const records = new Map([["sessionConnections/session", { uid: "user", ip: "1.1.1.1" }]]);
+    const revocations = [];
+    const service = sessionSecurityService({ fetch: async () => response(data), records, revocations });
+    await service.validateAccessSecurity({ ip: "8.8.8.8" });
+    for (const ip of ["8.8.8.8", "1.1.1.1", "8.8.8.8"]) {
+      await service.validateSessionSecurity({
+        ip, auth: { user: { uid: "user" }, claims: { iat: 10, sessionId: "session" } },
+      });
+      assert.equal(records.get("sessionConnections/session").ip, ip);
+    }
+    assert.deepEqual(revocations, []);
+  }
+});
+
+test("explicit threat flags block local and foreign networks regardless of company or country", async () => {
+  for (const flag of ["is_vpn", "is_proxy", "is_tor", "is_hosting"]) {
+    for (const company of ["Globe Telecom, Inc.", "Converge ICT Solutions", "Sky Cable", "Proton AG"]) {
+      const revocations = [];
+      const service = sessionSecurityService({ fetch: async () => response({
+        company, country: company === "Proton AG" ? "Japan" : "Philippines", [flag]: true,
+      }), revocations });
+      await assert.rejects(service.validateAccessSecurity({ ip: "8.8.8.8" }), { statusCode: 403 });
+      await assert.rejects(service.validateSessionSecurity({
+        ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10 } },
+      }), { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
+      assert.deepEqual(revocations, ["user"]);
+    }
+  }
+});
+
 test("clean Philippine country names and codes allow access", async () => {
   for (const data of [
     { country: "Philippines" }, { country: " philippines " },

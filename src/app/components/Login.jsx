@@ -6,6 +6,7 @@ import { Eye, EyeOff, LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { BrandMark } from "./BrandMark.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { branchDetails } from "../data/systemData.js";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
 import { clearRememberedPortalLogin } from "../utils/portalRememberMe.js";
@@ -123,7 +124,7 @@ export function Login() {
                 Charming Fur-fection
               </p>
               <h1 className="text-2xl font-semibold leading-tight">
-                Pet Care Services
+                Pet Care Services - Las Piñas City
               </h1>
             </div>
           </div>
@@ -161,7 +162,7 @@ export function Login() {
         >
           <div className="mb-6 text-center">
             <h2 className="text-2xl font-semibold text-[#20343B]">
-              Charming Fur-fection Pet Care Services
+              {branchDetails.name}
             </h2>
             <p className="mt-2 text-sm text-[#607277]">
               Log in with your account credentials.

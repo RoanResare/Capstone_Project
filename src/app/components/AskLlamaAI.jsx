@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "../context/AppContext.jsx";
+import { branchDetails } from "../data/systemData.js";
 import {
   askGroqAssistantStream,
   CHAT_TIMEOUT_ERROR_MESSAGE,
@@ -20,8 +21,7 @@ import {
 const INTRO_MESSAGE = {
   id: "assistant-intro",
   from: "assistant",
-  content:
-    "Hello! I'm Ask Llama AI for Charming Fur-fection Pet Care Services. Ask me about services, prices, appointments, or clinic hours.",
+  content: `Hello! I'm Ask Llama AI for ${branchDetails.name}. Ask me about services, prices, appointments, or clinic hours.`,
 };
 
 function createMessage(from, content, meta = {}) {

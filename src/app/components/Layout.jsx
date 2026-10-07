@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { BrandMark } from "./BrandMark.jsx";
 import { AskLlamaAI } from "./AskLlamaAI.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { branchDetails } from "../data/systemData.js";
 import { resolveHomePath } from "../utils/roleUtils.js";
 
 const landingNavItems = [{ id: "home", label: "Home" }];
@@ -125,8 +126,8 @@ export function Layout() {
         <div className="mx-auto flex max-w-[1260px] items-center justify-between px-4 py-2 md:px-7">
           <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
             <BrandMark className="h-10 w-10 flex-shrink-0" />
-            <span className="text-base font-semibold text-white md:text-[1.15rem]">
-              Charming Fur-fection Pet Care Services
+            <span className="text-sm font-semibold leading-tight text-white md:text-base lg:text-[1.05rem]">
+              {branchDetails.name}
             </span>
           </Link>
 

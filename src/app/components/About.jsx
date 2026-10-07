@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { branchDetails } from "../data/systemData.js";
 
 const values = [
   {
@@ -40,7 +41,7 @@ export function About() {
             <p className="text-lg text-gray-700 leading-relaxed">
               Welcome to{" "}
               <span className="font-semibold text-[#2D9B9B]">
-                Charming Fur-fection Pet Care Services
+                {branchDetails.name}
               </span>
               , your trusted partner in providing quality care for your beloved pets. We are
               dedicated to offering affordable and comprehensive veterinary services, grooming,

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Bell, CalendarDays, Clock3, LogOut, PawPrint, Users, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { BrandMark } from "../BrandMark.jsx";
 
 const iconMap = {
@@ -196,10 +197,11 @@ export function PortalLayout() {
     visibleNotifications,
     markNotificationRead,
     markAllNotificationsRead,
-    signOut,
   } = useApp();
+  const { signOut } = useAuth();
   const [panelOpen, setPanelOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setPanelOpen(false);
@@ -209,6 +211,10 @@ export function PortalLayout() {
     (notification) => !notification.readBy.includes(currentUser.id),
   ).length;
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F1E8] px-4 py-5 md:px-6">
@@ -240,7 +246,7 @@ export function PortalLayout() {
 
           <button
             type="button"
-            onClick={signOut}
+            onClick={handleSignOut}
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#F4FBFB]"
           >
             <LogOut size={16} />
@@ -255,7 +261,7 @@ export function PortalLayout() {
                 Charming Fur-fection Portal
               </p>
               <h2 className="mt-1 text-2xl font-semibold text-[#20343B]">
-                Welcome back, {currentUser.name.split(" ")[0]}
+                Hi {currentUser.username || currentUser.email || currentUser.name}
               </h2>
               <p className="mt-1 text-sm text-[#5D7075]">
                 Customer bookings, pet records, employee accounts, and queue updates stay synchronized here.

@@ -79,7 +79,7 @@ function ChatBubble({ message }) {
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
         {message.bookingLink && (
           <Link
-            to="/customer/dashboard?tab=booking"
+            to="/customer/dashboard?tab=services"
             className="mt-3 inline-flex items-center rounded-full bg-[#6D37FF] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#5A2BE0]"
           >
             Book an appointment

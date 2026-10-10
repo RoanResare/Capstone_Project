@@ -5,6 +5,7 @@ import {
   Check,
   Eye,
   EyeOff,
+  ArrowLeft,
   Clock3,
   Mail,
   PawPrint,
@@ -481,7 +482,7 @@ function MetricCard({ label, value, tone = "teal" }) {
   );
 }
 
-function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment }) {
+function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack }) {
   if (!appointment) {
     return (
       <PanelCard
@@ -504,6 +505,14 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
       description="Review customer information, current status, and assignment details."
     >
       <div className="space-y-5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-2.5 text-sm font-semibold text-[#24444A]"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
         <div className="rounded-[24px] bg-[#F6FAFA] px-5 py-5">
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={appointment.status} />
@@ -512,22 +521,44 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             </span>
           </div>
 
-          <div className="mt-4 grid gap-3 text-sm text-[#607277]">
-            <div className="flex items-center gap-3">
-              <UserRound size={16} />
-              <span>{appointment.ownerName}</span>
+          <div className="mt-4 grid gap-5 text-sm text-[#607277] md:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+                Owner details
+              </p>
+              <div className="flex items-center gap-3">
+                <UserRound size={16} />
+                <span>{appointment.ownerName}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Mail size={16} />
+                <span>{appointment.customerEmail || "No email saved"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone size={16} />
+                <span>{contactPhone}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Mail size={16} />
-              <span>{appointment.customerEmail || "No email saved"}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Phone size={16} />
-              <span>{contactPhone}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Clock3 size={16} />
-              <span>Assigned staff: {appointment.assignedStaff || "Not assigned"}</span>
+            <div className="space-y-3 border-[#DDEAEA] md:border-l md:pl-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+                Pet details
+              </p>
+              <div className="flex items-center gap-3">
+                <PawPrint size={16} />
+                <span>{appointment.petName} | {appointment.petType || "Pet type not saved"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <CalendarDays size={16} />
+                <span>Service: {appointment.service || "Service not specified"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clock3 size={16} />
+                <span>Booked: {formatDateTime(appointment.createdAt, "Booking timestamp unavailable")}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clock3 size={16} />
+                <span>Assigned staff: {appointment.assignedStaff || "Not assigned"}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -573,7 +604,11 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </button>
           <button
             type="button"
-            onClick={() => updateAppointment(appointment.id, { status: "Cancelled" })}
+            onClick={() => {
+              if (window.confirm("Cancel this appointment? The customer will be notified of the status change.")) {
+                updateAppointment(appointment.id, { status: "Cancelled" });
+              }
+            }}
             className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949]"
           >
             Cancel appointment
@@ -810,6 +845,23 @@ function AppointmentsWorkspace({
     setSearchParams(nextParams);
   };
 
+  const clearSelectedAppointment = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("appointment");
+    nextParams.delete("notification");
+    setSearchParams(nextParams);
+  };
+
+  const appointmentSections = [
+    { title: "Pending", statuses: ["Pending"] },
+    { title: "Approved", statuses: ["Confirmed", "Accepted"] },
+    { title: "Completed", statuses: ["Completed"] },
+    { title: "Cancelled", statuses: ["Cancelled", "Rejected", "Expired"] },
+  ].map((section) => ({
+    ...section,
+    appointments: filteredAppointments.filter((appointment) => section.statuses.includes(appointment.status)),
+  }));
+
   return (
     <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -856,55 +908,73 @@ function AppointmentsWorkspace({
                 message="Try another filter or wait for new customer bookings to reach the queue."
               />
             ) : (
-              <div className="portal-scroll-panel min-h-0 max-h-[430px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-1">
-                {filteredAppointments.map((appointment) => {
-                  const risk = getAppointmentRisk(appointment, appointments);
+              <div className="portal-scroll-panel min-h-0 max-h-[430px] space-y-4 overflow-y-auto overscroll-contain pr-1 xl:flex-1">
+                {appointmentSections.map((section) => (
+                  <section key={section.title} className="rounded-2xl border border-[#E6F0F0] bg-[#FBFDFC] p-3">
+                    <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#E6F0F0] pb-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+                        {section.title}
+                      </p>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#365057]">
+                        {section.appointments.length}
+                      </span>
+                    </div>
+                    {section.appointments.length === 0 ? (
+                      <p className="px-2 py-3 text-sm text-[#7A9297]">No {section.title.toLowerCase()} appointments.</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {section.appointments.map((appointment) => {
+                          const risk = getAppointmentRisk(appointment, appointments);
 
-                  return (
-                    <button
-                        key={appointment.id}
-                        type="button"
-                        onClick={() => openAppointment(appointment.id)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                          selectedAppointment?.id === appointment.id
-                            ? "border-[#BFE1E1] bg-[#F8FCFC]"
-                            : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
-                        }`}
-                      >
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <p className="text-lg font-semibold text-[#20343B]">
-                                {appointment.petName} | {appointment.service}
-                              </p>
-                              <StatusBadge status={appointment.status} />
-                              {risk.isHighRisk && (
-                                <span
-                                  title={`${risk.cancelledCount} cancelled appointments on this account`}
-                                  className="rounded-full bg-[#FCE8EB] px-2.5 py-1 text-xs font-bold text-[#B23949]"
-                                >
-                                  High Risk / Frequent Canceller
-                                </span>
-                              )}
-                            </div>
-                        <p className="mt-2 text-sm text-[#607277]">
-                          {appointment.ownerName} | {appointment.customerEmail || "No email"}
-                        </p>
-                        <p className="mt-2 text-sm text-[#607277]">
-                          {formatAppointmentSchedule(appointment)}
-                        </p>
-                        <p className="mt-2 text-sm text-[#607277]">
-                          Assigned staff: {appointment.assignedStaff || "Not assigned"}
-                        </p>
-                          </div>
+                          return (
+                            <button
+                              key={appointment.id}
+                              type="button"
+                              onClick={() => openAppointment(appointment.id)}
+                              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                                selectedAppointment?.id === appointment.id
+                                  ? "border-[#BFE1E1] bg-[#F8FCFC]"
+                                  : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
+                              }`}
+                            >
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <p className="text-lg font-semibold text-[#20343B]">
+                                      {appointment.petName} | {appointment.service}
+                                    </p>
+                                    <StatusBadge status={appointment.status} />
+                                    {risk.isHighRisk && (
+                                      <span
+                                        title={`${risk.cancelledCount} cancelled appointments on this account`}
+                                        className="rounded-full bg-[#FCE8EB] px-2.5 py-1 text-xs font-bold text-[#B23949]"
+                                      >
+                                        High Risk / Frequent Canceller
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-2 text-sm text-[#607277]">
+                                    {appointment.ownerName} | {appointment.customerEmail || "No email"}
+                                  </p>
+                                  <p className="mt-2 text-sm text-[#607277]">
+                                    {formatAppointmentSchedule(appointment)}
+                                  </p>
+                                  <p className="mt-2 text-sm text-[#607277]">
+                                    Assigned staff: {appointment.assignedStaff || "Not assigned"}
+                                  </p>
+                                </div>
 
-                          <div className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
-                            {appointment.notes ? "Has notes" : "No notes"}
-                          </div>
-                        </div>
-                    </button>
-                  );
-                })}
+                                <div className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
+                                  {appointment.notes ? "Has notes" : "No notes"}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))}
               </div>
             )}
           </div>
@@ -915,6 +985,7 @@ function AppointmentsWorkspace({
           currentUser={currentUser}
           staffOptions={staffOptions}
           updateAppointment={handleAppointmentUpdate}
+          onBack={clearSelectedAppointment}
         />
       </div>
 
@@ -1052,6 +1123,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
 
 function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   const [searchValue, setSearchValue] = useState("");
+  const [petTypeFilter, setPetTypeFilter] = useState("Dog");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [form, setForm] = useState(() => buildPetRecordForm());
@@ -1060,9 +1132,14 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
     .filter((record) => record && typeof record === "object")
     .slice()
     .sort((left, right) => sortByNewest(left, right, ["updatedAt", "lastVisit"]));
-  const filteredPetRecords = petRecords.filter((record) =>
-    matchesPetRecordSearch(record, searchValue),
-  );
+  const filteredPetRecords = petRecords
+    .filter((record) => String(record.petType || "").toLowerCase() === petTypeFilter.toLowerCase())
+    .filter((record) => matchesPetRecordSearch(record, searchValue))
+    .sort((left, right) =>
+      String(left.petName || "").localeCompare(String(right.petName || ""), undefined, {
+        sensitivity: "base",
+      }),
+    );
   const selectedRecord =
     petRecords.find((record) => record.id === selectedRecordId) ||
     filteredPetRecords[0] ||
@@ -1217,6 +1294,25 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
         >
           <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:space-y-0 xl:gap-4">
             <div className="flex flex-col gap-3 xl:shrink-0">
+              <div className="grid grid-cols-2 rounded-2xl bg-[#EEF6F6] p-1">
+                {["Cat", "Dog"].map((petType) => (
+                  <button
+                    key={petType}
+                    type="button"
+                    onClick={() => {
+                      setPetTypeFilter(petType);
+                      setSearchValue("");
+                    }}
+                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                      petTypeFilter === petType
+                        ? "bg-white text-[#173E44] shadow-[0_8px_18px_rgba(94,81,60,0.08)]"
+                        : "text-[#607277] hover:text-[#24444A]"
+                    }`}
+                  >
+                    {petType}
+                  </button>
+                ))}
+              </div>
               <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
                 <Search size={16} />
                 <input
@@ -1224,7 +1320,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   autoComplete="off"
                   onChange={(event) => setSearchValue(event.target.value)}
                   className="w-full bg-transparent outline-none"
-                  placeholder="Search by owner, pet, breed, type, or email"
+                  placeholder={`Search ${petTypeFilter.toLowerCase()} records by owner, pet, breed, or email`}
                 />
               </label>
             </div>

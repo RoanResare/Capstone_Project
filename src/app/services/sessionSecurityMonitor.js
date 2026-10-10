@@ -2,9 +2,9 @@ export function monitorSessionSecurity({ verify, router, window, document, conne
   let disposed = false;
   let checking = false;
   let queued = false;
-  const isDashboard = () => /^\/(customer|admin|staff)\/dashboard(?:\/|$)/.test(router.state.location.pathname);
+  const isSessionRoute = () => !/^\/(login|signup|customer-signup|forgot-password|reset-password)(?:\/|$)/.test(router.state.location.pathname);
   const check = async () => {
-    if (disposed || !isDashboard() || document.visibilityState === "hidden") return;
+    if (disposed || !isSessionRoute() || document.visibilityState === "hidden") return;
     if (checking) { queued = true; return; }
     checking = true;
     try {
@@ -33,7 +33,7 @@ export function monitorSessionSecurity({ verify, router, window, document, conne
   });
   let lastActivityCheck = -Infinity;
   const checkActivity = () => {
-    if (disposed || !isDashboard() || document.visibilityState === "hidden") return;
+    if (disposed || !isSessionRoute() || document.visibilityState === "hidden") return;
     const now = Date.now();
     if (now - lastActivityCheck < 1000) return;
     lastActivityCheck = now;

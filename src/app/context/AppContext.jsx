@@ -2422,12 +2422,54 @@ export function AppProvider({ children }) {
         isOpen: typeof payload.isOpen === "boolean" ? payload.isOpen : true,
         ...payload,
       };
+      const shouldCancelSlotAppointments =
+        nextSlot.isOpen === false ||
+        nextSlot.disabled === true ||
+        ["cancelled", "disabled", "closed"].includes(String(nextSlot.status || "").toLowerCase());
+      const affectedAppointments = shouldCancelSlotAppointments
+        ? state.appointments.filter(
+            (appointment) =>
+              appointment.slotId === nextSlot.id &&
+              ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
+          )
+        : [];
 
       await saveAvailabilitySlotDocument(nextSlot);
+      if (affectedAppointments.length > 0) {
+        await Promise.all(
+          affectedAppointments.map((appointment) =>
+            saveAppointmentDocument(
+              normalizeAppointment({
+                ...appointment,
+                status: "Cancelled",
+                cancellationReason: "The appointment slot was disabled by the clinic.",
+                updatedAt: new Date().toISOString(),
+              }),
+            ),
+          ),
+        );
+      }
       dispatch({
         type: "UPSERT_AVAILABILITY_SLOT",
         payload: nextSlot,
         meta: { actorName: currentUser?.name || "Staff" },
+      });
+      affectedAppointments.forEach((appointment) => {
+        dispatch({
+          type: "UPDATE_APPOINTMENT",
+          payload: {
+            id: appointment.id,
+            updates: {
+              status: "Cancelled",
+              cancellationReason: "The appointment slot was disabled by the clinic.",
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          meta: {
+            actorName: currentUser?.name || "Staff",
+            actorRole: currentUser?.role || "staff",
+          },
+        });
       });
       return true;
     },

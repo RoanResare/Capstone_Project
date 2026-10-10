@@ -140,7 +140,7 @@ export const router = createBrowserRouter([
         path: "appointment",
         element: (
           <RequireAuth allowedRoles={["customer"]}>
-            <Navigate to="/customer/dashboard?tab=booking" replace />
+            <Navigate to="/customer/dashboard?tab=services" replace />
           </RequireAuth>
         ),
       },

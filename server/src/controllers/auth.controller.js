@@ -195,6 +195,7 @@ async function checkCustomerRegistrationAvailability(req, res) {
   }
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
+  await validateAccessSecurity(req);
 
   if (rawPhone && !phone) {
     throw new ApiError(400, PH_MOBILE_ERROR);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
@@ -124,7 +124,7 @@ function mergeSlotsById(baseSlots = [], overrideSlots = []) {
   return Array.from(slotsById.values());
 }
 
-export function AppointmentBooking({ embedded = false }) {
+export function AppointmentBooking({ embedded = false, initialServiceId = "" }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -141,6 +141,21 @@ export function AppointmentBooking({ embedded = false }) {
   const [errors, setErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!initialServiceId || !serviceCatalog.some((service) => service.id === initialServiceId)) {
+      return;
+    }
+
+    setPetSelections((current) =>
+      current.length
+        ? current.map((selection, index) =>
+            index === 0 ? { ...selection, serviceId: initialServiceId } : selection,
+          )
+        : [{ ...createPetSelection(), serviceId: initialServiceId }],
+    );
+    setFeedback({ type: "success", message: "Selected service carried into booking." });
+  }, [initialServiceId]);
 
   const customerPetRecords = useMemo(
     () =>
@@ -180,6 +195,31 @@ export function AppointmentBooking({ embedded = false }) {
         .sort((left, right) => `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`)),
     [appointmentServiceId, appointments, availabilitySlots],
   );
+  const fullyBookedDates = useMemo(() => {
+    const bookedByDate = new Map();
+
+    availabilitySlots
+      .filter(isBookableFutureSlot)
+      .filter((slot) => isServiceAvailableOnDate(appointmentServiceId, slot.date))
+      .forEach((slot) => {
+        const bookedCount = appointments.filter(
+          (appointment) =>
+            appointment.slotId === slot.id &&
+            ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
+        ).length;
+        const remaining = Math.max((Number(slot.capacity) || 1) - bookedCount, 0);
+        const entry = bookedByDate.get(slot.date) || { total: 0, full: 0 };
+        entry.total += 1;
+        if (remaining <= 0) entry.full += 1;
+        bookedByDate.set(slot.date, entry);
+      });
+
+    return Array.from(bookedByDate.entries())
+      .filter(([, entry]) => entry.total > 0 && entry.total === entry.full)
+      .map(([date]) => date)
+      .sort()
+      .slice(0, 12);
+  }, [appointmentServiceId, appointments, availabilitySlots]);
   const availableSlotsByDate = useMemo(
     () =>
       availableSlots.reduce((collection, slot) => {
@@ -252,7 +292,7 @@ export function AppointmentBooking({ embedded = false }) {
     event.preventDefault();
 
     if (!customer) {
-      navigate("/login", { state: { from: "/customer/dashboard?tab=booking" } });
+      navigate("/login", { state: { from: "/customer/dashboard?tab=services" } });
       return;
     }
 
@@ -401,7 +441,7 @@ export function AppointmentBooking({ embedded = false }) {
                             onChange={(event) =>
                               updateSelection(selection.id, {
                                 petRecordId: event.target.value,
-                                serviceId: "",
+                                serviceId: selection.serviceId,
                               })
                             }
                             className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -600,6 +640,25 @@ export function AppointmentBooking({ embedded = false }) {
               <p className="mt-1 font-semibold">{selectedSlot ? formatDateTimeLabel(selectedSlot.date, selectedSlot.time) : "Choose a slot"}</p>
             </div>
           </div>
+          <div className="mt-4 rounded-lg border border-[#E6EFEE] bg-[#FCFEFE] px-4 py-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7B9A9F]">
+              Fully booked dates
+            </p>
+            {fullyBookedDates.length === 0 ? (
+              <p className="mt-2 text-sm leading-6 text-[#607277]">
+                No fully booked dates in the current availability window.
+              </p>
+            ) : (
+              <div className="mt-3 max-h-44 space-y-2 overflow-y-auto pr-1">
+                {fullyBookedDates.map((date) => (
+                  <div key={date} className="rounded-lg bg-[#FBECEF] px-3 py-2 text-sm font-semibold text-[#B23949]">
+                    {formatSelectedDateLabel(date)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <label className="mt-4 flex items-center gap-3 rounded-lg bg-[#F5FAFA] px-4 py-3 text-sm text-[#33545A]">
             <input
               type="checkbox"

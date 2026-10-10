@@ -66,6 +66,19 @@ test("transient failures retry silently; confirmed security violations terminate
   cleanup();
 });
 
+test("authenticated sessions continue monitoring portal navigation and public pages", async () => {
+  const env = environment("admin");
+  let checks = 0;
+  const cleanup = monitorSessionSecurity({ ...env, verify: async () => { checks++; }, onViolation: assert.fail });
+  await flush();
+  for (const path of ["/portal/appointments", "/portal/pet-records", "/", "/services"]) {
+    env.router.navigate(path); await flush();
+    env.window.poll(); await flush();
+  }
+  assert.equal(checks, 9);
+  cleanup();
+});
+
 test("dashboard interactions are throttled and router state changes check immediately", async (t) => {
   let time = 1000;
   t.mock.method(Date, "now", () => time);

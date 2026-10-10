@@ -25,6 +25,8 @@ const INAPPROPRIATE_PATTERN =
 
 export const BLOCKED_CUSTOMER_MESSAGE =
   "I'm sorry, but I can only assist with polite questions regarding our pet care services, clinic hours, and appointments.";
+export const OUT_OF_SCOPE_CUSTOMER_MESSAGE =
+  "I can only help with Charming Fur-fection pet care services, appointments, prices, clinic hours, policies, and customer account guidance.";
 export const CHAT_TIMEOUT_ERROR_MESSAGE =
   "The request took too long or connection timed out. Please try sending your message again.";
 
@@ -110,7 +112,7 @@ Core Guidelines:
 
 1. Language & Formatting: Always reply strictly in English. Do not use any asterisks (*) for bullet points or lists. Use plain text formatting and bold text only for emphasis, such as **Book Appointment**.
 2. Accurate Details: Always use the exact prices and services listed above. Never guess or say information is missing.
-3. Direct Booking: Whenever a user asks about booking, scheduling, or reserving a slot, use this exact phrase and nothing else: Please book your appointment directly through the Book Appointment tab inside your Customer Dashboard.
+3. Direct Booking: Whenever a user asks about booking, scheduling, or reserving a slot, use this exact phrase and nothing else: Please book your appointment directly through the Services & Book Appointment tab inside your Customer Dashboard.
 4. Tone: Be warm, professional, and concise.
 `.trim();
 
@@ -190,6 +192,13 @@ function sanitizeAssistantReply(value = "") {
 
 function containsInappropriateLanguage(message = "") {
   return INAPPROPRIATE_PATTERN.test(normalizeValue(message));
+}
+
+function isRelevantPetCareSystemQuestion(message = "") {
+  const value = normalizeValue(message).toLowerCase();
+  if (!value) return false;
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening|thanks|thank you)\b/.test(value)) return true;
+  return /\b(pet|dog|cat|puppy|kitten|clinic|vet|veterinary|groom|grooming|bath|blowdry|service|price|rate|cost|fee|appointment|book|booking|schedule|slot|hours|location|branch|las pinas|las piñas|vaccin|rabies|deworm|consultation|laboratory|cbc|chemistry|urinalysis|kapon|neuter|spay|account|dashboard|profile|record|policy|cancel|reminder)\b/.test(value);
 }
 
 async function callGroqProxy(message, history) {
@@ -439,6 +448,18 @@ export async function askGroqAssistant({ message, history = [] }) {
     };
   }
 
+  if (!isRelevantPetCareSystemQuestion(cleanMessage)) {
+    return {
+      answer: OUT_OF_SCOPE_CUSTOMER_MESSAGE,
+      recognized: false,
+      language: detectLanguage(cleanMessage),
+      topic: "out-of-scope",
+      provider: "guardrail",
+      model: "",
+      warning: "Message blocked because it is outside the pet care services system context.",
+    };
+  }
+
   try {
     const result = await callGroqProxy(cleanMessage, history);
     return {
@@ -478,6 +499,18 @@ export async function askGroqAssistantStream({ message, history = [], onToken })
       topic: "safety",
       provider: "guardrail",
       warning: "Message blocked by local safety guardrail.",
+    };
+  }
+
+  if (!isRelevantPetCareSystemQuestion(cleanMessage)) {
+    onToken?.(OUT_OF_SCOPE_CUSTOMER_MESSAGE);
+    return {
+      answer: OUT_OF_SCOPE_CUSTOMER_MESSAGE,
+      recognized: false,
+      language: detectLanguage(cleanMessage),
+      topic: "out-of-scope",
+      provider: "guardrail",
+      warning: "Message blocked because it is outside the pet care services system context.",
     };
   }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   Bell,
@@ -24,8 +24,7 @@ import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
-  { id: "services", label: "Services", icon: Scissors },
-  { id: "booking", label: "Book Appointment", icon: CalendarDays },
+  { id: "services", label: "Services & Book Appointment", icon: Scissors },
   { id: "appointments", label: "My Appointments", icon: Clock3 },
   { id: "profile", label: "Profile", icon: UserRound },
 ];
@@ -129,6 +128,41 @@ function buildEmptyPetForm() {
   };
 }
 
+function normalizeAgeInput(value = "", unit = "months") {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 2);
+  if (!digits) return "";
+  const max = unit === "years" ? 35 : 24;
+  return String(Math.min(Number(digits), max));
+}
+
+function normalizeWeightInput(value = "") {
+  const cleaned = String(value || "").replace(/[^0-9.]/g, "");
+  const [whole = "", ...rest] = cleaned.split(".");
+  const decimal = rest.join("").replace(/\D/g, "").slice(0, 2);
+  const cappedWhole = whole.replace(/\D/g, "").slice(0, 3);
+  const nextValue = rest.length > 0 ? `${cappedWhole}.${decimal}` : cappedWhole;
+  const numericValue = Number(nextValue);
+  if (Number.isFinite(numericValue) && numericValue > 200) {
+    return "200.00";
+  }
+  return nextValue;
+}
+
+function getPasswordStrength(password = "") {
+  const checks = [
+    password.length >= 8,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ];
+  const score = checks.filter(Boolean).length;
+  if (!password) return { label: "Not started", width: "0%", color: "bg-[#D8E8EA]" };
+  if (score <= 2) return { label: "Weak", width: "35%", color: "bg-[#D95A6A]" };
+  if (score <= 4) return { label: "Good", width: "70%", color: "bg-[#F4C16A]" };
+  return { label: "Strong", width: "100%", color: "bg-[#2D9B9B]" };
+}
+
 function buildPetFormFromRecord(record = {}) {
   const savedPetType = record.petType || "";
   const petType = petTypeOptions.includes(savedPetType) ? savedPetType : "";
@@ -178,9 +212,10 @@ function MetricCard({ label, value, description }) {
   );
 }
 
-function NotificationDropdown({ notifications, currentUserId, onReadNotification }) {
+function NotificationDropdown({ notifications, currentUserId, onReadNotification, onReadAllNotifications }) {
   const [isOpen, setIsOpen] = useState(true);
   const visibleCount = Math.min(notifications.length, 3);
+  const unreadCount = notifications.filter((notification) => !notification.readBy.includes(currentUserId)).length;
 
   return (
     <section className="rounded-[24px] bg-white p-5 shadow-[0_16px_32px_rgba(102,91,72,0.12)]">
@@ -193,6 +228,7 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
         <span className="inline-flex items-center gap-3">
           <Bell size={20} className="text-[#2D6B73]" />
           <span className="text-lg font-semibold text-[#20343B]">Notifications</span>
+          {unreadCount > 0 && <StatusChip label={`${unreadCount} unread`} />}
         </span>
         <ChevronDown
           size={20}
@@ -201,6 +237,17 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
       </button>
 
       {isOpen && (
+        <>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={onReadAllNotifications}
+            disabled={unreadCount === 0}
+            className="rounded-xl bg-[#EEF6F6] px-3 py-2 text-xs font-semibold text-[#24444A] transition hover:bg-[#E3F0F0] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Mark all as Read
+          </button>
+        </div>
         <div className="mt-4 max-h-[330px] space-y-3 overflow-y-auto pr-1">
           {notifications.length === 0 ? (
             <EmptyState
@@ -235,6 +282,7 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
             })
           )}
         </div>
+        </>
       )}
 
       {isOpen && notifications.length > visibleCount && (
@@ -277,6 +325,7 @@ export function CustomerProfile() {
   const { currentUser, isAuthenticated, isLoading, signOut, updateProfile } = useAuth();
   const {
     markNotificationRead,
+    markAllNotificationsRead,
     deletePetRecord,
     savePetRecord,
     state,
@@ -300,16 +349,25 @@ export function CustomerProfile() {
   const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
   const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [pendingProfilePayload, setPendingProfilePayload] = useState(null);
+  const [preselectedServiceId, setPreselectedServiceId] = useState("");
+  const bookingSectionRef = useRef(null);
 
   useEffect(() => {
     const tabFromQuery = searchParams.get("tab") || "";
     const legacyTabFromHash = location.hash.replace("#", "");
-    const nextTab = dashboardTabs.some((tab) => tab.id === tabFromQuery)
-      ? tabFromQuery
-      : dashboardTabs.some((tab) => tab.id === legacyTabFromHash)
-        ? legacyTabFromHash
+    const normalizedTabFromQuery = tabFromQuery === "booking" ? "services" : tabFromQuery;
+    const normalizedLegacyTab = legacyTabFromHash === "booking" ? "services" : legacyTabFromHash;
+    const nextTab = dashboardTabs.some((tab) => tab.id === normalizedTabFromQuery)
+      ? normalizedTabFromQuery
+      : dashboardTabs.some((tab) => tab.id === normalizedLegacyTab)
+        ? normalizedLegacyTab
         : "";
 
     if (nextTab) {
@@ -391,6 +449,7 @@ export function CustomerProfile() {
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
     "grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-[repeat(2,minmax(0,17rem))]";
+  const passwordStrength = getPasswordStrength(passwordForm.next);
 
   useEffect(() => {
     if (!selectedAppointmentId && customerAppointments[0]) {
@@ -529,6 +588,12 @@ export function CustomerProfile() {
   const savePassword = async (event) => {
     event.preventDefault();
     if (isChangingPassword) return;
+    if (passwordForm.current && passwordForm.next && passwordForm.current === passwordForm.next) {
+      const message = "New password must be different from your current password.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
     setIsChangingPassword(true);
     try {
       await changeCustomerPassword(passwordForm.current, passwordForm.next, passwordForm.confirm);
@@ -655,10 +720,23 @@ export function CustomerProfile() {
       return;
     }
 
+    const confirmed = window.confirm("Cancel this appointment? This will update the clinic queue and notify the portal team.");
+    if (!confirmed) {
+      return;
+    }
+
     updateAppointment(appointmentId, { status: "Cancelled" }, profileForm.fullName);
     const message = "Appointment cancelled. The clinic queue has been updated.";
     setFeedback({ type: "success", message });
     toast.success(message);
+  };
+
+  const continueToBooking = (serviceId) => {
+    setPreselectedServiceId(serviceId);
+    openTab("services");
+    window.requestAnimationFrame(() => {
+      bookingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const handleSignOut = async () => {
@@ -682,7 +760,7 @@ export function CustomerProfile() {
                   Customer Dashboard
                 </p>
                 <h1 className="mt-2 truncate text-3xl font-semibold md:text-4xl">
-                  Hi, {profileForm.fullName || "Customer"}
+                  Hi, {profileForm.username || customer?.username || "Customer"}
                 </h1>
                 <p className="mt-1 truncate text-sm text-white/72">{profileForm.email}</p>
               </div>
@@ -833,17 +911,22 @@ export function CustomerProfile() {
                             onChange={(event) =>
                               setPetForm((current) => ({
                                 ...current,
-                                ageValue: event.target.value.replace(/\D/g, "").slice(0, 3),
+                                ageValue: normalizeAgeInput(event.target.value, current.ageUnit),
                               }))
                             }
                             inputMode="numeric"
+                            maxLength={2}
                             className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                             placeholder="Age"
                           />
                           <select
                             value={petForm.ageUnit}
                             onChange={(event) =>
-                              setPetForm((current) => ({ ...current, ageUnit: event.target.value }))
+                              setPetForm((current) => ({
+                                ...current,
+                                ageUnit: event.target.value,
+                                ageValue: normalizeAgeInput(current.ageValue, event.target.value),
+                              }))
                             }
                             className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                           >
@@ -858,15 +941,13 @@ export function CustomerProfile() {
                             onChange={(event) =>
                               setPetForm((current) => ({
                                 ...current,
-                                weightKg: event.target.value
-                                  .replace(/[^0-9.]/g, "")
-                                  .replace(/^(\d*\.?\d{0,2}).*$/, "$1")
-                                  .slice(0, 6),
+                                weightKg: normalizeWeightInput(event.target.value),
                               }))
                             }
                             inputMode="decimal"
+                            maxLength={6}
                             className="min-w-0 flex-1 px-4 py-3 outline-none"
-                            placeholder="Weight"
+                            placeholder="000.00"
                           />
                           <span className="shrink-0 border-l border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
                             kg
@@ -1008,6 +1089,7 @@ export function CustomerProfile() {
                       notifications={visibleNotifications}
                       currentUserId={currentCustomerId}
                       onReadNotification={markNotificationRead}
+                      onReadAllNotifications={markAllNotificationsRead}
                     />
                   </div>
                 </div>
@@ -1048,7 +1130,7 @@ export function CustomerProfile() {
                       </p>
                       <button
                         type="button"
-                        onClick={() => openTab("booking")}
+                        onClick={() => continueToBooking(service.id)}
                         className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:scale-[1.03] hover:bg-[#235A61]"
                       >
                         Continue to booking
@@ -1056,10 +1138,11 @@ export function CustomerProfile() {
                     </article>
                   ))}
                 </div>
+                <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
+                  <AppointmentBooking embedded initialServiceId={preselectedServiceId} />
+                </div>
               </section>
             )}
-
-            {activeTab === "booking" && <AppointmentBooking embedded />}
 
             {activeTab === "appointments" && (
               <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1112,6 +1195,14 @@ export function CustomerProfile() {
                       <div className="mt-6 grid gap-4 md:grid-cols-2">
                         <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
+                            Service
+                          </p>
+                          <p className="mt-2 text-base font-semibold text-[#20343B]">
+                            {selectedAppointment.service || "Service not specified"}
+                          </p>
+                        </div>
+                        <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
                             Scheduled
                           </p>
                           <p className="mt-2 text-base font-semibold text-[#20343B]">
@@ -1119,6 +1210,14 @@ export function CustomerProfile() {
                               selectedAppointment.scheduleDate,
                               selectedAppointment.scheduleTime,
                             )}
+                          </p>
+                        </div>
+                        <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
+                            Booked on
+                          </p>
+                          <p className="mt-2 text-base font-semibold text-[#20343B]">
+                            {formatNotificationDate(selectedAppointment.createdAt) || "Booking timestamp unavailable"}
                           </p>
                         </div>
                         <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
@@ -1316,35 +1415,78 @@ export function CustomerProfile() {
                     Change password
                   </p>
                   <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <input
-                      type="password"
-                      value={passwordForm.current}
-                      onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))}
-                      autoComplete="current-password"
-                      className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]"
-                      placeholder="Current password"
-                      required
-                    />
                     <div>
-                      <input
-                        type="password"
-                        value={passwordForm.next}
-                        onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))}
-                        autoComplete="new-password"
-                        className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]"
-                        placeholder="New password"
-                        required
-                      />
+                      <div className="relative">
+                        <input
+                          type={passwordVisibility.current ? "text" : "password"}
+                          value={passwordForm.current}
+                          onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))}
+                          autoComplete="current-password"
+                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none focus:border-[#2D9B9B]"
+                          placeholder="Current password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPasswordVisibility((current) => ({ ...current, current: !current.current }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                          aria-label={passwordVisibility.current ? "Hide current password" : "Show current password"}
+                        >
+                          {passwordVisibility.current ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      type="password"
-                      value={passwordForm.confirm}
-                      onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))}
-                      autoComplete="new-password"
-                      className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none focus:border-[#2D9B9B]"
-                      placeholder="Confirm new password"
-                      required
-                    />
+                    <div>
+                      <div className="relative">
+                        <input
+                          type={passwordVisibility.next ? "text" : "password"}
+                          value={passwordForm.next}
+                          onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))}
+                          autoComplete="new-password"
+                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none focus:border-[#2D9B9B]"
+                          placeholder="New password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPasswordVisibility((current) => ({ ...current, next: !current.next }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                          aria-label={passwordVisibility.next ? "Hide new password" : "Show new password"}
+                        >
+                          {passwordVisibility.next ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#D8E8EA]">
+                        <div
+                          className={`h-full rounded-full transition-all ${passwordStrength.color}`}
+                          style={{ width: passwordStrength.width }}
+                        />
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-[#607277]">
+                        Password strength: {passwordStrength.label}
+                      </p>
+                    </div>
+                    <div>
+                      <div className="relative">
+                        <input
+                          type={passwordVisibility.confirm ? "text" : "password"}
+                          value={passwordForm.confirm}
+                          onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))}
+                          autoComplete="new-password"
+                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none focus:border-[#2D9B9B]"
+                          placeholder="Confirm new password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPasswordVisibility((current) => ({ ...current, confirm: !current.confirm }))}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                          aria-label={passwordVisibility.confirm ? "Hide confirmation password" : "Show confirmation password"}
+                        >
+                          {passwordVisibility.confirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <button
                     type="submit"

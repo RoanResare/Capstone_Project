@@ -58,11 +58,11 @@ export function Home() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const currentCustomer = currentUser?.role === "customer" ? currentUser : null;
-  const customerBookingPath = currentCustomer ? "/customer/dashboard?tab=booking" : "/login";
+  const customerBookingPath = currentCustomer ? "/customer/dashboard?tab=services" : "/login";
 
   const openCustomerBooking = () => {
     navigate(customerBookingPath, {
-      state: currentCustomer ? undefined : { from: "/customer/dashboard?tab=booking" },
+      state: currentCustomer ? undefined : { from: "/customer/dashboard?tab=services" },
     });
   };
 
@@ -70,7 +70,7 @@ export function Home() {
     <div className="bg-[#F6F0E7] pb-6">
       <section id="home" className="scroll-mt-28 relative overflow-hidden">
         <div className="absolute inset-x-0 top-0 h-[300px] bg-[#2D9B9B]" />
-        <div className="relative mx-auto max-w-[1180px] px-4 pb-5 pt-5 sm:px-6 md:pt-6">
+        <div className="relative mx-auto max-w-[1360px] px-3 pb-5 pt-5 sm:px-4 md:pt-6">
           <motion.div
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}

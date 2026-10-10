@@ -14,6 +14,37 @@ const BLOCKED_NETWORK_NAMES = [
   /\b(?:proton (?:technologies )?ag|proton ?vpn|windscribe|privado networks|privado ?vpn|tunnel ?bear)\b/,
   /\b(?:hetzner|leaseweb|digitalocean|digital ocean|vultr|ovhcloud|ovh sas|amazon data services|amazon web services|microsoft azure)\b/,
 ];
+const REGIONAL_COUNTRIES = new Set(["PH", "SG", "HK", "BN", "KH", "ID", "LA", "MY", "MM", "TH", "TL", "VN"]);
+const countryAliases = new Map();
+const countryNames = new Intl.DisplayNames(["en"], { type: "region", fallback: "none" });
+for (let first = 65; first <= 90; first++) {
+  for (let second = 65; second <= 90; second++) {
+    const code = String.fromCharCode(first, second);
+    const name = countryNames.of(code);
+    if (!name || ["ZZ", "EU", "UN", "QO"].includes(code)) continue;
+    countryAliases.set(code.toLowerCase(), code);
+    countryAliases.set(name.toLowerCase(), code);
+  }
+}
+for (const [alias, code] of Object.entries({
+  phl: "PH", sgp: "SG", hkg: "HK", brn: "BN", khm: "KH", idn: "ID", lao: "LA",
+  mys: "MY", mmr: "MM", tha: "TH", tls: "TL", vnm: "VN", usa: "US", uk: "GB",
+  "united states of america": "US", "brunei darussalam": "BN", "lao people's democratic republic": "LA",
+  burma: "MM", myanmar: "MM", vietnam: "VN", "east timor": "TL", "hong kong sar": "HK",
+})) countryAliases.set(alias, code);
+
+function getProviderLocation(data) {
+  const fields = [data?.location?.country_code, data?.location?.country, data?.country_code,
+    data?.countryCode, data?.country, data?.country_name];
+  const codes = fields.filter((value) => typeof value === "string")
+    .map((value) => countryAliases.get(value.trim().toLowerCase())).filter(Boolean);
+  // Any regional evidence wins, including inconsistent country name/code responses.
+  const whitelistedCode = codes.find((code) => REGIONAL_COUNTRIES.has(code));
+  const countryCode = whitelistedCode || codes[0] || "";
+  const region = data?.location?.state || data?.location?.region || data?.region || data?.region_name || "";
+  return { countryCode, region: typeof region === "string" ? region : "",
+    whitelisted: Boolean(whitelistedCode), outsideRegion: Boolean(countryCode && !whitelistedCode) };
+}
 const blockedNetworks = new net.BlockList();
 for (const cidr of (env.security.blockedNetworkCidrs || "").split(",").map((value) => value.trim()).filter(Boolean)) {
   const [address, prefix, extra] = cidr.split("/");
@@ -99,10 +130,6 @@ function getProviderBlockReason(data) {
 
 async function lookupIpSecurity(ip) {
   if (!shouldLookupIp(ip)) return { checked: false, blocked: false };
-  if (blockedNetworks.check(ip, net.isIP(ip) === 4 ? "ipv4" : "ipv6")) {
-    console.warn("[session-security] Connection blocked.", { ip, blocked: true, reason: "configured-network-range" });
-    return { checked: true, blocked: true };
-  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
   try {
@@ -115,22 +142,28 @@ async function lookupIpSecurity(ip) {
       return { checked: false, blocked: false };
     }
     const data = await response.json();
+    if (!data || typeof data !== "object" || Array.isArray(data) || data.error || data.error_code || data.success === false) {
+      return { checked: false, blocked: false };
+    }
     if (typeof data?.docs === "string" && data.docs.startsWith("https://ipapi.is/free-tier.html") && !warnedAnonymousResponse) {
       warnedAnonymousResponse = true;
       console.warn("[session-security] Anonymous ipapi.is response lacks threat detection. Configure FRAUD_GEO_LOOKUP_API_KEY on the backend.");
     }
-    const reason = getProviderBlockReason(data);
+    const location = getProviderLocation(data);
+    const reason = location.outsideRegion
+      ? (blockedNetworks.check(ip, net.isIP(ip) === 4 ? "ipv4" : "ipv6")
+        ? "configured-network-range" : getProviderBlockReason(data)) : "";
     const blocked = Boolean(reason);
     if (blocked) {
       console.warn("[session-security] Connection blocked.", {
         ip, blocked: true, reason,
       });
     }
-    return { checked: true, blocked, data };
+    return { checked: true, blocked, location };
   } catch (error) {
     console.warn("[session-security] IP provider lookup failed.", {
       ip,
-      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+      error: error?.name || "LookupError",
     });
     return { checked: false, blocked: false };
   } finally {
@@ -198,7 +231,8 @@ async function validateAccessSecurity(req, options = {}) {
       ip,
     });
   }
-  return { ip, checked: result.checked };
+  return { ip, checked: result.checked, countryCode: result.location?.countryCode || "",
+    region: result.location?.region || "" };
 }
 
 async function createFreshSessionBinding(user, req) {
@@ -207,6 +241,8 @@ async function createFreshSessionBinding(user, req) {
   await db.collection(SESSION_CONNECTIONS_COLLECTION).doc(sessionId).set({
     uid: user.uid,
     ip: security.ip,
+    countryCode: security.countryCode,
+    region: security.region,
     createdAt: new Date(),
     updatedAt: new Date(),
     expiresAt: new Date(Date.now() + SESSION_TTL_MS),
@@ -242,10 +278,12 @@ async function validateSessionSecurity(req) {
     throw new ApiError(401, SESSION_TERMINATED_MESSAGE, { code: "SESSION_SECURITY_VIOLATION" });
   }
 
-  if (connection.ip !== security.ip) {
+  if (connection.ip !== security.ip || (security.checked
+    && (connection.countryCode !== security.countryCode || connection.region !== security.region))) {
     await reference.set({
       uid: user.uid,
       ip: security.ip,
+      ...(security.checked ? { countryCode: security.countryCode, region: security.region } : {}),
       updatedAt: new Date(),
       expiresAt: new Date(Date.now() + SESSION_TTL_MS),
     }, { merge: true });

@@ -36,6 +36,7 @@ test("registration endpoint accepts both local and international input and norma
         async getUserByEmail() { throw Object.assign(new Error("Not found"), { code: "auth/user-not-found" }); },
       } };
       if (name === "../services/registrationSecurity.service") return { validateRegistrationSecurity: async () => ({}) };
+      if (name === "../services/sessionSecurity.service") return { validateAccessSecurity: async () => ({ checked: true }) };
       if (name === "../services/user.service") return {
         findUserByEmailCaseInsensitive: async () => null,
         getUserByPhone: async (phone) => { lookups.push(phone); return null; },

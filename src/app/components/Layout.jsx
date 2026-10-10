@@ -11,7 +11,7 @@ import { resolveHomePath } from "../utils/roleUtils.js";
 const landingNavItems = [{ id: "home", label: "Home" }];
 
 function getDisplayName(user) {
-  return user?.fullName || user?.name || user?.email || "Account";
+  return user?.username || user?.email || "Account";
 }
 
 function getInitials(user) {
@@ -36,8 +36,7 @@ export function Layout() {
     currentUser?.role === "customer"
       ? [
           { to: "/customer/dashboard", label: "Customer Dashboard", icon: LayoutDashboard },
-          { to: "/customer/dashboard?tab=services", label: "Services", icon: LayoutDashboard },
-          { to: "/customer/dashboard?tab=booking", label: "Book Appointment", icon: LayoutDashboard },
+          { to: "/customer/dashboard?tab=services", label: "Services & Book Appointment", icon: LayoutDashboard },
           { to: "/customer/dashboard?tab=appointments", label: "My Appointments", icon: LayoutDashboard },
           { to: "/customer/dashboard?tab=profile", label: "Manage Account", icon: UserRound },
         ]
@@ -168,7 +167,7 @@ export function Layout() {
                     <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#F4C16A] text-xs font-bold text-[#173E44]">
                       {getInitials(currentUser)}
                     </span>
-                    <span className="max-w-36 truncate">{accountName}</span>
+                    <span className="max-w-36 truncate">Hi {accountName}</span>
                     <ChevronDown size={16} />
                   </button>
 

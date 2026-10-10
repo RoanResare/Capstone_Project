@@ -244,6 +244,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
   };
 
   const addPetSelection = () =>
+    setPetSelections((current) => [...current, createPetSelection()]);
+  const addServiceSelection = () =>
     setPetSelections((current) => [
       ...current,
       {
@@ -492,14 +494,24 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                   );
                 })}
 
-                <button
-                  type="button"
-                  onClick={addPetSelection}
-                  className="inline-flex w-fit items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
-                >
-                  <Plus size={16} />
-                  Add another service
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={addPetSelection}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
+                  >
+                    <Plus size={16} />
+                    Add another pet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addServiceSelection}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
+                  >
+                    <Plus size={16} />
+                    Add another service
+                  </button>
+                </div>
               </div>
             )}
             {errors.petSelections && <p className="mt-3 text-sm text-[#B23949]">{errors.petSelections}</p>}

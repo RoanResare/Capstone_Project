@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
@@ -18,6 +19,11 @@ import {
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
+import {
+  canApproveAppointment,
+  canCompleteAppointment,
+  canChangeAppointmentStatus,
+} from "../../utils/appointmentActions.js";
 import {
   appointmentFilters,
   breedsByPetType,
@@ -197,7 +203,7 @@ function sortByNewest(left, right, fallbackFields = []) {
 }
 
 function statusClasses(status) {
-  if (["Confirmed", "Completed"].includes(status)) {
+  if (["Confirmed", "Accepted", "Approved", "Completed"].includes(status)) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
@@ -455,7 +461,7 @@ function EmptyState({ title, message }) {
 function StatusBadge({ status }) {
   return (
     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(status)}`}>
-      {status}
+      {status === "Accepted" ? "Approved" : status}
     </span>
   );
 }
@@ -502,6 +508,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
   }
 
   const contactPhone = appointment.contactNumber || "No phone saved";
+  const canComplete = canCompleteAppointment(appointment.status);
 
   return (
     <PanelCard
@@ -595,34 +602,30 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
         <div className="grid gap-3 sm:grid-cols-3">
           <button
             type="button"
-            onClick={() => updateAppointment(appointment.id, { status: "Confirmed" })}
-            disabled={!appointment.assignedStaff?.trim() || appointment.status !== "Pending"}
-            title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Confirm appointment"}
-            className="rounded-2xl bg-[#E8F7EE] px-4 py-3 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => updateAppointment(appointment.id, { status: "Accepted" })}
+            disabled={!appointment.assignedStaff?.trim() || !canApproveAppointment(appointment.status)}
+            title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Approve appointment"}
+            className="rounded-2xl bg-[#E8F7EE] px-4 py-3 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Approve appointment
           </button>
           <button
             type="button"
-            onClick={() => updateAppointment(appointment.id, { status: "Rejected" })}
-            className="rounded-2xl bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#A56A0F]"
+            disabled
+            className="rounded-2xl bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Reject appointment
           </button>
           <button
             type="button"
-            onClick={() => {
-              if (window.confirm("Cancel this appointment? The customer will be notified of the status change.")) {
-                updateAppointment(appointment.id, { status: "Cancelled" });
-              }
-            }}
-            className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949]"
+            disabled
+            className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Cancel appointment
           </button>
         </div>
 
-        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] px-4 py-3 text-sm font-semibold text-[#365057]">
+        <label className={`flex items-center justify-between gap-4 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm font-semibold ${canComplete ? "cursor-pointer bg-[#F8FCFC] text-[#365057]" : "cursor-not-allowed bg-[#F1F5F5] text-[#91A0A3]"}`}>
           <span className="flex items-center gap-2">
             <Check size={17} />
             Mark appointment completed
@@ -630,12 +633,9 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           <input
             type="checkbox"
             checked={appointment.status === "Completed"}
-            onChange={(event) =>
-              updateAppointment(appointment.id, {
-                status: event.target.checked ? "Completed" : "Pending",
-              })
-            }
-            className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B]"
+            disabled={!canComplete}
+            onChange={() => updateAppointment(appointment.id, { status: "Completed" })}
+            className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B] disabled:cursor-not-allowed"
           />
         </label>
 
@@ -782,10 +782,18 @@ function AppointmentsWorkspace({
   updateAppointment,
 }) {
   const toast = useToast();
-  const { success: showSuccessToast } = toast;
   const [searchParams, setSearchParams] = useSearchParams();
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [searchValue, setSearchValue] = useState("");
+  const requestedStatus = searchParams.get("status") || "All";
+  const statusFilter = appointmentFilters.includes(requestedStatus) ? requestedStatus : "All";
+  const [searchValue, setSearchValue] = useState(() => searchParams.get("search") || "");
+  const updateListFilter = (key, value) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (searchValue) nextParams.set("search", searchValue);
+    else nextParams.delete("search");
+    if (value && value !== "All") nextParams.set(key, value);
+    else nextParams.delete(key);
+    setSearchParams(nextParams, { replace: true });
+  };
 
   const appointments = (Array.isArray(state.appointments) ? state.appointments : [])
     .filter((appointment) => appointment && typeof appointment === "object")
@@ -795,6 +803,11 @@ function AppointmentsWorkspace({
     .filter((user) => user && user.status === "active" && user.role === "staff")
     .map((user) => user.name?.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
   const handleAppointmentUpdate = async (appointmentId, updates) => {
+    const appointment = appointments.find((entry) => entry.id === appointmentId);
+    if (updates?.status && !canChangeAppointmentStatus(appointment?.status, updates.status)) {
+      toast.error("This action is unavailable for the appointment's current status.");
+      return;
+    }
     try {
       await updateAppointment(appointmentId, updates, currentUser.name);
     } catch (error) {
@@ -802,15 +815,16 @@ function AppointmentsWorkspace({
       return;
     }
 
-    if (updates?.status === "Rejected") {
-      showSuccessToast("Appointment rejected successfully.");
-    }
   };
   const filteredAppointments = appointments.filter((appointment) => {
-    const matchesStatus = statusFilter === "All" || appointment.status === statusFilter;
+    const matchesStatus = statusFilter === "All" || appointment.status === statusFilter ||
+      (statusFilter === "Approved" && appointment.status === "Accepted");
     return matchesStatus && matchesSearch(appointment, searchValue);
   });
   const pendingCount = appointments.filter((appointment) => appointment.status === "Pending").length;
+  const approvedCount = appointments.filter(
+    (appointment) => ["Accepted", "Approved"].includes(appointment.status),
+  ).length;
   const confirmedCount = appointments.filter(
     (appointment) => appointment.status === "Confirmed",
   ).length;
@@ -837,7 +851,11 @@ function AppointmentsWorkspace({
       : null;
 
   const openAppointment = (appointmentId, notificationId = "") => {
-    const nextParams = new URLSearchParams();
+    const nextParams = new URLSearchParams(searchParams);
+    if (searchValue) nextParams.set("search", searchValue);
+    else nextParams.delete("search");
+    nextParams.delete("appointment");
+    nextParams.delete("notification");
 
     if (appointmentId) {
       nextParams.set("appointment", appointmentId);
@@ -852,6 +870,8 @@ function AppointmentsWorkspace({
 
   const clearSelectedAppointment = () => {
     const nextParams = new URLSearchParams(searchParams);
+    if (searchValue) nextParams.set("search", searchValue);
+    else nextParams.delete("search");
     nextParams.delete("appointment");
     nextParams.delete("notification");
     setSearchParams(nextParams);
@@ -859,7 +879,8 @@ function AppointmentsWorkspace({
 
   const appointmentSections = [
     { title: "Pending", statuses: ["Pending"] },
-    { title: "Approved", statuses: ["Confirmed", "Accepted"] },
+    { title: "Approved", statuses: ["Accepted", "Approved"] },
+    { title: "Confirmed", statuses: ["Confirmed"] },
     { title: "Completed", statuses: ["Completed"] },
     { title: "Rejected", statuses: ["Rejected"] },
     { title: "Cancelled", statuses: ["Cancelled"] },
@@ -873,8 +894,9 @@ function AppointmentsWorkspace({
 
   return (
     <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-7">
         <MetricCard label="Pending" value={pendingCount} tone="gold" />
+        <MetricCard label="Approved" value={approvedCount} />
         <MetricCard label="Confirmed" value={confirmedCount} />
         <MetricCard label="Completed" value={completedCount} tone="slate" />
         <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
@@ -887,13 +909,13 @@ function AppointmentsWorkspace({
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
           className="xl:flex xl:min-h-0 xl:flex-col"
-          bodyClassName="xl:min-h-0 xl:flex-1"
+          bodyClassName="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col"
         >
-          <div className="space-y-3 xl:flex xl:h-full xl:min-h-0 xl:flex-col">
+          <div className="space-y-3 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
             <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <select
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                onChange={(event) => updateListFilter("status", event.target.value)}
                 className="rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
               >
                 {appointmentFilters.map((filter) => (
@@ -919,7 +941,7 @@ function AppointmentsWorkspace({
                 message="Try another filter or wait for new customer bookings to reach the queue."
               />
             ) : (
-              <div className="portal-scroll-panel min-h-0 max-h-[430px] space-y-4 overflow-y-auto overscroll-contain pr-1 xl:flex-1">
+              <div className="portal-scroll-panel min-h-0 max-h-[700px] space-y-4 overflow-y-auto overscroll-contain pr-1 xl:h-0 xl:min-h-[430px] xl:max-h-none xl:flex-1">
                 {appointmentSections.map((section) => (
                   <section key={section.title} className="rounded-2xl border border-[#E6F0F0] bg-[#FBFDFC] p-3">
                     <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#E6F0F0] pb-2">
@@ -1565,6 +1587,74 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   );
 }
 
+function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onConfirm }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="save-employee-title"
+      aria-describedby="save-employee-description"
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!isSaving) onCancel();
+      }}
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-lg border border-[#BFE1E1] bg-[#F8FCFC] p-5 shadow-xl backdrop:bg-black/40 sm:p-6"
+    >
+      <h4 id="save-employee-title" className="text-xl font-semibold text-[#20343B]">
+        Confirm employee changes
+      </h4>
+      <p id="save-employee-description" className="mt-2 text-sm text-[#607277]">
+        Review this {pendingSave.mode === "create" ? "new account" : "account update"} before saving.
+      </p>
+      <dl className="mt-4 grid gap-3 text-sm">
+        {[
+          ["Name", pendingSave.fullPayload.name],
+          ["Email", pendingSave.fullPayload.email],
+          ["Username", pendingSave.fullPayload.username],
+          ["Role", formatRoleLabel(pendingSave.fullPayload.role)],
+        ].map(([label, value]) => (
+          <div key={label} className="grid grid-cols-[80px_minmax(0,1fr)] gap-4">
+            <dt className="font-semibold text-[#607277]">{label}</dt>
+            <dd className="break-words text-right font-semibold text-[#20343B]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          autoFocus
+          onClick={onCancel}
+          disabled={isSaving}
+          className="rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A] disabled:opacity-60"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={isSaving}
+          className="rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {isSaving ? "Saving..." : "Save changes"}
+        </button>
+      </div>
+    </dialog>,
+    document.body,
+  );
+}
+
 function ManageUsersWorkspace({
   currentUser,
   state,
@@ -2204,50 +2294,12 @@ function ManageUsersWorkspace({
               )}
 
               {pendingUserSave && (
-                <div
-                  role="alertdialog"
-                  aria-modal="true"
-                  aria-labelledby="save-employee-title"
-                  className="rounded-[22px] border border-[#BFE1E1] bg-[#F8FCFC] px-4 py-4"
-                >
-                  <h4 id="save-employee-title" className="font-semibold text-[#20343B]">
-                    Confirm employee changes
-                  </h4>
-                  <p className="mt-2 text-sm text-[#607277]">
-                    Review this {pendingUserSave.mode === "create" ? "new account" : "account update"} before saving.
-                  </p>
-                  <div className="mt-4 grid gap-2 rounded-2xl bg-white px-4 py-3 text-sm">
-                    {[
-                      ["Name", pendingUserSave.fullPayload.name],
-                      ["Email", pendingUserSave.fullPayload.email],
-                      ["Username", pendingUserSave.fullPayload.username],
-                      ["Role", formatRoleLabel(pendingUserSave.fullPayload.role)],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex items-start justify-between gap-4">
-                        <span className="font-semibold text-[#607277]">{label}</span>
-                        <span className="text-right font-semibold text-[#20343B]">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setPendingUserSave(null)}
-                      disabled={isSaving}
-                      className="rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmSaveUser}
-                      disabled={isSaving}
-                      className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                    >
-                      {isSaving ? "Saving..." : "Save changes"}
-                    </button>
-                  </div>
-                </div>
+                <EmployeeSaveConfirmation
+                  pendingSave={pendingUserSave}
+                  isSaving={isSaving}
+                  onCancel={() => setPendingUserSave(null)}
+                  onConfirm={confirmSaveUser}
+                />
               )}
 
               {feedback.message && (

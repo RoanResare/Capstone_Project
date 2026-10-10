@@ -1255,7 +1255,7 @@ export function CustomerProfile() {
                             <h3 className="text-lg font-semibold text-[#20343B]">
                               {appointment.petName}
                             </h3>
-                            <StatusChip label={appointment.status} />
+                            <StatusChip label={appointment.status === "Accepted" ? "Approved" : appointment.status} />
                           </div>
                           <p className="mt-2 text-sm text-[#607277]">{appointment.service}</p>
                           <p className="mt-2 text-sm text-[#607277]">
@@ -1274,7 +1274,7 @@ export function CustomerProfile() {
                         <h3 className="text-2xl font-semibold text-[#20343B]">
                           {selectedAppointment.petName}
                         </h3>
-                        <StatusChip label={selectedAppointment.status} />
+                        <StatusChip label={selectedAppointment.status === "Accepted" ? "Approved" : selectedAppointment.status} />
                       </div>
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
                       {selectedAppointment.cancellationReason && (

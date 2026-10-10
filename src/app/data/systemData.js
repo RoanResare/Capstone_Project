@@ -128,6 +128,7 @@ export const appointmentStatusOptions = [
 export const appointmentFilters = [
   "All",
   "Pending",
+  "Approved",
   "Confirmed",
   "Rejected",
   "Completed",

@@ -125,6 +125,7 @@ function buildEmptyPetForm() {
     weightKg: "",
     notes: "",
     gender: "",
+    photoURL: "",
   };
 }
 
@@ -184,6 +185,7 @@ function buildPetFormFromRecord(record = {}) {
     weightKg: record.weightKg || "",
     notes: record.notes || "",
     gender: ["Male", "Female"].includes(record.gender) ? record.gender : "",
+    photoURL: record.photoURL || "",
   };
 }
 
@@ -456,7 +458,8 @@ export function CustomerProfile() {
           petForm.ageValue.trim() ||
           petForm.weightKg.trim() ||
           petForm.notes.trim() ||
-          petForm.gender,
+          petForm.gender ||
+          petForm.photoURL,
       );
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
@@ -508,6 +511,34 @@ export function CustomerProfile() {
       breed: value,
       customBreed: value === "Other" ? current.customBreed : "",
     }));
+  };
+
+  const handlePetPhotoChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      const message = "Choose an image file for the pet photo.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 1024 * 1024) {
+      const message = "Pet photo must be 1 MB or smaller.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPetForm((current) => ({ ...current, photoURL: String(reader.result || "") }));
+      setFeedback({ type: "", message: "" });
+    };
+    reader.readAsDataURL(file);
   };
 
   const buildProfilePayload = (overrides = {}) => ({
@@ -672,6 +703,7 @@ export function CustomerProfile() {
       medicalRecords: existingRecord?.medicalRecords || [],
       notes: petForm.notes,
       gender: petForm.gender,
+      photoURL: petForm.photoURL,
       updatedAt: new Date().toISOString(),
     };
 
@@ -854,13 +886,6 @@ export function CustomerProfile() {
                         Add pet
                       </h2>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setPetForm(buildEmptyPetForm())}
-                      className="rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]"
-                    >
-                      New pet
-                    </button>
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[56rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] @min-[76rem]:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
@@ -983,6 +1008,31 @@ export function CustomerProfile() {
                           className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                           placeholder="Notes for staff or future visits"
                         />
+                        <label className="grid gap-2 text-sm font-medium text-[#425A60]">
+                          Pet photo (optional)
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePetPhotoChange}
+                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition file:mr-3 file:rounded-xl file:border-0 file:bg-[#EEF6F6] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#2B555C] focus:border-[#2D9B9B]"
+                          />
+                        </label>
+                        {petForm.photoURL && (
+                          <div className="rounded-[18px] border border-[#D9E7E7] bg-white p-3">
+                            <img
+                              src={petForm.photoURL}
+                              alt={`${petForm.petName || "Pet"} preview`}
+                              className="h-32 w-full rounded-[14px] object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setPetForm((current) => ({ ...current, photoURL: "" }))}
+                              className="mt-3 rounded-xl bg-[#FBECEF] px-3 py-2 text-sm font-semibold text-[#B23949]"
+                            >
+                              Remove photo
+                            </button>
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-3">
                           <button
                             type="submit"
@@ -1020,8 +1070,16 @@ export function CustomerProfile() {
                                 className="flex min-h-[13rem] min-w-0 flex-col overflow-hidden rounded-lg border border-[#E6EFEE] bg-[#FBFDFC] p-3.5 text-left transition hover:border-[#2D9B9B]"
                               >
                                 <div className="flex min-w-0 items-start gap-3">
-                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
-                                    <PawPrint size={18} />
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#EEF6F6] text-[#2D6B73]">
+                                    {record.photoURL ? (
+                                      <img
+                                        src={record.photoURL}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <PawPrint size={18} />
+                                    )}
                                   </div>
                                   <div className="min-w-0">
                                     <h3 className="truncate text-base font-semibold text-[#20343B]">

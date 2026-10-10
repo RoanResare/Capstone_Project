@@ -860,10 +860,12 @@ function AppointmentsWorkspace({
     { title: "Rejected", statuses: ["Rejected"] },
     { title: "Cancelled", statuses: ["Cancelled"] },
     { title: "Expired", statuses: ["Expired"] },
-  ].map((section) => ({
-    ...section,
-    appointments: filteredAppointments.filter((appointment) => section.statuses.includes(appointment.status)),
-  }));
+  ]
+    .filter((section) => statusFilter === "All" || section.statuses.includes(statusFilter))
+    .map((section) => ({
+      ...section,
+      appointments: filteredAppointments.filter((appointment) => section.statuses.includes(appointment.status)),
+    }));
 
   return (
     <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
@@ -1216,61 +1218,19 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
-    if (!form.ownerName.trim() || !form.petName.trim() || !form.petType.trim()) {
+    if (!form.lastVisit.trim() && !form.notes.trim()) {
       setFeedback({
         type: "error",
-        message: "Owner name, pet name, and pet type are required.",
+        message: "Last visit or notes must be filled before saving.",
       });
       return;
     }
-
-    if (!form.breed.trim()) {
-      setFeedback({
-        type: "error",
-        message: "Pet breed is required.",
-      });
-      return;
-    }
-
-    if (!["Male", "Female"].includes(form.gender)) {
-      setFeedback({ type: "error", message: "Select Male or Female for pet gender." });
-      return;
-    }
-
-    if (form.breed === "Other" && !form.customBreed.trim()) {
-      setFeedback({
-        type: "error",
-        message: "Specify the custom breed.",
-      });
-      return;
-    }
-
-    if (form.customerEmail.trim() && !isValidEmail(form.customerEmail)) {
-      setFeedback({
-        type: "error",
-        message: ILLEGITIMATE_EMAIL_ERROR,
-      });
-      return;
-    }
-
-    const resolvedPetType = form.petType.trim();
-    const resolvedBreed =
-      form.breed === "Other" ? form.customBreed.trim() : form.breed.trim();
 
     savePetRecord(
       {
-        id: selectedRecord.id,
-        customerId: form.customerId.trim(),
-        ownerName: form.ownerName.trim(),
-        customerEmail: form.customerEmail.trim().toLowerCase(),
-        petName: form.petName.trim(),
-        petType: resolvedPetType,
-        breed: resolvedBreed,
-        gender: form.gender,
+        ...selectedRecord,
         lastVisit: form.lastVisit.trim(),
         notes: form.notes.trim(),
-        visitRecords: normalizeLineItems(form.visitRecordsText),
-        medicalRecords: normalizeLineItems(form.medicalRecordsText),
         updatedAt: new Date().toISOString(),
       },
       currentUser.name,

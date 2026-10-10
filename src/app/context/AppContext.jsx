@@ -539,6 +539,7 @@ function normalizePetRecord(record) {
       ? current.medicalRecords.filter((item) => typeof item === "string" && item.trim())
       : [],
     notes: typeof current.notes === "string" ? current.notes : "",
+    photoURL: typeof current.photoURL === "string" ? current.photoURL : "",
     createdAt,
     updatedAt,
   };
@@ -2403,7 +2404,6 @@ export function AppProvider({ children }) {
         notes: "",
         ...payload,
       });
-      delete nextRecord.photoURL;
       delete nextRecord.photoModerationId;
 
       dispatch({

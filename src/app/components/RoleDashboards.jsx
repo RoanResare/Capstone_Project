@@ -77,7 +77,7 @@ function DashboardShell({ role }) {
             <button
               type="button"
               onClick={signOut}
-              className="rounded-full border border-white/16 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/14"
+              className="whitespace-nowrap rounded-full border border-white/16 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/14"
             >
               Sign out
             </button>

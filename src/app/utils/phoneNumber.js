@@ -8,9 +8,9 @@ export function normalizePhilippineMobileNumber(value = "") {
 }
 
 export function getPhoneSubscriberInput(value = "") {
-  const compact = String(value).trim().replace(/[\s-]/g, "");
+  const compact = String(value).replace(/\D/g, "");
   if (compact.startsWith("+63")) return compact.slice(3);
   if (compact.startsWith("63")) return compact.slice(2);
   if (compact.startsWith("0")) return compact.slice(1);
-  return compact;
+  return compact.slice(0, 10);
 }

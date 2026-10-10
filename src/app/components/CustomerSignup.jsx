@@ -46,6 +46,8 @@ export function CustomerSignup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsRead, setTermsRead] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const passwordStrength = getPasswordStrength(form.password);
   const passwordPolicyError = form.password ? getPasswordPolicyError(form.password) : "";
 
@@ -76,6 +78,14 @@ export function CustomerSignup() {
         setFeedback({
           type: "error",
           message: PH_MOBILE_ERROR,
+        });
+        return;
+      }
+
+      if (!termsAccepted) {
+        setFeedback({
+          type: "error",
+          message: "Read and accept the Terms and Conditions and Privacy Policy before creating an account.",
         });
         return;
       }
@@ -222,6 +232,7 @@ export function CustomerSignup() {
                   type="tel"
                   inputMode="numeric"
                   pattern="9[0-9]{9}"
+                  maxLength={10}
                   autoComplete="tel"
                   className="min-w-0 flex-1 px-4 py-3 outline-none"
                   placeholder="9XXXXXXXXX"
@@ -297,9 +308,48 @@ export function CustomerSignup() {
               </div>
             </div>
 
+            <div className="rounded-[22px] border border-[#D9E7E7] bg-[#F8FCFC] p-4">
+              <div
+                className="max-h-28 overflow-y-auto pr-2 text-sm leading-6 text-[#607277]"
+                onScroll={(event) => {
+                  const element = event.currentTarget;
+                  if (element.scrollTop + element.clientHeight >= element.scrollHeight - 4) {
+                    setTermsRead(true);
+                  }
+                }}
+              >
+                <p className="font-semibold text-[#20343B]">Terms and Conditions and Privacy Policy</p>
+                <p className="mt-2">
+                  Use your own accurate account information, keep your password private, and book
+                  appointments only for pets under your care. Your contact details are used for
+                  appointment coordination, account security, service updates, and clinic notices.
+                </p>
+                <p className="mt-2">
+                  Submitted pet notes and optional photos may be reviewed by clinic staff. The
+                  clinic may contact you about bookings, reminders, and account concerns through
+                  your registered email or phone number.
+                </p>
+              </div>
+              <label className="mt-3 flex items-start gap-3 text-sm font-semibold text-[#415D62]">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                  disabled={!termsRead || isSubmitting}
+                  className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed"
+                />
+                <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
+              </label>
+              {!termsRead && (
+                <p className="mt-2 text-xs text-[#7A9297]">
+                  Scroll through the policy text before checking the box.
+                </p>
+              )}
+            </div>
+
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !termsAccepted}
               className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
             >
               Create account

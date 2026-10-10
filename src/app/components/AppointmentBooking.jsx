@@ -243,7 +243,14 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     setErrors({});
   };
 
-  const addPetSelection = () => setPetSelections((current) => [...current, createPetSelection()]);
+  const addPetSelection = () =>
+    setPetSelections((current) => [
+      ...current,
+      {
+        ...createPetSelection(),
+        petRecordId: current[current.length - 1]?.petRecordId || "",
+      },
+    ]);
   const removePetSelection = (id) =>
     setPetSelections((current) =>
       current.length === 1 ? current : current.filter((selection) => selection.id !== id),
@@ -491,7 +498,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                   className="inline-flex w-fit items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
                 >
                   <Plus size={16} />
-                  Add another pet
+                  Add another service
                 </button>
               </div>
             )}

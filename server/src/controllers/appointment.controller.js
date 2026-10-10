@@ -30,9 +30,15 @@ async function saveAppointment(req, res) {
     if (["Confirmed", "Accepted"].includes(nextStatus) && !assignedStaff) {
       throw new ApiError(400, "Assign a staff member before confirming the appointment.", { code: "STAFF_ASSIGNMENT_REQUIRED" });
     }
-    if (user.role === "customer" && existing.exists &&
-        (appointment.status !== existing.data().status && appointment.status !== "Cancelled")) {
+    if (user.role === "customer" && ["Confirmed", "Accepted", "Completed", "Approved"].includes(nextStatus)) {
       throw new ApiError(403, "Customers cannot confirm or approve appointments.");
+    }
+    if (user.role === "customer" && existing.exists) {
+      const existingStatus = existing.data().status || "Pending";
+      const statusChanged = appointment.status && appointment.status !== existingStatus;
+      if (statusChanged && appointment.status !== "Cancelled") {
+        throw new ApiError(403, "Customers can only cancel existing appointments.");
+      }
     }
     if (appointment.slotId && (!existing.exists || appointment.slotId !== existing.data()?.slotId)) {
       const slot = await transaction.get(db.collection("availabilitySlots").doc(appointment.slotId));

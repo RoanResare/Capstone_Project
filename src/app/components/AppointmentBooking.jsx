@@ -316,7 +316,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
         const service = serviceCatalog.find((item) => item.id === selection.serviceId);
         if (!pet || !service) continue;
 
-        const appointmentId = `appt-${customer.uid}-${selectedSlot.id}-${pet.id}-${service.id}`
+        const appointmentId = `appt-${customer.uid}-${selectedSlot.id}-${pet.id}-${service.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
           .replace(/[^a-zA-Z0-9_-]/g, "-")
           .slice(0, 150);
         const petSnapshot = {

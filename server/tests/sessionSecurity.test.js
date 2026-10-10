@@ -655,10 +655,14 @@ test("disabled slots reject new bookings and rescheduling; reopened slots accept
   assert.equal(reopened.writes.length, 1);
 });
 
-test("stored slot capacity overrides customer input and customers cannot confirm appointments", async () => {
+test("stored slot capacity overrides customer input and customers cannot approve or reopen appointments", async () => {
   const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending" }] });
   await assert.rejects(full.save({ slotId: "slot", slotCapacity: 99 }), { statusCode: 409 });
   const customer = appointmentFixture({ existing: { customerId: "user", status: "Pending" } });
   await assert.rejects(customer.save({ status: "Confirmed", assignedStaff: "Staff" }), { statusCode: 403 });
   assert.equal(customer.writes.length, 0);
+  const confirmed = appointmentFixture({ existing: { customerId: "user", status: "Confirmed", assignedStaff: "Staff" } });
+  await assert.rejects(confirmed.save({ status: "Pending" }), { statusCode: 403 });
+  await confirmed.save({ status: "Cancelled" });
+  assert.equal(confirmed.writes.length, 1);
 });

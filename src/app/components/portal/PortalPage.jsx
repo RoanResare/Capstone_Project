@@ -514,6 +514,9 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           Back
         </button>
         <div className="rounded-[24px] bg-[#F6FAFA] px-5 py-5">
+          {appointment.cancellationReason && (
+            <p className="mb-4 text-sm text-[#B23949]">{appointment.cancellationReason}</p>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={appointment.status} />
             <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#365057]">
@@ -810,9 +813,9 @@ function AppointmentsWorkspace({
   const completedCount = appointments.filter(
     (appointment) => appointment.status === "Completed",
   ).length;
-  const blockedCount = appointments.filter((appointment) =>
-    ["Rejected", "Cancelled"].includes(appointment.status),
-  ).length;
+  const rejectedCount = appointments.filter((appointment) => appointment.status === "Rejected").length;
+  const cancelledCount = appointments.filter((appointment) => appointment.status === "Cancelled").length;
+  const expiredCount = appointments.filter((appointment) => appointment.status === "Expired").length;
 
   const selectedNotificationId = searchParams.get("notification") || "";
   const selectedNotification =
@@ -821,8 +824,6 @@ function AppointmentsWorkspace({
     searchParams.get("appointment") || selectedNotification?.relatedAppointmentId || "";
   const selectedAppointment =
     appointments.find((appointment) => appointment.id === selectedAppointmentId) ||
-    filteredAppointments[0] ||
-    appointments[0] ||
     null;
   const relatedNotificationAppointment =
     selectedNotification?.relatedAppointmentId
@@ -856,7 +857,9 @@ function AppointmentsWorkspace({
     { title: "Pending", statuses: ["Pending"] },
     { title: "Approved", statuses: ["Confirmed", "Accepted"] },
     { title: "Completed", statuses: ["Completed"] },
-    { title: "Cancelled", statuses: ["Cancelled", "Rejected", "Expired"] },
+    { title: "Rejected", statuses: ["Rejected"] },
+    { title: "Cancelled", statuses: ["Cancelled"] },
+    { title: "Expired", statuses: ["Expired"] },
   ].map((section) => ({
     ...section,
     appointments: filteredAppointments.filter((appointment) => section.statuses.includes(appointment.status)),
@@ -864,11 +867,13 @@ function AppointmentsWorkspace({
 
   return (
     <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard label="Pending" value={pendingCount} tone="gold" />
         <MetricCard label="Confirmed" value={confirmedCount} />
         <MetricCard label="Completed" value={completedCount} tone="slate" />
-        <MetricCard label="Rejected / Cancelled" value={blockedCount} tone="rose" />
+        <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
+        <MetricCard label="Cancelled" value={cancelledCount} tone="rose" />
+        <MetricCard label="Expired" value={expiredCount} tone="gold" />
       </div>
 
       <div className="grid min-w-0 gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:items-stretch">

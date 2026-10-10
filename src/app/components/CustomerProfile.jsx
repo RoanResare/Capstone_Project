@@ -360,6 +360,18 @@ export function CustomerProfile() {
   const bookingSectionRef = useRef(null);
 
   useEffect(() => {
+    if (activeTab !== "services") {
+      setPreselectedServiceId("");
+      return;
+    }
+    if (!preselectedServiceId) return;
+    const frame = window.requestAnimationFrame(() => {
+      bookingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab, preselectedServiceId]);
+
+  useEffect(() => {
     const tabFromQuery = searchParams.get("tab") || "";
     const legacyTabFromHash = location.hash.replace("#", "");
     const normalizedTabFromQuery = tabFromQuery === "booking" ? "services" : tabFromQuery;
@@ -462,8 +474,10 @@ export function CustomerProfile() {
   }
 
   const openTab = (tabId) => {
-    setActiveTab(tabId);
-    navigate(tabId === "overview" ? "/customer/dashboard" : `/customer/dashboard?tab=${tabId}`, { replace: true });
+    const nextTab = tabId === "booking" ? "services" : tabId;
+    setPreselectedServiceId("");
+    setActiveTab(nextTab);
+    navigate(nextTab === "overview" ? "/customer/dashboard" : `/customer/dashboard?tab=${nextTab}`, { replace: true });
     setFeedback({ type: "", message: "" });
   };
 
@@ -732,11 +746,8 @@ export function CustomerProfile() {
   };
 
   const continueToBooking = (serviceId) => {
-    setPreselectedServiceId(serviceId);
     openTab("services");
-    window.requestAnimationFrame(() => {
-      bookingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    setPreselectedServiceId(serviceId);
   };
 
   const handleSignOut = async () => {
@@ -1138,9 +1149,11 @@ export function CustomerProfile() {
                     </article>
                   ))}
                 </div>
-                <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
-                  <AppointmentBooking embedded initialServiceId={preselectedServiceId} />
-                </div>
+                {preselectedServiceId && (
+                  <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
+                    <AppointmentBooking embedded initialServiceId={preselectedServiceId} />
+                  </div>
+                )}
               </section>
             )}
 
@@ -1192,6 +1205,11 @@ export function CustomerProfile() {
                         <StatusChip label={selectedAppointment.status} />
                       </div>
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
+                      {selectedAppointment.cancellationReason && (
+                        <p className="mt-4 rounded-lg border border-[#F2CED6] bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">
+                          {selectedAppointment.cancellationReason}
+                        </p>
+                      )}
                       <div className="mt-6 grid gap-4 md:grid-cols-2">
                         <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">

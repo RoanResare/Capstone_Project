@@ -159,6 +159,21 @@ export function loadPetRecordDocuments() {
   return loadScheduleDocuments(COLLECTIONS.petRecords);
 }
 
+function subscribeScheduleDocuments(collectionName, onChange, onError = () => {}) {
+  if (!canSyncScheduleData()) return () => {};
+  return onSnapshot(collection(db, collectionName),
+    (snapshot) => onChange(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }))),
+    (error) => { logSyncError(`${collectionName} subscription`, error); onError(error); });
+}
+
+export function subscribeAppointments(onChange, onError) {
+  return subscribeScheduleDocuments(COLLECTIONS.appointments, onChange, onError);
+}
+
+export function subscribeNotifications(onChange, onError) {
+  return subscribeScheduleDocuments(COLLECTIONS.notifications, onChange, onError);
+}
+
 export function loadAvailabilitySlotDocuments() {
   return requestAvailabilitySlots("get").then((data) => data.slots);
 }
@@ -249,8 +264,7 @@ export function saveNotificationDocument(notification) {
 export async function saveAvailabilitySlotDocument(slot) {
   const id = normalizeString(slot?.id);
   if (!id) throw new Error("A slot ID is required.");
-  await requestAvailabilitySlots("put", id, slot);
-  return true;
+  return requestAvailabilitySlots("put", id, slot);
 }
 
 export async function deleteAvailabilitySlotDocument(id) {

@@ -15,8 +15,8 @@ import {
 import { useAuth } from "./AuthContext.jsx";
 import {
   deletePetRecordDocument,
-  loadNotificationDocuments,
-  loadAppointmentDocuments,
+  subscribeNotifications,
+  subscribeAppointments,
   subscribeAvailabilitySlots,
   loadPetRecordDocuments,
   loadPhotoModerationDocuments,
@@ -1204,7 +1204,7 @@ function appReducer(state, action) {
       };
     }
     case "HYDRATE_SCHEDULE_DATA": {
-      const appointments = Array.isArray(action.payload?.appointments) && action.payload.appointments.length > 0
+      const appointments = Array.isArray(action.payload?.appointments)
         ? mergeDuplicateAppointments(action.payload.appointments.map(normalizeAppointment))
         : state.appointments;
       const petRecords = Array.isArray(action.payload?.petRecords)
@@ -1751,28 +1751,23 @@ export function AppProvider({ children }) {
     let cancelled = false;
 
     Promise.all([
-      loadAppointmentDocuments(),
       loadPetRecordDocuments(),
       loadPhotoModerationDocuments(),
-      loadNotificationDocuments(),
     ]).then(
-      ([appointments, petRecords, photoRecords, notificationRecords]) => {
+      ([petRecords, photoRecords]) => {
         if (cancelled) {
           return;
         }
 
         dispatch({
           type: "HYDRATE_SCHEDULE_DATA",
-          payload: { appointments, petRecords },
+          payload: { petRecords },
         });
 
         if (photoRecords.length > 0) {
           dispatch({ type: "HYDRATE_PHOTO_MODERATION", payload: photoRecords });
         }
 
-        if (notificationRecords.length > 0) {
-          dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notificationRecords });
-        }
       },
     ).catch((error) => {
       if (!cancelled) {
@@ -1783,6 +1778,17 @@ export function AppProvider({ children }) {
     return () => {
       cancelled = true;
     };
+  }, [currentUser?.uid, currentUser?.role]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    const stopAppointments = subscribeAppointments((appointments) => {
+      dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
+    });
+    const stopNotifications = subscribeNotifications((notifications) => {
+      dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
+    });
+    return () => { stopAppointments(); stopNotifications(); };
   }, [currentUser?.uid, currentUser?.role]);
 
   useEffect(() => {
@@ -2422,54 +2428,11 @@ export function AppProvider({ children }) {
         isOpen: typeof payload.isOpen === "boolean" ? payload.isOpen : true,
         ...payload,
       };
-      const shouldCancelSlotAppointments =
-        nextSlot.isOpen === false ||
-        nextSlot.disabled === true ||
-        ["cancelled", "disabled", "closed"].includes(String(nextSlot.status || "").toLowerCase());
-      const affectedAppointments = shouldCancelSlotAppointments
-        ? state.appointments.filter(
-            (appointment) =>
-              appointment.slotId === nextSlot.id &&
-              ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
-          )
-        : [];
-
       await saveAvailabilitySlotDocument(nextSlot);
-      if (affectedAppointments.length > 0) {
-        await Promise.all(
-          affectedAppointments.map((appointment) =>
-            saveAppointmentDocument(
-              normalizeAppointment({
-                ...appointment,
-                status: "Cancelled",
-                cancellationReason: "The appointment slot was disabled by the clinic.",
-                updatedAt: new Date().toISOString(),
-              }),
-            ),
-          ),
-        );
-      }
       dispatch({
         type: "UPSERT_AVAILABILITY_SLOT",
         payload: nextSlot,
         meta: { actorName: currentUser?.name || "Staff" },
-      });
-      affectedAppointments.forEach((appointment) => {
-        dispatch({
-          type: "UPDATE_APPOINTMENT",
-          payload: {
-            id: appointment.id,
-            updates: {
-              status: "Cancelled",
-              cancellationReason: "The appointment slot was disabled by the clinic.",
-              updatedAt: new Date().toISOString(),
-            },
-          },
-          meta: {
-            actorName: currentUser?.name || "Staff",
-            actorRole: currentUser?.role || "staff",
-          },
-        });
       });
       return true;
     },

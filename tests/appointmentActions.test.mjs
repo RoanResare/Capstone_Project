@@ -22,9 +22,12 @@ test("only pending and approved appointments can be completed", () => {
   }
 });
 
-test("portal status actions cannot reject, cancel, or reopen appointments", () => {
+test("only pending appointments can be rejected or cancelled, and no appointment can be reopened", () => {
   for (const status of ["Pending", "Accepted", "Approved", "Confirmed", "Completed", "Rejected", "Cancelled", "Expired"]) {
-    for (const nextStatus of ["Rejected", "Cancelled", "Pending", "Confirmed"]) {
+    for (const nextStatus of ["Rejected", "Cancelled"]) {
+      assert.equal(canChangeAppointmentStatus(status, nextStatus), status === "Pending", `${status} -> ${nextStatus}`);
+    }
+    for (const nextStatus of ["Pending", "Confirmed"]) {
       assert.equal(canChangeAppointmentStatus(status, nextStatus), false, `${status} -> ${nextStatus}`);
     }
   }

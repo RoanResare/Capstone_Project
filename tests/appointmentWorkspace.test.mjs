@@ -55,8 +55,8 @@ test("appointment categories retain selected details and enforce disabled contro
     const reject = buttons.find(([, , content]) => content.includes("Reject appointment"));
     const cancel = buttons.find(([, , content]) => content.includes("Cancel appointment"));
     assert.equal(approve[1].includes('disabled=""'), status !== "Pending", status);
-    assert.ok(reject[1].includes('disabled=""'), status);
-    assert.ok(cancel[1].includes('disabled=""'), status);
+    assert.equal(reject[1].includes('disabled=""'), status !== "Pending", status);
+    assert.equal(cancel[1].includes('disabled=""'), status !== "Pending", status);
     const completion = html.match(/<input\b[^>]*type="checkbox"[^>]*>/)[0];
     assert.equal(completion.includes('disabled=""'), ["Confirmed", "Completed"].includes(status), status);
     const selectedFilter = [...html.matchAll(/<option\b[^>]*selected=""[^>]*>([^<]*)<\/option>/g)][0][1];

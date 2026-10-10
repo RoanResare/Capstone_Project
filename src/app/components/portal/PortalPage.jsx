@@ -509,6 +509,13 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
 
   const contactPhone = appointment.contactNumber || "No phone saved";
   const canComplete = canCompleteAppointment(appointment.status);
+  const requestStatusChange = (status) => {
+    if (!canChangeAppointmentStatus(appointment.status, status)) return;
+    const action = status === "Rejected" ? "reject" : "cancel";
+    if (window.confirm(`Are you sure you would like to ${action} this appointment? The customer will be notified of this change.`)) {
+      updateAppointment(appointment.id, { status });
+    }
+  };
 
   return (
     <PanelCard
@@ -611,14 +618,16 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </button>
           <button
             type="button"
-            disabled
+            disabled={!canChangeAppointmentStatus(appointment.status, "Rejected")}
+            onClick={() => requestStatusChange("Rejected")}
             className="rounded-2xl bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Reject appointment
           </button>
           <button
             type="button"
-            disabled
+            disabled={!canChangeAppointmentStatus(appointment.status, "Cancelled")}
+            onClick={() => requestStatusChange("Cancelled")}
             className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Cancel appointment
@@ -904,11 +913,11 @@ function AppointmentsWorkspace({
         <PanelCard
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
-          className="xl:flex xl:min-h-0 xl:flex-col"
-          bodyClassName="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col"
+          className="flex h-[640px] min-h-0 flex-col xl:h-[clamp(420px,calc(100dvh-18rem),720px)] xl:self-start"
+          bodyClassName="flex min-h-0 flex-1 flex-col"
         >
-          <div className="space-y-3 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
-            <div className="grid gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="grid shrink-0 gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <select
                 value={statusFilter}
                 onChange={(event) => updateListFilter("status", event.target.value)}
@@ -937,7 +946,7 @@ function AppointmentsWorkspace({
                 message="Try another filter or wait for new customer bookings to reach the queue."
               />
             ) : (
-              <div className="portal-scroll-panel min-h-0 max-h-[700px] space-y-4 overflow-y-auto overscroll-contain pr-1 xl:h-0 xl:min-h-[430px] xl:max-h-none xl:flex-1">
+              <div className="portal-scroll-panel min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain rounded-lg border border-[#E6F0F0] bg-[#FBFDFC] p-2 [scrollbar-gutter:stable]">
                 {appointmentSections.map((section) => (
                   <section key={section.title} className="rounded-2xl border border-[#E6F0F0] bg-[#FBFDFC] p-3">
                     <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#E6F0F0] pb-2">

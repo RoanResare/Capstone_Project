@@ -21,6 +21,13 @@ import { useToast } from "../context/ToastContext.jsx";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
+import {
+  formatPhilippineMobileInput,
+  formatPhilippineMobileNumber,
+  normalizePhilippineMobileNumber,
+  PH_MOBILE_ERROR,
+  PH_MOBILE_FORMAT,
+} from "../utils/phoneNumber.js";
 
 const dashboardTabs = [
   { id: "overview", label: "Dashboard", icon: CheckCircle2 },
@@ -401,7 +408,7 @@ export function CustomerProfile() {
       fullName: customer.fullName || customer.name || "",
       username: customer.username || "",
       email: customer.email || "",
-      phone: customer.phone || "",
+      phone: formatPhilippineMobileNumber(customer.phone || "") || customer.phone || "",
       status: customer.status || "active",
     });
   }, [customer]);
@@ -486,7 +493,7 @@ export function CustomerProfile() {
 
   const handleProfileChange = (field) => (event) => {
     const value = field === "phone"
-      ? event.target.value.replace(/\D/g, "").slice(0, 11)
+      ? formatPhilippineMobileInput(event.target.value)
       : field === "username"
         ? event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 24)
         : event.target.value;
@@ -545,7 +552,7 @@ export function CustomerProfile() {
     fullName: profileForm.fullName.trim(),
     username: profileForm.username.trim(),
     email: profileForm.email.trim().toLowerCase(),
-    phone: profileForm.phone.trim(),
+    phone: normalizePhilippineMobileNumber(profileForm.phone),
     ...overrides,
   });
 
@@ -554,7 +561,7 @@ export function CustomerProfile() {
       fullName: user.fullName || user.name || "",
       username: user.username || "",
       email: user.email || "",
-      phone: user.phone || "",
+      phone: formatPhilippineMobileNumber(user.phone || "") || user.phone || "",
       status: user.status || "active",
     });
     setFeedback({ type: "success", message });
@@ -577,6 +584,13 @@ export function CustomerProfile() {
 
     if (!isValidEmail(profileForm.email)) {
       const message = ILLEGITIMATE_EMAIL_ERROR;
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return false;
+    }
+
+    if (!normalizePhilippineMobileNumber(profileForm.phone)) {
+      const message = PH_MOBILE_ERROR;
       setFeedback({ type: "error", message });
       toast.error(message);
       return false;
@@ -1393,12 +1407,18 @@ export function CustomerProfile() {
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Phone</label>
                       <input
                         value={profileForm.phone}
-                        autoComplete="off"
+                        autoComplete="tel"
                         onChange={handleProfileChange("phone")}
-                        inputMode="numeric"
-                        maxLength={15}
+                        type="tel"
+                        inputMode="tel"
+                        pattern="\+63 9[0-9]{2}-[0-9]{3}-[0-9]{4}"
+                        maxLength={16}
+                        placeholder={PH_MOBILE_FORMAT}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
+                      <p className="mt-2 text-xs text-[#7A9297]">
+                        Format: {PH_MOBILE_FORMAT}
+                      </p>
                     </div>
                   </div>
                   <div>
@@ -1456,7 +1476,7 @@ export function CustomerProfile() {
                           ["Full name", pendingProfilePayload.fullName],
                           ["Username", pendingProfilePayload.username],
                           ["Email", pendingProfilePayload.email],
-                          ["Phone", pendingProfilePayload.phone || "No phone saved"],
+                          ["Phone", formatPhilippineMobileNumber(pendingProfilePayload.phone)],
                         ].map(([label, value]) => (
                           <div key={label} className="flex items-start justify-between gap-4">
                             <span className="font-semibold text-[#607277]">{label}</span>

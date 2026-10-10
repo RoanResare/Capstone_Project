@@ -3,7 +3,12 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import vm from "node:vm";
-import { getPhoneSubscriberInput, normalizePhilippineMobileNumber } from "../src/app/utils/phoneNumber.js";
+import {
+  formatPhilippineMobileInput,
+  formatPhilippineMobileNumber,
+  getPhoneSubscriberInput,
+  normalizePhilippineMobileNumber,
+} from "../src/app/utils/phoneNumber.js";
 
 const require = createRequire(import.meta.url);
 const backendPhone = require("../server/src/utils/phoneNumber.js");
@@ -19,7 +24,10 @@ test("frontend and backend accept Philippine mobile formats and reject malformed
   }
   for (const value of validNumbers) assert.equal(getPhoneSubscriberInput(value), "9620614953");
   assert.equal(getPhoneSubscriberInput("096206149530"), "96206149530");
-  assert.equal(getPhoneSubscriberInput("abc9620614953"), "abc9620614953");
+  assert.equal(getPhoneSubscriberInput("abc9620614953"), "9620614953");
+  assert.equal(formatPhilippineMobileNumber(canonical), "+63 962-061-4953");
+  assert.equal(formatPhilippineMobileInput("17263871623"), "+63 172-638-7162");
+  assert.equal(formatPhilippineMobileInput("09620614953"), "+63 962-061-4953");
 });
 
 test("registration endpoint accepts both local and international input and normalizes duplicate checks", async () => {

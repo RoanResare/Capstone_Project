@@ -62,6 +62,10 @@ function padDatePart(value) {
   return String(value).padStart(2, "0");
 }
 
+function getLocalDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
 function normalizeScheduleTime(timeValue) {
   if (typeof timeValue !== "string") {
     return "";
@@ -1129,6 +1133,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
 }
 
 function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
+  const todayKey = getLocalDateKey();
   const [searchValue, setSearchValue] = useState("");
   const [petTypeFilter, setPetTypeFilter] = useState("Dog");
   const [selectedRecordId, setSelectedRecordId] = useState("");
@@ -1183,28 +1188,9 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   }, [selectedRecord, selectedRecordId]);
 
   const updateField = (field) => (event) => {
+    if (field !== "lastVisit" && field !== "notes") return;
     const value = event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const updatePetType = (event) => {
-    const value = event.target.value;
-    setForm((current) => ({
-      ...current,
-      petType: value,
-      customPetType: "",
-      breed: "",
-      customBreed: "",
-    }));
-  };
-
-  const updateBreed = (event) => {
-    const value = event.target.value;
-    setForm((current) => ({
-      ...current,
-      breed: value,
-      customBreed: value === "Other" ? current.customBreed : "",
-    }));
   };
 
   const saveRecord = (event) => {
@@ -1222,6 +1208,14 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       setFeedback({
         type: "error",
         message: "Last visit or notes must be filled before saving.",
+      });
+      return;
+    }
+
+    if (form.lastVisit.trim() > getLocalDateKey()) {
+      setFeedback({
+        type: "error",
+        message: "Last Visit cannot be a future date. Choose today or an earlier date.",
       });
       return;
     }
@@ -1351,21 +1345,21 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
 
         <PanelCard
           title="Pet record details"
-          description="Update pet profile information, visit history, and medical notes for staff visibility."
+          description="Pet profile information, visit history, and medical notes."
           className="h-full min-w-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col"
           bodyClassName="min-h-0 xl:flex-1 xl:overflow-y-auto"
         >
           {selectedRecord ? (
             <form noValidate onSubmit={saveRecord} className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-2">
+              <fieldset disabled className="grid gap-4 md:grid-cols-2 [&_input]:cursor-not-allowed [&_input]:bg-[#F1F5F5] [&_select]:cursor-not-allowed [&_select]:bg-[#F1F5F5] [&_select]:text-[#425A60]">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
                     Owner name
                   </label>
                   <input
                     value={form.ownerName}
+                    readOnly
                     autoComplete="off"
-                    onChange={updateField("ownerName")}
                     maxLength={80}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Customer name"
@@ -1379,8 +1373,8 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <input
                     type="email"
                     value={form.customerEmail}
+                    readOnly
                     autoComplete="off"
-                    onChange={updateField("customerEmail")}
                     maxLength={120}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="customer@example.com"
@@ -1393,8 +1387,8 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <input
                     value={form.petName}
+                    readOnly
                     autoComplete="off"
-                    onChange={updateField("petName")}
                     maxLength={60}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Pet name"
@@ -1407,7 +1401,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <select
                     value={form.petType}
-                    onChange={updatePetType}
+                    disabled
                     className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                   >
                     <option value="">Select pet type</option>
@@ -1425,8 +1419,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <select
                     value={form.breed}
-                    onChange={updateBreed}
-                    disabled={!form.petType}
+                    disabled
                     className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
                   >
                     <option value="">
@@ -1441,8 +1434,8 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   {form.breed === "Other" && (
                     <input
                       value={form.customBreed}
+                      readOnly
                       autoComplete="off"
-                      onChange={updateField("customBreed")}
                       maxLength={60}
                       className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
                       placeholder="Specify breed"
@@ -1454,20 +1447,23 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
                     Pet gender
                   </label>
-                  <select required value={form.gender} onChange={updateField("gender")}
+                  <select disabled value={form.gender}
                     className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none focus:border-[#2D9B9B]">
                     <option value="" disabled>Select pet gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                   </select>
                 </div>
+              </fieldset>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
-                    Last visit
+                    Last Visited
                   </label>
                   <input
                     type="date"
                     value={form.lastVisit}
+                    max={todayKey}
                     autoComplete="off"
                     onChange={updateField("lastVisit")}
                     className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -1495,9 +1491,9 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <textarea
                     value={form.visitRecordsText}
-                    onChange={updateField("visitRecordsText")}
+                    readOnly
                     maxLength={1200}
-                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-3 text-sm outline-none"
                     placeholder="One visit update per line"
                   />
                 </div>
@@ -1508,9 +1504,9 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </label>
                   <textarea
                     value={form.medicalRecordsText}
-                    onChange={updateField("medicalRecordsText")}
+                    readOnly
                     maxLength={1200}
-                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-3 text-sm outline-none"
                     placeholder="One medical note per line"
                   />
                 </div>

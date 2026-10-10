@@ -60,10 +60,18 @@ test("appointment categories retain selected details and enforce disabled contro
     const completion = html.match(/<input\b[^>]*type="checkbox"[^>]*>/)[0];
     assert.equal(completion.includes('disabled=""'), ["Confirmed", "Completed"].includes(status), status);
     const selectedFilter = [...html.matchAll(/<option\b[^>]*selected=""[^>]*>([^<]*)<\/option>/g)][0][1];
-    assert.equal(selectedFilter, status === "Accepted" ? "Approved" : status);
+    assert.equal(selectedFilter, ["Accepted", "Confirmed"].includes(status) ? "Approved" : status);
     assert.ok(html.includes("Test pet"));
     assert.ok(!html.includes("No matching appointments"));
   }
+});
+
+test("Approved category includes Confirmed appointments and hides the Confirmed label", () => {
+  const html = renderAppointment("Confirmed", "Approved");
+  assert.ok(html.includes("Test pet"));
+  assert.ok(!html.includes("No matching appointments"));
+  assert.ok(!html.includes(">Confirmed<"));
+  assert.ok(html.includes(">Approved<"));
 });
 
 test("booking offers Add another pet before Add another service", () => {

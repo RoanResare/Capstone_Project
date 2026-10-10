@@ -310,7 +310,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     const bookingEmail = customer.email?.trim().toLowerCase() || "";
     const pendingAppointmentCount = getPendingAppointmentCount(customer.uid || customer.id, bookingEmail);
     if (pendingAppointmentCount + petSelections.length > 2) {
-      const message = "Booking limit reached. You can have up to 2 pending appointments at a time.";
+      const message = "You may have a maximum of two bookings at any one time.";
       setFeedback({ type: "error", message });
       toast.error(message);
       return;

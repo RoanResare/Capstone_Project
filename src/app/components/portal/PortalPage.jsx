@@ -461,7 +461,7 @@ function EmptyState({ title, message }) {
 function StatusBadge({ status }) {
   return (
     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(status)}`}>
-      {status === "Accepted" ? "Approved" : status}
+      {["Accepted", "Confirmed"].includes(status) ? "Approved" : status}
     </span>
   );
 }
@@ -783,7 +783,8 @@ function AppointmentsWorkspace({
 }) {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedStatus = searchParams.get("status") || "All";
+  const savedStatus = searchParams.get("status") || "All";
+  const requestedStatus = ["Confirmed", "Accepted"].includes(savedStatus) ? "Approved" : savedStatus;
   const statusFilter = appointmentFilters.includes(requestedStatus) ? requestedStatus : "All";
   const [searchValue, setSearchValue] = useState(() => searchParams.get("search") || "");
   const updateListFilter = (key, value) => {
@@ -818,15 +819,12 @@ function AppointmentsWorkspace({
   };
   const filteredAppointments = appointments.filter((appointment) => {
     const matchesStatus = statusFilter === "All" || appointment.status === statusFilter ||
-      (statusFilter === "Approved" && appointment.status === "Accepted");
+      (statusFilter === "Approved" && ["Accepted", "Confirmed"].includes(appointment.status));
     return matchesStatus && matchesSearch(appointment, searchValue);
   });
   const pendingCount = appointments.filter((appointment) => appointment.status === "Pending").length;
   const approvedCount = appointments.filter(
-    (appointment) => ["Accepted", "Approved"].includes(appointment.status),
-  ).length;
-  const confirmedCount = appointments.filter(
-    (appointment) => appointment.status === "Confirmed",
+    (appointment) => ["Accepted", "Approved", "Confirmed"].includes(appointment.status),
   ).length;
   const completedCount = appointments.filter(
     (appointment) => appointment.status === "Completed",
@@ -879,8 +877,7 @@ function AppointmentsWorkspace({
 
   const appointmentSections = [
     { title: "Pending", statuses: ["Pending"] },
-    { title: "Approved", statuses: ["Accepted", "Approved"] },
-    { title: "Confirmed", statuses: ["Confirmed"] },
+    { title: "Approved", statuses: ["Accepted", "Approved", "Confirmed"] },
     { title: "Completed", statuses: ["Completed"] },
     { title: "Rejected", statuses: ["Rejected"] },
     { title: "Cancelled", statuses: ["Cancelled"] },
@@ -894,10 +891,9 @@ function AppointmentsWorkspace({
 
   return (
     <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
-      <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
         <MetricCard label="Pending" value={pendingCount} tone="gold" />
         <MetricCard label="Approved" value={approvedCount} />
-        <MetricCard label="Confirmed" value={confirmedCount} />
         <MetricCard label="Completed" value={completedCount} tone="slate" />
         <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
         <MetricCard label="Cancelled" value={cancelledCount} tone="rose" />

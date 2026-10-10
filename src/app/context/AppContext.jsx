@@ -2329,7 +2329,7 @@ export function AppProvider({ children }) {
 
       if (pendingAppointmentCount >= MAX_PENDING_APPOINTMENTS_PER_ACCOUNT) {
         const error = new Error(
-          "Booking limit reached. You can have up to 2 pending appointments at a time.",
+          "You may have a maximum of two bookings at any one time.",
         );
         error.code = "PENDING_APPOINTMENT_LIMIT";
         throw error;

@@ -3,7 +3,8 @@ import { after, test } from "node:test";
 import { createServer } from "vite";
 
 const state = { writes: [], fail: false, listener: null, unsubscribed: false, refreshes: 0,
-  attempts: 0, permissionFailures: 0, subscriptions: 0, deleteFailures: 0, deletions: [], apiRequests: [], apiFailure: null };
+  attempts: 0, permissionFailures: 0, subscriptions: 0, deleteFailures: 0, deletions: [],
+  apiRequests: [], apiFailure: null, getDocsCalls: 0, docs: [] };
 state.auth = {currentUser: {uid: "user", async getIdToken(force) {
   if (force) state.refreshes++; return "fresh-token";
 }}};
@@ -28,7 +29,10 @@ const mocks = {
       }
       state.deletions.push(ref);
     }
-    export async function getDocs() {return {docs: []};}
+    export async function getDocs() {
+      state.getDocsCalls++;
+      return {docs: state.docs.map((entry) => ({id: entry.id, data: () => entry.data}))};
+    }
     export async function setDoc(ref, data) {
       state.attempts++;
       if (state.permissionFailures > 0) {
@@ -58,6 +62,31 @@ const server = await createServer({
 });
 after(async () => {await server.close(); delete globalThis.__scheduleDataTest;});
 const service = await server.ssrLoadModule("/src/app/services/scheduleData.js");
+
+test("concurrent collection loads share one Firestore read", async () => {
+  state.getDocsCalls = 0;
+  state.docs = [{id: "pet", data: {petName: "Cache"}}];
+  const [first, second] = await Promise.all([
+    service.loadPetRecordDocuments(),
+    service.loadPetRecordDocuments(),
+  ]);
+  assert.equal(state.getDocsCalls, 1);
+  assert.deepEqual(first, [{id: "pet", petName: "Cache"}]);
+  assert.deepEqual(second, first);
+  state.docs = [];
+});
+
+test("concurrent availability loads share one backend request", async () => {
+  const requests = state.apiRequests.length;
+  const [first, second] = await Promise.all([
+    service.loadAvailabilitySlotDocuments(),
+    service.loadAvailabilitySlotDocuments(),
+  ]);
+  assert.equal(state.apiRequests.length, requests + 1);
+  assert.equal(state.apiRequests.at(-1).method, "get");
+  assert.deepEqual(first, [{id: "backend-slot", isOpen: false}]);
+  assert.deepEqual(second, first);
+});
 
 test("pet saves require strict Male/Female gender and never save photo fields", async () => {
   for (const gender of [undefined, "", "Others", "male"]) {

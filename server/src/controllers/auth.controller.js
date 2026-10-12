@@ -913,7 +913,7 @@ async function sessionSecurity(req, res) {
 
 async function me(req, res) {
   assertAuthSetupReady();
-  return res.status(200).json({
+  return res.status(200).set("Cache-Control", "private, max-age=30").json({
     success: true,
     user: toPublicUser(req.auth.user),
   });

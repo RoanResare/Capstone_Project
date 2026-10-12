@@ -1,6 +1,16 @@
 const { db } = require("../config/firebaseAdmin");
 const { ApiError } = require("../utils/ApiError");
 
+const ACTIVE_APPOINTMENT_STATUSES = ["Pending", "Confirmed", "Accepted", "Approved"];
+const DEFAULT_AVAILABILITY_PAGE_SIZE = 100;
+const MAX_AVAILABILITY_PAGE_SIZE = 200;
+const MAX_APPOINTMENT_LOOKUP_LIMIT = 200;
+
+function parsePositiveInteger(value, fallback, max) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
+}
+
 function requireScheduleManager(req) {
   if (!["admin", "staff"].includes(req.auth?.user?.role)) {
     throw new ApiError(403, "Only admin and staff can manage appointment slots.");
@@ -31,10 +41,20 @@ async function persistSlotChange(req, payload) {
     const cancelledAppointments = [];
     const notifications = [];
     if (!slot.isOpen) {
-      const byId = await transaction.get(db.collection("appointments").where("slotId", "==", slot.id));
+      const byId = await transaction.get(
+        db.collection("appointments")
+          .where("slotId", "==", slot.id)
+          .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
+          .limit(MAX_APPOINTMENT_LOOKUP_LIMIT),
+      );
       const candidates = new Map(byId.docs.map((entry) => [entry.id, entry]));
       if (slot.date && slot.time) {
-        const byDate = await transaction.get(db.collection("appointments").where("scheduleDate", "==", slot.date));
+        const byDate = await transaction.get(
+          db.collection("appointments")
+            .where("scheduleDate", "==", slot.date)
+            .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
+            .limit(MAX_APPOINTMENT_LOOKUP_LIMIT),
+        );
         byDate.docs.forEach((entry) => candidates.set(entry.id, entry));
       }
       for (const [id, entry] of candidates) {
@@ -42,7 +62,7 @@ async function persistSlotChange(req, payload) {
         const matchesSchedule = slot.date && slot.time && appointment.scheduleDate === slot.date
           && normalizeTime(appointment.scheduleTime) === normalizeTime(slot.time);
         const matchesLegacyId = appointment.slotId === slot.id && (!appointment.scheduleDate || !appointment.scheduleTime || !slot.date || !slot.time);
-        if ((!matchesSchedule && !matchesLegacyId) || !["Pending", "Confirmed", "Accepted"].includes(appointment.status)) continue;
+        if ((!matchesSchedule && !matchesLegacyId) || !ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) continue;
         const cancellationReason = "The clinic administration closed this date and time slot, so your appointment was cancelled. Please choose another available slot.";
         const updated = { ...appointment, id, status: "Cancelled", cancellationReason,
           cancelledBy: req.auth.user.uid, cancelledAt: payload.updatedAt, updatedAt: payload.updatedAt };
@@ -75,8 +95,31 @@ async function persistSlotChange(req, payload) {
 
 async function listAvailabilitySlots(req, res) {
   if (!req.auth?.user) throw new ApiError(401, "Authentication is required.");
-  const snapshot = await db.collection("availabilitySlots").get();
-  res.json({ success: true, slots: snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id })) });
+  const pageSize = parsePositiveInteger(
+    req.query?.limit,
+    DEFAULT_AVAILABILITY_PAGE_SIZE,
+    MAX_AVAILABILITY_PAGE_SIZE,
+  );
+  const cursor = typeof req.query?.cursor === "string" ? req.query.cursor.trim() : "";
+  let query = db
+    .collection("availabilitySlots")
+    .orderBy("__name__")
+    .limit(pageSize + 1);
+
+  if (cursor) {
+    query = query.startAfter(cursor);
+  }
+
+  const snapshot = await query.get();
+  const pageDocs = snapshot.docs.slice(0, pageSize);
+  const nextCursor = snapshot.docs.length > pageSize ? pageDocs.at(-1)?.id || "" : "";
+
+  res.set("Cache-Control", "private, max-age=60");
+  res.json({
+    success: true,
+    slots: pageDocs.map((entry) => ({ ...entry.data(), id: entry.id })),
+    pagination: { limit: pageSize, nextCursor, hasMore: Boolean(nextCursor) },
+  });
 }
 
 async function saveAvailabilitySlot(req, res) {

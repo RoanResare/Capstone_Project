@@ -60,6 +60,8 @@ async function listUsers(req, res) {
   logAdminUserRequest(req, "list", { repair: shouldRepair });
   const users = await listPortalUsers({ repair: shouldRepair });
 
+  res.set("Cache-Control", "private, max-age=60");
+
   return res.status(200).json({
     success: true,
     users: users.map(toPublicUser),

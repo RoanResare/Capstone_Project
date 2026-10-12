@@ -1,6 +1,9 @@
 const { db } = require("../config/firebaseAdmin");
 const { ApiError } = require("../utils/ApiError");
 
+const ACTIVE_APPOINTMENT_STATUSES = ["Pending", "Confirmed", "Accepted", "Approved"];
+const MAX_APPOINTMENT_LOOKUP_LIMIT = 200;
+
 async function saveAppointment(req, res) {
   const appointment = req.body;
   const id = req.params.id;
@@ -74,9 +77,18 @@ async function saveAppointment(req, res) {
     }
     if (["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus) && assignedStaff) {
       const { appointmentsOverlap } = await import("../../../shared/bookingServices.mjs");
-      const staffBookings = await transaction.get(db.collection("appointments").where("assignedStaff", "==", assignedStaff));
+      let staffBookingsQuery = db.collection("appointments")
+        .where("assignedStaff", "==", assignedStaff)
+        .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
+        .limit(MAX_APPOINTMENT_LOOKUP_LIMIT);
+
+      if (nextAppointment.scheduleDate) {
+        staffBookingsQuery = staffBookingsQuery.where("scheduleDate", "==", nextAppointment.scheduleDate);
+      }
+
+      const staffBookings = await transaction.get(staffBookingsQuery);
       if (staffBookings.docs.some((entry) => entry.id !== id &&
-          ["Pending", "Confirmed", "Accepted", "Approved"].includes(entry.data().status) &&
+          ACTIVE_APPOINTMENT_STATUSES.includes(entry.data().status) &&
           appointmentsOverlap(nextAppointment, entry.data()))) {
         throw new ApiError(409, "This staff member is already assigned to an overlapping appointment. Please choose another staff member or time.", { code: "STAFF_SCHEDULE_CONFLICT" });
       }
@@ -101,13 +113,23 @@ async function saveAppointment(req, res) {
           ["cancelled", "disabled", "closed"].includes(String(availability.status || "").toLowerCase()))) {
         throw new ApiError(409, "That time slot is no longer available. Please choose another slot.", { code: "SLOT_UNAVAILABLE" });
       }
-      const bySlot = await transaction.get(db.collection("appointments").where("slotId", "==", nextAppointment.slotId));
+      const bySlot = await transaction.get(
+        db.collection("appointments")
+          .where("slotId", "==", nextAppointment.slotId)
+          .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
+          .limit(MAX_APPOINTMENT_LOOKUP_LIMIT),
+      );
       const byDate = nextAppointment.scheduleDate && nextAppointment.scheduleTime
-        ? await transaction.get(db.collection("appointments").where("scheduleDate", "==", nextAppointment.scheduleDate))
+        ? await transaction.get(
+          db.collection("appointments")
+            .where("scheduleDate", "==", nextAppointment.scheduleDate)
+            .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
+            .limit(MAX_APPOINTMENT_LOOKUP_LIMIT),
+        )
         : { docs: [] };
       const candidates = new Map([...bySlot.docs, ...byDate.docs].map((entry) => [entry.id, entry]));
       const activeCount = [...candidates.values()].filter((entry) =>
-        entry.id !== id && ["Pending", "Confirmed", "Accepted", "Approved"].includes(entry.data().status) &&
+        entry.id !== id && ACTIVE_APPOINTMENT_STATUSES.includes(entry.data().status) &&
           (entry.data().slotId === nextAppointment.slotId || !nextAppointment.scheduleDate || !nextAppointment.scheduleTime ||
             entry.data().scheduleTime?.slice(0, 5) === nextAppointment.scheduleTime.slice(0, 5)),
       ).length;

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useReducer, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState } from "react";
 import {
   buildSeedAvailabilitySlots,
   isServiceAvailableOnDate,
@@ -41,6 +41,7 @@ const PASSWORD_HASH_VERSION = 1;
 const FORECAST_AVAILABILITY_DAYS = 120;
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_PENDING_APPOINTMENTS_PER_ACCOUNT = 2;
+const PORTAL_USERS_REFRESH_TTL_MS = 60 * 1000;
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1714,6 +1715,7 @@ export function AppProvider({ children }) {
   const [availabilityError, setAvailabilityError] = useState("");
   const [promoState, setPromoState] = useState({ uid: null, promo: null, ready: false, error: "" });
   const [promoClock, setPromoClock] = useState(Date.now);
+  const portalUsersRequestRef = useRef({ key: "", fetchedAt: 0, promise: null, users: null });
   const currentUser = authenticatedUser ? normalizeSessionUser(authenticatedUser) : null;
   const kaponPromoReady = Boolean(currentUser?.uid && promoState.uid === currentUser.uid && promoState.ready);
   const kaponPromo = kaponPromoReady ? promoState.promo : null;
@@ -1732,7 +1734,7 @@ export function AppProvider({ children }) {
       if (!disposed) setPromoState({ uid: currentUser.uid, promo: null, ready: false, error: error.message });
     });
     return () => { disposed = true; unsubscribe(); };
-  }, [currentUser?.uid, currentUser?.role]);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     const tick = () => setPromoClock(Date.now());
@@ -1747,6 +1749,50 @@ export function AppProvider({ children }) {
     persistState(state);
   }, [state]);
 
+  const invalidatePortalUsersCache = useCallback(() => {
+    portalUsersRequestRef.current = { key: "", fetchedAt: 0, promise: null, users: null };
+  }, []);
+
+  const refreshPortalUsers = useCallback(async ({ force = false } = {}) => {
+    if (!accessToken || !currentUser || !["admin", "staff"].includes(currentUser.role)) {
+      return [];
+    }
+
+    const key = `${currentUser.uid}:${currentUser.role}:${accessToken}`;
+    const cached = portalUsersRequestRef.current;
+    const now = Date.now();
+
+    if (!force && cached.key === key) {
+      if (cached.promise) {
+        return cached.promise;
+      }
+
+      if (cached.users && now - cached.fetchedAt < PORTAL_USERS_REFRESH_TTL_MS) {
+        return cached.users;
+      }
+    }
+
+    const request = userApi.listUsers(accessToken, currentUser.role)
+      .then((response) => {
+        const users = response.users.map(normalizeApiPortalUser);
+        dispatch({
+          type: "SYNC_PORTAL_USERS",
+          payload: { users },
+        });
+        portalUsersRequestRef.current = { key, fetchedAt: Date.now(), promise: null, users };
+        return users;
+      })
+      .catch((error) => {
+        if (portalUsersRequestRef.current.key === key) {
+          portalUsersRequestRef.current = { key: "", fetchedAt: 0, promise: null, users: null };
+        }
+        throw error;
+      });
+
+    portalUsersRequestRef.current = { key, fetchedAt: now, promise: request, users: null };
+    return request;
+  }, [accessToken, currentUser?.role, currentUser?.uid]);
+
   useEffect(() => {
     if (!accessToken || !currentUser || !["admin", "staff"].includes(currentUser.role)) {
       return;
@@ -1756,17 +1802,10 @@ export function AppProvider({ children }) {
 
     async function synchronizePortalUsers() {
       try {
-        const response = await userApi.listUsers(accessToken, currentUser.role);
+        await refreshPortalUsers();
         if (cancelled) {
           return;
         }
-
-        const users = response.users.map(normalizeApiPortalUser);
-
-        dispatch({
-          type: "SYNC_PORTAL_USERS",
-          payload: { users },
-        });
       } catch (error) {
         console.error("Unable to synchronize portal users from the backend.", error);
       }
@@ -1777,7 +1816,7 @@ export function AppProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, currentUser?.role, currentUser?.uid]);
+  }, [accessToken, currentUser?.role, currentUser?.uid, refreshPortalUsers]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -1814,7 +1853,7 @@ export function AppProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.uid, currentUser?.role]);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -1825,7 +1864,7 @@ export function AppProvider({ children }) {
       dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
     });
     return () => { stopAppointments(); stopNotifications(); };
-  }, [currentUser?.uid, currentUser?.role]);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     setAvailabilityUserId(null);
@@ -1839,7 +1878,7 @@ export function AppProvider({ children }) {
       setAvailabilityUserId(null);
       setAvailabilityError(error.message || "Unable to load appointment slots.");
     });
-  }, [currentUser?.uid, currentUser?.role]);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     const handleStorage = (event) => {
@@ -1936,22 +1975,6 @@ export function AppProvider({ children }) {
             (parseDateValue(left.createdAt)?.getTime() || 0),
         )
     : [];
-
-  const refreshPortalUsers = useCallback(async () => {
-    if (!accessToken || !currentUser || !["admin", "staff"].includes(currentUser.role)) {
-      return [];
-    }
-
-    const response = await userApi.listUsers(accessToken, currentUser.role);
-    const users = response.users.map(normalizeApiPortalUser);
-
-    dispatch({
-      type: "SYNC_PORTAL_USERS",
-      payload: { users },
-    });
-
-    return users;
-  }, [accessToken, currentUser?.role, currentUser?.uid]);
 
   async function validateCredentials(email, password, expectedRole) {
     const user = state.users.find(
@@ -2096,7 +2119,7 @@ export function AppProvider({ children }) {
             actorRole: currentUser?.role || "admin",
           },
         });
-        await refreshPortalUsers();
+        invalidatePortalUsersCache();
 
         return {
           ok: true,
@@ -2207,7 +2230,7 @@ export function AppProvider({ children }) {
           },
           meta: { actorName: currentUser?.name || "Admin" },
         });
-        await refreshPortalUsers();
+        invalidatePortalUsersCache();
 
         return {
           ok: true,
@@ -2249,7 +2272,7 @@ export function AppProvider({ children }) {
           payload: { id },
           meta: { actorName: currentUser?.name || "Admin" },
         });
-        await refreshPortalUsers();
+        invalidatePortalUsersCache();
       } catch (error) {
         return {
           ok: false,

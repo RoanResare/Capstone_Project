@@ -8,12 +8,31 @@ const { ApiError } = require("../src/utils/ApiError");
 
 function controllerFixture() {
   const records = new Map();
+  const makeCollection = (name) => ({
+    doc: (id) => ({key: `${name}/${id}`, id, set: async (data) => records.set(id, {...records.get(id), ...data})}),
+    orderBy: () => makeCollection(name),
+    limit: () => makeCollection(name),
+    startAfter: () => makeCollection(name),
+    where: () => makeCollection(name),
+    get: async () => ({docs: [...records].map(([id, data]) => ({id, data: () => data}))}),
+  });
+  const db = {
+    collection: makeCollection,
+    runTransaction: async (action) => {
+      const pending = [];
+      const result = await action({
+        get: async (ref) => ({exists: records.has(ref.id), data: () => records.get(ref.id), docs: []}),
+        set: (ref, data, options) => pending.push({ref, data, options}),
+      });
+      pending.forEach(({ref, data, options}) => {
+        records.set(ref.id, options?.merge ? {...records.get(ref.id), ...data} : data);
+      });
+      return result;
+    },
+  };
   const context = {module: {exports: {}}, require(name) {
     if (name === "../utils/ApiError") return {ApiError};
-    if (name === "../config/firebaseAdmin") return {db: {collection: () => ({
-      doc: (id) => ({set: async (data) => records.set(id, {...records.get(id), ...data})}),
-      get: async () => ({docs: [...records].map(([id, data]) => ({id, data: () => data}))}),
-    })}};
+    if (name === "../config/firebaseAdmin") return {db};
     throw new Error(`Unexpected dependency ${name}`);
   }};
   vm.runInNewContext(fs.readFileSync(path.resolve(__dirname, "../src/controllers/schedule.controller.js"), "utf8"), context);
@@ -57,7 +76,15 @@ test("slot endpoint validates capacity, identifiers and time and lets authentica
   assert.equal(records.size, 0);
   await controller.saveAvailabilitySlot(req, {json() {}});
   let response;
-  await controller.listAvailabilitySlots({auth: {user: {role: "customer"}}}, {json(data) {response = data;}});
+  const headers = {};
+  await controller.listAvailabilitySlots(
+    {auth: {user: {role: "customer"}}, query: {limit: "50"}},
+    {set(name, value) {headers[name] = value;}, json(data) {response = data;}},
+  );
+  assert.equal(headers["Cache-Control"], "private, max-age=60");
+  assert.equal(response.pagination.limit, 50);
+  assert.equal(response.pagination.nextCursor, "");
+  assert.equal(response.pagination.hasMore, false);
   assert.equal(response.slots[0].id, "slot");
   await assert.rejects(controller.listAvailabilitySlots({}, {json() {}}), {statusCode: 401});
 });

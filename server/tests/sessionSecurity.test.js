@@ -584,6 +584,7 @@ test("configured email providers cannot bypass mailbox validation for common dom
 test("booking transaction enforces ownership and capacity before writing", async () => {
   let writes = 0;
   let full = false;
+  const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
   const transaction = {
     get: async (ref) => ref.query
       ? { docs: full ? [{ data: () => ({ status: "Pending" }) }] : [] }
@@ -592,7 +593,7 @@ test("booking transaction enforces ownership and capacity before writing", async
   };
   const controller = loadService("../controllers/appointment.controller.js", {
     "../config/firebaseAdmin": { db: {
-      collection: () => ({ doc: () => ({}), where: () => ({ query: true }) }),
+      collection: () => ({ doc: () => ({}), where: () => makeQuery() }),
       runTransaction: async (action) => action(transaction),
     } },
   });
@@ -613,9 +614,10 @@ test("booking transaction enforces ownership and capacity before writing", async
 
 function appointmentFixture({ existing, slot, active = [] } = {}) {
   const writes = [];
+  const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
   const controller = loadService("../controllers/appointment.controller.js", {
     "../config/firebaseAdmin": { db: {
-      collection: (name) => ({ doc: (id) => ({ name, id }), where: () => ({ query: true }) }),
+      collection: (name) => ({ doc: (id) => ({ name, id }), where: () => makeQuery() }),
       runTransaction: async (action) => action({
         get: async (ref) => ref.query ? { docs: active.map((data, index) => ({ id: `other-${index}`, data: () => data })) }
           : { exists: Boolean(ref.name === "appointments" ? existing : slot),

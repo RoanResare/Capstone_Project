@@ -8,12 +8,30 @@ const { ApiError } = require("../src/utils/ApiError");
 function fixture(initial = {}) {
   const records = new Map(Object.entries(initial));
   const writes = [];
+  const makeQuery = (name, filters = [], maxResults = Infinity) => ({
+    query: true,
+    name,
+    filters,
+    maxResults,
+    limit: (nextLimit) => makeQuery(name, filters, nextLimit),
+    where: (field, operator, value) => makeQuery(name, [...filters, { field, operator, value }], maxResults),
+  });
+  const matchesQuery = (data, filters) => filters.every(({ field, operator, value }) => {
+    if (operator === "==") return data[field] === value;
+    if (operator === "in") return Array.isArray(value) && value.includes(data[field]);
+    return false;
+  });
   const db = {
-    collection: (name) => ({ doc: (id) => ({ key: `${name}/${id}` }), where: (field, operator, value) => ({ query: true, name, field, value }) }),
+    collection: (name) => ({
+      doc: (id) => ({ key: `${name}/${id}` }),
+      where: (field, operator, value) => makeQuery(name, [{ field, operator, value }]),
+    }),
     runTransaction: async (action) => {
       const pending = [];
       const result = await action({
-        get: async (ref) => ref.query ? { docs: [...records].filter(([key, data]) => key.startsWith(`${ref.name}/`) && data[ref.field] === ref.value)
+        get: async (ref) => ref.query ? { docs: [...records]
+          .filter(([key, data]) => key.startsWith(`${ref.name}/`) && matchesQuery(data, ref.filters))
+          .slice(0, ref.maxResults)
           .map(([key, data]) => ({ id: key.split("/").at(-1), data: () => data })) } : { exists: records.has(ref.key), data: () => records.get(ref.key) },
         set: (ref, data, options) => pending.push({ ref, data, options }),
       });

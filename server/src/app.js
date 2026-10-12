@@ -85,6 +85,25 @@ function sendFrontendIndex(req, res, next) {
   });
 }
 
+function setStaticCacheHeaders(res, filePath) {
+  const filename = path.basename(filePath);
+
+  if (filename === "index.html") {
+    res.set("Cache-Control", "no-store");
+    return;
+  }
+
+  if (
+    filePath.includes(`${path.sep}assets${path.sep}`) ||
+    /\.[A-Za-z0-9_-]{8,}\.(?:css|js|png|jpg|jpeg|webp|svg|woff2?)$/i.test(filename)
+  ) {
+    res.set("Cache-Control", "public, max-age=31536000, immutable");
+    return;
+  }
+
+  res.set("Cache-Control", "public, max-age=300");
+}
+
 app.get("/", (_req, res, next) => {
   if (fs.existsSync(frontendIndexPath)) {
     res.set("Cache-Control", "no-store");
@@ -119,7 +138,7 @@ app.use("/api/staff", staffRoutes);
 
 // Render serves this Node process in production. Mount the Vite output after
 // the API routes so browser assets are available without intercepting API JSON.
-app.use(express.static(frontendDistPath));
+app.use(express.static(frontendDistPath, { setHeaders: setStaticCacheHeaders }));
 
 // React Router owns frontend paths such as /reset-password. This must stay
 // after API routes and static assets so browser refreshes receive index.html.

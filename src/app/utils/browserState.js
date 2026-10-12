@@ -84,6 +84,32 @@ export function removeStorageItem(key) {
   return removeFromStorage(window.localStorage, key);
 }
 
+export function readJsonCache(key, ttlMs = 0) {
+  const raw = readStorageItem(key);
+  if (!raw) return null;
+
+  try {
+    const record = JSON.parse(raw);
+    const storedAt = Number(record?.storedAt || 0);
+    if (!storedAt || (ttlMs > 0 && Date.now() - storedAt > ttlMs)) {
+      removeStorageItem(key);
+      return null;
+    }
+    return record.value ?? null;
+  } catch {
+    removeStorageItem(key);
+    return null;
+  }
+}
+
+export function writeJsonCache(key, value) {
+  return writeStorageItem(key, JSON.stringify({ storedAt: Date.now(), value }));
+}
+
+export function removeJsonCache(key) {
+  return removeStorageItem(key);
+}
+
 export function removeSessionStorageItem(key) {
   if (!isBrowser()) {
     return false;

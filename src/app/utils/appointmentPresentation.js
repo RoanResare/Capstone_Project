@@ -35,6 +35,11 @@ export function appointmentStart(appointment) {
   return `${date}T${time}:00`;
 }
 
+export function compareAppointmentSchedule(left, right) {
+  return (appointmentStart(left) || "9999").localeCompare(appointmentStart(right) || "9999") ||
+    String(left.id || "").localeCompare(String(right.id || ""));
+}
+
 export function filterAppointmentList(appointments, status = "All", search = "") {
   const query = search.trim().toLowerCase();
   return appointments.filter((appointment) =>
@@ -52,7 +57,7 @@ export function paginateAppointmentList(appointments, requestedPage, pageSize = 
 
 export function groupPendingAppointments(appointments) {
   const groups = new Map();
-  appointments.slice().sort((left, right) => (appointmentStart(left) || "9999").localeCompare(appointmentStart(right) || "9999"))
+  appointments.slice().sort(compareAppointmentSchedule)
     .forEach((appointment) => {
       const date = appointmentDateKey(appointment);
       if (!groups.has(date)) groups.set(date, []);

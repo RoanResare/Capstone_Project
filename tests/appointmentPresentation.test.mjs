@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterAppointmentList, paginateAppointmentList, groupPendingAppointments, appointmentStatusLabel, appointmentStart, APPOINTMENT_COLORS } from "../src/app/utils/appointmentPresentation.js";
+import { filterAppointmentList, paginateAppointmentList, groupPendingAppointments, appointmentStatusLabel, appointmentStart, compareAppointmentSchedule, APPOINTMENT_COLORS } from "../src/app/utils/appointmentPresentation.js";
 
 test("customer pagination returns three appointments without losing the rest", () => {
   const records = Array.from({ length: 7 }, (_, index) => ({ id: String(index) }));
@@ -37,4 +37,15 @@ test("calendar statuses follow amber, green, dark-green and red color groups", (
   assert.notEqual(APPOINTMENT_COLORS.Approved.background, APPOINTMENT_COLORS.Pending.background);
   assert.equal(APPOINTMENT_COLORS.Rejected.background, APPOINTMENT_COLORS.Cancelled.background);
   assert.equal(APPOINTMENT_COLORS.Cancelled.background, APPOINTMENT_COLORS.Expired.background);
+});
+
+test("customer appointments sort from earliest to latest scheduled date and time", () => {
+  const records = [
+    { id: "last", scheduleDate: "2030-10-17", scheduleTime: "09:00" },
+    { id: "afternoon", scheduleDate: "2030-10-13", scheduleTime: "14:00" },
+    { id: "morning", scheduleDate: "2030-10-13", scheduleTime: "09:00" },
+    { id: "middle", scheduleDate: "2030-10-14", scheduleTime: "11:00" },
+    { id: "unscheduled" },
+  ];
+  assert.deepEqual(records.sort(compareAppointmentSchedule).map((record) => record.id), ["morning", "afternoon", "middle", "last", "unscheduled"]);
 });

@@ -31,6 +31,7 @@ import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwor
 import { subscribeKaponPromo, saveKaponPromo } from "../services/kaponPromo.js";
 import { isKaponPromoAvailable, isLowCostKaponAppointment, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { validateAppointmentServices, validateSinglePet } from "../../../shared/bookingServices.mjs";
+import { uniqueAppointmentsById } from "../utils/appointmentState.js";
 
 const AppContext = createContext(null);
 const PORTAL_USER_ROLES = ["admin", "staff"];
@@ -1110,9 +1111,9 @@ function normalizeStoredState(parsed) {
       Array.isArray(parsed.availabilitySlots) ? parsed.availabilitySlots : seed.availabilitySlots,
     ),
     appointments: Array.isArray(parsed.appointments)
-      ? parsed.appointments
+      ? uniqueAppointmentsById(parsed.appointments
           .filter((appointment) => appointment && typeof appointment === "object")
-          .map((appointment) => normalizeAppointment(appointment))
+          .map((appointment) => normalizeAppointment(appointment)))
           .sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"]))
       : seed.appointments,
     petRecords: Array.isArray(parsed.petRecords)
@@ -1424,6 +1425,7 @@ function appReducer(state, action) {
         })),
       };
     case "CREATE_APPOINTMENT": {
+      const synchronizedAppointment = state.appointments.find((appointment) => appointment.id === action.payload.id);
       const nextAppointment = normalizeAppointment({
         id: createId("appt"),
         status: "Pending",
@@ -1431,10 +1433,11 @@ function appReducer(state, action) {
         createdAt: new Date().toISOString(),
         assignedStaff: "",
         ...action.payload,
+        ...synchronizedAppointment,
       });
       const nextState = {
         ...state,
-        appointments: [nextAppointment, ...state.appointments].sort((left, right) =>
+        appointments: uniqueAppointmentsById([nextAppointment, ...state.appointments.filter((appointment) => appointment.id !== nextAppointment.id)]).sort((left, right) =>
           sortByNewest(left, right, ["updatedAt", "schedule"]),
         ),
       };

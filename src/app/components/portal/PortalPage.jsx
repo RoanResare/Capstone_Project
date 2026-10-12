@@ -517,6 +517,13 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
   const canComplete = canCompleteAppointment(appointment.status);
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
+    if (status === "Completed") {
+      if (window.confirm("Are you certain you want to mark this appointment as completed? Please confirm that the appointment has been fully completed.")) {
+        updateAppointment(appointment.id, { status });
+      }
+      return;
+    }
+
     const action = status === "Rejected" ? "reject" : status === "Accepted" ? "approve" : "cancel";
     if (window.confirm(`Are you sure you would like to ${action} this appointment? The customer will be notified of this change.`)) {
       updateAppointment(appointment.id, { status });
@@ -650,7 +657,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             type="checkbox"
             checked={appointment.status === "Completed"}
             disabled={isSaving || !canComplete}
-            onChange={() => updateAppointment(appointment.id, { status: "Completed" })}
+            onChange={() => requestStatusChange("Completed")}
             className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B] disabled:cursor-not-allowed"
           />
         </label>

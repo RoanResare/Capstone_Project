@@ -93,6 +93,7 @@ try {
   await dialog.getByRole("button", { name: "Approve appointment" }).click();
   await completion.waitFor();
   await page.waitForFunction(() => !document.querySelector('dialog input[type="checkbox"]').disabled);
+  page.once("dialog", (prompt) => prompt.accept());
   await completion.check();
   await page.waitForFunction(() => document.querySelector('dialog input[type="checkbox"]').disabled);
   await dialog.getByRole("button", { name: "Back", exact: true }).click();
@@ -129,6 +130,7 @@ try {
   await page.getByLabel("Filter my appointments by status").waitFor();
   const customerList = page.getByRole("heading", { name: "My appointments", exact: true }).locator("xpath=ancestor::section[1]");
   assert.equal(await customerList.locator("button").filter({ has: page.locator("h3") }).count(), 3);
+  assert.deepEqual(await customerList.locator("button h3").allTextContents(), ["Earlier", "Green", "Finished"]);
   await page.getByRole("button", { name: "Next appointments", exact: true }).click();
   assert.equal(await customerList.locator("button").filter({ has: page.locator("h3") }).count(), 3);
   await page.getByLabel("Filter my appointments by status").selectOption("Approved");

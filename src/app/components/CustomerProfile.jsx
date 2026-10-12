@@ -20,7 +20,7 @@ import { Navigate, useLocation, useNavigate, useSearchParams } from "react-route
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
-import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList } from "../utils/appointmentPresentation.js";
+import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentSchedule } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -40,6 +40,29 @@ const dashboardTabs = [
   { id: "services", label: "Services & Book Appointment", icon: Scissors },
   { id: "appointments", label: "My Appointments", icon: Clock3 },
   { id: "profile", label: "Profile", icon: UserRound },
+];
+
+const bookingRules = [
+  {
+    title: "One pet per appointment",
+    description: "Each booking is associated with one pet profile.",
+  },
+  {
+    title: "Maximum of two services per appointment",
+    description: "Only clinic-approved service combinations are available for the selected appointment type.",
+  },
+  {
+    title: "Validate the total estimated duration",
+    description: "Selected services must fit within the available time and staffing capacity before booking is confirmed.",
+  },
+  {
+    title: "Prevent overlapping appointments",
+    description: "Staff members and clinic resources must not be assigned to conflicting appointments.",
+  },
+  {
+    title: "Book multiple pets separately",
+    description: "Owners may create another appointment for an additional pet, subject to available slots.",
+  },
 ];
 
 
@@ -447,11 +470,7 @@ export function CustomerProfile() {
             appointment.customerId === customer?.uid ||
             appointment.customerEmail?.toLowerCase() === customer?.email?.toLowerCase(),
         )
-        .sort((left, right) =>
-          `${right.scheduleDate} ${right.scheduleTime}`.localeCompare(
-            `${left.scheduleDate} ${left.scheduleTime}`,
-          ),
-        ),
+        .sort(compareAppointmentSchedule),
     [customer?.email, customer?.uid, state.appointments],
   );
   const filteredCustomerAppointments = filterAppointmentList(customerAppointments, appointmentFilter, appointmentSearch);
@@ -1210,6 +1229,19 @@ export function CustomerProfile() {
                 <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                   Appointment-ready services for clinic visits, wellness care, and grooming.
                 </h2>
+                <div className="mt-4 grid gap-3 rounded-2xl border border-[#DDEAEA] bg-[#F8FCFC] p-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {bookingRules.map((rule, index) => (
+                    <div key={rule.title} className="flex min-w-0 gap-3">
+                      <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#13A55A]" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#20343B]">
+                          {index + 1}. {rule.title}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[#607277]">{rule.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="mt-5 grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {serviceCatalog.map((service) => (
                     <article

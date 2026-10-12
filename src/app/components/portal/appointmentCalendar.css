@@ -1,0 +1,86 @@
+.appointment-calendar {
+  --fc-border-color: #d9e7e7;
+  --fc-today-bg-color: #f3faf7;
+  --fc-neutral-bg-color: #f6fafa;
+  --fc-page-bg-color: #ffffff;
+  --fc-event-selected-overlay-color: transparent;
+  color: #20343b;
+}
+
+.appointment-calendar .fc {
+  font-size: 12px;
+}
+
+.appointment-calendar .fc-col-header-cell {
+  padding: 6px 0;
+  background: #f6fafa;
+  font-weight: 600;
+}
+
+.appointment-calendar .fc-daygrid-day-number {
+  padding: 6px;
+}
+
+.appointment-calendar .fc-event {
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px 3px;
+}
+
+.appointment-calendar .calendar-event-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 5px;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+}
+
+.appointment-calendar .calendar-event-name {
+  font-weight: 600;
+}
+
+.appointment-calendar .calendar-event-name,
+.appointment-calendar .calendar-event-service {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.appointment-calendar .fc-more-link {
+  font-weight: 600;
+  color: #2d6b73;
+}
+
+.appointment-calendar .fc-popover {
+  max-width: min(320px, calc(100vw - 32px));
+  z-index: 10;
+}
+
+.appointment-detail-dialog > section {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .appointment-calendar .fc {
+    font-size: 10px;
+  }
+
+  .appointment-calendar .calendar-event-content {
+    padding: 2px;
+    font-size: 9px;
+  }
+
+  .appointment-calendar .calendar-event-service {
+    display: none;
+  }
+
+  .appointment-calendar .fc-timegrid-axis,
+  .appointment-calendar .fc-timegrid-slot-label {
+    width: 40px;
+  }
+}

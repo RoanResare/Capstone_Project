@@ -28,6 +28,9 @@ import {
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
 import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy.js";
+import { subscribeKaponPromo, saveKaponPromo } from "../services/kaponPromo.js";
+import { isKaponPromoAvailable, isLowCostKaponAppointment, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
+import { validateAppointmentServices, validateSinglePet } from "../../../shared/bookingServices.mjs";
 
 const AppContext = createContext(null);
 const PORTAL_USER_ROLES = ["admin", "staff"];
@@ -1706,7 +1709,36 @@ export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, undefined, loadInitialState);
   const [availabilityUserId, setAvailabilityUserId] = useState(null);
   const [availabilityError, setAvailabilityError] = useState("");
+  const [promoState, setPromoState] = useState({ uid: null, promo: null, ready: false, error: "" });
+  const [promoClock, setPromoClock] = useState(Date.now);
   const currentUser = authenticatedUser ? normalizeSessionUser(authenticatedUser) : null;
+  const kaponPromoReady = Boolean(currentUser?.uid && promoState.uid === currentUser.uid && promoState.ready);
+  const kaponPromo = kaponPromoReady ? promoState.promo : null;
+  const kaponPromoAvailable = kaponPromoReady && isKaponPromoAvailable(kaponPromo, promoClock);
+
+  useEffect(() => {
+    setPromoState({ uid: null, promo: null, ready: false, error: "" });
+    if (!currentUser?.uid) return undefined;
+    let disposed = false;
+    const unsubscribe = subscribeKaponPromo((promo) => {
+      if (!disposed) {
+        setPromoClock(Date.now());
+        setPromoState({ uid: currentUser.uid, promo, ready: true, error: "" });
+      }
+    }, (error) => {
+      if (!disposed) setPromoState({ uid: currentUser.uid, promo: null, ready: false, error: error.message });
+    });
+    return () => { disposed = true; unsubscribe(); };
+  }, [currentUser?.uid, currentUser?.role]);
+
+  useEffect(() => {
+    const tick = () => setPromoClock(Date.now());
+    const boundaries = [kaponPromo?.startsAt, kaponPromo?.endsAt]
+      .map((value) => Date.parse(value)).filter((time) => Number.isFinite(time) && time > Date.now());
+    const timer = boundaries.length ? setTimeout(tick, Math.min(Math.min(...boundaries) - Date.now() + 30, 2147483647)) : null;
+    window.addEventListener("focus", tick);
+    return () => { clearTimeout(timer); window.removeEventListener("focus", tick); };
+  }, [kaponPromo, promoClock]);
 
   useEffect(() => {
     persistState(state);
@@ -1960,6 +1992,14 @@ export function AppProvider({ children }) {
 
   const value = {
     state,
+    kaponPromo,
+    kaponPromoReady,
+    kaponPromoAvailable,
+    kaponPromoError: promoState.uid === currentUser?.uid ? promoState.error : "",
+    async manageKaponPromo(payload) {
+      if (!["admin", "staff"].includes(currentUser?.role)) throw new Error("Only admin and staff can manage promotions.");
+      return saveKaponPromo(payload);
+    },
     availabilityReady: Boolean(currentUser?.uid && availabilityUserId === currentUser.uid),
     availabilityError,
     currentUser,
@@ -2312,6 +2352,13 @@ export function AppProvider({ children }) {
       return countPendingAppointments(state.appointments, customerId, customerEmail);
     },
     async createAppointment(payload, actorName) {
+      if (payload.serviceIds !== undefined) {
+        validateAppointmentServices(payload.serviceIds);
+        validateSinglePet(payload);
+      }
+      if (isLowCostKaponAppointment(payload) && (!kaponPromoReady || !isKaponPromoAvailable(kaponPromo))) {
+        throw new Error(KAPON_UNAVAILABLE_MESSAGE);
+      }
       if (
         currentUser?.role === "customer" &&
         ["restricted", "suspended", "banned"].includes(currentUser.fraudStatus)
@@ -2335,7 +2382,7 @@ export function AppProvider({ children }) {
         throw error;
       }
 
-      if (!isServiceAvailableOnDate(payload?.serviceId, payload?.scheduleDate)) {
+      if ((payload?.serviceIds || [payload?.serviceId]).some((id) => !isServiceAvailableOnDate(id, payload?.scheduleDate))) {
         const error = new Error("This service is available on weekends only. Please choose a Saturday or Sunday.");
         error.code = "SERVICE_SCHEDULE_UNAVAILABLE";
         throw error;

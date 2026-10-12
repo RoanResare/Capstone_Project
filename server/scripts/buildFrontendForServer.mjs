@@ -24,7 +24,9 @@ function run(command, args, cwd) {
   }
 }
 
-if (!existsSync(join(projectRoot, "node_modules", ".bin", "vite"))) {
+const calendarPackages = ["react", "daygrid", "timegrid", "interaction"];
+if (!existsSync(join(projectRoot, "node_modules", ".bin", "vite")) ||
+    calendarPackages.some((name) => !existsSync(join(projectRoot, "node_modules", "@fullcalendar", name, "package.json")))) {
   run(npmCommand, ["install", "--no-audit", "--no-fund"], projectRoot);
 }
 

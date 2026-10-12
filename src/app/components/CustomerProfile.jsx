@@ -12,9 +12,15 @@ import {
   PawPrint,
   Scissors,
   UserRound,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
+import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
+import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
+import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -38,7 +44,8 @@ const dashboardTabs = [
 
 
 function statusTone(status) {
-  if (["Completed", "active"].includes(status)) {
+  if (status === "Completed") return "bg-[#165B3B] text-white";
+  if (["Approved", "Confirmed", "Accepted", "active"].includes(status)) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
@@ -46,7 +53,7 @@ function statusTone(status) {
     return "bg-[#FCE8EB] text-[#B23949]";
   }
 
-  if (["Pending", "Confirmed", "Accepted"].includes(status)) {
+  if (status === "Pending") {
     return "bg-[#FFF4DF] text-[#A56A0F]";
   }
 
@@ -340,6 +347,10 @@ export function CustomerProfile() {
     state,
     updateAppointment,
     visibleNotifications,
+    kaponPromo,
+    kaponPromoAvailable,
+    kaponPromoReady,
+    kaponPromoError,
   } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [activeTab, setActiveTab] = useState("overview");
@@ -352,6 +363,9 @@ export function CustomerProfile() {
   });
   const [petForm, setPetForm] = useState(() => buildEmptyPetForm());
   const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [appointmentFilter, setAppointmentFilter] = useState("All");
+  const [appointmentSearch, setAppointmentSearch] = useState("");
+  const [appointmentPage, setAppointmentPage] = useState(0);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPet, setIsSavingPet] = useState(false);
@@ -440,9 +454,11 @@ export function CustomerProfile() {
         ),
     [customer?.email, customer?.uid, state.appointments],
   );
+  const filteredCustomerAppointments = filterAppointmentList(customerAppointments, appointmentFilter, appointmentSearch);
+  const pagedAppointments = paginateAppointmentList(filteredCustomerAppointments, appointmentPage);
   const selectedAppointment =
-    customerAppointments.find((appointment) => appointment.id === selectedAppointmentId) ||
-    customerAppointments[0] ||
+    filteredCustomerAppointments.find((appointment) => appointment.id === selectedAppointmentId) ||
+    pagedAppointments.appointments[0] ||
     null;
   const currentCustomerId = customer?.id || customer?.uid;
   const unreadNotificationCount = currentCustomerId
@@ -474,10 +490,10 @@ export function CustomerProfile() {
   const passwordStrength = getPasswordStrength(passwordForm.next);
 
   useEffect(() => {
-    if (!selectedAppointmentId && customerAppointments[0]) {
-      setSelectedAppointmentId(customerAppointments[0].id);
+    if (activeTab === "appointments" && !selectedAppointmentId && pagedAppointments.appointments[0]) {
+      setSelectedAppointmentId(pagedAppointments.appointments[0].id);
     }
-  }, [customerAppointments, selectedAppointmentId]);
+  }, [activeTab, pagedAppointments.appointments, selectedAppointmentId]);
 
   if (!isLoading && (!isAuthenticated || !customer)) {
     return <Navigate to="/login" replace />;
@@ -792,6 +808,10 @@ export function CustomerProfile() {
   };
 
   const continueToBooking = (serviceId) => {
+    if (serviceId === KAPON_SERVICE_ID && !kaponPromoAvailable) {
+      toast.error(KAPON_UNAVAILABLE_MESSAGE);
+      return;
+    }
     openTab("services");
     setPreselectedServiceId(serviceId);
   };
@@ -837,6 +857,8 @@ export function CustomerProfile() {
             </div>
           )}
         </motion.section>
+
+        {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
 
         <div className="grid items-start gap-6 lg:grid-cols-[224px_minmax(0,1fr)]">
           <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
@@ -1211,10 +1233,16 @@ export function CustomerProfile() {
                       <p className="mt-3 text-xs font-semibold text-[#2D6B73]">
                         Estimated visit time: {service.duration}
                       </p>
+                      {service.id === KAPON_SERVICE_ID && !kaponPromoAvailable && (
+                        <p className="mt-3 text-xs font-semibold text-[#607277]" role="status">
+                          {kaponPromoError ? "Promotion availability could not be verified." : !kaponPromoReady ? "Checking promotion availability..." : "Currently unavailable"}
+                        </p>
+                      )}
                       <button
                         type="button"
                         onClick={() => continueToBooking(service.id)}
-                        className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition duration-200 hover:scale-[1.03] hover:bg-[#235A61]"
+                        disabled={service.id === KAPON_SERVICE_ID && !kaponPromoAvailable}
+                        className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition duration-200 enabled:hover:scale-[1.03] enabled:hover:bg-[#235A61] disabled:cursor-not-allowed disabled:bg-[#E6EFEE] disabled:text-[#607277]"
                       >
                         Continue to booking
                       </button>
@@ -1231,21 +1259,34 @@ export function CustomerProfile() {
 
             {activeTab === "appointments" && (
               <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                <section className="min-w-0 self-start rounded-[30px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
                   <h2 className="text-xl font-semibold text-[#20343B]">My appointments</h2>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
+                    <select aria-label="Filter my appointments by status" value={appointmentFilter}
+                      onChange={(event) => { setAppointmentFilter(event.target.value); setAppointmentPage(0); setSelectedAppointmentId(""); }}
+                      className="min-w-0 rounded-lg border border-[#D9E7E7] bg-white px-3 py-2.5 text-sm text-[#20343B]">
+                      {["All", ...APPOINTMENT_STATUSES].map((status) => <option key={status}>{status}</option>)}
+                    </select>
+                    <label className="flex min-w-0 items-center gap-2 rounded-lg border border-[#D9E7E7] px-3 py-2.5 text-[#607277]">
+                      <Search size={16} className="shrink-0" />
+                      <input aria-label="Search my appointments" value={appointmentSearch}
+                        onChange={(event) => { setAppointmentSearch(event.target.value); setAppointmentPage(0); setSelectedAppointmentId(""); }}
+                        placeholder="Search pet, service, or date" className="min-w-0 w-full bg-transparent text-sm outline-none" />
+                    </label>
+                  </div>
                   <div className="mt-5 space-y-3">
-                    {customerAppointments.length === 0 ? (
+                    {filteredCustomerAppointments.length === 0 ? (
                       <EmptyState
-                        title="No appointments yet"
-                        message="Book your first appointment to start building your history."
+                        title={customerAppointments.length ? "No matching appointments" : "No appointments yet"}
+                        message={customerAppointments.length ? "No appointments match the selected status and search." : "Book your first appointment to start building your history."}
                       />
                     ) : (
-                      customerAppointments.map((appointment) => (
+                      pagedAppointments.appointments.map((appointment) => (
                         <button
                           key={appointment.id}
                           type="button"
                           onClick={() => setSelectedAppointmentId(appointment.id)}
-                          className={`w-full rounded-[24px] border px-5 py-5 text-left transition ${
+                          className={`w-full min-h-[116px] rounded-lg border px-4 py-4 text-left transition ${
                             selectedAppointment?.id === appointment.id
                               ? "border-[#2D9B9B] bg-[#F5FBFB]"
                               : "border-[#E6EFEE] bg-[#FBFDFC]"
@@ -1255,7 +1296,7 @@ export function CustomerProfile() {
                             <h3 className="text-lg font-semibold text-[#20343B]">
                               {appointment.petName}
                             </h3>
-                            <StatusChip label={appointment.status === "Accepted" ? "Approved" : appointment.status} />
+                            <StatusChip label={appointmentStatusLabel(appointment.status)} />
                           </div>
                           <p className="mt-2 text-sm text-[#607277]">{appointment.service}</p>
                           <p className="mt-2 text-sm text-[#607277]">
@@ -1265,6 +1306,20 @@ export function CustomerProfile() {
                       ))
                     )}
                   </div>
+                  {filteredCustomerAppointments.length > 0 && (
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-[#E6EFEE] pt-4 text-sm text-[#607277]">
+                      <span>{pagedAppointments.page * 3 + 1}-{Math.min((pagedAppointments.page + 1) * 3, filteredCustomerAppointments.length)} of {filteredCustomerAppointments.length}</span>
+                      <div className="flex items-center gap-2">
+                        <button type="button" aria-label="Previous appointments" title="Previous appointments" disabled={pagedAppointments.page === 0}
+                          onClick={() => { setAppointmentPage(pagedAppointments.page - 1); setSelectedAppointmentId(""); }}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E7E7] disabled:opacity-40"><ChevronLeft size={17} /></button>
+                        <span>{pagedAppointments.page + 1} / {pagedAppointments.pageCount}</span>
+                        <button type="button" aria-label="Next appointments" title="Next appointments" disabled={pagedAppointments.page + 1 >= pagedAppointments.pageCount}
+                          onClick={() => { setAppointmentPage(pagedAppointments.page + 1); setSelectedAppointmentId(""); }}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E7E7] disabled:opacity-40"><ChevronRight size={17} /></button>
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
@@ -1274,7 +1329,7 @@ export function CustomerProfile() {
                         <h3 className="text-2xl font-semibold text-[#20343B]">
                           {selectedAppointment.petName}
                         </h3>
-                        <StatusChip label={selectedAppointment.status === "Accepted" ? "Approved" : selectedAppointment.status} />
+                        <StatusChip label={appointmentStatusLabel(selectedAppointment.status)} />
                       </div>
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
                       {selectedAppointment.cancellationReason && (

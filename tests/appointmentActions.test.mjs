@@ -13,11 +13,11 @@ test("only pending appointments can be approved", () => {
   }
 });
 
-test("only pending and approved appointments can be completed", () => {
-  for (const status of ["Pending", "Accepted", "Approved"]) {
+test("only approved appointments and their legacy aliases can be completed", () => {
+  for (const status of ["Accepted", "Approved", "Confirmed"]) {
     assert.equal(canCompleteAppointment(status), true, status);
   }
-  for (const status of ["Confirmed", "Completed", "Rejected", "Cancelled", "Expired"]) {
+  for (const status of ["Pending", "Completed", "Rejected", "Cancelled", "Expired"]) {
     assert.equal(canCompleteAppointment(status), false, status);
   }
 });
@@ -33,5 +33,5 @@ test("only pending appointments can be rejected or cancelled, and no appointment
   }
   assert.equal(canChangeAppointmentStatus("Pending", "Accepted"), true);
   assert.equal(canChangeAppointmentStatus("Accepted", "Completed"), true);
-  assert.equal(canChangeAppointmentStatus("Confirmed", "Completed"), false);
+  assert.equal(canChangeAppointmentStatus("Confirmed", "Completed"), true);
 });

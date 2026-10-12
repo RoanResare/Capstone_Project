@@ -14,6 +14,7 @@ const { verifyToken } = require("../middlewares/authenticate");
 const { authRateLimiter } = require("../middlewares/authRateLimiter");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { saveAppointment } = require("../controllers/appointment.controller");
+const { saveKaponPromo } = require("../controllers/promo.controller");
 const { verifyRole } = require("../middlewares/authorize");
 const { listAvailabilitySlots, saveAvailabilitySlot, disableAvailabilitySlot } = require("../controllers/schedule.controller");
 
@@ -28,6 +29,7 @@ router.get("/me", verifyToken, asyncHandler(me));
 router.post("/validate-email", authRateLimiter, verifyToken, asyncHandler(validateEmail));
 router.get("/session-security", verifyToken, asyncHandler(sessionSecurity));
 router.put("/appointments/:id", verifyToken, asyncHandler(saveAppointment));
+router.put("/promotions/low-cost-kapon", verifyToken, verifyRole(["admin", "staff"]), asyncHandler(saveKaponPromo));
 router.get("/availability-slots", verifyToken, asyncHandler(listAvailabilitySlots));
 router.put("/availability-slots/:id", verifyToken, verifyRole(["admin", "staff"]), asyncHandler(saveAvailabilitySlot));
 router.delete("/availability-slots/:id", verifyToken, verifyRole(["admin", "staff"]), asyncHandler(disableAvailabilitySlot));

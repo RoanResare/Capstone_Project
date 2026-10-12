@@ -19,7 +19,11 @@ function loadService(filename, dependencies, globals = {}) {
     URL, AbortController, setTimeout, clearTimeout,
     console: { log() {}, warn() {} }, ...globals,
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../src/services", filename), "utf8"), context);
+  const scriptPath = path.join(__dirname, "../src/services", filename);
+  vm.runInNewContext(fs.readFileSync(scriptPath, "utf8"), context, {
+    filename: scriptPath,
+    importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER,
+  });
   return context.module.exports;
 }
 

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { KaponPromoManager } from "./KaponPromoManager.jsx";
+import { AppointmentCalendar } from "./AppointmentCalendar.jsx";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
@@ -19,6 +21,7 @@ import {
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
+import { groupPendingAppointments } from "../../utils/appointmentPresentation.js";
 import {
   canApproveAppointment,
   canCompleteAppointment,
@@ -203,6 +206,7 @@ function sortByNewest(left, right, fallbackFields = []) {
 }
 
 function statusClasses(status) {
+  if (status === "Completed") return "bg-[#165B3B] text-white";
   if (["Confirmed", "Accepted", "Approved", "Completed"].includes(status)) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
@@ -482,6 +486,8 @@ function MetricCard({ label, value, tone = "teal" }) {
     gold: "bg-[#FFF6E5] text-[#A56A0F]",
     rose: "bg-[#FBECEF] text-[#B23949]",
     slate: "bg-[#EEF3F5] text-[#3E5960]",
+    green: "bg-[#DDF5E6] text-[#187A4B]",
+    forest: "bg-[#165B3B] text-white",
   };
 
   return (
@@ -492,7 +498,7 @@ function MetricCard({ label, value, tone = "teal" }) {
   );
 }
 
-function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack }) {
+function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack, isSaving = false }) {
   if (!appointment) {
     return (
       <PanelCard
@@ -511,7 +517,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
   const canComplete = canCompleteAppointment(appointment.status);
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
-    const action = status === "Rejected" ? "reject" : "cancel";
+    const action = status === "Rejected" ? "reject" : status === "Accepted" ? "approve" : "cancel";
     if (window.confirm(`Are you sure you would like to ${action} this appointment? The customer will be notified of this change.`)) {
       updateAppointment(appointment.id, { status });
     }
@@ -526,6 +532,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
         <button
           type="button"
           onClick={onBack}
+          disabled={isSaving}
           className="inline-flex items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-2.5 text-sm font-semibold text-[#24444A]"
         >
           <ArrowLeft size={16} />
@@ -590,7 +597,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </label>
           <select
             value={appointment.assignedStaff || ""}
-            disabled={staffOptions.length === 0 || ["Completed", "Cancelled", "Rejected"].includes(appointment.status)}
+            disabled={isSaving || staffOptions.length === 0 || ["Completed", "Cancelled", "Rejected"].includes(appointment.status)}
             onChange={(event) =>
               updateAppointment(appointment.id, { assignedStaff: event.target.value })
             }
@@ -609,8 +616,8 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
         <div className="grid gap-3 sm:grid-cols-3">
           <button
             type="button"
-            onClick={() => updateAppointment(appointment.id, { status: "Accepted" })}
-            disabled={!appointment.assignedStaff?.trim() || !canApproveAppointment(appointment.status)}
+            onClick={() => requestStatusChange("Accepted")}
+            disabled={isSaving || !appointment.assignedStaff?.trim() || !canApproveAppointment(appointment.status)}
             title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Approve appointment"}
             className="rounded-2xl bg-[#E8F7EE] px-4 py-3 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
@@ -618,7 +625,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </button>
           <button
             type="button"
-            disabled={!canChangeAppointmentStatus(appointment.status, "Rejected")}
+            disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Rejected")}
             onClick={() => requestStatusChange("Rejected")}
             className="rounded-2xl bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
@@ -626,7 +633,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </button>
           <button
             type="button"
-            disabled={!canChangeAppointmentStatus(appointment.status, "Cancelled")}
+            disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Cancelled")}
             onClick={() => requestStatusChange("Cancelled")}
             className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
@@ -642,7 +649,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           <input
             type="checkbox"
             checked={appointment.status === "Completed"}
-            disabled={!canComplete}
+            disabled={isSaving || !canComplete}
             onChange={() => updateAppointment(appointment.id, { status: "Completed" })}
             className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B] disabled:cursor-not-allowed"
           />
@@ -662,6 +669,34 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
       </div>
     </PanelCard>
   );
+}
+
+function AppointmentDetailDialog({ appointment, currentUser, staffOptions, updateAppointment, onBack }) {
+  const dialogRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => { dialog.close(); document.body.style.overflow = previousOverflow; };
+  }, []);
+  const save = async (...args) => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try { return await updateAppointment(...args); }
+    finally { setIsSaving(false); }
+  };
+  const dialog = (
+    <dialog ref={dialogRef} aria-label="Appointment details" aria-modal="true"
+      onCancel={(event) => { event.preventDefault(); if (!isSaving) onBack(); }}
+      className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-6">
+      <button type="button" aria-label="Close appointment details" title="Close" disabled={isSaving} onClick={onBack} className="mb-2 ml-auto flex h-8 w-8 items-center justify-center text-[#607277] disabled:opacity-50"><X size={20} /></button>
+      <AppointmentDetailPanel appointment={appointment} currentUser={currentUser} staffOptions={staffOptions}
+        updateAppointment={save} onBack={onBack} isSaving={isSaving} />
+    </dialog>
+  );
+  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
 }
 
 function NotificationContextPanel({ notification, relatedAppointment, openAppointment }) {
@@ -796,6 +831,8 @@ function AppointmentsWorkspace({
   const requestedStatus = ["Confirmed", "Accepted"].includes(savedStatus) ? "Approved" : savedStatus;
   const statusFilter = appointmentFilters.includes(requestedStatus) ? requestedStatus : "All";
   const [searchValue, setSearchValue] = useState(() => searchParams.get("search") || "");
+  const savedSearch = searchParams.get("search") || "";
+  useEffect(() => { setSearchValue(savedSearch); }, [savedSearch]);
   const updateListFilter = (key, value) => {
     const nextParams = new URLSearchParams(searchParams);
     if (searchValue) nextParams.set("search", searchValue);
@@ -900,16 +937,18 @@ function AppointmentsWorkspace({
 
   return (
     <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <MetricCard label="Pending" value={pendingCount} tone="gold" />
-        <MetricCard label="Approved" value={approvedCount} />
-        <MetricCard label="Completed" value={completedCount} tone="slate" />
+        <MetricCard label="Approved" value={approvedCount} tone="green" />
+        <MetricCard label="Completed" value={completedCount} tone="forest" />
         <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
         <MetricCard label="Cancelled" value={cancelledCount} tone="rose" />
-        <MetricCard label="Expired" value={expiredCount} tone="gold" />
+        <MetricCard label="Expired" value={expiredCount} tone="rose" />
       </div>
 
-      <div className="grid min-w-0 gap-4 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:items-stretch">
+      <AppointmentCalendar appointments={appointments} onOpenAppointment={openAppointment} />
+
+      <div className="min-w-0">
         <PanelCard
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
@@ -919,6 +958,7 @@ function AppointmentsWorkspace({
           <div className="flex min-h-0 flex-1 flex-col gap-3">
             <div className="grid shrink-0 gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
               <select
+                aria-label="Filter managed appointments by status"
                 value={statusFilter}
                 onChange={(event) => updateListFilter("status", event.target.value)}
                 className="rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
@@ -931,6 +971,7 @@ function AppointmentsWorkspace({
               <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277]">
                 <Search size={16} />
                 <input
+                  aria-label="Search managed appointments"
                   value={searchValue}
                   autoComplete="off"
                   onChange={(event) => setSearchValue(event.target.value)}
@@ -961,7 +1002,10 @@ function AppointmentsWorkspace({
                       <p className="px-2 py-3 text-sm text-[#7A9297]">No {section.title.toLowerCase()} appointments.</p>
                     ) : (
                       <div className="space-y-2.5">
-                        {section.appointments.map((appointment) => {
+                        {(section.title === "Pending" ? groupPendingAppointments(section.appointments) : [{ date: null, appointments: section.appointments }]).map((group) => (
+                          <div key={group.date || section.title} className="space-y-2.5">
+                            {section.title === "Pending" && <p className="px-1 pt-2 text-sm font-semibold text-[#425A60]">{group.date ? formatDateLabel(group.date) : "Date not set"}</p>}
+                        {group.appointments.map((appointment) => {
                           const risk = getAppointmentRisk(appointment, appointments);
 
                           return (
@@ -1009,6 +1053,8 @@ function AppointmentsWorkspace({
                             </button>
                           );
                         })}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </section>
@@ -1018,14 +1064,15 @@ function AppointmentsWorkspace({
           </div>
         </PanelCard>
 
-        <AppointmentDetailPanel
+      </div>
+
+      {selectedAppointment && <AppointmentDetailDialog
           appointment={selectedAppointment}
           currentUser={currentUser}
           staffOptions={staffOptions}
           updateAppointment={handleAppointmentUpdate}
           onBack={clearSelectedAppointment}
-        />
-      </div>
+        />}
 
       <RecentNotificationList
         currentUser={currentUser}
@@ -1080,6 +1127,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
 
   return (
     <div className="space-y-5">
+      <KaponPromoManager />
       <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
         <PanelCard
           title="Manage schedule"

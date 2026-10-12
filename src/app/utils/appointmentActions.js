@@ -3,7 +3,7 @@ export function canApproveAppointment(status) {
 }
 
 export function canCompleteAppointment(status) {
-  return ["Pending", "Accepted", "Approved"].includes(status);
+  return ["Accepted", "Approved", "Confirmed"].includes(status);
 }
 
 export function canChangeAppointmentStatus(currentStatus, nextStatus) {

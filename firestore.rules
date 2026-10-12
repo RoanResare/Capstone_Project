@@ -78,6 +78,17 @@ service cloud.firestore {
       allow write: if canManageSchedules();
     }
 
+    // Public promo state has no employee metadata or inactive registration link.
+    match /promotions/low-cost-kapon {
+      allow read: if hasActiveSession();
+      allow write: if false;
+    }
+
+    match /promotionDetails/low-cost-kapon {
+      allow read: if canManageSchedules();
+      allow write: if false;
+    }
+
     // OTHER COLLECTIONS (Appointments, Pets, Notifications, etc.)
     match /appointments/{document=**} {
       allow read: if hasActiveSession();

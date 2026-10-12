@@ -14,6 +14,8 @@ import {
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
+import { validateAppointmentServices, getEstimatedDuration, canPairServices, matchesAppointmentBlock, getBlockCapacity, APPOINTMENT_BLOCK_MINUTES } from "../../../shared/bookingServices.mjs";
 import {
   buildSeedAvailabilitySlots,
   isServiceAvailableOnDate,
@@ -112,6 +114,7 @@ function createPetSelection() {
     id: `pet-choice-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     petRecordId: "",
     serviceId: "",
+    additionalServiceId: null,
   };
 }
 
@@ -128,7 +131,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { state, availabilityReady, availabilityError, createAppointment, getPendingAppointmentCount } = useApp();
+  const { state, availabilityReady, availabilityError, createAppointment, getPendingAppointmentCount, kaponPromoAvailable } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
@@ -150,7 +153,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     setPetSelections((current) =>
       current.length
         ? current.map((selection, index) =>
-            index === 0 ? { ...selection, serviceId: initialServiceId } : selection,
+            index === 0 ? { ...selection, serviceId: initialServiceId,
+              additionalServiceId: !canPairServices(initialServiceId, selection.additionalServiceId) ? null : selection.additionalServiceId } : selection,
           )
         : [{ ...createPetSelection(), serviceId: initialServiceId }],
     );
@@ -168,7 +172,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
   );
   const appointments = Array.isArray(state.appointments) ? state.appointments : [];
   const selectedServices = petSelections
-    .map((selection) => serviceCatalog.find((service) => service.id === selection.serviceId))
+    .flatMap((selection) => [selection.serviceId, selection.additionalServiceId])
+    .map((id) => serviceCatalog.find((service) => service.id === id))
     .filter(Boolean);
   const allSelectedServicesDaily =
     selectedServices.length > 0 && selectedServices.every((service) => service.availability === "daily");
@@ -184,10 +189,10 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
         .map((slot) => {
           const bookedCount = appointments.filter(
             (appointment) =>
-              appointment.slotId === slot.id &&
-              ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
+              matchesAppointmentBlock(appointment, slot) &&
+              ["Pending", "Confirmed", "Accepted", "Approved"].includes(appointment.status),
           ).length;
-          return { ...slot, bookedCount, remaining: Math.max((Number(slot.capacity) || 1) - bookedCount, 0) };
+          return { ...slot, bookedCount, remaining: Math.max(getBlockCapacity(slot) - bookedCount, 0) };
         })
         .filter(isBookableFutureSlot)
         .filter((slot) => slot.remaining > 0)
@@ -204,10 +209,10 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
       .forEach((slot) => {
         const bookedCount = appointments.filter(
           (appointment) =>
-            appointment.slotId === slot.id &&
-            ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
+            matchesAppointmentBlock(appointment, slot) &&
+            ["Pending", "Confirmed", "Accepted", "Approved"].includes(appointment.status),
         ).length;
-        const remaining = Math.max((Number(slot.capacity) || 1) - bookedCount, 0);
+        const remaining = Math.max(getBlockCapacity(slot) - bookedCount, 0);
         const entry = bookedByDate.get(slot.date) || { total: 0, full: 0 };
         entry.total += 1;
         if (remaining <= 0) entry.full += 1;
@@ -246,13 +251,9 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
   const addPetSelection = () =>
     setPetSelections((current) => [...current, createPetSelection()]);
   const addServiceSelection = () =>
-    setPetSelections((current) => [
-      ...current,
-      {
-        ...createPetSelection(),
-        petRecordId: current[current.length - 1]?.petRecordId || "",
-      },
-    ]);
+    setPetSelections((current) => current.map((selection, index) =>
+      index === current.length - 1 && selection.additionalServiceId === null
+        ? { ...selection, additionalServiceId: "" } : selection));
   const removePetSelection = (id) =>
     setPetSelections((current) =>
       current.length === 1 ? current : current.filter((selection) => selection.id !== id),
@@ -274,9 +275,21 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     }
 
     petSelections.forEach((selection, index) => {
+      const ids = [selection.serviceId, selection.additionalServiceId].filter(Boolean);
+      if (ids.includes(KAPON_SERVICE_ID) && !kaponPromoAvailable) {
+        nextErrors[`service-${selection.id}`] = KAPON_UNAVAILABLE_MESSAGE;
+      }
       if (!selection.petRecordId) nextErrors[`pet-${selection.id}`] = `Choose pet #${index + 1}.`;
       if (selection.petRecordId && !selection.serviceId) {
         nextErrors[`service-${selection.id}`] = `Choose a service for pet #${index + 1}.`;
+      }
+      if (selection.additionalServiceId === "") nextErrors[`service-${selection.id}`] = "Choose the second service or remove it.";
+      if (ids.length) {
+        try { validateAppointmentServices(ids); }
+        catch (error) { nextErrors[`service-${selection.id}`] = error.message; }
+      }
+      if (selection.petRecordId && petSelections.some((other) => other.id !== selection.id && other.petRecordId === selection.petRecordId)) {
+        nextErrors[`pet-${selection.id}`] = "Choose a different pet for each appointment.";
       }
     });
 
@@ -324,6 +337,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
         const pet = customerPetRecords.find((record) => record.id === selection.petRecordId);
         const service = serviceCatalog.find((item) => item.id === selection.serviceId);
         if (!pet || !service) continue;
+        const serviceIds = [selection.serviceId, selection.additionalServiceId].filter(Boolean);
+        const services = serviceIds.map((id) => serviceCatalog.find((item) => item.id === id));
 
         const appointmentId = `appt-${customer.uid}-${selectedSlot.id}-${pet.id}-${service.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
           .replace(/[^a-zA-Z0-9_-]/g, "-")
@@ -352,8 +367,11 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
             petType: pet.petType,
             breed: pet.breed,
             serviceId: service.id,
-            service: service.name,
-            servicePrice: service.priceLabel,
+            serviceIds,
+            service: services.map((item) => item.name).join(" + "),
+            servicePrice: services.map((item) => item.priceLabel).join(" + "),
+            estimatedDurationMinutes: getEstimatedDuration(serviceIds),
+            blockDurationMinutes: APPOINTMENT_BLOCK_MINUTES,
             slotId: selectedSlot.id,
             slotCapacity: selectedSlot.capacity,
             scheduleDate: selectedSlot.date,
@@ -444,8 +462,9 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
 
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-[#425A60]">Select pet</label>
+                          <label htmlFor={`booking-pet-${selection.id}`} className="mb-2 block text-sm font-medium text-[#425A60]">Select pet</label>
                           <select
+                            id={`booking-pet-${selection.id}`}
                             value={selection.petRecordId}
                             onChange={(event) =>
                               updateSelection(selection.id, {
@@ -457,7 +476,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                           >
                             <option value="">Choose a saved pet</option>
                             {customerPetRecords.map((record) => (
-                              <option key={record.id} value={record.id}>
+                              <option key={record.id} value={record.id} disabled={petSelections.some((other) => other.id !== selection.id && other.petRecordId === record.id)}>
                                 {record.petName} ({record.petType})
                               </option>
                             ))}
@@ -469,21 +488,38 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
 
                         {selectedPet && (
                           <div>
-                            <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                            <label htmlFor={`booking-service-${selection.id}`} className="mb-2 block text-sm font-medium text-[#425A60]">
                               Selected service
                             </label>
                             <select
+                              id={`booking-service-${selection.id}`}
                               value={selection.serviceId}
                               onChange={(event) => updateSelection(selection.id, { serviceId: event.target.value })}
                               className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                             >
                               <option value="">Choose service</option>
                               {serviceCatalog.map((service) => (
-                                <option key={service.id} value={service.id}>
-                                  {service.name} - {service.priceLabel}
+                                <option key={service.id} value={service.id} disabled={!canPairServices(service.id, selection.additionalServiceId) || (service.id === KAPON_SERVICE_ID && !kaponPromoAvailable)}>
+                                  {service.name} - {service.priceLabel}{service.id === KAPON_SERVICE_ID && !kaponPromoAvailable ? " (Currently unavailable)" : ""}
                                 </option>
                               ))}
                             </select>
+                            {selection.additionalServiceId !== null && (
+                              <div className="mt-3">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <label className="text-sm font-medium text-[#425A60]" htmlFor={`second-service-${selection.id}`}>Additional service</label>
+                                  <button type="button" onClick={() => updateSelection(selection.id, { additionalServiceId: null })} title="Remove additional service" aria-label="Remove additional service" className="p-1 text-[#B23949]"><Trash2 size={16} /></button>
+                                </div>
+                                <select id={`second-service-${selection.id}`} value={selection.additionalServiceId}
+                                  onChange={(event) => updateSelection(selection.id, { additionalServiceId: event.target.value })}
+                                  className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none focus:border-[#2D9B9B]">
+                                  <option value="">Choose a different service</option>
+                                  {serviceCatalog.map((item) => (
+                                    <option key={item.id} value={item.id} disabled={!canPairServices(selection.serviceId, item.id) || (item.id === KAPON_SERVICE_ID && !kaponPromoAvailable)}>{item.name} - {item.priceLabel}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
                             {errors[`service-${selection.id}`] && (
                               <p className="mt-2 text-sm text-[#B23949]">{errors[`service-${selection.id}`]}</p>
                             )}
@@ -506,7 +542,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                   <button
                     type="button"
                     onClick={addServiceSelection}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
+                    disabled={petSelections[petSelections.length - 1]?.additionalServiceId !== null}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Plus size={16} />
                     Add another service
@@ -647,10 +684,12 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
             {petSelections.map((selection, index) => {
               const pet = customerPetRecords.find((record) => record.id === selection.petRecordId);
               const service = serviceCatalog.find((item) => item.id === selection.serviceId);
+              const additionalService = serviceCatalog.find((item) => item.id === selection.additionalServiceId);
               return (
                 <div key={selection.id} className="border-b border-white/10 pb-3 last:border-0 last:pb-0">
                   <p className="font-semibold">Pet #{index + 1}: {pet?.petName || "Choose pet"}</p>
-                  <p className="mt-1 text-white/72">{service?.name || "Choose service"}</p>
+                  <p className="mt-1 text-white/72">{[service?.name, additionalService?.name].filter(Boolean).join(" + ") || "Choose service"}</p>
+                  {service && <p className="mt-1 text-white/72">Estimated duration: {getEstimatedDuration([service.id, additionalService?.id].filter(Boolean))} / {APPOINTMENT_BLOCK_MINUTES} minutes</p>}
                 </div>
               );
             })}

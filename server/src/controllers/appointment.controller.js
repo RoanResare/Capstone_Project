@@ -40,24 +40,84 @@ async function saveAppointment(req, res) {
         throw new ApiError(403, "Customers can only cancel existing appointments.");
       }
     }
-    if (appointment.slotId && (!existing.exists || appointment.slotId !== existing.data()?.slotId)) {
-      const slot = await transaction.get(db.collection("availabilitySlots").doc(appointment.slotId));
+    const { isLowCostKaponAppointment, isKaponPromoAvailable, KAPON_UNAVAILABLE_MESSAGE } =
+      await import("../../../shared/lowCostKaponPromo.mjs");
+    const previous = existing.data?.() || {};
+    if (nextStatus === "Completed" && previous.status !== "Completed" &&
+        !["Accepted", "Approved", "Confirmed"].includes(previous.status)) {
+      throw new ApiError(400, "Only approved appointments can be marked completed.");
+    }
+    const nextAppointment = { ...previous, ...appointment };
+    const changedSchedule = ["slotId", "scheduleDate", "scheduleTime", "schedule"].some(
+      (field) => nextAppointment[field] !== previous[field],
+    );
+    const changedServices = JSON.stringify(nextAppointment.serviceIds) !== JSON.stringify(previous.serviceIds) || nextAppointment.serviceId !== previous.serviceId;
+    const requiresBookingValidation = !existing.exists || changedServices || changedSchedule ||
+      (["Cancelled", "Rejected", "Expired", "Completed"].includes(previous.status) && ["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus));
+    let serviceFields = {};
+    if (nextAppointment.serviceIds !== undefined) {
+      const { validateAppointmentServices, validateSinglePet, getEstimatedDuration, APPOINTMENT_BLOCK_MINUTES, getDefaultBlockCapacity } = await import("../../../shared/bookingServices.mjs");
+      try {
+        if (requiresBookingValidation) validateAppointmentServices(nextAppointment.serviceIds);
+        if (requiresBookingValidation && !getDefaultBlockCapacity(nextAppointment.scheduleTime)) {
+          throw new Error("Select a 9:00 AM, 11:00 AM, 2:00 PM, or 4:00 PM appointment block.");
+        }
+        validateSinglePet(nextAppointment);
+        if (nextAppointment.serviceId !== nextAppointment.serviceIds[0]) {
+          throw new Error("The primary service must match the selected appointment services.");
+        }
+        serviceFields.estimatedDurationMinutes = getEstimatedDuration(nextAppointment.serviceIds);
+        serviceFields.blockDurationMinutes = APPOINTMENT_BLOCK_MINUTES;
+      } catch (error) {
+        throw new ApiError(400, error.message);
+      }
+    }
+    if (["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus) && assignedStaff) {
+      const { appointmentsOverlap } = await import("../../../shared/bookingServices.mjs");
+      const staffBookings = await transaction.get(db.collection("appointments").where("assignedStaff", "==", assignedStaff));
+      if (staffBookings.docs.some((entry) => entry.id !== id &&
+          ["Pending", "Confirmed", "Accepted", "Approved"].includes(entry.data().status) &&
+          appointmentsOverlap(nextAppointment, entry.data()))) {
+        throw new ApiError(409, "This staff member is already assigned to an overlapping appointment. Please choose another staff member or time.", { code: "STAFF_SCHEDULE_CONFLICT" });
+      }
+    }
+    // Existing bookings can still be completed or cancelled after a promo ends.
+    if (isLowCostKaponAppointment(nextAppointment) &&
+        (!existing.exists || !isLowCostKaponAppointment(previous) ||
+          (changedSchedule && !["Cancelled", "Rejected", "Completed"].includes(nextStatus)))) {
+      const promo = await transaction.get(db.collection("promotions").doc("low-cost-kapon"));
+      if (!isKaponPromoAvailable(promo.data?.())) {
+        throw new ApiError(409, KAPON_UNAVAILABLE_MESSAGE, { code: "KAPON_PROMO_INACTIVE" });
+      }
+    }
+    if (nextAppointment.slotId && (!existing.exists || changedSchedule)) {
+      const slot = await transaction.get(db.collection("availabilitySlots").doc(nextAppointment.slotId));
       const availability = slot.data?.() || {};
+      if (nextAppointment.serviceIds && ((availability.date && availability.date !== nextAppointment.scheduleDate) ||
+          (availability.time && availability.time.slice(0, 5) !== nextAppointment.scheduleTime?.slice(0, 5)))) {
+        throw new ApiError(409, "The selected time does not match the appointment slot. Please choose the slot again.");
+      }
       if (slot.exists && (availability.isOpen === false || availability.disabled === true ||
           ["cancelled", "disabled", "closed"].includes(String(availability.status || "").toLowerCase()))) {
         throw new ApiError(409, "That time slot is no longer available. Please choose another slot.", { code: "SLOT_UNAVAILABLE" });
       }
-      const slots = await transaction.get(
-        db.collection("appointments").where("slotId", "==", appointment.slotId),
-      );
-      const activeCount = slots.docs.filter((entry) =>
-        entry.id !== id && ["Pending", "Confirmed", "Accepted"].includes(entry.data().status),
+      const bySlot = await transaction.get(db.collection("appointments").where("slotId", "==", nextAppointment.slotId));
+      const byDate = nextAppointment.scheduleDate && nextAppointment.scheduleTime
+        ? await transaction.get(db.collection("appointments").where("scheduleDate", "==", nextAppointment.scheduleDate))
+        : { docs: [] };
+      const candidates = new Map([...bySlot.docs, ...byDate.docs].map((entry) => [entry.id, entry]));
+      const activeCount = [...candidates.values()].filter((entry) =>
+        entry.id !== id && ["Pending", "Confirmed", "Accepted", "Approved"].includes(entry.data().status) &&
+          (entry.data().slotId === nextAppointment.slotId || !nextAppointment.scheduleDate || !nextAppointment.scheduleTime ||
+            entry.data().scheduleTime?.slice(0, 5) === nextAppointment.scheduleTime.slice(0, 5)),
       ).length;
-      if (activeCount >= Math.max(Number(availability.capacity ?? appointment.slotCapacity) || 1, 1)) {
+      const { getBlockCapacity } = await import("../../../shared/bookingServices.mjs");
+      const capacity = getBlockCapacity({ time: availability.time || nextAppointment.scheduleTime, capacity: availability.capacity });
+      if (activeCount >= capacity) {
         throw new ApiError(409, "That time slot is already full. Please choose another slot.", { code: "SLOT_FULL" });
       }
     }
-    transaction.set(reference, appointment, { merge: true });
+    transaction.set(reference, { ...appointment, ...serviceFields }, { merge: true });
   });
   res.json({ success: true });
 }

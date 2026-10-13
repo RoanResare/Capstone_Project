@@ -1726,6 +1726,7 @@ function ManageUsersWorkspace({
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchValue, setSearchValue] = useState("");
+  const [employeeRole, setEmployeeRole] = useState("admin");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1738,8 +1739,8 @@ function ManageUsersWorkspace({
   const portalUsers = (Array.isArray(state.users) ? state.users : [])
     .filter((user) => user && ["admin", "staff"].includes(user.role))
     .slice()
-    .sort((left, right) => left.name.localeCompare(right.name));
-  const filteredUsers = portalUsers.filter((user) => matchesUserSearch(user, searchValue));
+    .sort((left, right) => (left.name || "").localeCompare(right.name || "", "en", { sensitivity: "base" }));
+  const filteredUsers = portalUsers.filter((user) => user.role === employeeRole && matchesUserSearch(user, searchValue));
   const activeCount = portalUsers.filter((user) => user.status === "active").length;
   const suspendedCount = portalUsers.filter((user) => user.status === "suspended").length;
   const inactiveCount = portalUsers.filter((user) => user.status === "inactive").length;
@@ -1922,6 +1923,7 @@ function ManageUsersWorkspace({
       }
 
       if (pendingUserSave.mode === "create" && result.id) {
+        setEmployeeRole(pendingUserSave.fullPayload.role);
         openUser(result.id, selectedNotificationId);
       }
 
@@ -2048,13 +2050,30 @@ function ManageUsersWorkspace({
               </div>
             )}
 
+            <div role="group" aria-label="Filter employee accounts by role" className="flex gap-1 rounded-lg bg-[#EEF6F6] p-1">
+              {["admin", "staff"].map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  aria-pressed={employeeRole === role}
+                  onClick={() => {
+                    setEmployeeRole(role);
+                    openUser("");
+                  }}
+                  className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition ${employeeRole === role ? "bg-[#173E44] text-white" : "text-[#365057] hover:bg-white"}`}
+                >
+                  {formatRoleLabel(role)}
+                </button>
+              ))}
+            </div>
+
             {filteredUsers.length === 0 ? (
               <EmptyState
                 title="No employee accounts found"
-                message="Create a staff or admin account to start managing access."
+                message={searchValue.trim() ? `No ${employeeRole} accounts match your search.` : `No ${employeeRole} accounts yet. Use Add employee to create one.`}
               />
             ) : (
-              <div className="max-h-[480px] space-y-3 overflow-y-auto pr-1">
+              <div aria-label={`${formatRoleLabel(employeeRole)} employee accounts`} className="max-h-[504px] space-y-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
                 {filteredUsers.map((user) => (
                   <div
                     key={user.id}
@@ -2067,7 +2086,7 @@ function ManageUsersWorkspace({
                         openUser(user.id, selectedNotificationId);
                       }
                     }}
-                    className={`w-full rounded-lg border px-4 py-3 text-left transition ${
+                    className={`min-h-[160px] w-full rounded-lg border px-4 py-3 text-left transition ${
                       selectedUser?.id === user.id && !isCreatingNew
                         ? "border-[#BFE1E1] bg-[#F8FCFC]"
                         : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"

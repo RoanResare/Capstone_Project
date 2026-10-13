@@ -20,7 +20,7 @@ import {
 const INTRO_MESSAGE = {
   id: "assistant-intro",
   from: "assistant",
-  content: `Hello! I'm Ask Llama AI for ${branchDetails.name}. Ask me about services, prices, appointments, or clinic hours.`,
+  content: `Hello! I'm Charming Assistant for ${branchDetails.name}. Ask me about services, prices, appointments, or clinic hours.`,
 };
 
 function createMessage(from, content, meta = {}) {
@@ -71,15 +71,15 @@ function ChatBubble({ message }) {
       <div
         className={`max-w-[90%] min-w-0 rounded-[24px] px-4 py-3 text-sm leading-6 shadow-sm ${
           isUser
-            ? "bg-gradient-to-r from-[#6D37FF] to-[#9557FF] text-white"
-            : "border border-[#EEE5FF] bg-white text-[#30254D]"
+            ? "bg-[#173E44] text-white"
+            : "border border-[#DDEAEA] bg-white text-[#27484E]"
         }`}
       >
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
         {message.bookingLink && (
           <Link
             to="/customer/dashboard?tab=services"
-            className="mt-3 inline-flex items-center rounded-full bg-[#6D37FF] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#5A2BE0]"
+            className="mt-3 inline-flex items-center rounded-full bg-[#173E44] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#1F5159]"
           >
             Book an appointment
           </Link>
@@ -323,34 +323,35 @@ export function AskLlamaAI() {
       <AnimatePresence>
         {isOpen && (
           <motion.section
+            id="charming-assistant-panel"
+            aria-label="Charming Assistant"
             initial={{ opacity: 0, y: 18, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.97 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="pointer-events-auto mb-3 flex h-[min(760px,calc(100dvh-5.5rem))] w-full flex-col overflow-hidden rounded-[32px] border border-white/75 bg-white/95 shadow-[0_32px_72px_rgba(65,34,142,0.22)] backdrop-blur sm:mb-4 sm:h-[min(800px,calc(100dvh-6.5rem))]"
+            className="pointer-events-auto mb-3 flex h-[min(760px,calc(100dvh-5.5rem))] w-full flex-col overflow-hidden rounded-[32px] border border-[#DDEAEA] bg-white/95 shadow-[0_32px_72px_rgba(23,62,68,0.18)] backdrop-blur sm:mb-4 sm:h-[min(800px,calc(100dvh-6.5rem))]"
           >
-            <div className="shrink-0 border-b border-[#F0E9FF] bg-[linear-gradient(180deg,rgba(247,243,255,0.96)_0%,rgba(255,255,255,0.94)_100%)] px-5 py-3 sm:px-6">
+            <div className="shrink-0 border-b border-[#DDEAEA] bg-[#F3F8F8] px-5 py-3 sm:px-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-base font-semibold leading-snug text-[#2E2450] sm:text-lg">
-                    Charming Fur-fection Assistant
+                  <h3 className="text-base font-semibold leading-snug text-[#20343B] sm:text-lg">
+                    Charming Assistant
                   </h3>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#5D4B8A] shadow-[0_8px_20px_rgba(141,99,255,0.16)] transition hover:bg-[#F6F2FF]"
-                  aria-label="Close Ask Llama AI"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#2D6B73] shadow-[0_8px_20px_rgba(45,107,115,0.12)] transition hover:bg-[#EEF7F7]"
+                  aria-label="Close Charming Assistant"
                 >
                   <X size={18} />
                 </button>
               </div>
-
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 sm:px-5 sm:pb-5">
-              <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-[#F0E9FF] bg-[#FCFBFF]">
+              <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-[#DDEAEA] bg-[#FCFEFE]">
                 <div
                   ref={messagesViewportRef}
                   role="log"
@@ -364,9 +365,9 @@ export function AskLlamaAI() {
 
                   {isLoading && showLoadingIndicator && (
                     <div className="flex justify-start">
-                      <div className="inline-flex items-center gap-2 rounded-[24px] border border-[#EEE5FF] bg-white px-4 py-3 text-sm text-[#5E4C89] shadow-sm">
+                      <div className="inline-flex items-center gap-2 rounded-[24px] border border-[#DDEAEA] bg-white px-4 py-3 text-sm text-[#36555B] shadow-sm">
                         <LoaderCircle size={16} className="animate-spin" />
-                        Llama is thinking...
+                        Charming Assistant is thinking...
                       </div>
                     </div>
                   )}
@@ -384,7 +385,7 @@ export function AskLlamaAI() {
                         type="button"
                         onClick={() => submitMessage(chip)}
                         disabled={isLoading}
-                        className="shrink-0 rounded-full border border-[#E7DEFF] bg-[#FBF9FF] px-3 py-2 text-xs font-medium text-[#5D4B8A] transition hover:border-[#CDBBFF] hover:bg-[#F6F1FF] disabled:cursor-not-allowed disabled:opacity-70"
+                        className="shrink-0 rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-3 py-2 text-xs font-medium text-[#2D6B73] transition hover:border-[#2D9B9B] hover:bg-[#EEF7F7] disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {chip}
                       </button>
@@ -399,7 +400,7 @@ export function AskLlamaAI() {
                 )}
 
                 {!groqStatus.ready && !lastWarning && groqStatus.helpText && (
-                  <div className="rounded-[22px] border border-[#ECE4FF] bg-[#F8F5FF] px-4 py-3 text-xs leading-5 text-[#716689]">
+                  <div className="rounded-[22px] border border-[#DDEAEA] bg-[#F3F8F8] px-4 py-3 text-xs leading-5 text-[#526E73]">
                     {groqStatus.helpText}
                   </div>
                 )}
@@ -410,7 +411,7 @@ export function AskLlamaAI() {
                     submitMessage(draft);
                   }}
                 >
-                  <div className="flex items-center gap-3 rounded-[26px] border border-[#E4D7FF] bg-[#FCFBFF] px-4 py-2 transition focus-within:border-[#8D63FF] focus-within:shadow-[0_0_0_4px_rgba(141,99,255,0.12)]">
+                  <div className="flex items-center gap-3 rounded-[26px] border border-[#D8E6E6] bg-[#FCFEFE] px-4 py-2 transition focus-within:border-[#2D9B9B] focus-within:shadow-[0_0_0_4px_rgba(45,155,155,0.12)]">
                     <textarea
                       ref={inputRef}
                       rows={1}
@@ -423,15 +424,15 @@ export function AskLlamaAI() {
                         }
                       }}
                       placeholder="Ask about services, prices, booking, or clinic hours"
-                      aria-label="Message to Ask Llama AI"
-                      className="block min-h-[24px] max-h-[120px] min-w-0 flex-1 resize-none border-0 bg-transparent p-0 text-base leading-6 text-[#30254D] outline-none placeholder:text-[#9C8FBC] sm:text-sm"
+                      aria-label="Message to Charming Assistant"
+                      className="block min-h-[24px] max-h-[120px] min-w-0 flex-1 resize-none border-0 bg-transparent p-0 text-base leading-6 text-[#27484E] outline-none placeholder:text-[#627E83] sm:text-sm"
                     />
 
                     <button
                       type="submit"
                       disabled={isLoading || !draft.trim()}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#6D37FF] to-[#9557FF] text-white shadow-[0_18px_35px_rgba(109,55,255,0.35)] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Send message to Ask Llama AI"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#173E44] text-white shadow-[0_18px_35px_rgba(23,62,68,0.2)] transition hover:scale-[1.02] hover:bg-[#1F5159] disabled:cursor-not-allowed disabled:opacity-70"
+                      aria-label="Send message to Charming Assistant"
                     >
                       {isLoading ? (
                         <LoaderCircle size={18} className="animate-spin" />
@@ -441,8 +442,8 @@ export function AskLlamaAI() {
                     </button>
                   </div>
 
-                  <p className="mt-2 text-xs text-[#8B81A4]">
-                    Use the send button to send your message.
+                  <p className="mt-2 text-xs text-[#526E73]">
+                    Use the send button to send a message.
                   </p>
                 </form>
               </div>
@@ -454,10 +455,12 @@ export function AskLlamaAI() {
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#6D37FF] to-[#9557FF] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(109,55,255,0.35)] transition hover:translate-y-[-1px]"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? "charming-assistant-panel" : undefined}
+        className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-[#173E44] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(23,62,68,0.2)] transition hover:translate-y-[-1px] hover:bg-[#1F5159] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
       >
         {isOpen ? <Bot size={16} /> : <MessageCircleMore size={16} />}
-        Ask Llama AI
+        Charming Assistant
       </button>
     </div>
   );

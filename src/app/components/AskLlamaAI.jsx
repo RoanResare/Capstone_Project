@@ -6,7 +6,6 @@ import {
   LoaderCircle,
   MessageCircleMore,
   SendHorizontal,
-  Sparkles,
   X,
 } from "lucide-react";
 import { useApp } from "../context/AppContext.jsx";
@@ -176,7 +175,7 @@ export function AskLlamaAI() {
     }
 
     textarea.style.height = "0px";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+    textarea.style.height = `${Math.max(24, Math.min(textarea.scrollHeight, 120))}px`;
   }, [draft, isOpen]);
 
   if (!shouldRenderWidget(pathname)) {
@@ -328,21 +327,14 @@ export function AskLlamaAI() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.97 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="pointer-events-auto mb-3 flex h-[min(700px,calc(100dvh-5.5rem))] w-full flex-col overflow-hidden rounded-[32px] border border-white/75 bg-white/95 shadow-[0_32px_72px_rgba(65,34,142,0.22)] backdrop-blur sm:mb-4 sm:h-[min(740px,calc(100dvh-6.5rem))]"
+            className="pointer-events-auto mb-3 flex h-[min(760px,calc(100dvh-5.5rem))] w-full flex-col overflow-hidden rounded-[32px] border border-white/75 bg-white/95 shadow-[0_32px_72px_rgba(65,34,142,0.22)] backdrop-blur sm:mb-4 sm:h-[min(800px,calc(100dvh-6.5rem))]"
           >
-            <div className="shrink-0 border-b border-[#F0E9FF] bg-[linear-gradient(180deg,rgba(247,243,255,0.96)_0%,rgba(255,255,255,0.94)_100%)] px-5 py-5 sm:px-6 sm:py-6">
-              <div className="flex items-start justify-between gap-4">
+            <div className="shrink-0 border-b border-[#F0E9FF] bg-[linear-gradient(180deg,rgba(247,243,255,0.96)_0%,rgba(255,255,255,0.94)_100%)] px-5 py-3 sm:px-6">
+              <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-[#F3ECFF] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6D37FF]">
-                    <Sparkles size={14} />
-                    Ask Llama AI
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold text-[#2E2450]">
+                  <h3 className="text-base font-semibold leading-snug text-[#2E2450] sm:text-lg">
                     Charming Fur-fection Assistant
                   </h3>
-                  <p className="mt-1 text-sm leading-6 text-[#6E638A]">
-                    {groqStatus.ready ? "Live Groq replies are active." : groqStatus.summary}
-                  </p>
                 </div>
 
                 <button
@@ -355,19 +347,10 @@ export function AskLlamaAI() {
                 </button>
               </div>
 
-              <div
-                className={`mt-4 inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  groqStatus.ready
-                    ? "bg-[#E9FAF4] text-[#1F7A58]"
-                    : "bg-[#FFF6E6] text-[#8A6330]"
-                }`}
-              >
-                {groqStatus.ready ? "Live Groq + Llama" : "Live Groq unavailable"}
-              </div>
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 sm:px-5 sm:pb-5">
-              <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-[#F0E9FF] bg-[#FCFBFF]">
+              <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-[#F0E9FF] bg-[#FCFBFF]">
                 <div
                   ref={messagesViewportRef}
                   role="log"
@@ -427,20 +410,21 @@ export function AskLlamaAI() {
                     submitMessage(draft);
                   }}
                 >
-                  <div className="flex items-end gap-3 rounded-[26px] border border-[#E4D7FF] bg-[#FCFBFF] px-4 py-3 transition focus-within:border-[#8D63FF] focus-within:shadow-[0_0_0_4px_rgba(141,99,255,0.12)]">
+                  <div className="flex items-center gap-3 rounded-[26px] border border-[#E4D7FF] bg-[#FCFBFF] px-4 py-2 transition focus-within:border-[#8D63FF] focus-within:shadow-[0_0_0_4px_rgba(141,99,255,0.12)]">
                     <textarea
                       ref={inputRef}
                       rows={1}
                       value={draft}
                       onChange={(event) => setDraft(event.target.value)}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
+                        if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                           event.preventDefault();
                           submitMessage(draft);
                         }
                       }}
                       placeholder="Ask about services, prices, booking, or clinic hours"
-                      className="min-h-[24px] max-h-[120px] flex-1 resize-none bg-transparent text-sm leading-6 text-[#30254D] outline-none placeholder:text-[#9C8FBC]"
+                      aria-label="Message to Ask Llama AI"
+                      className="block min-h-[24px] max-h-[120px] min-w-0 flex-1 resize-none border-0 bg-transparent p-0 text-base leading-6 text-[#30254D] outline-none placeholder:text-[#9C8FBC] sm:text-sm"
                     />
 
                     <button
@@ -458,7 +442,7 @@ export function AskLlamaAI() {
                   </div>
 
                   <p className="mt-2 text-xs text-[#8B81A4]">
-                    Press Enter to send. Use Shift+Enter for a new line.
+                    Use the send button to send your message.
                   </p>
                 </form>
               </div>

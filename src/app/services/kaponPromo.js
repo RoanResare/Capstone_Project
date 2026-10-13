@@ -1,9 +1,9 @@
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
-import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
+import { normalizePromoInput } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
 
-const KAPON_PROMO_CACHE_KEY = "furfection-cache:kapon-promo";
+const KAPON_PROMO_CACHE_KEY = "furfection-cache:lowCostKaponPromo";
 const KAPON_PROMO_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function subscribeKaponPromo(onChange, onError) {
@@ -13,7 +13,7 @@ export function subscribeKaponPromo(onChange, onError) {
   }
   const cachedPromo = readJsonCache(KAPON_PROMO_CACHE_KEY, KAPON_PROMO_CACHE_TTL_MS);
   if (cachedPromo) onChange(cachedPromo);
-  return onSnapshot(doc(db, "promotions", "low-cost-kapon"), { includeMetadataChanges: true },
+  return onSnapshot(doc(db, "lowCostKaponPromo", "low-cost-kapon"), { includeMetadataChanges: true },
     (snapshot) => {
       if (snapshot.metadata.fromCache) return;
       if (snapshot.exists()) {
@@ -34,15 +34,29 @@ export function subscribeKaponPromo(onChange, onError) {
 export async function saveKaponPromo(payload) {
   const user = auth?.currentUser;
   if (!user) throw new Error("Sign in to manage promotions.");
-  try {
-    const token = await user.getIdToken();
-    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
-    const response = await apiClient.put("/auth/promotions/low-cost-kapon", payload, {
-      headers: buildAuthHeaders(token),
-    });
-    writeJsonCache(KAPON_PROMO_CACHE_KEY, response.data.promo);
-    return response.data.promo;
-  } catch (error) {
-    throw new Error(extractApiError(error, "Unable to save the promotion."));
+  if (!isFirebaseConfigured || !db) throw new Error("Firebase is unavailable. Please try again later.");
+  const { action, expectedRevision } = payload || {};
+  if (!["activate", "edit", "deactivate"].includes(action) || !Number.isInteger(expectedRevision) || expectedRevision < 0) {
+    throw new Error("A valid promo action and revision are required.");
   }
+  const configuration = action === "deactivate" ? null : normalizePromoInput(payload);
+  const reference = doc(db, "lowCostKaponPromo", "low-cost-kapon");
+  const promo = await runTransaction(db, async (transaction) => {
+    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
+    const snapshot = await transaction.get(reference);
+    const current = snapshot.data() || {};
+    if ((current.revision || 0) !== expectedRevision) {
+      throw new Error("The promotion was changed by another employee. Review the latest details and try again.");
+    }
+    if (action !== "activate" && current.isActive !== true) throw new Error("This promotion is no longer active.");
+    if (action === "activate" && current.isActive === true) throw new Error("This promotion is already active. Use Edit Promo to change it.");
+    if (configuration?.endsAt && configuration.endsAt <= new Date().toISOString()) throw new Error("End time must be in the future.");
+    const next = action === "deactivate"
+      ? { isActive: false, revision: expectedRevision + 1 }
+      : { ...configuration, isActive: true, revision: expectedRevision + 1 };
+    transaction.set(reference, next);
+    return next;
+  });
+  writeJsonCache(KAPON_PROMO_CACHE_KEY, promo);
+  return promo;
 }

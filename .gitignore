@@ -1,4 +1,6 @@
 server/config/*.json
+/serviceAccountKey.json
+/serviceAccountKey.json.json
 server/config.bak
 /.env
 server/.env

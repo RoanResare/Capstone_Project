@@ -97,7 +97,7 @@ async function saveAppointment(req, res) {
     if (isLowCostKaponAppointment(nextAppointment) &&
         (!existing.exists || !isLowCostKaponAppointment(previous) ||
           (changedSchedule && !["Cancelled", "Rejected", "Completed"].includes(nextStatus)))) {
-      const promo = await transaction.get(db.collection("promotions").doc("low-cost-kapon"));
+      const promo = await transaction.get(db.collection("lowCostKaponPromo").doc("low-cost-kapon"));
       if (!isKaponPromoAvailable(promo.data?.())) {
         throw new ApiError(409, KAPON_UNAVAILABLE_MESSAGE, { code: "KAPON_PROMO_INACTIVE" });
       }

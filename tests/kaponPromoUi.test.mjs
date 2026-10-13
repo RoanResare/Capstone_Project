@@ -7,7 +7,7 @@ import { createServer } from "vite";
 
 const state = { auth: { currentUser: { uid: "customer", role: "customer", email: "customer@example.com" }, isAuthenticated: true, isLoading: false },
   app: { state: { appointments: [], petRecords: [{ id: "pet", customerId: "customer", petName: "Pet", petType: "Dog" }] }, visibleNotifications: [] },
-  listener: null, onError: null, stopped: false, requests: [] };
+  listener: null, onError: null, stopped: false, requests: [], record: null };
 globalThis.__kaponTest = state;
 const mocks = {
   "context/AuthContext.jsx": "export const useAuth = () => globalThis.__kaponTest.auth;",
@@ -19,8 +19,13 @@ const mocks = {
     export const buildAuthHeaders = token => ({Authorization: 'Bearer ' + token});
     export const extractApiError = error => error.message;`,
   "firebase/firestore": `export const doc = (db, collection, id) => ({collection, id});
-    export function onSnapshot(ref, options, next, error) { globalThis.__kaponTest.listener = next; globalThis.__kaponTest.onError = error;
-      return () => { globalThis.__kaponTest.stopped = true; }; }`,
+    export function onSnapshot(ref, options, next, error) { globalThis.__kaponTest.reference = ref; globalThis.__kaponTest.listener = next; globalThis.__kaponTest.onError = error;
+      return () => { globalThis.__kaponTest.stopped = true; }; }
+    export async function runTransaction(db, callback) {
+      const state = globalThis.__kaponTest;
+      return callback({ get: async () => ({data: () => state.record}),
+        set: (ref, data) => {state.writeReference = ref; state.record = data;} });
+    }`,
 };
 const server = await createServer({ configFile: false, server: { middlewareMode: true }, appType: "custom", logLevel: "silent",
   ssr: { noExternal: ["firebase"] },
@@ -86,6 +91,7 @@ test("subscription streams activation, link edits and deactivation, ignores cach
   const changes = [];
   let error;
   const stop = service.subscribeKaponPromo((value) => changes.push(value), (value) => { error = value; });
+  assert.deepEqual(state.reference, { collection: "lowCostKaponPromo", id: "low-cost-kapon" });
   state.listener({ metadata: { fromCache: true }, exists: () => true, data: () => promo });
   assert.equal(changes.length, 0);
   for (const value of [null, promo, { ...promo, formLink: "https://forms.gle/newLink123" }, { isActive: false, revision: 3 }]) {
@@ -100,10 +106,17 @@ test("subscription streams activation, link edits and deactivation, ignores cach
   assert.ok(state.stopped);
 });
 
-test("promo writes use authenticated backend requests", async () => {
-  await service.saveKaponPromo({ ...promo, action: "activate", expectedRevision: 0 });
-  const [url, body, options] = state.requests.at(-1);
-  assert.equal(url, "/auth/promotions/low-cost-kapon");
-  assert.equal(body.formLink, promo.formLink);
-  assert.equal(options.headers.Authorization, "Bearer token");
+test("promo writes directly to Firestore and preserves revision checks across activation, edits and deactivation", async () => {
+  state.record = null;
+  const saved = await service.saveKaponPromo({ ...promo, action: "activate", expectedRevision: 0 });
+  assert.deepEqual(state.writeReference, { collection: "lowCostKaponPromo", id: "low-cost-kapon" });
+  assert.equal(saved.formLink, promo.formLink);
+  assert.equal(saved.revision, 1);
+  await assert.rejects(service.saveKaponPromo({ ...promo, action: "edit", expectedRevision: 0 }), /another employee/);
+  await assert.rejects(service.saveKaponPromo({ ...promo, formLink: "https://example.com", action: "edit", expectedRevision: 1 }), /Google Form/);
+  await service.saveKaponPromo({ ...promo, formLink: "https://forms.gle/updated123", action: "edit", expectedRevision: 1 });
+  assert.equal(state.record.formLink, "https://forms.gle/updated123");
+  await service.saveKaponPromo({ action: "deactivate", expectedRevision: 2 });
+  assert.deepEqual(state.record, {isActive: false, revision: 3});
+  assert.equal(state.requests.length, 0);
 });

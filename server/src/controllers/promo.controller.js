@@ -18,7 +18,7 @@ async function saveKaponPromo(req, res) {
     try { configuration = normalizePromoInput(req.body); }
     catch (error) { throw new ApiError(400, error.message); }
   }
-  const reference = db.collection("promotions").doc("low-cost-kapon");
+  const reference = db.collection("lowCostKaponPromo").doc("low-cost-kapon");
   const detailsReference = db.collection("promotionDetails").doc("low-cost-kapon");
   const promo = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(reference);

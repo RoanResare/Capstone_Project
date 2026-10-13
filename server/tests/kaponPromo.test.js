@@ -67,14 +67,14 @@ test("admin and staff can activate, edit and deactivate a single promo while ret
   for (const role of ["admin", "staff"]) {
     const app = fixture();
     await app.promo({ ...config, action: "activate", expectedRevision: 0 }, role);
-    assert.equal(app.records.get("promotions/low-cost-kapon").isActive, true);
+    assert.equal(app.records.get("lowCostKaponPromo/low-cost-kapon").isActive, true);
     assert.equal(app.records.get("promotionDetails/low-cost-kapon").activatedBy.uid, "employee");
     await app.promo({ ...config, formLink: "https://forms.gle/updated123", action: "edit", expectedRevision: 1 }, role);
-    assert.equal(app.records.get("promotions/low-cost-kapon").formLink, "https://forms.gle/updated123");
-    assert.equal(app.records.get("promotions/low-cost-kapon").isActive, true);
+    assert.equal(app.records.get("lowCostKaponPromo/low-cost-kapon").formLink, "https://forms.gle/updated123");
+    assert.equal(app.records.get("lowCostKaponPromo/low-cost-kapon").isActive, true);
     await app.promo({ action: "deactivate", expectedRevision: 2 }, role);
-    assert.equal(app.records.get("promotions/low-cost-kapon").isActive, false);
-    assert.equal(app.records.get("promotions/low-cost-kapon").formLink, undefined);
+    assert.equal(app.records.get("lowCostKaponPromo/low-cost-kapon").isActive, false);
+    assert.equal(app.records.get("lowCostKaponPromo/low-cost-kapon").formLink, undefined);
     assert.equal(app.records.get("promotionDetails/low-cost-kapon").formLink, "https://forms.gle/updated123");
   }
 });
@@ -87,25 +87,25 @@ test("customers, inactive staff, invalid links and stale edits cannot modify pro
   assert.equal(app.writes.length, 0);
   await app.promo({ ...config, action: "activate", expectedRevision: 0 });
   await assert.rejects(app.promo({ ...config, action: "edit", expectedRevision: 0 }), { statusCode: 409 });
-  assert.equal(app.records.get("promotions/low-cost-kapon").revision, 1);
+  assert.equal(app.records.get("lowCostKaponPromo/low-cost-kapon").revision, 1);
 });
 
 test("booking backend rejects missing, inactive and expired kapon promos, even with manipulated names", async () => {
   for (const promo of [undefined, { isActive: false }, { ...config, isActive: true, endsAt: "2000-01-01T00:00:00Z" }]) {
-    const app = fixture(promo ? { "promotions/low-cost-kapon": promo } : {});
+    const app = fixture(promo ? { "lowCostKaponPromo/low-cost-kapon": promo } : {});
     await assert.rejects(app.book({}), { statusCode: 409 });
     await assert.rejects(app.book({ serviceId: "vaccination", service: "Low Cost Kapon" }), { statusCode: 409 });
     assert.equal(app.writes.length, 0);
     await app.book({ serviceId: "vaccination", service: "Vaccination" });
     assert.equal(app.writes.length, 1);
   }
-  const app = fixture({ "promotions/low-cost-kapon": { ...config, isActive: true } });
+  const app = fixture({ "lowCostKaponPromo/low-cost-kapon": { ...config, isActive: true } });
   await app.book({});
   assert.equal(app.writes.length, 1);
 });
 
 test("deactivation blocks new kapon bookings and rescheduling but allows existing cancellations", async () => {
-  const app = fixture({ "promotions/low-cost-kapon": { ...config, isActive: true, revision: 1 } });
+  const app = fixture({ "lowCostKaponPromo/low-cost-kapon": { ...config, isActive: true, revision: 1 } });
   await app.book({ slotId: "original" });
   await app.promo({ action: "deactivate", expectedRevision: 1 });
   await assert.rejects(app.book({ slotId: "changed" }), { statusCode: 409 });

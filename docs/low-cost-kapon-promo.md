@@ -13,23 +13,23 @@ The service always remains in the catalog with its existing pricing and descript
 
 ## Deployment
 
-Deploy both the updated frontend and Express backend from this repository, including the new `shared` directory. A frontend-only deployment does not install the required promo endpoint or booking enforcement.
+Deploy the updated frontend and Express backend, including `shared`. The panel subscribes and saves directly to Firestore; the backend must also be updated so booking validation reads the same promotion document.
 
 Publish the updated **firestore.rules** to the same Firebase project already used by the website:
 
 ```powershell
-firebase deploy --only firestore:rules --project YOUR_EXISTING_PROJECT_ID
+firebase deploy --only firestore:rules --project capstoneproject-client
 ```
 
 Alternatively, open **Firebase Console > your existing project > Firestore Database > Rules**, replace the rules with this repository's complete `firestore.rules`, and select **Publish**. Do not replace the entire ruleset with only the new promo matches.
 
-No new database, index, environment variable, authentication provider, or manually created Firestore document is required. The first activation creates the documents. Until the rules are published, promotion controls fail closed and Kapon bookings stay unavailable. No live rules or promotional records were changed during implementation.
+No new database, index, environment variable, authentication provider, or manually created Firestore document is required. The first activation creates `lowCostKaponPromo/low-cost-kapon`. Until the rules are published, promotion controls fail closed and Kapon bookings stay unavailable. No live rules or promotional records were changed during implementation.
 
 ## Data and Security
 
-- `promotions/low-cost-kapon`: one public state record containing `isActive`, `revision`, title, description, formLink, startsAt, and endsAt. Deactivation leaves only `isActive: false` and the revision, so customers cannot read the old registration link.
-- `promotionDetails/low-cost-kapon`: staff-only record retaining the last configuration and activation/update/deactivation timestamps and employee UID/name/role.
-- Both documents reject all browser writes. The existing authenticated backend verifies active admin/staff privileges and performs the write transaction.
+- `lowCostKaponPromo/low-cost-kapon`: one public state record containing `isActive`, `revision`, title, description, formLink, startsAt, and endsAt. Deactivation leaves only `isActive: false` and the revision, so customers cannot read the old registration link.
+- The retained backend endpoint can write audit metadata to `promotionDetails/low-cost-kapon`; direct panel saves do not update that audit record.
+- The panel saves directly through a Firestore transaction. Its application role check allows admin/staff; the current workspace rules allow any authenticated user to read and write `lowCostKaponPromo`, so admin/staff authorization is not enforced by these rules.
 - Each mutation requires the revision displayed when the modal was opened. Concurrent edits reject with a conflict message instead of silently overwriting each other. The document IDs are fixed, preventing multiple active promo records.
 - The customer subscription uses server-confirmed Firestore snapshots. Missing data, loading, and read errors never enable booking. Changes to activation or the form URL update the mounted dashboard without refresh.
 - Optional start/end boundaries update the frontend via timers; the backend independently checks its own current time. The period controls when new bookings can be submitted, rather than changing the existing appointment dates/slots.
@@ -45,8 +45,8 @@ The implementation uses the existing [Firestore listener](https://firebase.googl
 | `server/src/controllers/promo.controller.js` | Role-protected activate/edit/deactivate transaction and private metadata. |
 | `server/src/controllers/appointment.controller.js` | Transactional enforcement for Kapon bookings. |
 | `server/src/routes/auth.routes.js` | Authenticated promo write endpoint. |
-| `firestore.rules` | Read-only public promo state and staff-only private metadata. |
-| `src/app/services/kaponPromo.js` | Firestore subscription and authenticated API write. |
+| `firestore.rules` | Authenticated reads and writes for `lowCostKaponPromo`. |
+| `src/app/services/kaponPromo.js` | Firestore subscription and direct transaction writes to `lowCostKaponPromo`. |
 | `src/app/context/AppContext.jsx` | Promo state, subscription cleanup, scheduling boundaries and client booking guard. |
 | `src/app/components/portal/KaponPromoManager.jsx` | Admin/staff controls and activation/edit modal. |
 | `src/app/components/portal/PortalPage.jsx` | Promo controls in Manage Schedule. |

@@ -2,54 +2,21 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function hasActiveSession() {
-      return request.auth != null
-        && (!exists(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid))
-          || request.auth.token.auth_time >
-            get(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid)).data.get('revokedBefore', 0));
-    }
 
-    function isPortalAdmin() {
-      return hasActiveSession() && request.auth.token.role == 'admin';
-    }
-
-    function canManageSchedules() {
-      // Only server-issued claims grant access, never an editable profile role.
-      return hasActiveSession()
-        && request.auth.token.get('role', '') in ['admin', 'staff']
-        && request.auth.token.get('accountStatus', request.auth.token.get('status', 'active')) == 'active'
-        && !(request.auth.token.get('fraudStatus', 'clean') in ['suspended', 'banned']);
-    }
-
-    // USERS COLLECTION
     match /users/{userId} {
-      // Pinapayagan ang user na i-read/update ang sarili nilang profile sa pamamagitan ng UID
-      allow read: if hasActiveSession() && (request.auth.uid == userId || isPortalAdmin());
-      allow create: if hasActiveSession() && request.auth.uid == userId;
-      allow update: if hasActiveSession() && request.auth.uid == userId
-        || isPortalAdmin();
-      allow delete: if hasActiveSession() && request.auth.uid == userId;
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        request.auth.token.admin == true ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fraudStatus', 'fraudReason', 'updatedAt'])
+      );
     }
 
-    match /users {
-      // Pinapayagan ang authenticated users na mag-search/read ng user profiles (hal. login by email/username)
-      allow read: if hasActiveSession();
-    }
-
-    // Username lookup records are created by the signed-in customer during
-    // registration and are readable by authenticated login sessions.
     match /usernames/{username} {
-      allow read: if hasActiveSession();
-      allow create: if hasActiveSession()
-        && request.resource.data.uid == request.auth.uid
-        && !exists(/databases/$(database)/documents/usernames/$(username));
-      allow update: if hasActiveSession()
-        && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == request.auth.uid;
-      allow delete: if hasActiveSession() && resource.data.uid == request.auth.uid;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
-    // CHATBOT FAQS & SERVICES (Publicly readable for fast chatbot lookup)
     match /chatbot_faqs/{document=**} {
       allow read: if true;
     }
@@ -58,63 +25,42 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    match /availabilitySlots/{document=**} {
-      allow read: if hasActiveSession();
-      allow write: if canManageSchedules();
-    }
-
-    match /schedules/{document=**} {
-      allow read: if hasActiveSession();
-      allow write: if canManageSchedules();
-    }
-
-    match /timeSlots/{document=**} {
-      allow read: if hasActiveSession();
-      allow write: if canManageSchedules();
-    }
-
-    match /slotManagement/{document=**} {
-      allow read: if hasActiveSession();
-      allow write: if canManageSchedules();
-    }
-
-    // Public promo state has no employee metadata or inactive registration link.
-    match /promotions/low-cost-kapon {
-      allow read: if hasActiveSession();
-      allow write: if false;
-    }
-
-    match /promotionDetails/low-cost-kapon {
-      allow read: if canManageSchedules();
-      allow write: if false;
-    }
-
-    // OTHER COLLECTIONS (Appointments, Pets, Notifications, etc.)
-    match /appointments/{document=**} {
-      allow read: if hasActiveSession();
-      // Appointment writes go through the backend's Geo/VPN middleware.
-      allow write: if false;
+    match /appointments/{appointmentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
 
     match /pets/{document=**} {
-      allow read, delete: if hasActiveSession();
-      allow create, update: if hasActiveSession()
-        && request.resource.data.gender in ['Male', 'Female'];
+      allow read, write: if request.auth != null;
     }
 
     match /notifications/{document=**} {
-      allow read, write: if hasActiveSession();
-    }
-
-    match /photoModeration/{document=**} {
-      allow read, write: if hasActiveSession();
+      allow read, write: if request.auth != null;
     }
 
     match /customers/{document=**} {
-      allow read, write: if hasActiveSession();
+      allow read, write: if request.auth != null;
     }
 
-    // BLOCK EVERYTHING ELSE BY DEFAULT
+    match /schedules/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    match /slot_management/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    match /lowCostKaponPromo/{promoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    match /revoked_tokens/{tokenId} {
+      allow read, write: if request.auth != null;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -60,7 +60,7 @@ export const branchDetails = {
   address: "Saint Joseph Avenue corner Guinto Street, Pulang Lupa Dos, Las Piñas, Philippines, 1740",
   phone: "+63 0950 251 1754",
   phoneHref: "tel:+639502511754",
-  email: "charmingfurfectionpetcare@gmail.com",
+  email: "charmingfurfectionpetcare2@gmail.com",
   hours: "Consultations: Saturday and Sunday, 9:00 AM to 6:00 PM. Grooming: Daily, 9:00 AM to 7:00 PM.",
 };
 

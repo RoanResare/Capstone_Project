@@ -67,6 +67,16 @@ function fixture(initial = {}) {
 }
 const config = { formLink: "https://forms.gle/example123", title: "Low-Cost Kapon", description: "Limited slots" };
 
+test("grooming pricing uses the saved pet weight and rejects invalid grooming types", async () => {
+  const system = fixture({ "pets/pet": { customerId: "customer", petType: "Dog", weightKg: "6" } });
+  await system.book({ serviceId: "pet-grooming", serviceIds: ["pet-grooming"], petRecordId: "pet", grooming: { serviceId: "basic", size: "X-Large", price: 1 } });
+  const saved = system.records.get("appointments/booking");
+  assert.equal(saved.grooming.size, "Small");
+  assert.equal(saved.grooming.price, 300);
+  assert.equal(saved.servicePrice, "PHP 300");
+  await assert.rejects(system.book({ ...saved, grooming: { serviceId: "feline-basic" } }), /selected pet type/);
+});
+
 test("deleting a pet removes its pending and approved reservations and frees the slot", async () => {
   const system = fixture({
     "pets/pet": { customerId: "customer", petName: "Pet" },

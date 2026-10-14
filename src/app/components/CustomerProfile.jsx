@@ -950,10 +950,6 @@ export function CustomerProfile() {
                         <p role="status" className={`mt-2 text-sm font-semibold ${kaponPromoAvailable ? "text-[#1D7C45]" : "text-[#607277]"}`}>
                           Status: {kaponPromoAvailable ? "Available" : kaponPromoError ? "Promotion availability could not be verified" : !kaponPromoReady ? "Checking promotion availability..." : "Currently unavailable"}
                         </p>
-                        <button type="button" onClick={() => continueToBooking(KAPON_SERVICE_ID)} disabled={!kaponPromoAvailable}
-                          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition enabled:hover:bg-[#235A61] disabled:cursor-not-allowed disabled:bg-[#E6EFEE] disabled:text-[#607277] sm:w-auto">
-                          Continue to Booking
-                        </button>
                       </div>
                     </div>
                   </article>
@@ -1310,14 +1306,17 @@ export function CustomerProfile() {
                           {kaponPromoError ? "Promotion availability could not be verified." : !kaponPromoReady ? "Checking promotion availability..." : "Currently unavailable"}
                         </p>
                       )}
-                      <button
+                      {service.id === KAPON_SERVICE_ID ? (
+                        kaponPromoAvailable ? <a href={kaponPromo.formLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61]">Register Now</a>
+                          : <button type="button" disabled className="mt-4 w-full rounded-xl bg-[#E6EFEE] px-4 py-3 text-sm font-semibold text-[#607277] disabled:cursor-not-allowed">Register Now</button>
+                      ) : <button
                         type="button"
                         onClick={() => continueToBooking(service.id)}
                         disabled={service.id === KAPON_SERVICE_ID && !kaponPromoAvailable}
                         className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition duration-200 enabled:hover:scale-[1.03] enabled:hover:bg-[#235A61] disabled:cursor-not-allowed disabled:bg-[#E6EFEE] disabled:text-[#607277]"
                       >
                         Continue to booking
-                      </button>
+                      </button>}
                     </article>
                   ))}
                 </div>

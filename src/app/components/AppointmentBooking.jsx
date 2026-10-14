@@ -15,6 +15,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
+import { GROOMING_SERVICES, groomingQuote, groomingSizeForPet } from "../../../shared/groomingServices.mjs";
 import { validateAppointmentServices, getEstimatedDuration, canPairServices, matchesAppointmentBlock, getBlockCapacity, APPOINTMENT_BLOCK_MINUTES } from "../../../shared/bookingServices.mjs";
 import {
   buildSeedAvailabilitySlots,
@@ -115,6 +116,7 @@ function createPetSelection() {
     petRecordId: "",
     serviceId: "",
     additionalServiceId: null,
+    groomingServiceId: "",
   };
 }
 
@@ -279,6 +281,11 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
       if (ids.includes(KAPON_SERVICE_ID) && !kaponPromoAvailable) {
         nextErrors[`service-${selection.id}`] = KAPON_UNAVAILABLE_MESSAGE;
       }
+      if (ids.includes("pet-grooming")) {
+        const pet = customerPetRecords.find((record) => record.id === selection.petRecordId);
+        try { groomingQuote(selection.groomingServiceId, groomingSizeForPet(pet), pet?.petType); }
+        catch (error) { nextErrors[`grooming-${selection.id}`] = error.message; }
+      }
       if (!selection.petRecordId) nextErrors[`pet-${selection.id}`] = `Choose pet #${index + 1}.`;
       if (selection.petRecordId && !selection.serviceId) {
         nextErrors[`service-${selection.id}`] = `Choose a service for pet #${index + 1}.`;
@@ -339,6 +346,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
         if (!pet || !service) continue;
         const serviceIds = [selection.serviceId, selection.additionalServiceId].filter(Boolean);
         const services = serviceIds.map((id) => serviceCatalog.find((item) => item.id === id));
+        const grooming = serviceIds.includes("pet-grooming") ? groomingQuote(selection.groomingServiceId, groomingSizeForPet(pet), pet.petType) : null;
 
         const appointmentId = `appt-${customer.uid}-${selectedSlot.id}-${pet.id}-${service.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
           .replace(/[^a-zA-Z0-9_-]/g, "-")
@@ -368,8 +376,9 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
             breed: pet.breed,
             serviceId: service.id,
             serviceIds,
-            service: services.map((item) => item.name).join(" + "),
-            servicePrice: services.map((item) => item.priceLabel).join(" + "),
+            service: services.map((item) => item.id === "pet-grooming" ? `Pet Grooming: ${grooming.name}${grooming.size ? ` (${grooming.size})` : ""}` : item.name).join(" + "),
+            servicePrice: services.map((item) => item.id === "pet-grooming" ? `PHP ${grooming.price}` : item.priceLabel).join(" + "),
+            ...(grooming ? { grooming } : {}),
             estimatedDurationMinutes: getEstimatedDuration(serviceIds),
             blockDurationMinutes: APPOINTMENT_BLOCK_MINUTES,
             slotId: selectedSlot.id,
@@ -477,6 +486,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                               updateSelection(selection.id, {
                                 petRecordId: event.target.value,
                                 serviceId: selection.serviceId,
+                                groomingServiceId: "",
                               })
                             }
                             className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -529,6 +539,23 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                             )}
                             {errors[`service-${selection.id}`] && (
                               <p className="mt-2 text-sm text-[#B23949]">{errors[`service-${selection.id}`]}</p>
+                            )}
+                            {[selection.serviceId, selection.additionalServiceId].includes("pet-grooming") && (
+                              <div className="mt-4 space-y-2 rounded-lg border border-[#D9E7E7] bg-[#F3F8F8] p-3">
+                                <p className="text-sm font-semibold text-[#365057]">{selectedPet.petType} grooming{groomingSizeForPet(selectedPet) ? ` · ${groomingSizeForPet(selectedPet)} (${selectedPet.weightKg} kg)` : ""}</p>
+                                {selectedPet.petType.toLowerCase() === "dog" && !groomingSizeForPet(selectedPet) && <p className="text-xs text-[#B23949]">Save a weight of at least 1 kg in this pet's profile to determine its grooming category and price.</p>}
+                                <label htmlFor={`grooming-${selection.id}`} className="block text-sm text-[#425A60]">Grooming service</label>
+                                <select id={`grooming-${selection.id}`} value={selection.groomingServiceId} onChange={(event) => updateSelection(selection.id, { groomingServiceId: event.target.value })}
+                                  className="w-full rounded-lg border border-[#D9E7E7] bg-white px-3 py-3 outline-none focus:border-[#2D9B9B]">
+                                  <option value="">Choose grooming service</option>
+                                  {GROOMING_SERVICES.filter((item) => item.petType.toLowerCase() === selectedPet.petType.toLowerCase()).map((item) => {
+                                    let price;
+                                    try { price = groomingQuote(item.id, groomingSizeForPet(selectedPet), selectedPet.petType).price; } catch { /* The saved pet needs a valid weight. */ }
+                                    return <option key={item.id} value={item.id}>{item.name}{price !== undefined ? ` — PHP ${price}` : ""}</option>;
+                                  })}
+                                </select>
+                                {errors[`grooming-${selection.id}`] && <p className="text-sm text-[#B23949]">{errors[`grooming-${selection.id}`]}</p>}
+                              </div>
                             )}
                           </div>
                         )}
@@ -688,6 +715,12 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                 <div key={selection.id} className="border-b border-white/10 pb-3 last:border-0 last:pb-0">
                   <p className="font-semibold">Pet #{index + 1}: {pet?.petName || "Choose pet"}</p>
                   <p className="mt-1 text-white/72">{[service?.name, additionalService?.name].filter(Boolean).join(" + ") || "Choose service"}</p>
+                  {[selection.serviceId, selection.additionalServiceId].includes("pet-grooming") && (() => {
+                    try {
+                      const quote = groomingQuote(selection.groomingServiceId, groomingSizeForPet(pet), pet?.petType);
+                      return <p className="mt-1 text-white/90">{quote.name}{quote.size ? ` · ${quote.size}` : ""} — PHP {quote.price}</p>;
+                    } catch { return <p className="mt-1 text-white/72">Choose a grooming service to see its price.</p>; }
+                  })()}
                   {service && <p className="mt-1 text-white/72">Estimated duration: {getEstimatedDuration([service.id, additionalService?.id].filter(Boolean))} / {APPOINTMENT_BLOCK_MINUTES} minutes</p>}
                 </div>
               );

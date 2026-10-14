@@ -63,7 +63,11 @@ test("catalog preserves kapon information but only enables booking and shows the
     assert.ok(dashboardCard.includes("PHP 200 - 2,200"));
     assert.ok(dashboardCard.includes("Affordable spay and neuter program"));
     assert.ok(dashboardCard.includes("<img"));
-    assert.equal(/<button[^>]*disabled=""/.test(dashboardCard), !active);
+    assert.ok(!dashboardCard.includes("Continue to Booking"));
+    assert.ok(!dashboardCard.includes("<button"));
+    assert.ok(kaponCard.includes("Register Now"));
+    assert.ok(!kaponCard.includes("Continue to booking"));
+    if (active) assert.ok(kaponCard.includes(`href="${promo.formLink}"`));
     assert.ok(dashboard.indexOf('aria-label="Low-Cost Kapon service"') < dashboard.indexOf("Next step"));
     assert.equal(dashboardCard.includes("Currently unavailable"), !active);
     assert.equal(dashboard.includes("REGISTER NOW"), active);

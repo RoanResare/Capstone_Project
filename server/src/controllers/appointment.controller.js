@@ -104,6 +104,26 @@ async function saveAppointment(req, res) {
         throw new ApiError(400, error.message);
       }
     }
+    const groomingChanged = JSON.stringify(nextAppointment.grooming) !== JSON.stringify(previous.grooming);
+    if (nextAppointment.serviceIds?.includes("pet-grooming") && (requiresBookingValidation || groomingChanged)) {
+      const pet = await transaction.get(db.collection("pets").doc(nextAppointment.petRecordId));
+      if (!pet.exists) throw new ApiError(400, "Choose a saved pet for grooming.");
+      const petData = pet.data();
+      if (user.role === "customer" && petData.customerId !== user.uid) throw new ApiError(403, "Choose your own pet for grooming.");
+      const { groomingQuote, groomingSizeForPet } = await import("../../../shared/groomingServices.mjs");
+      try {
+        serviceFields.grooming = groomingQuote(nextAppointment.grooming?.serviceId, groomingSizeForPet(petData), petData.petType);
+        const { name, size, price } = serviceFields.grooming;
+        const groomingLabel = `Pet Grooming: ${name}${size ? ` (${size})` : ""}`;
+        if (nextAppointment.serviceIds.length === 1) {
+          serviceFields.service = groomingLabel;
+          serviceFields.servicePrice = `PHP ${price}`;
+        } else {
+          serviceFields.service = String(nextAppointment.service || "").split(" + ").map((name, index) => nextAppointment.serviceIds[index] === "pet-grooming" ? groomingLabel : name).join(" + ");
+          serviceFields.servicePrice = String(nextAppointment.servicePrice || "").split(" + ").map((label, index) => nextAppointment.serviceIds[index] === "pet-grooming" ? `PHP ${price}` : label).join(" + ");
+        }
+      } catch (error) { throw new ApiError(400, error.message); }
+    }
     if (["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus) && assignedStaff) {
       const { appointmentsOverlap } = await import("../../../shared/bookingServices.mjs");
       let staffBookingsQuery = db.collection("appointments")

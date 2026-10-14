@@ -40,7 +40,7 @@ Clinic Hours & Location:
 
 - Open daily from 8:00 AM to 6:00 PM.
 - Located in Las Pinas City.
-- Clinic email: charmingfurfectionpetcare2@gmail.com.
+- Clinic email: charmingfurfectionpetcare@gmail.com.
 - Clinic phone: 0950 251 1754 (international: +63 950 251 1754).
 - Questions about the clinic's email, phone number, or contact information ask for public business information. Answer directly with these exact contact details; never describe them as missing or private.
 

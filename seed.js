@@ -39,7 +39,7 @@ async function seedDatabase() {
     batch.set(db.collection("slot_management").doc("settings"), {
       maxSlotsPerDay: 10,
       isBookingOpen: true,
-      businessEmail: "charmingfurfectionpetcare2@gmail.com",
+      businessEmail: "charmingfurfectionpetcare@gmail.com",
       updatedAt: FieldValue.serverTimestamp(),
     });
 

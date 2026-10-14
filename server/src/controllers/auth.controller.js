@@ -1,4 +1,5 @@
 const { auth } = require("../config/firebaseAdmin");
+const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
 const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES } = require("../constants/auth");
 const {
@@ -219,8 +220,8 @@ async function checkCustomerRegistrationAvailability(req, res) {
     }
   }
 
-  if (phone && (await getUserByPhone(phone))) {
-    throw new ApiError(409, "This phone number is already registered to another account");
+  if (phone && (await findPhoneAccounts(phone)).length >= PHONE_ACCOUNT_LIMIT) {
+    throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
   }
 
   return res.status(200).json({ success: true, available: true, ...registrationSecurity });

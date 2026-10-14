@@ -1,4 +1,5 @@
 import { checkCustomerRegistrationAvailability, validateBackendEmail } from "./authApi.js";
+import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -317,6 +318,16 @@ async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options
   const reference = customerProfileReference(firebaseUser.uid);
   const payload = buildCustomerProfilePayload(firebaseUser, profile);
   const usernameReference = doc(db, "usernames", payload.username);
+  if (options.isNew) {
+    try {
+      const token = await firebaseUser.getIdToken();
+      await apiClient.post("/auth/register/profile", payload, { headers: buildAuthHeaders(token) });
+    } catch (error) {
+      throw new Error(extractApiError(error, "Unable to create your customer profile."));
+    }
+    const snapshot = await readCustomerProfileSnapshot(reference);
+    return buildCustomerProfile(firebaseUser, snapshot.exists() ? snapshot.data() : payload);
+  }
   const usernameSnapshot = await getDoc(usernameReference);
 
   if (usernameSnapshot.exists() && usernameSnapshot.data()?.uid !== firebaseUser.uid) {

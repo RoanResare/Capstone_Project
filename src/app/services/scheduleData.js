@@ -125,15 +125,15 @@ export function saveAppointmentDocument(appointment) {
     if (!id) throw new Error("An appointment ID is required.");
     const token = await auth.currentUser.getIdToken();
     try {
-      await apiClient.put(`/auth/appointments/${encodeURIComponent(id)}`, removeUndefinedFields(appointment), {
+      const response = await apiClient.put(`/auth/appointments/${encodeURIComponent(id)}`, removeUndefinedFields(appointment), {
         headers: buildAuthHeaders(token),
       });
+      return response.data.appointment || true;
     } catch (error) {
       const requestError = new Error(extractApiError(error, "Unable to save the appointment."));
       requestError.code = error?.response?.data?.details?.code;
       throw requestError;
     }
-    return true;
   };
 
   return save().catch((error) => {

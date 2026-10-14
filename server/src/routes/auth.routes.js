@@ -19,6 +19,8 @@ const { verifyRole } = require("../middlewares/authorize");
 const { listAvailabilitySlots, saveAvailabilitySlot, disableAvailabilitySlot } = require("../controllers/schedule.controller");
 
 const router = express.Router();
+const { createCustomerProfile } = require("../controllers/registration.controller");
+router.post("/register/profile", authRateLimiter, asyncHandler(createCustomerProfile));
 
 router.post("/forgot-password", authRateLimiter, asyncHandler(forgotPassword));
 router.post("/register/check", authRateLimiter, asyncHandler(checkCustomerRegistrationAvailability));

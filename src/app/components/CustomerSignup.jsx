@@ -239,7 +239,7 @@ export function CustomerSignup() {
                 />
               </label>
               <p className="mt-2 text-xs text-[#7A9297]">
-                Format: +63 9XXXXXXXXX or 09XXXXXXXXX.
+                Format: +63 9XXXXXXXXX or 09XXXXXXXXX. A phone number can be used for up to 3 accounts.
               </p>
             </div>
 

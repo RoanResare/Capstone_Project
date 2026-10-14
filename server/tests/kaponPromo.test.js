@@ -63,6 +63,39 @@ function fixture(initial = {}) {
 }
 const config = { formLink: "https://forms.gle/example123", title: "Low-Cost Kapon", description: "Limited slots" };
 
+test("approval retains the reservation for its date and time block", async () => {
+  const slot = { date: "2030-01-05", time: "09:00", capacity: 1, isOpen: true };
+  const booking = { id: "booking", customerId: "customer", status: "Pending", serviceId: "consultation", slotId: "block", scheduleDate: slot.date, scheduleTime: slot.time };
+  const system = fixture({ "appointments/booking": booking, "availabilitySlots/block": slot });
+  await system.book({ ...booking, status: "Accepted", assignedStaff: "Staff" }, "admin");
+  const approved = system.records.get("appointments/booking");
+  assert.equal(approved.slotId, "block");
+  assert.equal(approved.status, "Accepted");
+  const next = fixture({ "appointments/reserved": { ...approved, id: "reserved" }, "availabilitySlots/block": slot });
+  await assert.rejects(next.book({ serviceId: "consultation", slotId: "block" }), /already full/);
+  await next.book({ serviceId: "consultation", slotId: "different-block", scheduleTime: "11:00" });
+});
+
+test("staff sessions start once on the clinic date and end with persisted duration", async () => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const booking = { id: "booking", customerId: "customer", status: "Approved", serviceId: "consultation", scheduleDate: today, scheduleTime: "09:00" };
+  const system = fixture({ "appointments/booking": booking });
+  await system.book({ ...booking, sessionAction: "start" }, "staff");
+  const started = system.records.get("appointments/booking");
+  assert.ok(started.sessionStartedAt);
+  assert.equal(started.status, "Approved");
+  await assert.rejects(system.book({ ...started, sessionAction: "start" }, "staff"), /only once/);
+  await assert.rejects(system.book({ ...started, sessionAction: "end" }, "customer"));
+  await system.book({ ...started, sessionAction: "end" }, "staff");
+  const ended = system.records.get("appointments/booking");
+  assert.equal(ended.status, "Completed");
+  assert.ok(ended.sessionDurationSeconds >= 0);
+  assert.ok(ended.sessionEndedAt);
+  assert.equal(ended.sessionAction, undefined);
+  const future = fixture({ "appointments/booking": { ...booking, scheduleDate: "2030-01-05" } });
+  await assert.rejects(future.book({ ...booking, scheduleDate: "2030-01-05", sessionAction: "start" }, "staff"), /appointment date/);
+});
+
 test("admin and staff can activate, edit and deactivate a single promo while retaining private metadata", async () => {
   for (const role of ["admin", "staff"]) {
     const app = fixture();

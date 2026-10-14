@@ -3,7 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { APPOINTMENT_STATUSES, APPOINTMENT_COLORS, appointmentStatusLabel, appointmentStart } from "../../utils/appointmentPresentation.js";
 import "./appointmentCalendar.css";
 
@@ -12,6 +12,7 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
   const containerRef = useRef(null);
   const [title, setTitle] = useState("");
   const [view, setView] = useState("dayGridMonth");
+  const [viewHistory, setViewHistory] = useState([]);
   useEffect(() => {
     let width = 0;
     let frame;
@@ -36,9 +37,19 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
       backgroundColor: colors.background, borderColor: colors.border, textColor: colors.text,
       extendedProps: { status, petName: appointment.petName, service: appointment.service } }];
   }), [appointments]);
-  const changeView = (nextView) => {
-    calendarRef.current?.getApi().changeView(nextView);
-    setView(nextView);
+  const changeView = (nextView, date) => {
+    const calendar = calendarRef.current?.getApi();
+    if (!calendar) return;
+    if (calendar.view.type === nextView && !date) return;
+    setViewHistory((history) => [...history, { view: calendar.view.type, date: calendar.getDate() }]);
+    calendar.changeView(nextView, date);
+  };
+  const goBack = () => {
+    const previous = viewHistory.at(-1);
+    const calendar = calendarRef.current?.getApi();
+    if (!previous || !calendar) return;
+    calendar.changeView(previous.view, previous.date);
+    setViewHistory((history) => history.slice(0, -1));
   };
   return (
     <section ref={containerRef} className="appointment-calendar min-w-0 bg-white px-4 py-5 md:px-5" aria-label="Appointment calendar">
@@ -48,6 +59,10 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
       </div>
       <div className="my-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={goBack} disabled={viewHistory.length === 0} aria-label="Back to previous calendar view"
+            className="inline-flex items-center gap-2 rounded-lg border border-[#D9E7E7] px-3 py-2 text-sm font-semibold text-[#24444A] transition hover:bg-[#EEF6F6] disabled:cursor-not-allowed disabled:opacity-40">
+            <ArrowLeft size={16} />Back
+          </button>
           <button type="button" onClick={() => calendarRef.current?.getApi().today()} className="rounded-lg border border-[#D9E7E7] px-3 py-2 text-sm font-semibold text-[#24444A]">Today</button>
           <button type="button" aria-label="Previous calendar period" title="Previous calendar period" onClick={() => calendarRef.current?.getApi().prev()} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E7E7] text-[#24444A]"><ChevronLeft size={18} /></button>
           <button type="button" aria-label="Next calendar period" title="Next calendar period" onClick={() => calendarRef.current?.getApi().next()} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#D9E7E7] text-[#24444A]"><ChevronRight size={18} /></button>
@@ -66,7 +81,7 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
         eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short", omitZeroMinute: true }}
         slotMinTime="08:00:00" slotMaxTime="19:00:00" allDaySlot={false} nowIndicator
         datesSet={(info) => { setTitle(info.view.title); setView(info.view.type); }}
-        dateClick={(info) => calendarRef.current?.getApi().changeView("timeGridDay", info.dateStr)}
+        dateClick={(info) => changeView("timeGridDay", info.dateStr)}
         eventClick={(info) => onOpenAppointment(info.event.id)}
         eventDidMount={(info) => { info.el.title = `${info.event.title} | ${info.event.extendedProps.status}`; }}
         eventContent={(info) => <div className="calendar-event-content"><span className="calendar-event-name">{info.event.extendedProps.petName || "Pet"}</span><span className="calendar-event-service">{info.event.extendedProps.service}</span><span>{info.timeText}</span></div>}

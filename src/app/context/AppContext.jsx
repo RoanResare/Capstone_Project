@@ -446,7 +446,7 @@ function normalizeAppointment(appointment) {
       ? current.status.trim()
       : "Pending";
   const shouldExpire =
-    ["Pending", "Confirmed", "Accepted"].includes(rawStatus) &&
+    rawStatus === "Pending" &&
     resolvedSchedule &&
     resolvedSchedule.getTime() < Date.now();
 
@@ -2454,7 +2454,15 @@ export function AppProvider({ children }) {
       if (["Confirmed", "Accepted"].includes(nextAppointment.status) && !nextAppointment.assignedStaff?.trim()) {
         throw new Error("Assign a staff member before confirming the appointment.");
       }
-      await saveAppointmentDocument(nextAppointment);
+      const savedAppointment = await saveAppointmentDocument(nextAppointment);
+      const sessionAction = nextUpdates.sessionAction;
+      delete nextUpdates.sessionAction;
+      if (typeof savedAppointment === "object") {
+        for (const field of ["updatedAt", "sessionStartedAt", "sessionStartedBy", "sessionEndedAt", "sessionEndedBy", "sessionDurationSeconds"]) {
+          if (savedAppointment[field] !== undefined) nextUpdates[field] = savedAppointment[field];
+        }
+        if (sessionAction === "end") nextUpdates.status = savedAppointment.status;
+      }
       dispatch({
         type: "UPDATE_APPOINTMENT",
         payload: { id, updates: nextUpdates },

@@ -5,7 +5,6 @@ import { AppointmentCalendar } from "./AppointmentCalendar.jsx";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
-  Check,
   Eye,
   EyeOff,
   ArrowLeft,
@@ -21,7 +20,7 @@ import {
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
-import { groupPendingAppointments } from "../../utils/appointmentPresentation.js";
+import { groupPendingAppointments, appointmentDateKey } from "../../utils/appointmentPresentation.js";
 import {
   canApproveAppointment,
   canCompleteAppointment,
@@ -211,7 +210,8 @@ function statusClasses(status) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
-  if (["Rejected", "Cancelled", "Expired"].includes(status)) {
+  if (status === "Expired") return "bg-[#F1F3F5] text-[#5B636D]";
+  if (["Rejected", "Cancelled"].includes(status)) {
     return "bg-[#FCE8EB] text-[#B23949]";
   }
 
@@ -499,6 +499,13 @@ function MetricCard({ label, value, tone = "teal" }) {
 }
 
 function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack, isSaving = false }) {
+  const [sessionNow, setSessionNow] = useState(Date.now());
+  useEffect(() => {
+    setSessionNow(Date.now());
+    if (!appointment?.sessionStartedAt || appointment.sessionEndedAt) return;
+    const timer = window.setInterval(() => setSessionNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [appointment?.sessionStartedAt, appointment?.sessionEndedAt]);
   if (!appointment) {
     return (
       <PanelCard
@@ -515,6 +522,10 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
 
   const contactPhone = appointment.contactNumber || "No phone saved";
   const canComplete = canCompleteAppointment(appointment.status);
+  const clinicToday = appointmentDateKey({ schedule: new Date(sessionNow).toISOString() });
+  const canStartSession = canComplete && appointmentDateKey(appointment) === clinicToday;
+  const elapsedSeconds = appointment.sessionStartedAt
+    ? Math.max(0, Math.floor(((appointment.sessionEndedAt ? Date.parse(appointment.sessionEndedAt) : sessionNow) - Date.parse(appointment.sessionStartedAt)) / 1000)) : 0;
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
     if (status === "Completed") {
@@ -648,19 +659,16 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </button>
         </div>
 
-        <label className={`flex items-center justify-between gap-4 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm font-semibold ${canComplete ? "cursor-pointer bg-[#F8FCFC] text-[#365057]" : "cursor-not-allowed bg-[#F1F5F5] text-[#91A0A3]"}`}>
-          <span className="flex items-center gap-2">
-            <Check size={17} />
-            Mark appointment completed
-          </span>
-          <input
-            type="checkbox"
-            checked={appointment.status === "Completed"}
-            disabled={isSaving || !canComplete}
-            onChange={() => requestStatusChange("Completed")}
-            className="h-5 w-5 rounded border-[#BFD6D6] text-[#2D9B9B] disabled:cursor-not-allowed"
-          />
-        </label>
+        {(canStartSession || appointment.sessionStartedAt) && (
+          <div className="space-y-3 rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-4">
+            {appointment.sessionStartedAt && <p className="text-sm text-[#365057]" role="timer">Session duration: {Math.floor(elapsedSeconds / 3600)}h {Math.floor(elapsedSeconds / 60) % 60}m {elapsedSeconds % 60}s</p>}
+            {canComplete && !appointment.sessionEndedAt && <button type="button" disabled={isSaving}
+              onClick={() => updateAppointment(appointment.id, { sessionAction: appointment.sessionStartedAt ? "end" : "start" })}
+              className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+              {appointment.sessionStartedAt ? "End session" : "Start session"}
+            </button>}
+          </div>
+        )}
 
         <div className="rounded-[24px] border border-[#E6F0F0] bg-[#FCFEFE] px-5 py-5">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
@@ -950,7 +958,7 @@ function AppointmentsWorkspace({
         <MetricCard label="Completed" value={completedCount} tone="forest" />
         <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
         <MetricCard label="Cancelled" value={cancelledCount} tone="rose" />
-        <MetricCard label="Expired" value={expiredCount} tone="rose" />
+        <MetricCard label="Expired" value={expiredCount} tone="slate" />
       </div>
 
       <AppointmentCalendar appointments={appointments} onOpenAppointment={openAppointment} />

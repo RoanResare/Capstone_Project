@@ -52,14 +52,6 @@ const bookingRules = [
     description: "Only clinic-approved service combinations are available for the selected appointment type.",
   },
   {
-    title: "Validate the total estimated duration",
-    description: "Selected services must fit within the available time and staffing capacity before booking is confirmed.",
-  },
-  {
-    title: "Prevent overlapping appointments",
-    description: "Staff members and clinic resources must not be assigned to conflicting appointments.",
-  },
-  {
     title: "Book multiple pets separately",
     description: "Owners may create another appointment for an additional pet, subject to available slots.",
   },

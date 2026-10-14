@@ -16,6 +16,13 @@ const booking = { id: "appointment", customerId: "customer", petRecordId: "pet",
   scheduleDate: "2030-01-12", scheduleTime: "11:00", status: "Pending", createdAt: "2030-01-01T00:00:00Z" };
 const create = { type: "CREATE_APPOINTMENT", payload: booking, meta: { actorName: "Customer", actorRole: "customer" } };
 
+test("approved bookings remain occupied after their scheduled start passes", () => {
+  for (const status of ["Accepted", "Confirmed", "Approved"]) {
+    const loaded = normalizeStoredState({ appointments: [{ ...booking, status, scheduleDate: "2020-01-12" }] });
+    assert.equal(loaded.appointments[0].status, status);
+  }
+});
+
 test("snapshot arriving before the save response does not duplicate the booking", () => {
   const initial = normalizeStoredState({ appointments: [] });
   const synchronized = appReducer(initial, { type: "HYDRATE_SCHEDULE_DATA", payload: { appointments: [booking] } });

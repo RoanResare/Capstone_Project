@@ -36,6 +36,9 @@ test("registration endpoint accepts both local and international input and norma
     module: { exports: {} },
     require(name) {
       if (name === "../utils/phoneNumber") return backendPhone;
+      if (name === "../services/phoneAccounts.service") return {
+        findPhoneAccounts: async (phone) => { lookups.push(phone); return []; }, PHONE_ACCOUNT_LIMIT: 3,
+      };
       if (name === "../utils/ApiError") return { ApiError };
       if (name === "../utils/emailValidation") return require("../server/src/utils/emailValidation.js");
       if (name === "../constants/auth") return { USER_ROLES: { CUSTOMER: "customer", ADMIN: "admin", STAFF: "staff" } };

@@ -6,7 +6,7 @@ export const APPOINTMENT_COLORS = {
   Completed: { background: "#165B3B", text: "#FFFFFF", border: "#165B3B" },
   Rejected: { background: "#FDE8EC", text: "#B32943", border: "#EAA0AE" },
   Cancelled: { background: "#FDE8EC", text: "#B32943", border: "#EAA0AE" },
-  Expired: { background: "#FDE8EC", text: "#B32943", border: "#EAA0AE" },
+  Expired: { background: "#F1F3F5", text: "#5B636D", border: "#9CA3AF" },
 };
 
 export function appointmentStatusLabel(status) {

@@ -36,7 +36,8 @@ test("calendar statuses follow amber, green, dark-green and red color groups", (
   assert.equal(APPOINTMENT_COLORS.Completed.background, "#165B3B");
   assert.notEqual(APPOINTMENT_COLORS.Approved.background, APPOINTMENT_COLORS.Pending.background);
   assert.equal(APPOINTMENT_COLORS.Rejected.background, APPOINTMENT_COLORS.Cancelled.background);
-  assert.equal(APPOINTMENT_COLORS.Cancelled.background, APPOINTMENT_COLORS.Expired.background);
+  assert.notEqual(APPOINTMENT_COLORS.Cancelled.background, APPOINTMENT_COLORS.Expired.background);
+  assert.equal(APPOINTMENT_COLORS.Expired.border, "#9CA3AF");
 });
 
 test("customer appointments sort from earliest to latest scheduled date and time", () => {

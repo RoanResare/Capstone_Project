@@ -12,6 +12,7 @@ async function saveAppointment(req, res) {
     throw new ApiError(400, "A valid appointment is required.");
   }
   const reference = db.collection("appointments").doc(id);
+  let savedAppointment;
   await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(reference);
     if (user.role === "customer") {
@@ -46,6 +47,30 @@ async function saveAppointment(req, res) {
     const { isLowCostKaponAppointment, isKaponPromoAvailable, KAPON_UNAVAILABLE_MESSAGE } =
       await import("../../../shared/lowCostKaponPromo.mjs");
     const previous = existing.data?.() || {};
+    const sessionFields = {};
+    const action = appointment.sessionAction;
+    if (action) {
+      if (!["admin", "staff"].includes(user.role) || !existing.exists ||
+          !["Accepted", "Approved", "Confirmed"].includes(previous.status)) {
+        throw new ApiError(403, "Only staff can run sessions for approved appointments.");
+      }
+      const now = new Date();
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+      if (action === "start") {
+        if (previous.scheduleDate !== today || previous.sessionStartedAt) throw new ApiError(409, "Start a session only once, on the appointment date.");
+        sessionFields.sessionStartedAt = now.toISOString();
+        sessionFields.sessionStartedBy = user.uid;
+      } else if (action === "end") {
+        if (!previous.sessionStartedAt || previous.sessionEndedAt) throw new ApiError(409, "This appointment has no active session.");
+        sessionFields.sessionEndedAt = now.toISOString();
+        sessionFields.sessionEndedBy = user.uid;
+        sessionFields.sessionDurationSeconds = Math.max(0, Math.floor((now.getTime() - Date.parse(previous.sessionStartedAt)) / 1000));
+        sessionFields.status = "Completed";
+      } else throw new ApiError(400, "Invalid session action.");
+    }
+    for (const field of ["sessionStartedAt", "sessionEndedAt", "sessionStartedBy", "sessionEndedBy", "sessionDurationSeconds"]) {
+      if (appointment[field] !== previous[field]) throw new ApiError(400, "Session timestamps are managed by the server.");
+    }
     if (nextStatus === "Completed" && previous.status !== "Completed" &&
         !["Accepted", "Approved", "Confirmed"].includes(previous.status)) {
       throw new ApiError(400, "Only approved appointments can be marked completed.");
@@ -139,9 +164,11 @@ async function saveAppointment(req, res) {
         throw new ApiError(409, "That time slot is already full. Please choose another slot.", { code: "SLOT_FULL" });
       }
     }
-    transaction.set(reference, { ...appointment, ...serviceFields }, { merge: true });
+    const { sessionAction, ...payload } = appointment;
+    savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, updatedAt: new Date().toISOString() };
+    transaction.set(reference, savedAppointment, { merge: true });
   });
-  res.json({ success: true });
+  res.json({ success: true, appointment: savedAppointment });
 }
 
 module.exports = { saveAppointment };

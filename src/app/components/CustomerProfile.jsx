@@ -19,6 +19,7 @@ import {
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
+import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentSchedule } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
@@ -56,6 +57,7 @@ const bookingRules = [
     description: "Owners may create another appointment for an additional pet, subject to available slots.",
   },
 ];
+const kaponService = serviceCatalog.find((service) => service.id === KAPON_SERVICE_ID);
 
 
 function statusTone(status) {
@@ -935,6 +937,26 @@ export function CustomerProfile() {
                 <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="min-w-0 space-y-5">
                   {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
+                  <article aria-label="Low-Cost Kapon service" className="min-w-0 rounded-[24px] border border-[#D9E7E7] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                      <BrandMark className="h-24 w-24 shrink-0 self-start rounded-2xl bg-[#EAF6F6] p-3" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h2 className="text-xl font-semibold text-[#20343B]">Low-Cost Kapon</h2>
+                          <span className="rounded-lg bg-[#F7F2E9] px-3 py-1 text-xs font-semibold text-[#6A5D4A]">{kaponService.priceLabel}</span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-[#607277]">{kaponService.description}</p>
+                        <p className="mt-3 text-xs font-semibold text-[#2D6B73]">Estimated visit time: {kaponService.duration}</p>
+                        <p role="status" className={`mt-2 text-sm font-semibold ${kaponPromoAvailable ? "text-[#1D7C45]" : "text-[#607277]"}`}>
+                          Status: {kaponPromoAvailable ? "Available" : kaponPromoError ? "Promotion availability could not be verified" : !kaponPromoReady ? "Checking promotion availability..." : "Currently unavailable"}
+                        </p>
+                        <button type="button" onClick={() => continueToBooking(KAPON_SERVICE_ID)} disabled={!kaponPromoAvailable}
+                          className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition enabled:hover:bg-[#235A61] disabled:cursor-not-allowed disabled:bg-[#E6EFEE] disabled:text-[#607277] sm:w-auto">
+                          Continue to Booking
+                        </button>
+                      </div>
+                    </div>
+                  </article>
                   <section className="min-w-0 rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">

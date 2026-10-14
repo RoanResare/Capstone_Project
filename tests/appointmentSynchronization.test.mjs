@@ -23,6 +23,13 @@ test("approved bookings remain occupied after their scheduled start passes", () 
   }
 });
 
+test("confirmed pet deletion removes reserved bookings from local appointment views", () => {
+  const initial = normalizeStoredState({ petRecords: [{ id: "pet", petName: "Pet" }], appointments: [booking, { ...booking, id: "completed", status: "Completed" }] });
+  const removed = appReducer(initial, { type: "DELETE_PET_RECORD", payload: { id: "pet", deletedAppointmentIds: [booking.id] }, meta: { actorName: "Customer" } });
+  assert.equal(removed.petRecords.length, 0);
+  assert.deepEqual(removed.appointments.map((record) => record.id), ["completed"]);
+});
+
 test("snapshot arriving before the save response does not duplicate the booking", () => {
   const initial = normalizeStoredState({ appointments: [] });
   const synchronized = appReducer(initial, { type: "HYDRATE_SCHEDULE_DATA", payload: { appointments: [booking] } });

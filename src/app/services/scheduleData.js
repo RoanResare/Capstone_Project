@@ -153,11 +153,15 @@ export function savePetRecordDocument(record) {
   });
 }
 
-export function deletePetRecordDocument(id) {
-  return deleteDocument(COLLECTIONS.petRecords, id).catch((error) => {
-    logSyncError("Pet record delete sync", error);
-    return false;
-  });
+export async function deletePetRecordDocument(id) {
+  if (!canSyncScheduleData()) throw new Error("Sign in to delete a pet profile.");
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const response = await apiClient.delete(`/auth/pets/${encodeURIComponent(id)}`, { headers: buildAuthHeaders(token) });
+    return response.data.deletedAppointmentIds || [];
+  } catch (error) {
+    throw new Error(extractApiError(error, "Unable to delete the pet profile."));
+  }
 }
 
 export function savePhotoModerationDocument(record) {

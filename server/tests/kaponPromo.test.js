@@ -34,8 +34,10 @@ function fixture(initial = {}) {
           .slice(0, ref.maxResults)
           .map(([key, data]) => ({ id: key.split("/").at(-1), data: () => data })) } : { exists: records.has(ref.key), data: () => records.get(ref.key) },
         set: (ref, data, options) => pending.push({ ref, data, options }),
+        delete: (ref) => pending.push({ ref, remove: true }),
       });
-      for (const { ref, data, options } of pending) {
+      for (const { ref, data, options, remove } of pending) {
+        if (remove) { records.delete(ref.key); writes.push(ref.key); continue; }
         records.set(ref.key, options?.merge ? { ...records.get(ref.key), ...data } : data);
         writes.push(ref.key);
       }
@@ -56,12 +58,38 @@ function fixture(initial = {}) {
   };
   const promoController = load("promo.controller.js");
   const bookingController = load("appointment.controller.js");
+  const petController = load("pet.controller.js");
   return { records, writes,
+    deletePet: (uid = "customer", role = "customer") => petController.deletePet({ params: { id: "pet" }, auth: { user: { uid, role } } }, { json() {} }),
     promo: (body, role = "admin", extra = {}) => promoController.saveKaponPromo({ body, auth: { user: { uid: "employee", name: "Staff", role, accountStatus: "active", ...extra } } }, { json() {} }),
     book: (body, role = "customer") => bookingController.saveAppointment({ params: { id: "booking" }, auth: { user: { uid: "customer", role } }, body: { id: "booking", customerId: "customer", status: "Pending", serviceId: "low-cost-kapon", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body } }, { json() {} }),
   };
 }
 const config = { formLink: "https://forms.gle/example123", title: "Low-Cost Kapon", description: "Limited slots" };
+
+test("deleting a pet removes its pending and approved reservations and frees the slot", async () => {
+  const system = fixture({
+    "pets/pet": { customerId: "customer", petName: "Pet" },
+    ...Object.fromEntries(["Pending", "Approved", "Accepted", "Confirmed", "Completed", "Rejected", "Cancelled"].map((status) => [`appointments/${status}`, { petRecordId: "pet", status, slotId: "block", scheduleDate: "2030-01-05", scheduleTime: "09:00" }])),
+    "appointments/other": { petRecordId: "other", status: "Pending", slotId: "other-block" },
+    "availabilitySlots/block": { capacity: 1, time: "09:00", date: "2030-01-05", isOpen: true },
+  });
+  await system.deletePet();
+  assert.equal(system.records.has("pets/pet"), false);
+  for (const status of ["Pending", "Approved", "Accepted", "Confirmed"]) assert.equal(system.records.has(`appointments/${status}`), false);
+  for (const status of ["Completed", "Rejected", "Cancelled"]) assert.equal(system.records.has(`appointments/${status}`), true);
+  assert.equal(system.records.has("appointments/other"), true);
+  await assert.rejects(system.book({ serviceId: "consultation", petRecordId: "pet", slotId: "block" }), /pet profile was deleted/);
+  await system.book({ serviceId: "consultation", petRecordId: "new-pet", slotId: "block" });
+});
+
+test("another customer cannot delete a pet or its reservations", async () => {
+  const system = fixture({ "pets/pet": { customerId: "customer" }, "appointments/pending": { petRecordId: "pet", status: "Pending" } });
+  await assert.rejects(system.deletePet("other-customer"), /only delete your own/);
+  assert.equal(system.records.has("pets/pet"), true);
+  assert.equal(system.records.has("appointments/pending"), true);
+  assert.equal(system.writes.length, 0);
+});
 
 test("approval retains the reservation for its date and time block", async () => {
   const slot = { date: "2030-01-05", time: "09:00", capacity: 1, isOpen: true };

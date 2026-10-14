@@ -1630,6 +1630,7 @@ function appReducer(state, action) {
       const nextState = {
         ...state,
         petRecords: state.petRecords.filter((record) => record.id !== action.payload.id),
+        appointments: state.appointments.filter((appointment) => !(action.payload.deletedAppointmentIds || []).includes(appointment.id)),
       };
 
       return attachAudit(nextState, {
@@ -2494,13 +2495,14 @@ export function AppProvider({ children }) {
       });
       return savePetRecordDocument(nextRecord);
     },
-    deletePetRecord(id, actorName) {
+    async deletePetRecord(id, actorName) {
+      const deletedAppointmentIds = await deletePetRecordDocument(id);
       dispatch({
         type: "DELETE_PET_RECORD",
-        payload: { id },
+        payload: { id, deletedAppointmentIds },
         meta: { actorName: actorName || currentUser?.name || "System User" },
       });
-      return deletePetRecordDocument(id);
+      return true;
     },
     async saveAvailabilitySlot(payload) {
       const nextSlot = {

@@ -15,6 +15,10 @@ async function saveAppointment(req, res) {
   let savedAppointment;
   await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(reference);
+    if (appointment.petRecordId && !existing.exists) {
+      const deletedPet = await transaction.get(db.collection("deletedPets").doc(appointment.petRecordId));
+      if (deletedPet.exists) throw new ApiError(409, "This pet profile was deleted. Choose a saved pet before booking.");
+    }
     if (user.role === "customer") {
       if (appointment.customerId !== user.uid ||
           (existing.exists && existing.data().customerId !== user.uid)) {

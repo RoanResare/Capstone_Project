@@ -794,24 +794,27 @@ export function CustomerProfile() {
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${record.petName}'s pet profile?`);
+    const confirmed = window.confirm(`Are you sure? All information for ${record.petName} will be deleted. Pending and approved appointments for this pet will also be deleted, and their reserved slots will become available again.`);
     if (!confirmed) {
       return;
     }
 
+    setIsSavingPet(true);
     try {
       await Promise.resolve(deletePetRecord(record.id, profileForm.fullName));
       if (petForm.id === record.id) {
         setPetForm(buildEmptyPetForm());
       }
-      const message = "Pet profile deleted.";
+      const message = "Pet profile and its pending/approved appointments deleted. Reserved slots are available again.";
       setFeedback({ type: "success", message });
       toast.success(message);
     } catch (error) {
-      const message = "Unable to delete pet profile. Please try again.";
+      const message = error.message || "Unable to delete pet profile. Please try again.";
       console.error("[customer-profile] Pet record delete failed.", error);
       setFeedback({ type: "error", message });
       toast.error(message);
+    } finally {
+      setIsSavingPet(false);
     }
   };
 

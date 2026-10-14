@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
   CalendarDays,
@@ -175,6 +175,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     .flatMap((selection) => [selection.serviceId, selection.additionalServiceId])
     .map((id) => serviceCatalog.find((service) => service.id === id))
     .filter(Boolean);
+  const hasUnavailableKapon = !kaponPromoAvailable && petSelections.some((selection) =>
+    selection.serviceId === KAPON_SERVICE_ID || selection.additionalServiceId === KAPON_SERVICE_ID);
   const allSelectedServicesDaily =
     selectedServices.length > 0 && selectedServices.every((service) => service.availability === "daily");
   const appointmentServiceId = allSelectedServicesDaily ? "pet-grooming" : "consultation";
@@ -248,8 +250,6 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     setErrors({});
   };
 
-  const addPetSelection = () =>
-    setPetSelections((current) => [...current, createPetSelection()]);
   const addServiceSelection = () =>
     setPetSelections((current) => current.map((selection, index) =>
       index === current.length - 1 && selection.additionalServiceId === null
@@ -400,6 +400,13 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     }
   };
 
+  if (customer && customerPetRecords.length === 0) {
+    return <Navigate to="/customer/dashboard?tab=overview&addPet=1" replace />;
+  }
+  if (initialServiceId === KAPON_SERVICE_ID && !kaponPromoAvailable) {
+    return <div role="status" className="rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-5 text-sm text-[#607277]">{KAPON_UNAVAILABLE_MESSAGE}</div>;
+  }
+
   const content = (
     <div className="mx-auto max-w-[1180px] space-y-4">
       {!embedded && (
@@ -412,7 +419,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/72">
             Book Appointment
           </p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Select pets, services, then reserve a slot.</h1>
+          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Select a pet and services, then reserve a slot.</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/76">
             Contact details are pulled from your customer profile. Add pets from the dashboard first, then choose which pet needs which service.
           </p>
@@ -531,14 +538,6 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
                 })}
 
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={addPetSelection}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
-                  >
-                    <Plus size={16} />
-                    Add another pet
-                  </button>
                   <button
                     type="button"
                     onClick={addServiceSelection}
@@ -728,12 +727,13 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
           </label>
           <button
             type="submit"
-            disabled={isSubmitting || customerPetRecords.length === 0 || customer?.status !== "active"}
+            disabled={isSubmitting || customerPetRecords.length === 0 || customer?.status !== "active" || hasUnavailableKapon}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61] disabled:bg-[#9CB5B8]"
           >
             <CheckCircle2 size={16} />
             {isSubmitting ? "Saving appointment..." : "Confirm appointment booking"}
           </button>
+          {hasUnavailableKapon && <p role="status" className="mt-3 text-sm text-[#607277]">{KAPON_UNAVAILABLE_MESSAGE}</p>}
           {feedback.message && (
             <p
               className={`mt-4 rounded-lg px-4 py-3 text-sm font-medium ${

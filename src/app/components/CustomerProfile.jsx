@@ -368,7 +368,11 @@ export function CustomerProfile() {
     kaponPromoError,
   } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get("tab") || location.hash.replace("#", "");
+    const tab = requested === "booking" ? "services" : requested;
+    return dashboardTabs.some((item) => item.id === tab) ? tab : "overview";
+  });
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     username: "",
@@ -396,6 +400,14 @@ export function CustomerProfile() {
   const [pendingProfilePayload, setPendingProfilePayload] = useState(null);
   const [preselectedServiceId, setPreselectedServiceId] = useState("");
   const bookingSectionRef = useRef(null);
+  const petSectionRef = useRef(null);
+  const [pendingBookingServiceId, setPendingBookingServiceId] = useState("");
+  useEffect(() => {
+    if (activeTab === "overview" && (pendingBookingServiceId || new URLSearchParams(location.search).has("addPet"))) {
+      petSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      petSectionRef.current?.querySelector("input")?.focus({ preventScroll: true });
+    }
+  }, [activeTab, pendingBookingServiceId, location.search]);
 
   useEffect(() => {
     if (activeTab !== "services") {
@@ -761,6 +773,11 @@ export function CustomerProfile() {
         const message = "Pet record was saved locally, but Firestore sync failed. Please check your connection.";
         setFeedback({ type: "error", message });
         toast.error(message);
+      } else if (pendingBookingServiceId) {
+        const serviceId = pendingBookingServiceId;
+        setPendingBookingServiceId("");
+        openTab("services");
+        if (serviceId !== KAPON_SERVICE_ID || kaponPromoAvailable) setPreselectedServiceId(serviceId);
       }
     } catch (error) {
       const message = "Unable to save pet record. Please try again.";
@@ -823,6 +840,12 @@ export function CustomerProfile() {
       toast.error(KAPON_UNAVAILABLE_MESSAGE);
       return;
     }
+    if (customerPetRecords.length === 0) {
+      setPendingBookingServiceId(serviceId);
+      openTab("overview");
+      setFeedback({ type: "info", message: "Create a pet profile first, then continue booking." });
+      return;
+    }
     openTab("services");
     setPreselectedServiceId(serviceId);
   };
@@ -869,7 +892,6 @@ export function CustomerProfile() {
           )}
         </motion.section>
 
-        {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
 
         <div className="grid items-start gap-6 lg:grid-cols-[224px_minmax(0,1fr)]">
           <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
@@ -909,6 +931,7 @@ export function CustomerProfile() {
               <div className="space-y-5">
                 <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="min-w-0 space-y-5">
+                  {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
                   <section className="min-w-0 rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -923,7 +946,7 @@ export function CustomerProfile() {
                     </div>
                   </section>
 
-                <section className="@container min-w-0 rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
+                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-24 rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -1194,7 +1217,7 @@ export function CustomerProfile() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => openTab("booking")}
+                          onClick={() => customerPetRecords.length === 0 ? continueToBooking(serviceCatalog[0].id) : openTab("booking")}
                           className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61]"
                         >
                           Book appointment

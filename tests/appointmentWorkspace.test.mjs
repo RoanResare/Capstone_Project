@@ -74,7 +74,7 @@ test("Approved category includes Confirmed appointments and hides the Confirmed 
   assert.ok(html.includes(">Approved<"));
 });
 
-test("booking offers Add another pet before Add another service", () => {
+test("booking offers an additional service while keeping one pet per booking", () => {
   globalThis.__appointmentTestApp = {
     currentUser: { uid: "customer", role: "customer", email: "customer@example.com" },
     state: { petRecords: [{ id: "pet", customerId: "customer", petName: "Test pet", petType: "Dog" }] },
@@ -82,5 +82,25 @@ test("booking offers Add another pet before Add another service", () => {
   const html = renderToString(createElement(MemoryRouter, null, createElement(AppointmentBooking, { embedded: true })));
   const petButton = html.indexOf("Add another pet");
   const serviceButton = html.indexOf("Add another service");
-  assert.ok(petButton >= 0 && serviceButton > petButton);
+  assert.equal(petButton, -1);
+  assert.ok(serviceButton >= 0);
+});
+
+test("direct booking with no saved pet does not render a booking form", () => {
+  globalThis.__appointmentTestApp = {
+    currentUser: { uid: "customer", role: "customer", email: "customer@example.com" },
+    state: { petRecords: [] },
+  };
+  const html = renderToString(createElement(MemoryRouter, null, createElement(AppointmentBooking, { embedded: true })));
+  assert.ok(!html.includes("Confirm appointment booking"));
+});
+
+test("inactive kapon cannot open the booking form directly", () => {
+  globalThis.__appointmentTestApp = {
+    currentUser: { uid: "customer", role: "customer", email: "customer@example.com" }, kaponPromoAvailable: false,
+    state: { petRecords: [{ id: "pet", customerId: "customer", petName: "Pet" }] },
+  };
+  const html = renderToString(createElement(MemoryRouter, null, createElement(AppointmentBooking, { embedded: true, initialServiceId: "low-cost-kapon" })));
+  assert.ok(!html.includes("Confirm appointment booking"));
+  assert.ok(html.includes('role="status"'));
 });

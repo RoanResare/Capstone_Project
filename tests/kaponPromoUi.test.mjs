@@ -46,20 +46,24 @@ const { CustomerProfile } = await server.ssrLoadModule("/src/app/components/Cust
 const { AppointmentBooking } = await server.ssrLoadModule("/src/app/components/AppointmentBooking.jsx");
 const { KaponPromoManager } = await server.ssrLoadModule("/src/app/components/portal/KaponPromoManager.jsx");
 const service = await server.ssrLoadModule("/src/app/services/kaponPromo.js");
-const render = (Component, props) => renderToString(createElement(MemoryRouter, null, createElement(Component, props)));
+const render = (Component, props, route = "/customer/dashboard") => renderToString(createElement(MemoryRouter, { initialEntries: [route] }, createElement(Component, props)));
 const promo = { isActive: true, title: "Low-Cost Kapon", formLink: "https://forms.gle/example123", description: "Limited slots" };
 
 test("catalog preserves kapon information but only enables booking and shows the banner when active", () => {
   for (const active of [false, true]) {
     Object.assign(state.app, { kaponPromoReady: true, kaponPromoAvailable: active, kaponPromo: active ? promo : null });
-    const html = render(CustomerProfile);
+    const html = render(CustomerProfile, {}, "/customer/dashboard?tab=services");
     const cards = [...html.matchAll(/<article\b[^>]*>([\s\S]*?)<\/article>/g)].map((match) => match[1]);
     const kaponCard = cards.find((card) => card.includes("Low Cost Kapon"));
     assert.ok(kaponCard.includes("PHP 200 - 2,200"));
     assert.ok(kaponCard.includes("Affordable spay and neuter program"));
     assert.equal(/<button[^>]*disabled=""/.test(kaponCard), !active);
-    assert.equal(html.includes("REGISTER NOW"), active);
-    if (active) assert.ok(html.includes(`href="${promo.formLink}"`));
+    const dashboard = render(CustomerProfile);
+    assert.equal(dashboard.includes("REGISTER NOW"), active);
+    if (active) {
+      assert.ok(dashboard.includes(`href="${promo.formLink}"`));
+      assert.ok(dashboard.indexOf("REGISTER NOW") < dashboard.indexOf("Next step"));
+    }
     for (const card of cards.filter((card) => !card.includes("Low Cost Kapon"))) assert.ok(!/<button[^>]*disabled=""/.test(card));
   }
   state.app.kaponPromo = { ...promo, formLink: "https://forms.gle/newLink123" };

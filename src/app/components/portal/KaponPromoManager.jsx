@@ -9,8 +9,27 @@ function localDateTime(value) {
   if (!value) return "";
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
-  const pad = (part) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date).replace(" ", "T");
+}
+
+function PromoScheduleFields({ label, value, onChange, inputClass }) {
+  const [date = "", time = "09:00"] = value.split("T");
+  const times = Array.from({ length: 96 }, (_, index) => `${String(Math.floor(index / 4)).padStart(2, "0")}:${String(index % 4 * 15).padStart(2, "0")}`);
+  if (!times.includes(time)) times.push(time);
+  times.sort();
+  return <fieldset className="min-w-0 rounded-xl border border-[#D9E7E7] bg-[#F8FCFC] p-3">
+    <legend className="px-1 text-sm font-medium text-[#425A60]">{label} (optional)</legend>
+    <div className="grid gap-3">
+      <label className="text-xs text-[#607277]">Date
+        <input type="date" value={date} onChange={(event) => onChange(event.target.value ? `${event.target.value}T${time}` : "")} className={`mt-1 min-w-0 ${inputClass}`} />
+      </label>
+      <label className="text-xs text-[#607277]">Time
+        <select value={time} disabled={!date} onChange={(event) => onChange(`${date}T${event.target.value}`)} className={`mt-1 ${inputClass}`}>
+          {times.map((slot) => <option key={slot} value={slot}>{new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }).format(new Date(`2000-01-01T${slot}:00+08:00`))}</option>)}
+        </select>
+      </label>
+    </div>
+  </fieldset>;
 }
 
 function PromoFormDialog({ initialPromo, onClose, onSave }) {
@@ -43,7 +62,7 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
     if (saving) return;
     setError("");
     try {
-      const payload = normalizePromoInput(form);
+      const payload = normalizePromoInput({ ...form, startsAt: form.startsAt ? `${form.startsAt}:00+08:00` : "", endsAt: form.endsAt ? `${form.endsAt}:00+08:00` : "" });
       setSaving(true);
       await onSave({ ...payload, action: editing ? "edit" : "activate", expectedRevision: initialPromo?.revision || 0 });
       onClose();
@@ -78,15 +97,10 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
             <textarea value={form.description} onChange={updateField("description")} maxLength={1000} rows={3} className={`mt-2 resize-y ${inputClass}`} />
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-[#425A60]">
-              Start Date/Time (optional)
-              <input type="datetime-local" value={form.startsAt} onChange={updateField("startsAt")} className={`mt-2 min-w-0 ${inputClass}`} />
-            </label>
-            <label className="block text-sm font-medium text-[#425A60]">
-              End Date/Time (optional)
-              <input type="datetime-local" value={form.endsAt} onChange={updateField("endsAt")} className={`mt-2 min-w-0 ${inputClass}`} />
-            </label>
+            <PromoScheduleFields label="Start" value={form.startsAt} onChange={(value) => { setForm((current) => ({ ...current, startsAt: value })); setError(""); }} inputClass={inputClass} />
+            <PromoScheduleFields label="End" value={form.endsAt} onChange={(value) => { setForm((current) => ({ ...current, endsAt: value })); setError(""); }} inputClass={inputClass} />
           </div>
+          <p className="text-xs leading-5 text-[#607277]">Times use Philippine time. Leave the start blank to activate immediately, or the end blank for no scheduled expiry.</p>
         </fieldset>
         {error && <p role="alert" className="text-sm text-[#B23949]">{error}</p>}
         <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:justify-end">

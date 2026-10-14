@@ -391,6 +391,7 @@ export function CustomerProfile() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPet, setIsSavingPet] = useState(false);
   const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
+  const [profileConfirmationError, setProfileConfirmationError] = useState("");
   const [showProfileVerificationPassword, setShowProfileVerificationPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
   const [passwordVisibility, setPasswordVisibility] = useState({
@@ -637,13 +638,6 @@ export function CustomerProfile() {
       return false;
     }
 
-    if (!profileVerificationPassword) {
-      const message = "Enter your current password before saving profile changes.";
-      setFeedback({ type: "error", message });
-      toast.error(message);
-      return false;
-    }
-
     return true;
   };
 
@@ -654,6 +648,9 @@ export function CustomerProfile() {
       return;
     }
 
+    setProfileVerificationPassword("");
+    setShowProfileVerificationPassword(false);
+    setProfileConfirmationError("");
     setPendingProfilePayload(buildProfilePayload());
   };
 
@@ -662,6 +659,11 @@ export function CustomerProfile() {
       return;
     }
 
+    if (!profileVerificationPassword) {
+      setProfileConfirmationError("Enter your current password to authorize these changes.");
+      return;
+    }
+    setProfileConfirmationError("");
     setIsSavingProfile(true);
 
     try {
@@ -672,6 +674,7 @@ export function CustomerProfile() {
       });
 
       if (!result.ok) {
+        setProfileConfirmationError(result.error);
         setFeedback({ type: "error", message: result.error });
         toast.error(result.error);
         return;
@@ -680,6 +683,7 @@ export function CustomerProfile() {
       applySavedProfile(result.user, "Customer profile updated successfully.");
       setProfileVerificationPassword("");
       setPendingProfilePayload(null);
+      setShowProfileVerificationPassword(false);
     } finally {
       setIsSavingProfile(false);
     }
@@ -1547,33 +1551,7 @@ export function CustomerProfile() {
                       </p>
                     </div>
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-[#425A60]">
-                      Verify with your current password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showProfileVerificationPassword ? "text" : "password"}
-                        value={profileVerificationPassword}
-                        autoComplete="current-password"
-                        onChange={(event) => setProfileVerificationPassword(event.target.value)}
-                        disabled={isSavingProfile}
-                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
-                        placeholder="Enter your password to authorize this change"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowProfileVerificationPassword((visible) => !visible)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
-                        aria-label={showProfileVerificationPassword ? "Hide verification password" : "Show verification password"}
-                      >
-                        {showProfileVerificationPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                    <p className="mt-2 text-xs text-[#7A9297]">
-                      Your password is checked before your name, username, email, or phone changes are saved.
-                    </p>
-                  </div>
+
                   <button
                     type="submit"
                         disabled={isSavingProfile}
@@ -1590,7 +1568,7 @@ export function CustomerProfile() {
                     aria-labelledby="save-profile-title"
                     className="fixed inset-0 z-[90] flex items-center justify-center bg-[#173E44]/45 px-4 py-6 backdrop-blur-sm"
                   >
-                    <div className="w-full max-w-lg rounded-[28px] bg-white p-6 shadow-[0_24px_56px_rgba(20,43,46,0.24)]">
+                    <div className="max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto rounded-[28px] bg-white p-6 shadow-[0_24px_56px_rgba(20,43,46,0.24)]">
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Save changes?
                       </p>
@@ -1610,10 +1588,38 @@ export function CustomerProfile() {
                           </div>
                         ))}
                       </div>
+                  <div className="mt-5">
+                    <label htmlFor="profile-confirmation-password" className="mb-2 block text-sm font-medium text-[#425A60]">
+                      Verify with your current password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showProfileVerificationPassword ? "text" : "password"}
+                        value={profileVerificationPassword}
+                        id="profile-confirmation-password" required autoFocus autoComplete="current-password"
+                        onChange={(event) => setProfileVerificationPassword(event.target.value)}
+                        disabled={isSavingProfile}
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                        placeholder="Enter your password to authorize this change"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowProfileVerificationPassword((visible) => !visible)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                        aria-label={showProfileVerificationPassword ? "Hide verification password" : "Show verification password"}
+                      >
+                        {showProfileVerificationPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-[#7A9297]">
+                      Your password is checked before your name, username, email, or phone changes are saved.
+                    </p>
+                  </div>
+                      {profileConfirmationError && <p role="alert" className="mt-3 text-sm text-[#B23949]">{profileConfirmationError}</p>}
                       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                         <button
                           type="button"
-                          onClick={() => setPendingProfilePayload(null)}
+                          onClick={() => { setPendingProfilePayload(null); setProfileVerificationPassword(""); setShowProfileVerificationPassword(false); setProfileConfirmationError(""); }}
                           disabled={isSavingProfile}
                           className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
                         >
@@ -1622,7 +1628,7 @@ export function CustomerProfile() {
                         <button
                           type="button"
                           onClick={confirmProfileSave}
-                          disabled={isSavingProfile}
+                          disabled={isSavingProfile || !profileVerificationPassword}
                           className="rounded-[18px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
                         >
                           {isSavingProfile ? "Saving profile..." : "Save changes"}

@@ -641,9 +641,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
     throw new Error("Email is required.");
   }
 
-  if (updates.requireProfileVerification === true) {
-    await verifyCustomerPassword(updates.verificationPassword);
-  }
+  await verifyCustomerPassword(updates.verificationPassword);
 
   console.info("[customer-auth] Updating customer profile.", {
     uid: activeAuthUser.uid,

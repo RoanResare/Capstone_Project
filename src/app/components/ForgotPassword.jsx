@@ -144,18 +144,12 @@ export function ForgotPassword() {
               {isSubmitting ? "Sending reset link..." : "Send password reset link"}
             </button>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <Link
-                to="/customer/login"
-                className="font-semibold text-[#2D6B73] underline underline-offset-4"
-              >
-                Customer login
-              </Link>
+            <div className="flex justify-center text-sm">
               <Link
                 to="/login"
-                className="font-semibold text-[#607277] underline underline-offset-4"
+                className="font-semibold text-[#2D6B73] underline underline-offset-4"
               >
-                All login options
+                Back to Login
               </Link>
             </div>
           </form>

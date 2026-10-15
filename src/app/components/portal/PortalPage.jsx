@@ -1286,6 +1286,12 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   const saveRecord = async (event) => {
     event.preventDefault();
 
+    const textErrors = getTextValidationErrors(form, { notes: "Notes" });
+    if (Object.keys(textErrors).length) {
+      setFeedback({ type: "error", message: Object.values(textErrors)[0] });
+      return;
+    }
+
     if (!selectedRecord?.id) {
       setFeedback({
         type: "error",
@@ -1851,6 +1857,14 @@ function ManageUsersWorkspace({
   const saveUser = async (event) => {
     event.preventDefault();
     if (isSaving) {
+      return;
+    }
+
+    const textErrors = getTextValidationErrors(form, ACCOUNT_TEXT_FIELDS);
+    if (Object.keys(textErrors).length) {
+      const message = Object.values(textErrors)[0];
+      setFeedback({ type: "error", message });
+      toast.error(message);
       return;
     }
 
@@ -2481,3 +2495,4 @@ export function PortalPage() {
     />
   );
 }
+import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../../shared/textModeration.mjs";

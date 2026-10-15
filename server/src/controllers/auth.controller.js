@@ -182,6 +182,9 @@ async function resolveEmailFromIdentifier(identifier = "") {
 
 async function checkCustomerRegistrationAvailability(req, res) {
   assertAuthSetupReady();
+  const { assertAppropriateText, ACCOUNT_TEXT_FIELDS } = await import("../../../shared/textModeration.mjs");
+  try { assertAppropriateText(req.body, ACCOUNT_TEXT_FIELDS); }
+  catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
 
   const email = normalizeEmail(req.body?.email);
   const rawPhone = normalizeString(req.body?.phone);

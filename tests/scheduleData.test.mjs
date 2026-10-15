@@ -111,6 +111,10 @@ test("inappropriate pet text is rejected before any API or Firestore write", asy
   await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: "f u c k" }), /inappropriate/);
   await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: "Milo", notes: "shit!" }), /inappropriate/);
   await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: "tanginamo", notes: "tanginamo0" }), /inappropriate/);
+  for (const value of ["goblok", "G0B10K123", "banci", "putain", "你这个傻逼"]) {
+    await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: value }), /inappropriate/);
+    await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: "Milo", notes: value }), /inappropriate/);
+  }
   assert.equal(state.apiRequests.length, requests);
   assert.equal(state.writes.length, writes);
 });

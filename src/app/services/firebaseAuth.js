@@ -573,6 +573,7 @@ export async function signUpWithEmailPassword({
   phone = "",
   username = "",
 }) {
+  assertAppropriateText({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
   ensureFirebaseReady();
 
   const normalizedEmail = normalizeEmail(email);
@@ -673,6 +674,7 @@ export async function validateFirebasePasswordResetCode(oobCode) {
 }
 
 export async function updateFirebaseUserProfile(currentUser, updates = {}) {
+  assertAppropriateText(updates, ACCOUNT_TEXT_FIELDS);
   ensureFirebaseReady();
 
   if (!currentUser?.uid) {
@@ -721,3 +723,4 @@ export async function updateFirebaseUserProfile(currentUser, updates = {}) {
     accountStatus: currentUser.accountStatus || currentUser.status,
   });
 }
+import { assertAppropriateText, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";

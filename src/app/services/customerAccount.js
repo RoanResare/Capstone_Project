@@ -480,6 +480,7 @@ export async function signUpCustomerWithEmailPassword({
   username = "",
   registrationIp = "",
 }) {
+  assertAppropriateText({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
   ensureCustomerFirebaseReady();
 
   const normalizedEmail = normalizeEmail(email);
@@ -613,6 +614,7 @@ export async function signInCustomerWithEmailPassword({ email, password }) {
 }
 
 export async function updateCustomerProfile(currentUser, updates = {}) {
+  assertAppropriateText(updates, ACCOUNT_TEXT_FIELDS);
   ensureCustomerFirebaseReady();
 
   const activeAuthUser = await waitForFirebaseUserSession(currentUser?.uid || "", {
@@ -636,6 +638,7 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
   const nextEmail = normalizeEmail(updates.email || activeAuthUser.email || existingProfile.email);
   const nextPhone = normalizeString(updates.phone || existingProfile.phone);
   const nextUsername = assertCustomerUsername(updates.username || existingProfile.username);
+  assertAppropriateText({ fullName: nextFullName, email: nextEmail, username: nextUsername }, ACCOUNT_TEXT_FIELDS);
 
   if (!nextEmail) {
     throw new Error("Email is required.");
@@ -704,3 +707,4 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
     });
   }
 }
+import { assertAppropriateText, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";

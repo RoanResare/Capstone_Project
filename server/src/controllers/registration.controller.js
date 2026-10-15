@@ -19,6 +19,9 @@ async function createCustomerProfile(req, res) {
   if (!fullName) throw new ApiError(400, "Full name is required.");
   const email = String(claims.email || "").toLowerCase();
   if (!email) throw new ApiError(400, "An email account is required.");
+  const { assertAppropriateText, ACCOUNT_TEXT_FIELDS } = await import("../../../shared/textModeration.mjs");
+  try { assertAppropriateText({ fullName, username, email }, ACCOUNT_TEXT_FIELDS); }
+  catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
   const registrationSecurity = await validateRegistrationSecurity(req, email);
   await validateAccessSecurity(req);
   const profileRef = db.collection("users").doc(claims.uid);

@@ -652,7 +652,14 @@ async function updateStoredPasswordHash(uid, passwordHash) {
   );
 }
 
+async function assertAccountText(payload) {
+  const { assertAppropriateText, ACCOUNT_TEXT_FIELDS } = await import("../../../shared/textModeration.mjs");
+  try { assertAppropriateText(payload, ACCOUNT_TEXT_FIELDS); }
+  catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
+}
+
 async function createPortalUser(payload) {
+  await assertAccountText(payload);
   const email = payload.email.trim().toLowerCase();
   assertRegistrationEmailAllowed(email);
   const fullName = payload.fullName.trim();
@@ -771,6 +778,7 @@ async function createPortalUser(payload) {
 }
 
 async function updatePortalUser(uid, updates) {
+  await assertAccountText(updates);
   const existingUser = await getUserByUid(uid);
 
   if (!existingUser) {
@@ -1001,6 +1009,7 @@ async function purgeExpiredInactivePortalUsers() {
 }
 
 async function updateOwnUser(uid, updates) {
+  await assertAccountText(updates);
   const existingUser = await getUserByUid(uid);
 
   if (!existingUser) {

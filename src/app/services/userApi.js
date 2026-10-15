@@ -1,4 +1,5 @@
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
+import { assertAppropriateText, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
 
 function normalizeProfileRole(role = "") {
   const value = typeof role === "string" ? role.trim().toLowerCase() : "";
@@ -32,6 +33,7 @@ export async function listUsers(accessToken, role) {
 }
 
 export async function createUser(accessToken, payload) {
+  assertAppropriateText(payload, ACCOUNT_TEXT_FIELDS);
   try {
     const response = await apiClient.post("/admin/users", payload, {
       headers: buildAuthHeaders(accessToken),
@@ -48,6 +50,7 @@ export async function createUser(accessToken, payload) {
 }
 
 export async function updateUser(accessToken, uid, payload) {
+  assertAppropriateText(payload, ACCOUNT_TEXT_FIELDS);
   try {
     const response = await apiClient.patch(`/admin/users/${encodeURIComponent(uid)}`, payload, {
       headers: buildAuthHeaders(accessToken),

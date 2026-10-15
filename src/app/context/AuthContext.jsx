@@ -544,6 +544,8 @@ export function AuthProvider({ children }) {
   }
 
   async function signUp({ fullName, email, password, confirmPassword, phone = "", username = "" }) {
+    const textErrors = getTextValidationErrors({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
+    if (Object.keys(textErrors).length) return { ok: false, error: Object.values(textErrors)[0] };
     if (!isFirebaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
@@ -1438,3 +1440,4 @@ export function useAuth() {
 
   return context;
 }
+import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";

@@ -21,6 +21,7 @@ import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { containsInappropriatePetText, getPetTextErrors } from "../../../shared/petTextValidation.mjs";
+import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
 import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentSchedule } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -620,6 +621,13 @@ export function CustomerProfile() {
   };
 
   const validateProfileForm = () => {
+    const textErrors = getTextValidationErrors(profileForm, ACCOUNT_TEXT_FIELDS);
+    if (Object.keys(textErrors).length) {
+      const message = Object.values(textErrors)[0];
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return false;
+    }
     if (isSavingProfile) {
       return false;
     }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
@@ -66,6 +67,12 @@ export function CustomerSignup() {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    const textErrors = getTextValidationErrors(form, ACCOUNT_TEXT_FIELDS);
+    if (Object.keys(textErrors).length) {
+      setFeedback({ type: "error", message: Object.values(textErrors)[0] });
       return;
     }
 

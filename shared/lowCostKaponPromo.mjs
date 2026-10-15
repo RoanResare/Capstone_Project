@@ -14,6 +14,7 @@ export function isGoogleFormLink(value) {
 }
 
 export function normalizePromoInput(input = {}) {
+  assertAppropriateText(input, PROMO_TEXT_FIELDS);
   const title = typeof input.title === "string" ? input.title.trim() : "";
   const description = typeof input.description === "string" ? input.description.trim() : "";
   const formLink = typeof input.formLink === "string" ? input.formLink.trim() : "";
@@ -47,3 +48,5 @@ export function isLowCostKaponAppointment(appointment) {
   return matches(appointment?.serviceId) || matches(appointment?.service) ||
     (Array.isArray(appointment?.serviceIds) && appointment.serviceIds.some(matches));
 }
+import { assertAppropriateText, PROMO_TEXT_FIELDS } from "./textModeration.mjs";
+

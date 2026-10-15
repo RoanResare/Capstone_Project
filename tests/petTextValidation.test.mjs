@@ -29,3 +29,38 @@ test("blocks screenshot examples and Filipino inflections, numeric suffixes, spa
     assert.ok(getPetTextErrors({ petName: "Milo", notes: text }).notes, text);
   }
 });
+
+test("multilingual profanity and identity-directed abuse are rejected in both fields", () => {
+  const cases = [
+    "goblok", "goblog", "gobloknya", "tolol", "bangsat", "brengsek", "kontol", "ngentot", "pukimak", "bodoh", "jancok",
+    "yawa", "pistengyawa", "bilat", "baklang salot", "kill all gays", "banci", "pondan", "tranny", "schwuchtel", "maricón",
+    "mierda", "pendejo", "coño", "caralho", "buceta", "putain", "connard", "scheiße", "vaffanculo", "klootzak",
+    "madarchod", "bhenchod", "chutiya", "मादरचोद", "புண்டை", "сука", "пидор", "كسمك", "شرموطة",
+    "你这个傻逼", "他妈的", "死ね", "씨발", "개새끼", "ไอ้เหี้ย",
+  ];
+  for (const text of cases) {
+    assert.ok(getPetTextErrors({ petName: text }).petName, text);
+    assert.ok(getPetTextErrors({ petName: "Milo", notes: `Note: ${text}.` }).notes, text);
+  }
+});
+
+test("Unicode, separators, repeated letters, masking and ambiguous leetspeak cannot disguise goblok", () => {
+  for (const text of ["GOBLOK", "g0bl0k", "G0B10K", "g0b10k123", "gobloooook", "g o b l o k", "g.o.b.l.o.k", "gob-lok", "góbłök", "ｇｏｂｌｏｋ", "go\u200bblok", "gоblоk", "gob**k", "g#blok"]) {
+    assert.equal(containsInappropriatePetText(text), true, text);
+  }
+});
+
+test("neutral identities, safe multilingual text, pet names and clinical notes remain allowed", () => {
+  for (const text of ["gay", "lesbian", "bisexual", "transgender", "LGBTQ", "bakla", "bayot", "bading", "hijra", "homo sapiens",
+    "Milo", "Cassie", "Spice", "Shih Tzu", "Cockapoo", "Buttercup", "Scunthorpe", "Goby", "Block", "Bobby", "Lulu",
+    "Needs assistance with anal glands and medication.", "May puke after medication; monitor vomiting.",
+    "Mahal ko ang aking aso.", "Kucing saya sehat.", "我的猫需要疫苗", "Mi perro necesita vacunas."]) {
+    assert.equal(containsInappropriatePetText(text), false, text);
+  }
+});
+
+test("maximum-length punctuation and repeated letters do not stall matching", () => {
+  for (const text of ["a".repeat(500), ".".repeat(500), "s".repeat(500), "notes ".repeat(83)]) {
+    assert.equal(containsInappropriatePetText(text), false);
+  }
+});

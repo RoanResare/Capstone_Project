@@ -32,7 +32,9 @@ service cloud.firestore {
 
     match /pets/{petId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      // Validated API writes enforce ownership and multilingual text moderation.
+      // Direct SDK writes would bypass the server-side filter.
+      allow create, update: if false;
       allow delete: if request.auth != null;
     }
 

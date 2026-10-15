@@ -4,6 +4,7 @@ import { Pencil, Power, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { normalizePromoInput } from "../../../../shared/lowCostKaponPromo.mjs";
+import { getTextValidationErrors, PROMO_TEXT_FIELDS } from "../../../../shared/textModeration.mjs";
 
 function localDateTime(value) {
   if (!value) return "";
@@ -61,6 +62,11 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
     event.preventDefault();
     if (saving) return;
     setError("");
+    const textErrors = getTextValidationErrors(form, PROMO_TEXT_FIELDS);
+    if (Object.keys(textErrors).length) {
+      setError(Object.values(textErrors)[0]);
+      return;
+    }
     try {
       const payload = normalizePromoInput({ ...form, startsAt: form.startsAt ? `${form.startsAt}:00+08:00` : "", endsAt: form.endsAt ? `${form.endsAt}:00+08:00` : "" });
       setSaving(true);

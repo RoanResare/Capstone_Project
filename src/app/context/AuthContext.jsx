@@ -283,6 +283,27 @@ export function AuthProvider({ children }) {
     return restored;
   }
 
+  async function installPendingOtpSession(session) {
+    // Invalidate profile hydration started before this challenge was issued.
+    authGenerationRef.current++;
+    loginHandoffRef.current = true;
+    try {
+      if (auth?.currentUser) await signOutFromFirebase(auth);
+      clearPortalSession();
+      setSecuritySession();
+      const persisted = persistPendingOtpSession(session);
+      setCurrentUser(null);
+      setAccessToken("");
+      setHasFirebaseSession(false);
+      setAuthHydrationError("");
+      setPendingOtp(session);
+      return persisted;
+    } finally {
+      loginHandoffRef.current = false;
+      setIsLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
@@ -698,8 +719,7 @@ export function AuthProvider({ children }) {
           };
         }
 
-        const persisted = persistPendingOtpSession(nextPendingOtp);
-        setPendingOtp(nextPendingOtp);
+        const persisted = await installPendingOtpSession(nextPendingOtp);
         console.info("[portal-auth] OTP challenge issued.", {
           role: normalizedRole,
           email: maskEmail(nextPendingOtp.email),
@@ -856,8 +876,7 @@ export function AuthProvider({ children }) {
           };
         }
 
-        persistPendingOtpSession(nextPendingOtp);
-        setPendingOtp(nextPendingOtp);
+        await installPendingOtpSession(nextPendingOtp);
 
         return {
           ok: true,

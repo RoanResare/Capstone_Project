@@ -31,6 +31,7 @@ export function OtpVerification() {
     currentUser,
     homePath,
     isAuthenticated,
+    isLoading,
     isOnline,
     pendingOtp,
     resendOtp,
@@ -64,7 +65,15 @@ export function OtpVerification() {
     : 0;
   const isOtpExpired = Boolean(pendingOtp) && expiresInSeconds <= 0;
 
-  if (isAuthenticated && currentUser) {
+  if (isLoading) {
+    return (
+      <div role="status" className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 text-center text-[#20343B]">
+        Restoring your verification session...
+      </div>
+    );
+  }
+
+  if (!pendingOtp && isAuthenticated && currentUser) {
     return <Navigate to={homePath || resolveAuthorizedPath(currentUser.role)} replace />;
   }
 

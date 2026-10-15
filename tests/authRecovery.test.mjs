@@ -36,7 +36,7 @@ const mocks = {
     export async function updateCustomerProfile() {}`,
   "authApi.js": ["completeBackendPasswordReset", "checkCustomerRegistrationAvailability", "loginUnifiedUser", "loginPortalUser",
     "requestBackendPasswordReset", "resendPortalOtp", "validateBackendPasswordResetCode", "verifyPortalOtp"]
-    .map((name) => `export async function ${name}() { ${name === "loginUnifiedUser" ? "return globalThis.__authRecovery.loginResponse;" : name === "checkCustomerRegistrationAvailability" ? "throw new Error('Temporary or disposable email addresses are not allowed');" : ""} }`).join("\n"),
+    .map((name) => `export async function ${name}() { ${["loginUnifiedUser", "loginPortalUser"].includes(name) ? "return globalThis.__authRecovery.loginResponse;" : name === "checkCustomerRegistrationAvailability" ? "throw new Error('Temporary or disposable email addresses are not allowed');" : ""} }`).join("\n"),
 };
 const server = await createServer({ configFile: false, server: { middlewareMode: true }, appType: "custom", logLevel: "silent",
   plugins: [{ name: "auth-recovery-test", enforce: "pre",
@@ -137,4 +137,36 @@ test("rejected signup leaves the existing identity, token, and stored session un
   assert.equal(state.values[0], existingProfile);
   assert.equal(state.values[1], existingToken);
   assert.equal(window.localStorage.getItem("furfection-portal-session"), "existing-session");
+});
+
+test("OTP handoff survives stale Firebase hydration for admin and staff through both login entry points", async () => {
+  for (const role of ["admin", "staff"]) {
+    for (const entry of ["beginUnifiedLogin", "beginLogin"]) {
+      const pending = deferred();
+      state.profiles.push(pending);
+      const oldUser = { uid: "old-customer", email: "old@gmail.com",
+        getIdToken: async () => "old-token", getIdTokenResult: async () => ({ claims: { role: "customer" } }) };
+      state.auth.currentUser = oldUser;
+      const hydration = state.listener(oldUser);
+      await flush();
+      const ticket = `test.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 600 })).toString("base64url")}.signature`;
+      state.loginResponse = { requiresTwoFactor: true, user: { role, email: `${role}@gmail.com` },
+        otpTicket: ticket, otpExpiresAt: new Date(Date.now() + 300000).toISOString() };
+      const result = await value[entry]({ identifier: `${role}@gmail.com`, password: "Password!", role,
+        requestedPath: "/portal/appointments" });
+      pending.resolve({ uid: "old-customer", role: "customer" });
+      await hydration;
+      // A delayed signed-out callback must restore, rather than erase, the challenge.
+      await state.listener(null);
+      assert.equal(result.ok, true, result.error);
+      assert.equal(result.verificationPath, "/verify-otp");
+      assert.equal(state.values[0], null);
+      assert.equal(state.values[1], "");
+      const stored = JSON.parse(window.sessionStorage.getItem("furfection-pending-otp"));
+      assert.equal(stored.otpTicket, ticket);
+      assert.equal(stored.role, role);
+      assert.equal(stored.requestedPath, "/portal/appointments");
+      assert.equal(state.values.at(-1).otpTicket, ticket);
+    }
+  }
 });

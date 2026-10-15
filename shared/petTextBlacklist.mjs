@@ -7,6 +7,7 @@ export const petTextBlacklist = {
     "shit", "shitty", "bullshit", "horseshit", "shithead", "shite", "shyt", "dipshit", "dumbass", "jackass", "asshole", "arsehole",
     "bitch", "bitches", "sonofabitch", "bastard", "cunt", "dick", "dickhead", "prick", "pussy", "cocksucker", "cock sucker",
     "whore", "slut", "slutty", "porn", "porno", "pornography", "blowjob", "handjob", "rimjob", "wanker", "tosser", "twat", "bollocks", "bugger",
+    "damn", "goddamn", "god damn", "dammit", "damnit",
   ],
   tagalogAndRegional: [
     "puta", "putangina", "putanginamo", "putanginaka", "tangina", "tanginamo", "tanginaka", "tanginanyo", "tanginaniyo",
@@ -14,6 +15,7 @@ export const petTextBlacklist = {
     "gago", "gaga", "gagoka", "tanga", "tangaka", "bobo", "boboka", "ulol", "ulolka", "tarantado", "tarantada", "inutil",
     "pakshit", "pakyu", "pakyou", "kantot", "kantutan", "iyot", "iyotin", "burat", "tite", "titi", "pekpek", "puki", "jakol",
     "yawa", "yawa ka", "piste", "pisti", "pistengyawa", "pistingyawa", "atay", "bilat", "bilatan", "buang", "boang", "lintik", "leche", "hinayupak", "hayop ka",
+    "siraulo", "sira ulo", "bugok", "sinto-sinto", "sintosinto", "sinto", "baliw", "loko", "loka", "engot", "unggoy", "punyemas",
   ],
   indonesianAndMalay: [
     "goblok", "goblog", "gobleg", "gobloknya", "goblokmu", "gobloklah", "goblokbanget", "gblk",
@@ -21,6 +23,14 @@ export const petTextBlacklist = {
     "anjing", "anjir", "anjrit", "anjay", "kontol", "kuntul", "memek", "ngentot", "ngewe", "pantek", "pukimak", "pukima",
     "kimak", "pundek", "pundik", "butoh", "sialan", "sial", "jancok", "jancuk", "dancok", "cok", "cuk", "asu", "ndasmu",
     "bodoh", "bodoh kau", "babi", "celaka", "lancau", "lanciao", "cipap", "jubor", "bengong", "setan", "sundal", "jalang",
+    "otak udang", "muka tembok", "anjing kau", "babi kau", "kepala otak", "kurang ajar",
+  ],
+  vietnamese: [
+    // Tone marks are folded by normalize(), so include canonical spellings;
+    // the matcher also catches their unaccented forms and punctuation variants.
+    "đồ ngốc", "ngu thế", "ngu ngốc", "đồ ngu", "thằng ngu", "con ngu", "đồ khốn", "đồ chó", "đồ điên",
+    "đần", "ngốc", "ngu", "khốn nạn", "đĩ", "đồ mất dạy", "mất dạy", "cút đi", "địt mẹ", "đụ mẹ", "địt con mẹ",
+    "đồ vô dụng", "đồ rác rưởi", "thằng chó", "con chó", "đồ hèn", "bệnh hoạn",
   ],
   discriminatoryAbuse: [
     "nigger", "nigga", "niggah", "negrohead", "coon", "chink", "gook", "kike", "spic", "wetback", "beaner", "raghead", "towelhead", "sandnigger",

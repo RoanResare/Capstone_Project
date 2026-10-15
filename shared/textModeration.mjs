@@ -3,7 +3,7 @@ import { petTextBlacklist, unsegmentedPetTextBlacklist } from "./petTextBlacklis
 // Detection never rewrites the submitted/displayed value. Both the browser and
 // API use this module, so policy and normalization cannot diverge.
 function normalize(value) {
-  return value.normalize("NFKD").toLowerCase().replace(/[\p{M}\p{Cf}]/gu, "")
+  return value.normalize("NFKD").toLowerCase().replace(/[\p{M}\p{Cf}]/gu, "").replace(/đ/g, "d")
     .replace(/[ßłøđðæœ]/gu, letter => ({ "ß": "ss", "ł": "l", "ø": "o", "đ": "d", "ð": "d", "æ": "ae", "œ": "oe" })[letter]);
 }
 

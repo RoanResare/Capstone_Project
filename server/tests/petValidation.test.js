@@ -32,7 +32,7 @@ function fixture(initial = {}) {
   }, { json() {} }) };
 }
 test("API rejects inappropriate names and notes even when the form is bypassed", async () => {
-  for (const body of [{ petName: "fuck" }, { notes: "n1gga" }, { notes: "putang ina" }]) {
+  for (const body of [{ petName: "fuck" }, { notes: "n1gga" }, { notes: "putang ina" }, { petName: "tanginamo" }, { notes: "tanginamo0" }]) {
     const f = fixture();
     await assert.rejects(f.save(body), error => error.statusCode === 400 && error.details.code === "INVALID_PET_TEXT");
     assert.equal(f.writes.length, 0);
@@ -62,9 +62,9 @@ test("rejects deleted pets, malformed records, and invalid genders", async () =>
     await assert.rejects(fixture().save(body), error => error.statusCode === 400);
   }
 });
-test("direct Firestore pet mutations are closed while reads remain authenticated", () => {
+test("Firestore pet owner rule remains as explicitly requested", () => {
   const rules = fs.readFileSync(path.resolve(__dirname, "../../firestore.rules"), "utf8");
   const petRules = rules.slice(rules.indexOf("match /pets/"), rules.indexOf("match /notifications/"));
   assert.match(petRules, /allow read: if request.auth != null/);
-  assert.match(petRules, /allow create, update, delete: if false/);
+  assert.match(petRules, /allow create, update: if request.auth != null && request.resource.data.ownerId == request.auth.uid/);
 });

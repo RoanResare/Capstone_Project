@@ -20,7 +20,7 @@ import { AppointmentBooking } from "./AppointmentBooking.jsx";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
-import { getPetTextErrors } from "../../../shared/petTextValidation.mjs";
+import { containsInappropriatePetText, getPetTextErrors } from "../../../shared/petTextValidation.mjs";
 import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentSchedule } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -410,19 +410,7 @@ export function CustomerProfile() {
   const [preselectedServiceId, setPreselectedServiceId] = useState("");
   const bookingSectionRef = useRef(null);
   const petSectionRef = useRef(null);
-  const dashboardRef = useRef(null);
-  const welcomeBannerRef = useRef(null);
   const [petTextErrors, setPetTextErrors] = useState({});
-  useEffect(() => {
-    const banner = welcomeBannerRef.current;
-    if (!banner) return undefined;
-    const measure = () => dashboardRef.current?.style.setProperty("--customer-banner-height", `${banner.getBoundingClientRect().height}px`);
-    measure();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(banner);
-    window.addEventListener("resize", measure);
-    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
-  }, [isAuthenticated]);
   const [pendingBookingServiceId, setPendingBookingServiceId] = useState("");
   useEffect(() => {
     if (activeTab === "overview" && (pendingBookingServiceId || new URLSearchParams(location.search).has("addPet"))) {
@@ -889,12 +877,11 @@ export function CustomerProfile() {
   };
 
   return (
-    <div ref={dashboardRef} className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8" style={{ "--customer-banner-height": "176px" }}>
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
       <div className="w-full min-w-0 space-y-6">
         <section
-          ref={welcomeBannerRef}
           aria-label="Customer welcome"
-          className="sticky top-16 z-30 rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-4 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-5"
+          className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-4 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-5"
         >
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-4">
@@ -926,7 +913,7 @@ export function CustomerProfile() {
 
 
         <div className="grid items-start gap-6 lg:grid-cols-[224px_minmax(0,1fr)]">
-          <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-[calc(5rem+var(--customer-banner-height))] lg:max-h-[calc(100dvh-6rem-var(--customer-banner-height))] lg:overflow-y-auto">
+          <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
             <nav className="grid gap-2">
               {dashboardTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -994,7 +981,7 @@ export function CustomerProfile() {
                     </div>
                   </section>
 
-                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-[calc(5rem+var(--customer-banner-height))] rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
+                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-24 rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -1213,7 +1200,7 @@ export function CustomerProfile() {
                                   </div>
                                   <div className="min-w-0">
                                     <h3 className="truncate text-base font-semibold text-[#20343B]">
-                                      {record.petName}
+                                      {containsInappropriatePetText(record.petName) ? "Pet name needs review" : record.petName}
                                     </h3>
                                     <div className="mt-1 flex flex-wrap gap-1.5">
                                       <StatusChip label={record.petType} />
@@ -1230,7 +1217,7 @@ export function CustomerProfile() {
                                 </p>
                                 {record.notes && (
                                   <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[#50666B]">
-                                    {record.notes}
+                                    {containsInappropriatePetText(record.notes) ? "Notes hidden: inappropriate language. Please edit this pet record." : record.notes}
                                   </p>
                                 )}
                                 <div className="mt-auto flex flex-wrap gap-2 pt-3">
@@ -1353,7 +1340,7 @@ export function CustomerProfile() {
                   ))}
                 </div>
                 {preselectedServiceId && (
-                  <div ref={bookingSectionRef} className="mt-6 scroll-mt-[calc(5rem+var(--customer-banner-height))]">
+                  <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
                     <AppointmentBooking embedded initialServiceId={preselectedServiceId} />
                   </div>
                 )}

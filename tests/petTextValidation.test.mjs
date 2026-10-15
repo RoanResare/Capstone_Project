@@ -22,3 +22,10 @@ test("requires a pet name, bounds field sizes, and reports fields without echoin
   assert.ok(getPetTextErrors({ petName: "Milo", notes: {} }).notes);
   assert.throws(() => assertAppropriatePetText({ petName: "Milo", notes: "fuck" }), error => error.code === "INVALID_PET_TEXT" && !error.message.includes("fuck"));
 });
+
+test("blocks screenshot examples and Filipino inflections, numeric suffixes, spacing and masking", () => {
+  for (const text of ["tanginamo", "tanginamo0", "tanginamo123", "TANGINAMO", "tang ina mo", "t.a.n.g.i.n.a.m.o", "t4ng1n4m0", "taenamo", "tanginamong", "gagoka", "tangin*mo", "nigga123"]) {
+    assert.ok(getPetTextErrors({ petName: text }).petName, text);
+    assert.ok(getPetTextErrors({ petName: "Milo", notes: text }).notes, text);
+  }
+});

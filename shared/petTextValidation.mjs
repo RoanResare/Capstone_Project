@@ -4,11 +4,14 @@ const blockedTerms = [
   "fuck", "fucker", "fucking", "motherfucker", "shit", "shitty", "bullshit",
   "bitch", "bitches", "bastard", "asshole", "cunt", "dick", "pussy",
   "porn", "pornography", "nigger", "nigga", "faggot", "fag", "chink", "kike", "spic",
-  "puta", "putangina", "putanginamo", "gago", "gaga", "tanga", "bobo",
+  "puta", "putangina", "putanginamo", "tangina", "tanginamo", "tanginaka",
+  "tanginanyo", "tanginaniyo", "tanginamong", "tanginang", "tangena", "taena", "taenamo", "taenaka",
+  "gago", "gaga", "tanga", "bobo", "gagoka", "boboka", "ulolka",
+  "whore", "slut", "retard", "retarded", "wetback", "raghead", "sandnigger",
   "ulol", "tarantado", "pakshit", "pakyu", "kantot", "iyot", "burat", "tite", "pekpek",
 ];
 const patterns = blockedTerms.map(term => new RegExp(
-  `(?:^|[^a-z0-9])${[...term].map(letter => `${letter}+`).join("[^a-z0-9]*")}(?:s|es)?(?=$|[^a-z0-9])`, "u",
+  `(?:^|[^a-z0-9])${[...term].map(letter => `(?:${letter}+|[*#])`).join("[^a-z0-9*#]*")}(?:s|es)?[0-9]*(?=$|[^a-z0-9])`, "u",
 ));
 
 export function containsInappropriatePetText(value) {

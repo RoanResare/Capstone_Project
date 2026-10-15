@@ -16,6 +16,8 @@ export const petTextBlacklist = {
     "pakshit", "pakyu", "pakyou", "kantot", "kantutan", "iyot", "iyotin", "burat", "tite", "titi", "pekpek", "puki", "jakol",
     "yawa", "yawa ka", "piste", "pisti", "pistengyawa", "pistingyawa", "atay", "bilat", "bilatan", "buang", "boang", "lintik", "leche", "hinayupak", "hayop ka",
     "siraulo", "sira ulo", "bugok", "sinto-sinto", "sintosinto", "sinto", "baliw", "loko", "loka", "engot", "unggoy", "punyemas",
+    "mamatay", "mamamatay", "patayin", "mapatay", "mamatay ka", "mamatay kana", "mamatay ka na", "sana mamatay", "sana mamatay ka", "mamatay ka sana", "mamatay ka na sana", "sana mapatay", "patayin ka", "papatayin kita", "gusto kitang patayin", "gusto ko patayin ka", "matigok ka", "mategi ka",
+    "pakyu ka", "gago ka", "tanga ka", "bobo ka", "ulol ka", "putang ina mo", "tang ina mo", "hayop ka", "walang hiya", "walang utak", "kupal", "kupal ka", "buwisit", "bwisit", "hindot", "punyeta",
   ],
   indonesianAndMalay: [
     "goblok", "goblog", "gobleg", "gobloknya", "goblokmu", "gobloklah", "goblokbanget", "gblk",
@@ -31,6 +33,9 @@ export const petTextBlacklist = {
     "đồ ngốc", "ngu thế", "ngu ngốc", "đồ ngu", "thằng ngu", "con ngu", "đồ khốn", "đồ chó", "đồ điên",
     "đần", "ngốc", "ngu", "khốn nạn", "đĩ", "đồ mất dạy", "mất dạy", "cút đi", "địt mẹ", "đụ mẹ", "địt con mẹ",
     "đồ vô dụng", "đồ rác rưởi", "thằng chó", "con chó", "đồ hèn", "bệnh hoạn",
+    "\u0111\u1ed3 ng\u1ed1c", "ngu th\u1ebf", "ngu ng\u1ed1c", "\u0111\u1ed3 ngu", "th\u1eb1ng ngu", "\u0111\u1ed3 kh\u1ed1n", "\u0111\u1ed3 ch\u00f3", "\u0111\u1ed3 \u0111i\u00ean",
+    "\u0111\u1ea7n", "ng\u1ed1c", "kh\u1ed1n n\u1ea1n", "\u0111\u0129", "\u0111\u1ed3 m\u1ea5t d\u1ea1y", "m\u1ea5t d\u1ea1y", "c\u00fat \u0111i", "\u0111\u1ecbt m\u1eb9", "\u0111\u1ee5 m\u1eb9",
+    "ch\u1ebft \u0111i", "m\u00e0y ch\u1ebft \u0111i", "mong m\u00e0y ch\u1ebft", "tao gi\u1ebft m\u00e0y", "gi\u1ebft m\u00e0y",
   ],
   discriminatoryAbuse: [
     "nigger", "nigga", "niggah", "negrohead", "coon", "chink", "gook", "kike", "spic", "wetback", "beaner", "raghead", "towelhead", "sandnigger",

@@ -211,3 +211,23 @@ test("recovery rejects expired tickets instead of reviving an unusable challenge
   assert.equal(window.sessionStorage.getItem("furfection-pending-otp"), null);
   assert.equal(window.localStorage.getItem("furfection-pending-otp"), null);
 });
+
+test("an expired in-memory challenge cannot erase a valid stored replacement", async () => {
+  value.clearPendingOtp();
+  const originalNow = Date.now;
+  const now = originalNow();
+  const ticket = (exp) => `test.${Buffer.from(JSON.stringify({ exp })).toString("base64url")}.signature`;
+  state.loginResponse = { requiresTwoFactor: true, user: { role: "admin" },
+    otpTicket: ticket(Math.floor(now / 1000) + 60) };
+  assert.equal((await value.beginUnifiedLogin({ identifier: "admin@gmail.com", password: "Password!" })).ok, true);
+  const replacement = { role: "staff", otpTicket: ticket(Math.floor(now / 1000) + 600) };
+  window.sessionStorage.setItem("furfection-pending-otp", JSON.stringify(replacement));
+  try {
+    Date.now = () => now + 120000;
+    assert.equal(value.restorePendingOtpSession().otpTicket, replacement.otpTicket);
+    assert.equal(JSON.parse(window.sessionStorage.getItem("furfection-pending-otp")).otpTicket, replacement.otpTicket);
+  } finally {
+    Date.now = originalNow;
+    value.clearPendingOtp();
+  }
+});

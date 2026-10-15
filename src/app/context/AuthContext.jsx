@@ -136,7 +136,6 @@ function normalizePendingOtpRecord(record) {
     !isPortalRole(normalized.role) ||
     (normalized.otpTicketExpiresAt && isTimestampExpired(normalized.otpTicketExpiresAt))
   ) {
-    clearPendingOtpSession();
     return null;
   }
 
@@ -269,7 +268,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const restorePendingOtpSession = useCallback((reason = "storage-recovery") => {
-    const restored = normalizePendingOtpRecord(pendingOtpRef.current || readPendingOtpSession());
+    const restored = normalizePendingOtpRecord(pendingOtpRef.current)
+      || normalizePendingOtpRecord(readPendingOtpSession());
 
     if (!restored) {
       console.warn("[portal-auth] No pending OTP session could be restored.", {
@@ -348,9 +348,8 @@ export function AuthProvider({ children }) {
       try {
         await waitForCustomerRegistration();
         if (!isCurrent()) return;
-        const restoredPendingOtp = normalizePendingOtpRecord(
-          pendingOtpRef.current || readPendingOtpSession(),
-        );
+        const restoredPendingOtp = normalizePendingOtpRecord(pendingOtpRef.current)
+          || normalizePendingOtpRecord(readPendingOtpSession());
         // A pending challenge takes precedence over a persisted Firebase identity,
         // including after a reload or an auth event from another tab.
         if (firebaseUser && restoredPendingOtp) {

@@ -45,7 +45,7 @@ export function OtpVerification() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const isCheckingSession = useOtpSessionRecovery({
+  const { isCheckingSession, canShowMissingChallenge } = useOtpSessionRecovery({
     pendingOtp, isLoading, isAuthenticated, restorePendingOtpSession,
   });
 
@@ -70,10 +70,10 @@ export function OtpVerification() {
     : 0;
   const isOtpExpired = Boolean(pendingOtp) && expiresInSeconds <= 0;
 
-  if (isCheckingSession) {
+  if (isCheckingSession || (!pendingOtp && !canShowMissingChallenge && !(isAuthenticated && currentUser))) {
     return (
-      <div role="status" className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 text-center text-[#20343B]">
-        Restoring your verification session...
+      <div role="status" aria-label="Checking verification session" aria-busy="true" className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14">
+        <div aria-hidden="true" className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#D9E7E7] border-t-[#2D6B73]" />
       </div>
     );
   }
@@ -134,7 +134,7 @@ export function OtpVerification() {
     }
   };
 
-  if (!pendingOtp) {
+  if (canShowMissingChallenge) {
     return (
       <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 lg:py-18">
         <div className="mx-auto max-w-[920px]">

@@ -127,15 +127,20 @@ export function persistPendingOtpSession(session) {
 export function readPendingOtpSession() {
   const sessionValue = readSessionStorageItem(PENDING_OTP_STORAGE_KEY);
   const localValue = readStorageItem(PENDING_OTP_STORAGE_KEY);
-  const raw = sessionValue || localValue;
+  // A stale or malformed tab copy must not hide a valid fallback challenge.
+  const parsed = [sessionValue, localValue].map(parseJson).find((record) => {
+    if (!record || typeof record.otpTicket !== "string" || !record.otpTicket.trim()
+      || typeof record.role !== "string" || !["admin", "staff"].includes(record.role.trim().toLowerCase())) return false;
+    const payload = decodeJwtPayload(record.otpTicket);
+    return typeof payload?.exp !== "number" || payload.exp * 1000 > Date.now();
+  });
 
-  if (!sessionValue && localValue) {
+  if (parsed && JSON.stringify(parsed) === localValue && sessionValue !== localValue) {
     writeSessionStorageItem(PENDING_OTP_STORAGE_KEY, localValue);
   }
 
-  const parsed = parseJson(raw);
-
   if (!parsed || typeof parsed !== "object") {
+    if (sessionValue || localValue) clearPendingOtpSession();
     return null;
   }
 

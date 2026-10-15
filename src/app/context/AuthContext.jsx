@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
 import { setSecuritySession } from "../utils/securitySession.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
@@ -133,7 +133,7 @@ function normalizePendingOtpRecord(record) {
 
   if (
     !normalized.otpTicket ||
-    !normalized.role ||
+    !isPortalRole(normalized.role) ||
     (normalized.otpTicketExpiresAt && isTimestampExpired(normalized.otpTicketExpiresAt))
   ) {
     clearPendingOtpSession();
@@ -259,12 +259,17 @@ export function AuthProvider({ children }) {
   const [isOnline, setIsOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine !== false,
   );
-  const [pendingOtp, setPendingOtp] = useState(() =>
+  const [pendingOtp, updatePendingOtp] = useState(() =>
     normalizePendingOtpRecord(readPendingOtpSession()),
   );
+  const pendingOtpRef = useRef(pendingOtp);
+  const setPendingOtp = useCallback((session) => {
+    pendingOtpRef.current = session;
+    updatePendingOtp(session);
+  }, []);
 
-  function restorePendingOtpSession(reason = "storage-recovery") {
-    const restored = normalizePendingOtpRecord(readPendingOtpSession());
+  const restorePendingOtpSession = useCallback((reason = "storage-recovery") => {
+    const restored = normalizePendingOtpRecord(pendingOtpRef.current || readPendingOtpSession());
 
     if (!restored) {
       console.warn("[portal-auth] No pending OTP session could be restored.", {
@@ -281,22 +286,24 @@ export function AuthProvider({ children }) {
     });
     setPendingOtp(restored);
     return restored;
-  }
+  }, [setPendingOtp]);
 
   async function installPendingOtpSession(session) {
     // Invalidate profile hydration started before this challenge was issued.
     authGenerationRef.current++;
     loginHandoffRef.current = true;
+    setIsLoading(true);
     try {
+      // Commit the server-issued ticket before any asynchronous sign-out or navigation.
+      const persisted = persistPendingOtpSession(session);
+      setPendingOtp(session);
       if (auth?.currentUser) await signOutFromFirebase(auth);
       clearPortalSession();
       setSecuritySession();
-      const persisted = persistPendingOtpSession(session);
       setCurrentUser(null);
       setAccessToken("");
       setHasFirebaseSession(false);
       setAuthHydrationError("");
-      setPendingOtp(session);
       return persisted;
     } finally {
       loginHandoffRef.current = false;
@@ -341,8 +348,16 @@ export function AuthProvider({ children }) {
       try {
         await waitForCustomerRegistration();
         if (!isCurrent()) return;
+        const restoredPendingOtp = normalizePendingOtpRecord(
+          pendingOtpRef.current || readPendingOtpSession(),
+        );
+        // A pending challenge takes precedence over a persisted Firebase identity,
+        // including after a reload or an auth event from another tab.
+        if (firebaseUser && restoredPendingOtp) {
+          await installPendingOtpSession(restoredPendingOtp);
+          return;
+        }
         if (!firebaseUser) {
-          const restoredPendingOtp = normalizePendingOtpRecord(readPendingOtpSession());
 
           if (active) {
             clearPortalSession();
@@ -425,6 +440,7 @@ export function AuthProvider({ children }) {
         resetTransientAuthStorage();
         clearPortalSession();
         if (preservedPendingOtp) {
+          persistPendingOtpSession(preservedPendingOtp);
           console.warn("[portal-auth] Preserving pending OTP session after Firestore profile denial.", {
             role: preservedPendingOtp.role,
             email: maskEmail(preservedPendingOtp.email),
@@ -1399,6 +1415,7 @@ export function AuthProvider({ children }) {
     isOnline,
     isPortalUser: isPortalRole(currentUser?.role),
     pendingOtp,
+    restorePendingOtpSession,
     refreshCurrentUser,
     requestPasswordReset,
     resendOtp,

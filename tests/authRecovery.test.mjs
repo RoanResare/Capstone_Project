@@ -13,6 +13,7 @@ const mocks = {
     export const createContext = () => ({ Provider: 'provider' });
     export const useContext = () => null;
     export const useRef = (current) => ({ current });
+    export const useCallback = (callback) => callback;
     export const useEffect = (effect) => s.effects.push(effect);
     export function useState(initial) { const i = s.values.length;
       s.values.push(typeof initial === 'function' ? initial() : initial);
@@ -169,4 +170,44 @@ test("OTP handoff survives stale Firebase hydration for admin and staff through 
       assert.equal(state.values.at(-1).otpTicket, ticket);
     }
   }
+});
+
+test("a stored OTP challenge wins over an old Firebase identity on reload", async () => {
+  for (const role of ["admin", "staff"]) {
+    value.clearPendingOtp();
+    const ticket = `test.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 600 })).toString("base64url")}.signature`;
+    window.sessionStorage.setItem("furfection-pending-otp", JSON.stringify({ role, otpTicket: ticket,
+      email: `${role}@gmail.com`, otpExpiresAt: new Date(Date.now() + 300000).toISOString() }));
+    const profileCalls = state.profileCalls;
+    state.auth.currentUser = { uid: "old-identity" };
+    await state.listener(state.auth.currentUser);
+    assert.equal(state.profileCalls, profileCalls, "must not hydrate the old profile or clear the challenge");
+    assert.equal(state.auth.currentUser, null);
+    assert.equal(state.values[0], null);
+    assert.equal(value.restorePendingOtpSession().otpTicket, ticket);
+    assert.equal(JSON.parse(window.sessionStorage.getItem("furfection-pending-otp")).otpTicket, ticket);
+  }
+});
+
+test("a delayed signed-out event preserves the in-memory challenge when browser storage is unavailable", async () => {
+  // Storage can be cleared or blocked independently of the current tab's React state.
+  const challenge = value.restorePendingOtpSession();
+  window.sessionStorage.removeItem("furfection-pending-otp");
+  window.localStorage.removeItem("furfection-pending-otp");
+  await state.listener(null);
+  assert.equal(state.values.at(-1).otpTicket, challenge.otpTicket);
+  assert.equal(value.restorePendingOtpSession().otpTicket, challenge.otpTicket);
+  value.clearPendingOtp();
+  assert.equal(value.restorePendingOtpSession(), null, "explicit cancellation must clear memory too");
+});
+
+test("recovery rejects expired tickets instead of reviving an unusable challenge", () => {
+  value.clearPendingOtp();
+  const ticket = `test.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) - 60 })).toString("base64url")}.signature`;
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    storage.setItem("furfection-pending-otp", JSON.stringify({ role: "admin", otpTicket: ticket }));
+  }
+  assert.equal(value.restorePendingOtpSession(), null);
+  assert.equal(window.sessionStorage.getItem("furfection-pending-otp"), null);
+  assert.equal(window.localStorage.getItem("furfection-pending-otp"), null);
 });

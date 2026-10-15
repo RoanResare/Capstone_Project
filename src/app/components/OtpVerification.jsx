@@ -5,6 +5,7 @@ import { Mail, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { resolveAuthorizedPath } from "../utils/roleUtils.js";
+import { useOtpSessionRecovery } from "../utils/useOtpSessionRecovery.js";
 
 function formatCountdown(totalSeconds) {
   const safeSeconds = Math.max(0, totalSeconds);
@@ -34,6 +35,7 @@ export function OtpVerification() {
     isLoading,
     isOnline,
     pendingOtp,
+    restorePendingOtpSession,
     resendOtp,
     verifyPendingOtp,
   } = useAuth();
@@ -43,6 +45,9 @@ export function OtpVerification() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const isCheckingSession = useOtpSessionRecovery({
+    pendingOtp, isLoading, isAuthenticated, restorePendingOtpSession,
+  });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -65,7 +70,7 @@ export function OtpVerification() {
     : 0;
   const isOtpExpired = Boolean(pendingOtp) && expiresInSeconds <= 0;
 
-  if (isLoading) {
+  if (isCheckingSession) {
     return (
       <div role="status" className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 text-center text-[#20343B]">
         Restoring your verification session...

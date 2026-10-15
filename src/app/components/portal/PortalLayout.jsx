@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bell, CalendarDays, Clock3, LogOut, PawPrint, Users, X } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Bell, CalendarDays, Clock3, LogOut, PawPrint, Users, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { BrandMark } from "../BrandMark.jsx";
+import { resolveHomePath } from "../../utils/roleUtils.js";
 
 const iconMap = {
   appointments: CalendarDays,
@@ -257,6 +258,13 @@ export function PortalLayout() {
         <section className="min-w-0 space-y-5 xl:flex xl:min-h-0 xl:flex-col">
           <header className="flex flex-col gap-4 rounded-[30px] bg-white px-6 py-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] md:flex-row md:items-center md:justify-between">
             <div>
+              <Link
+                to={resolveHomePath(currentUser.role)}
+                className="mb-3 inline-flex items-center gap-2 rounded-xl border border-[#D9E7E7] px-3 py-2 text-sm font-semibold text-[#24444A] transition hover:bg-[#E9F3F3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                Back to overview
+              </Link>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#789AA0]">
                 Charming Fur-fection Portal
               </p>

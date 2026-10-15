@@ -258,14 +258,20 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
         className="flex w-full items-center justify-between gap-3 text-left"
         aria-expanded={isOpen}
       >
-        <span className="inline-flex items-center gap-3">
-          <Bell size={20} className="text-[#2D6B73]" />
-          <span className="text-lg font-semibold text-[#20343B]">Notifications</span>
-          {unreadCount > 0 && <StatusChip label={`${unreadCount} unread`} />}
+        <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="inline-flex shrink-0 items-center gap-2">
+            <Bell size={20} className="shrink-0 text-[#2D6B73]" />
+            <span className="text-base font-semibold text-[#20343B]">Notifications</span>
+          </span>
+          {unreadCount > 0 && (
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[#EAF4F4] px-3 py-1 text-xs font-semibold text-[#2D6A73]">
+              {unreadCount} unread
+            </span>
+          )}
         </span>
         <ChevronDown
           size={20}
-          className={`text-[#607277] transition ${isOpen ? "rotate-180" : ""}`}
+          className={`shrink-0 text-[#607277] transition ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -938,7 +944,7 @@ export function CustomerProfile() {
           <main className="min-w-0">
             {activeTab === "overview" && (
               <div className="space-y-5">
-                <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_280px]">
+                <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="min-w-0 space-y-5">
                   {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
                   <article aria-label="Low-Cost Kapon service" className="min-w-0 rounded-[24px] border border-[#D9E7E7] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">

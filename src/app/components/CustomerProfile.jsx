@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
 import {
   Bell,
   CalendarDays,
@@ -21,6 +20,7 @@ import { AppointmentBooking } from "./AppointmentBooking.jsx";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
+import { getPetTextErrors } from "../../../shared/petTextValidation.mjs";
 import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentSchedule } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -410,6 +410,19 @@ export function CustomerProfile() {
   const [preselectedServiceId, setPreselectedServiceId] = useState("");
   const bookingSectionRef = useRef(null);
   const petSectionRef = useRef(null);
+  const dashboardRef = useRef(null);
+  const welcomeBannerRef = useRef(null);
+  const [petTextErrors, setPetTextErrors] = useState({});
+  useEffect(() => {
+    const banner = welcomeBannerRef.current;
+    if (!banner) return undefined;
+    const measure = () => dashboardRef.current?.style.setProperty("--customer-banner-height", `${banner.getBoundingClientRect().height}px`);
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(banner);
+    window.addEventListener("resize", measure);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", measure); };
+  }, [isAuthenticated]);
   const [pendingBookingServiceId, setPendingBookingServiceId] = useState("");
   useEffect(() => {
     if (activeTab === "overview" && (pendingBookingServiceId || new URLSearchParams(location.search).has("addPet"))) {
@@ -725,6 +738,16 @@ export function CustomerProfile() {
       return;
     }
 
+    const textErrors = getPetTextErrors(petForm);
+    setPetTextErrors(textErrors);
+    if (Object.keys(textErrors).length) {
+      const message = Object.values(textErrors)[0];
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      petSectionRef.current?.querySelector(`[name="${Object.keys(textErrors)[0]}"]`)?.focus();
+      return;
+    }
+
     if (!petForm.petName.trim() || !petForm.petType.trim() || !petForm.breed.trim()) {
       const message = "Pet name, pet type, and breed are required.";
       setFeedback({ type: "error", message });
@@ -773,26 +796,21 @@ export function CustomerProfile() {
     };
 
     try {
-      const savePromise = savePetRecord(nextRecord, profileForm.fullName);
+      await savePetRecord(nextRecord, profileForm.fullName);
       const saveMessage = "Pet record saved successfully.";
       setPetForm(buildEmptyPetForm());
       setIsSavingPet(false);
       setFeedback({ type: "success", message: saveMessage });
       toast.success(saveMessage);
 
-      const didSync = await savePromise;
-      if (!didSync) {
-        const message = "Pet record was saved locally, but Firestore sync failed. Please check your connection.";
-        setFeedback({ type: "error", message });
-        toast.error(message);
-      } else if (pendingBookingServiceId) {
+      if (pendingBookingServiceId) {
         const serviceId = pendingBookingServiceId;
         setPendingBookingServiceId("");
         openTab("services");
         if (serviceId !== KAPON_SERVICE_ID || kaponPromoAvailable) setPreselectedServiceId(serviceId);
       }
     } catch (error) {
-      const message = "Unable to save pet record. Please try again.";
+      const message = error instanceof Error ? error.message : "Unable to save pet record. Please try again.";
       console.error("[customer-profile] Pet record save failed.", error);
       setFeedback({ type: "error", message });
       toast.error(message);
@@ -871,13 +889,12 @@ export function CustomerProfile() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
+    <div ref={dashboardRef} className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8" style={{ "--customer-banner-height": "176px" }}>
       <div className="w-full min-w-0 space-y-6">
-        <motion.section
-          initial={{ opacity: 0, y: 22 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-5 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-6"
+        <section
+          ref={welcomeBannerRef}
+          aria-label="Customer welcome"
+          className="sticky top-16 z-30 rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-4 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-5"
         >
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-center gap-4">
@@ -905,11 +922,11 @@ export function CustomerProfile() {
               bookings are disabled until the clinic reactivates your account.
             </div>
           )}
-        </motion.section>
+        </section>
 
 
         <div className="grid items-start gap-6 lg:grid-cols-[224px_minmax(0,1fr)]">
-          <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-[calc(5rem+var(--customer-banner-height))] lg:max-h-[calc(100dvh-6rem-var(--customer-banner-height))] lg:overflow-y-auto">
             <nav className="grid gap-2">
               {dashboardTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -977,7 +994,7 @@ export function CustomerProfile() {
                     </div>
                   </section>
 
-                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-24 rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
+                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-[calc(5rem+var(--customer-banner-height))] rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
                   <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
@@ -993,15 +1010,21 @@ export function CustomerProfile() {
                     <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
+                          name="petName"
+                          aria-label="Pet name"
+                          aria-invalid={Boolean(petTextErrors.petName)}
+                          aria-describedby={petTextErrors.petName ? "pet-name-error" : undefined}
                           value={petForm.petName}
                           autoComplete="off"
-                          onChange={(event) =>
-                            setPetForm((current) => ({ ...current, petName: event.target.value }))
-                          }
+                          onChange={(event) => {
+                            setPetForm((current) => ({ ...current, petName: event.target.value }));
+                            setPetTextErrors((current) => ({ ...current, petName: undefined }));
+                          }}
                           maxLength={60}
                           className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                           placeholder="Pet name"
                         />
+                        {petTextErrors.petName && <p id="pet-name-error" role="alert" className="text-sm text-[#B23949]">{petTextErrors.petName}</p>}
                         <select
                           value={petForm.petType}
                           onChange={handlePetTypeChange}
@@ -1101,14 +1124,20 @@ export function CustomerProfile() {
                           </select>
                         </label>
                         <textarea
+                          name="notes"
+                          aria-label="Notes for staff or future visits"
+                          aria-invalid={Boolean(petTextErrors.notes)}
+                          aria-describedby={petTextErrors.notes ? "pet-notes-error" : undefined}
                           value={petForm.notes}
-                          onChange={(event) =>
-                            setPetForm((current) => ({ ...current, notes: event.target.value }))
-                          }
+                          onChange={(event) => {
+                            setPetForm((current) => ({ ...current, notes: event.target.value }));
+                            setPetTextErrors((current) => ({ ...current, notes: undefined }));
+                          }}
                           maxLength={500}
                           className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                           placeholder="Notes for staff or future visits"
                         />
+                        {petTextErrors.notes && <p id="pet-notes-error" role="alert" className="text-sm text-[#B23949]">{petTextErrors.notes}</p>}
                         <label className="grid gap-2 text-sm font-medium text-[#425A60]">
                           Pet photo (optional)
                           <input
@@ -1148,7 +1177,7 @@ export function CustomerProfile() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setPetForm(buildEmptyPetForm())}
+                            onClick={() => { setPetForm(buildEmptyPetForm()); setPetTextErrors({}); }}
                             disabled={isSavingPet}
                             className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#2B555C]"
                           >
@@ -1207,7 +1236,7 @@ export function CustomerProfile() {
                                 <div className="mt-auto flex flex-wrap gap-2 pt-3">
                                   <button
                                     type="button"
-                                    onClick={() => setPetForm(buildPetFormFromRecord(record))}
+                                    onClick={() => { setPetForm(buildPetFormFromRecord(record)); setPetTextErrors({}); }}
                                     className="rounded-xl bg-[#EEF6F6] px-3 py-2 text-sm font-semibold text-[#2B555C]"
                                   >
                                     Edit pet
@@ -1324,7 +1353,7 @@ export function CustomerProfile() {
                   ))}
                 </div>
                 {preselectedServiceId && (
-                  <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
+                  <div ref={bookingSectionRef} className="mt-6 scroll-mt-[calc(5rem+var(--customer-banner-height))]">
                     <AppointmentBooking embedded initialServiceId={preselectedServiceId} />
                   </div>
                 )}

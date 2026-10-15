@@ -1283,7 +1283,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const saveRecord = (event) => {
+  const saveRecord = async (event) => {
     event.preventDefault();
 
     if (!selectedRecord?.id) {
@@ -1310,20 +1310,24 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
       return;
     }
 
-    savePetRecord(
-      {
-        ...selectedRecord,
-        lastVisit: form.lastVisit.trim(),
-        notes: form.notes.trim(),
-        updatedAt: new Date().toISOString(),
-      },
-      currentUser.name,
-    );
+    try {
+      await savePetRecord(
+        {
+          ...selectedRecord,
+          lastVisit: form.lastVisit.trim(),
+          notes: form.notes.trim(),
+          updatedAt: new Date().toISOString(),
+        },
+        currentUser.name,
+      );
 
-    setFeedback({
-      type: "success",
-      message: `${form.petName.trim()} was saved successfully.`,
-    });
+      setFeedback({
+        type: "success",
+        message: `${form.petName.trim()} was saved successfully.`,
+      });
+    } catch (error) {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to save pet record." });
+    }
   };
 
   return (

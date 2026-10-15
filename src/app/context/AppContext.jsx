@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState } from "react";
+import { assertAppropriatePetText } from "../../../shared/petTextValidation.mjs";
 import {
   buildSeedAvailabilitySlots,
   isServiceAvailableOnDate,
@@ -2475,7 +2476,8 @@ export function AppProvider({ children }) {
 
       return true;
     },
-    savePetRecord(payload, actorName) {
+    async savePetRecord(payload, actorName) {
+      assertAppropriatePetText(payload);
       if (!["Male", "Female"].includes(payload.gender)) {
         throw new Error("Pet gender must be Male or Female.");
       }
@@ -2488,12 +2490,14 @@ export function AppProvider({ children }) {
       });
       delete nextRecord.photoModerationId;
 
+      await savePetRecordDocument(nextRecord);
+
       dispatch({
         type: "UPSERT_PET_RECORD",
         payload: nextRecord,
         meta: { actorName: actorName || currentUser?.name || "Customer" },
       });
-      return savePetRecordDocument(nextRecord);
+      return true;
     },
     async deletePetRecord(id, actorName) {
       const deletedAppointmentIds = await deletePetRecordDocument(id);

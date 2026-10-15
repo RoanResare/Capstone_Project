@@ -94,12 +94,24 @@ test("pet saves require strict Male/Female gender and never save photo fields", 
   }
   assert.equal(state.writes.length, 0);
   for (const gender of ["Male", "Female"]) {
-    await service.savePetRecordDocument({id: "pet", gender, photoURL: "old-photo", photoModerationId: "old"});
-    const data = state.writes.at(-1).data;
+    await service.savePetRecordDocument({id: "pet", petName: "Milo", gender, photoURL: "old-photo", photoModerationId: "old"});
+    const request = state.apiRequests.at(-1);
+    assert.equal(request.method, "put");
+    assert.equal(request.args[0], "/auth/pets/pet");
+    const data = request.args[1];
     assert.equal(data.gender, gender);
     assert.equal("photoURL" in data, false);
     assert.equal("photoModerationId" in data, false);
   }
+});
+
+test("inappropriate pet text is rejected before any API or Firestore write", async () => {
+  const requests = state.apiRequests.length;
+  const writes = state.writes.length;
+  await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: "f u c k" }), /inappropriate/);
+  await assert.rejects(service.savePetRecordDocument({ id: "pet", gender: "Male", petName: "Milo", notes: "shit!" }), /inappropriate/);
+  assert.equal(state.apiRequests.length, requests);
+  assert.equal(state.writes.length, writes);
 });
 
 test("availability snapshot streams slot changes and supports cleanup", () => {

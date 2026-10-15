@@ -9,6 +9,7 @@ import {
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
+import { assertAppropriatePetText } from "../../../shared/petTextValidation.mjs";
 
 const COLLECTIONS = {
   appointments: "appointments",
@@ -142,15 +143,20 @@ export function saveAppointmentDocument(appointment) {
   });
 }
 
-export function savePetRecordDocument(record) {
-  if (!["Male", "Female"].includes(record?.gender)) return Promise.reject(new Error("Pet gender must be Male or Female."));
+export async function savePetRecordDocument(record) {
+  if (!["Male", "Female"].includes(record?.gender)) throw new Error("Pet gender must be Male or Female.");
+  assertAppropriatePetText(record);
+  if (!canSyncScheduleData()) throw new Error("Sign in and reconnect to save a pet profile.");
   const petData = { ...record };
   delete petData.photoURL;
   delete petData.photoModerationId;
-  return saveDocument(COLLECTIONS.petRecords, petData).catch((error) => {
-    logSyncError("Pet record sync", error);
-    throw error;
-  });
+  const token = await auth.currentUser.getIdToken();
+  try {
+    await apiClient.put(`/auth/pets/${encodeURIComponent(record.id)}`, removeUndefinedFields(petData), { headers: buildAuthHeaders(token) });
+    return true;
+  } catch (error) {
+    throw new Error(extractApiError(error, "Unable to save the pet profile."));
+  }
 }
 
 export async function deletePetRecordDocument(id) {

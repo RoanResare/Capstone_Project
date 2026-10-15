@@ -518,7 +518,7 @@ export function CustomerProfile() {
       );
   const petBreedOptions = breedsByPetType[petForm.petType] || [];
   const petCardGridClass =
-    "grid min-w-0 grid-cols-1 items-start gap-4 sm:grid-cols-[repeat(2,minmax(0,17rem))]";
+    "grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),17rem))] items-start gap-4";
   const passwordStrength = getPasswordStrength(passwordForm.next);
 
   useEffect(() => {
@@ -989,7 +989,7 @@ export function CustomerProfile() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[56rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] @min-[76rem]:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[32rem]:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] @min-[48rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
                     <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
@@ -1236,22 +1236,15 @@ export function CustomerProfile() {
                         Booking
                       </p>
                       <h2 className="mt-2 text-xl font-semibold text-[#20343B]">
-                        Continue with services or book a new appointment.
+                        Choose a service and book your pet's appointment.
                       </h2>
                       <div className="mt-5 grid gap-3">
                         <button
                           type="button"
                           onClick={() => openTab("services")}
-                          className="rounded-2xl bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]"
-                        >
-                          View services
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => customerPetRecords.length === 0 ? continueToBooking(serviceCatalog[0].id) : openTab("booking")}
                           className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61]"
                         >
-                          Book appointment
+                          Choose service &amp; book
                         </button>
                       </div>
                     </section>

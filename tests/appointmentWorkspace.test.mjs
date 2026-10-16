@@ -33,19 +33,30 @@ after(async () => {
 const { PortalPage } = await server.ssrLoadModule("/src/app/components/portal/PortalPage.jsx");
 const { AppointmentBooking } = await server.ssrLoadModule("/src/app/components/AppointmentBooking.jsx");
 
-function renderAppointment(status, filter = status === "Accepted" ? "Approved" : status) {
+function renderAppointment(status, filter = status === "Accepted" ? "Approved" : status, grooming = null, role = "staff") {
   globalThis.__appointmentTestApp = {
-    currentUser: { name: "Staff", role: "staff" },
+    currentUser: { name: "Staff", role },
     visibleNotifications: [],
     state: {
       users: [{ name: "Staff", role: "staff", status: "active" }],
-      appointments: [{ id: "test", petName: "Test pet", status, assignedStaff: "Staff" }],
+      appointments: [{ id: "test", petName: "Test pet", status, assignedStaff: "Staff", grooming }],
     },
   };
   return renderToString(createElement(MemoryRouter, {
     initialEntries: [`/portal/appointments?status=${filter}&appointment=test`],
   }, createElement(PortalPage)));
 }
+
+test("admin and staff see grooming choices before approving pending appointments", () => {
+  for (const role of ["admin", "staff"]) {
+    const html = renderAppointment("Pending", "Pending", {petType:"Cat",services:[{id:"ear-cleaning",name:"Ear Cleaning"},{id:"nail-clipping",name:"Nail Clipping"}]}, role);
+    assert.ok(html.includes("Requested grooming services"));
+    assert.ok(html.includes("Ear Cleaning, Nail Clipping"));
+    assert.ok(html.includes("Approve appointment"));
+    assert.ok(renderAppointment("Pending", "Pending", {petType:"Cat",services:[{id:"feline-full",name:"Full Grooming"}]}, role).includes("Full Grooming"));
+  }
+  assert.ok(renderAppointment("Pending", "Pending", {name:"Feline Basic Groom",price:500}).includes("Feline Basic Groom"));
+});
 
 test("appointment categories retain selected details and enforce disabled controls", () => {
   for (const status of ["Pending", "Accepted", "Confirmed", "Completed"]) {

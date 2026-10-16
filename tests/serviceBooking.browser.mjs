@@ -8,7 +8,7 @@ const {chromium}=await import(process.env.BOOKING_PLAYWRIGHT_MODULE
 const mocks={
  "context/AuthContext.jsx":`export const useAuth=()=>({currentUser:{uid:'customer',role:'customer',email:'customer@example.com',username:'Customer',status:'active'},isAuthenticated:true,isLoading:false});`,
  "context/AppContext.jsx":`const state={appointments:[],petRecords:[{id:'pet',customerId:'customer',petName:'Milo',petType:'Dog'},{id:'pet2',customerId:'customer',petName:'Luna',petType:'Cat'}]};
- export const useApp=()=>({state,visibleNotifications:[],availabilityReady:true,kaponPromoReady:true,kaponPromoAvailable:false,getPendingAppointmentCount:()=>0});`,
+ export const useApp=()=>({state,visibleNotifications:[],availabilityReady:true,kaponPromoReady:true,kaponPromoAvailable:false,getPendingAppointmentCount:()=>0,createAppointment:async payload=>{window.__lastBooking=payload;}});`,
  "context/ToastContext.jsx":"export const useToast=()=>({error(){},success(){}});",
  "services/customerAccount.js":"export async function changeCustomerPassword(){}",
  "PricelistImage.jsx":`import React from 'react';export function PricelistImage({category}){return React.createElement('div',{style:{height:200},'data-testid':'pricelist'},category+' pricelist');}`,
@@ -69,7 +69,41 @@ try{
    assert.equal(await pet.inputValue(),'pet');
    await page.waitForFunction(()=>{const top=document.querySelector('[data-testid="pricelist"]').getBoundingClientRect().top;return top>=0&&top<150;});
   }
+  const grooming=page.getByRole('group',{name:'Dog grooming',exact:true});
+  await grooming.waitFor();
+  assert.equal(await grooming.getByRole('checkbox').count(),14);
+  assert.ok(!(await grooming.textContent()).includes('PHP'));
+  await grooming.getByRole('checkbox',{name:'Full Groom',exact:true}).check();
+  assert.ok(await grooming.getByRole('checkbox',{name:'Nail Clipping',exact:true}).isDisabled());
+  assert.ok(await grooming.getByRole('checkbox',{name:'Basic',exact:true}).isDisabled());
+  await grooming.getByRole('checkbox',{name:'Full Groom',exact:true}).uncheck();
+  await grooming.getByRole('checkbox',{name:'Nail Clipping',exact:true}).check();
+  await grooming.getByRole('checkbox',{name:'Toothbrush',exact:true}).check();
+  assert.ok(await grooming.getByRole('checkbox',{name:'Ear Cleaning',exact:true}).isDisabled());
+  assert.ok(await grooming.getByRole('checkbox',{name:'Full Groom',exact:true}).isDisabled());
+  await grooming.getByRole('checkbox',{name:'Toothbrush',exact:true}).uncheck();
+  assert.ok(await grooming.getByRole('checkbox',{name:'Ear Cleaning',exact:true}).isEnabled());
+  await page.getByLabel('Select pet',{exact:true}).selectOption('pet2');
+  const cat=page.getByRole('group',{name:'Cat grooming',exact:true});
+  assert.equal(await cat.getByRole('checkbox').count(),12);
+  assert.equal(await cat.getByRole('checkbox').and(page.locator(':checked')).count(),0);
+  assert.equal(await cat.getByRole('checkbox',{name:'Puppy Cut',exact:true}).count(),0);
+  await cat.getByRole('checkbox',{name:'Full Grooming',exact:true}).check();
+  assert.ok(await cat.getByRole('checkbox',{name:'Ear Cleaning',exact:true}).isDisabled());
+  assert.ok(await cat.getByRole('checkbox',{name:'Basic Grooming',exact:true}).isDisabled());
+  await cat.getByRole('checkbox',{name:'Full Grooming',exact:true}).uncheck();
+  await cat.getByRole('checkbox',{name:'Ear Cleaning',exact:true}).check();
+  await cat.getByRole('checkbox',{name:'Nail Clipping',exact:true}).check();
+  assert.ok(await cat.getByRole('checkbox',{name:'Full Grooming',exact:true}).isDisabled());
+  await page.locator('button').filter({hasText:/^\d{1,2}$/}).and(page.locator('button:enabled')).first().click();
+  await page.locator('button').filter({hasText:/openings? left/}).first().click();
+  await page.getByRole('button',{name:'Confirm appointment booking',exact:true}).click();
+  await page.waitForFunction(()=>window.__lastBooking?.grooming?.name==='Ear Cleaning, Nail Clipping');
+  const booking=await page.evaluate(()=>window.__lastBooking);
+  assert.deepEqual(booking.grooming.serviceIds,['ear-cleaning','nail-clipping']);
+  assert.equal(booking.grooming.petType,'Cat');assert.equal(booking.servicePrice,'');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
  }
  assert.deepEqual(errors,[]);
- console.log('Passed: all five booking categories, pet changes, manual overrides, category switches, and repeated smooth scrolling on desktop and mobile.');
+ console.log('Passed: service preselection, scrolling, species-specific grooming options, two-selection limit, pet reset, and submitted grooming details on desktop and mobile.');
 }finally{await browser?.close();await server.close();}

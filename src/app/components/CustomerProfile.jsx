@@ -1324,9 +1324,9 @@ export function CustomerProfile() {
                             {service.name}
                           </h3>
                         </div>
-                        <span className="min-w-[8.5rem] shrink-0 whitespace-nowrap rounded-lg bg-[#F7F2E9] px-3.5 py-1 text-center text-xs font-semibold text-[#6A5D4A]">
+                        {service.id !== "pet-grooming" && <span className="min-w-[8.5rem] shrink-0 whitespace-nowrap rounded-lg bg-[#F7F2E9] px-3.5 py-1 text-center text-xs font-semibold text-[#6A5D4A]">
                           {service.priceLabel}
-                        </span>
+                        </span>}
                       </div>
                       <p className="mt-3 flex-1 text-sm leading-6 text-[#607277]">{service.description}</p>
                       <p className="mt-3 text-xs font-semibold text-[#2D6B73]">

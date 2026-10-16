@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { groomingDescription } from "../../../../shared/groomingServices.mjs";
 import { createPortal } from "react-dom";
 import { PricelistManager } from "./PricelistManager.jsx";
 import { KaponPromoManager } from "./KaponPromoManager.jsx";
@@ -598,6 +599,13 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
                 <CalendarDays size={16} />
                 <span>Service: {appointment.service || "Service not specified"}</span>
               </div>
+              {appointment.grooming && (
+                <div className="rounded-xl border border-[#BDD9D7] bg-[#F3FAFA] p-3 text-sm text-[#173E44]">
+                  <p className="font-semibold">Requested grooming services</p>
+                  <p className="mt-1">{groomingDescription(appointment.grooming) || "Grooming type not specified"}</p>
+                  <p className="mt-1 text-xs text-[#607277]">{appointment.grooming.petType || appointment.petType}{appointment.grooming.size ? ` · ${appointment.grooming.size}` : ""}</p>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <Clock3 size={16} />
                 <span>Booked: {formatDateTime(appointment.createdAt, "Booking timestamp unavailable")}</span>

@@ -122,8 +122,10 @@ async function saveAppointment(req, res) {
       const {buildClinicalSelections}=await import("../../../shared/clinicalServices.mjs");
       try {
         const selections=nextAppointment.clinicalSelections;
-        if(!Array.isArray(selections)||new Set(selections.map(item=>item?.category)).size!==selections.length)throw new Error("Choose one specific service per clinical category.");
-        serviceFields.clinicalSelections=buildClinicalSelections(nextAppointment.serviceIds,Object.fromEntries(selections.map(choice=>[choice?.category,choice?.serviceId])),pet.data());
+        if(!Array.isArray(selections))throw new Error("Choose one specific service per clinical category.");
+        const selectedOptions=selections.filter(item=>!(item?.category==="vaccination"&&item?.serviceId===REQUIRED_VACCINATION_FEE.id));
+        if(new Set(selectedOptions.map(item=>item?.category)).size!==selectedOptions.length)throw new Error("Choose one specific service per clinical category.");
+        serviceFields.clinicalSelections=buildClinicalSelections(nextAppointment.serviceIds,Object.fromEntries(selectedOptions.map(choice=>[choice?.category,choice?.serviceId])),pet.data());
         serviceFields.service=nextAppointment.serviceIds.map(id=>{
           if(id==="deworming")return dewormingDescription(serviceFields.deworming || nextAppointment.deworming);
           const choices=serviceFields.clinicalSelections.filter(choice=>choice.category===id);

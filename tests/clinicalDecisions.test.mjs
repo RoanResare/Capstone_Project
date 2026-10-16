@@ -9,6 +9,8 @@ test("clinical choices match the image and enforce one species-appropriate optio
  assert.equal(clinicalOptions("laboratory-testing",{petType:"Cat"}).length,3);
  assert.deepEqual(clinicalOptions("vaccination",{petType:"Cat"}).map(option=>option.id),["4-in-1","anti-rabies"]);
  assert.deepEqual(buildClinicalSelections(["vaccination"],{vaccination:"5-in-1"},{petType:"Dog"}).map(choice=>choice.name),["5 in 1 Vaccine","Doctor's Fee"]);
+ assert.equal(buildClinicalSelections(["consultation"],{consultation:"consultation"},{petType:"Dog"})[0].name,"Consultation");
+ assert.equal(buildClinicalSelections(["laboratory-testing"],{"laboratory-testing":"cbc-basic-chemistry"},{petType:"Dog"})[0].name,"CBC Basic Chemistry");
  for(const [choice,petType] of [["5-in-1","Cat"],["4-in-1","Dog"],["anti-rabies","Rabbit"]])assert.throws(()=>buildClinicalSelections(["vaccination"],{vaccination:choice},{petType}));
  assert.throws(()=>buildClinicalSelections(["consultation"],{}, {petType:"Cat"}));
 });
@@ -22,7 +24,7 @@ test("decision reasons contain only the approved wording and preserve trimmed Ot
  assert.throws(()=>validateAppointmentDecision({category:"D",reason}));
 });
 test("API validates clinical radios against saved pets and atomically saves decisions with customer notifications",async()=>{
- const initial={id:"appointment",status:"Pending",customerId:"customer",customerEmail:"customer@example.test",petName:"Milo",petRecordId:"pet",petRecordIds:["pet"],serviceId:"vaccination",serviceIds:["vaccination"]};
+ const initial={id:"appointment",status:"Pending",customerId:"customer",customerEmail:"customer@example.test",petName:"Milo",petRecordId:"pet",petRecordIds:["pet"],serviceId:"vaccination",serviceIds:["vaccination"],scheduleDate:"2026-10-17",scheduleTime:"14:00",slotId:"slot"};
  const records=new Map([["appointments/appointment",initial],["pets/pet",{customerId:"customer",petType:"Cat"}]]);
  const db={collection:collection=>({doc:id=>({key:collection+"/"+id}),where(){return this;},limit(){return {query:true};}}),async runTransaction(fn){
   const writes=[];
@@ -36,8 +38,12 @@ test("API validates clinical radios against saved pets and atomically saves deci
   const save=(changes,user={uid:"customer",role:"customer"})=>saveAppointment({params:{id:"appointment"},auth:{user},body:{...records.get("appointments/appointment"),...changes}},{json(){}});
   await assert.rejects(()=>save({clinicalSelections:[{category:"vaccination",serviceId:"5-in-1"}]}),error=>error.statusCode===400);
   await assert.rejects(()=>save({clinicalSelections:[{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"anti-rabies"}]}),error=>error.statusCode===400);
-  await save({clinicalSelections:[{category:"vaccination",serviceId:"4-in-1",name:"Forged"}]});
-  assert.equal(records.get("appointments/appointment").clinicalSelections[0].name,"4 in 1 Vaccine");
+  await save({clinicalSelections:[{category:"vaccination",serviceId:"4-in-1",name:"Forged"},{category:"vaccination",serviceId:"doctors-fee",name:"Forged fee"}]});
+  assert.deepEqual(records.get("appointments/appointment").clinicalSelections.map(choice=>choice.name),["4 in 1 Vaccine","Doctor's Fee"]);
+  await save({serviceId:"consultation",serviceIds:["consultation"],clinicalSelections:[{category:"consultation",serviceId:"consultation"}]});
+  assert.equal(records.get("appointments/appointment").clinicalSelections[0].name,"Consultation");
+  await save({serviceId:"laboratory-testing",serviceIds:["laboratory-testing"],clinicalSelections:[{category:"laboratory-testing",serviceId:"cbc-basic-chemistry"}]});
+  assert.equal(records.get("appointments/appointment").clinicalSelections[0].name,"CBC Basic Chemistry");
   for(const role of ["admin","staff"]){
    for(const status of ["Rejected"]){
     records.set("appointments/appointment",initial);

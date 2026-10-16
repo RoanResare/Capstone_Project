@@ -111,11 +111,11 @@ function buildCalendarDays(visibleMonth, availableSlotsByDate, selectedDate) {
   return days;
 }
 
-function createPetSelection() {
+function createPetSelection(serviceId = "") {
   return {
     id: `pet-choice-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     petRecordId: "",
-    serviceId: "",
+    serviceId,
     additionalServiceId: null,
     groomingServiceId: "",
   };
@@ -130,7 +130,7 @@ function mergeSlotsById(baseSlots = [], overrideSlots = []) {
   return Array.from(slotsById.values());
 }
 
-export function AppointmentBooking({ embedded = false, initialServiceId = "" }) {
+export function AppointmentBooking({ embedded = false, initialServiceId = "", serviceSelectionRequest = 0 }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -140,13 +140,24 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
-  const [petSelections, setPetSelections] = useState(() => [createPetSelection()]);
+  const [petSelections, setPetSelections] = useState(() => [createPetSelection(initialServiceId)]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [errors, setErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!initialServiceId) return;
+    setPetSelections((current) => current.map((selection, index) => index === 0
+      ? { ...selection, serviceId: initialServiceId, additionalServiceId: null, groomingServiceId: "" }
+      : selection));
+    setSelectedDate("");
+    setSelectedSlotId("");
+    setErrors({});
+    setFeedback({ type: "", message: "" });
+  }, [initialServiceId, serviceSelectionRequest]);
 
 
   const customerPetRecords = useMemo(
@@ -383,7 +394,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
       const message = "Appointment booking submitted successfully.";
       setFeedback({ type: "success", message });
       toast.success(message);
-      setPetSelections([createPetSelection()]);
+      setPetSelections([createPetSelection(initialServiceId)]);
       setSelectedDate("");
       setSelectedSlotId("");
     } catch (error) {

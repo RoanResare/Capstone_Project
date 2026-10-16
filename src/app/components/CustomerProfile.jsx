@@ -409,6 +409,7 @@ export function CustomerProfile() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [pendingProfilePayload, setPendingProfilePayload] = useState(null);
   const [preselectedServiceId, setPreselectedServiceId] = useState("");
+  const [bookingScrollRequest, setBookingScrollRequest] = useState(0);
   const bookingSectionRef = useRef(null);
   const petSectionRef = useRef(null);
   const [petTextErrors, setPetTextErrors] = useState({});
@@ -430,7 +431,7 @@ export function CustomerProfile() {
       bookingSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeTab, preselectedServiceId]);
+  }, [activeTab, preselectedServiceId, bookingScrollRequest]);
 
   useEffect(() => {
     const tabFromQuery = searchParams.get("tab") || "";
@@ -875,8 +876,11 @@ export function CustomerProfile() {
       setFeedback({ type: "info", message: "Create a pet profile first, then continue booking." });
       return;
     }
-    openTab("services");
+    // Keep the mounted form when choosing another card within this tab.
+    if (activeTab !== "services") openTab("services");
     setPreselectedServiceId(serviceId);
+    // A repeat click on the same card must also scroll back to the form.
+    setBookingScrollRequest((request) => request + 1);
   };
 
   const handleSignOut = async () => {
@@ -1349,7 +1353,7 @@ export function CustomerProfile() {
                 </div>
                 {preselectedServiceId && (
                   <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
-                    <AppointmentBooking embedded initialServiceId={preselectedServiceId} />
+                    <AppointmentBooking embedded initialServiceId={preselectedServiceId} serviceSelectionRequest={bookingScrollRequest} />
                   </div>
                 )}
               </section>

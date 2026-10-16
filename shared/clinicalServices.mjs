@@ -16,7 +16,7 @@ export const CLINICAL_SERVICES={
 export function clinicalOptions(category,pet){return (CLINICAL_SERVICES[category]||[]).filter(option=>option.species.includes(String(pet?.petType||"").trim().toLowerCase()));}
 export function buildClinicalSelections(serviceIds,choices,pet){
  return serviceIds.filter(id=>Object.hasOwn(CLINICAL_SERVICES,id)).map(category=>{
-  const selected=category==="vaccination"?clinicalOptions(category,pet).find(option=>option.id===choices?.[category]):null;
+  const selected=clinicalOptions(category,pet).find(option=>option.id===choices?.[category]);
   if(!selected)throw new Error(`Choose one ${category.replaceAll("-"," ")} service for the saved cat or dog profile.`);
   return [{category,serviceId:selected.id,name:selected.name},...(category==="vaccination"?[{category,serviceId:REQUIRED_VACCINATION_FEE.id,name:REQUIRED_VACCINATION_FEE.name,required:true}]:[])];
  }).flat();

@@ -1,6 +1,5 @@
 import {CLINICAL_SERVICES,clinicalOptions,buildClinicalSelections} from "../../../shared/clinicalServices.mjs";
 import {REQUIRED_VACCINATION_FEE,dewormingForPet,dewormingDescription} from "../../../shared/bookingAdditions.mjs";
-import {BookingAdditions} from "./BookingAdditions.jsx";
 import { PricelistImage } from "./PricelistImage.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -278,8 +277,10 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
 
     petSelections.forEach((selection, index) => {
       const ids = [selection.serviceId, selection.additionalServiceId].filter(Boolean);
-      try { buildClinicalSelections(ids, selection.clinicalChoices, customerPetRecords.find(record => record.id === selection.petRecordId)); }
-      catch(error) { nextErrors[`clinical-${selection.id}`] = error.message; }
+      if (selection.petRecordId) {
+        try { buildClinicalSelections(ids, selection.clinicalChoices, customerPetRecords.find(record => record.id === selection.petRecordId)); }
+        catch(error) { nextErrors[`clinical-${selection.id}`] = error.message; }
+      }
       if (ids.includes(KAPON_SERVICE_ID) && !kaponPromoAvailable) {
         nextErrors[`service-${selection.id}`] = KAPON_UNAVAILABLE_MESSAGE;
       }
@@ -749,7 +750,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                 <div key={selection.id} className="border-b border-white/10 pb-3 last:border-0 last:pb-0">
                   <p className="font-semibold">Pet #{index + 1}: {pet?.petName || "Choose pet"}</p>
                   <p className="mt-1 text-white/72">{[service?.name, additionalService?.name].filter(Boolean).join(" + ") || "Choose service"}</p>
-                  <BookingAdditions appointment={{serviceIds:[selection.serviceId,selection.additionalServiceId],deworming:dewormingForPet(pet),petSnapshot:pet}}/>
+                  {[selection.serviceId,selection.additionalServiceId].includes("vaccination")&&<p className="mt-1 text-white/90">{REQUIRED_VACCINATION_FEE.name} — required with vaccination</p>}
+                  {[selection.serviceId,selection.additionalServiceId].includes("deworming")&&<p className="mt-1 text-white/90">{dewormingDescription(dewormingForPet(pet))}</p>}
                   {[selection.serviceId,selection.additionalServiceId].filter(id=>Object.hasOwn(CLINICAL_SERVICES,id)).map(category=><p key={category} className="mt-1 text-white/90">{clinicalOptions(category,pet).find(option=>option.id===selection.clinicalChoices[category])?.name || "Choose a specific service"}</p>)}
                   {[selection.serviceId, selection.additionalServiceId].includes("pet-grooming") && (() => {
                     try {

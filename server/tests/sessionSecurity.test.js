@@ -587,7 +587,7 @@ test("booking transaction enforces ownership and capacity before writing", async
   const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
   const transaction = {
     get: async (ref) => ref.query
-      ? { docs: full ? Array.from({length:3}, (_, index) => ({ id: `other-${index}`, data: () => ({ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }) })) : [] }
+      ? { docs: full ? Array.from({length:3}, (_, index) => ({ id: `other-${index}`, data: () => ({ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", customerId: `customer-${index}`, petRecordId: `pet-${index}` }) })) : [] }
       : { exists: ref.name === "pets", data: () => ({ customerId: "user", petType: "Cat" }) },
     set: () => { writes++; },
   };

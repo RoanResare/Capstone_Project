@@ -480,21 +480,9 @@ function normalizeAppointment(appointment) {
 }
 
 function mergeDuplicateAppointments(appointments = []) {
-  const byBookingKey = new Map();
-
-  appointments.forEach((appointment) => {
-    const key = [
-      appointment.customerId || appointment.customerEmail || "",
-      appointment.slotId || `${appointment.scheduleDate}|${appointment.scheduleTime}`,
-      appointment.petRecordId || appointment.petName || "",
-    ].join("|");
-    const existing = byBookingKey.get(key);
-    if (!existing || getNewestTimestamp(appointment, ["updatedAt"]) >= getNewestTimestamp(existing, ["updatedAt"])) {
-      byBookingKey.set(key, appointment);
-    }
-  });
-
-  return Array.from(byBookingKey.values());
+  // Each appointment document is a distinct reservation. Only collapse repeated
+  // copies of the same document received through the local save and live snapshot.
+  return uniqueAppointmentsById(appointments);
 }
 
 function parseGeneratedIdDate(id) {

@@ -6,7 +6,7 @@ const { test } = require("node:test");
 const { ApiError } = require("../src/utils/ApiError");
 
 function fixture(initial = {}) {
-  const records = new Map(Object.entries(initial));
+  const records = new Map([["pets/pet", { customerId: "customer", petType: "Cat", weightKg: "6" }], ...Object.entries(initial)]);
   const writes = [];
   const makeQuery = (name, filters = [], maxResults = Infinity) => ({
     query: true,
@@ -62,7 +62,16 @@ function fixture(initial = {}) {
   return { records, writes,
     deletePet: (uid = "customer", role = "customer") => petController.deletePet({ params: { id: "pet" }, auth: { user: { uid, role } } }, { json() {} }),
     promo: (body, role = "admin", extra = {}) => promoController.saveKaponPromo({ body, auth: { user: { uid: "employee", name: "Staff", role, accountStatus: "active", ...extra } } }, { json() {} }),
-    book: (body, role = "customer") => bookingController.saveAppointment({ params: { id: "booking" }, auth: { user: { uid: "customer", role } }, body: { id: "booking", customerId: "customer", status: "Pending", serviceId: "low-cost-kapon", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body } }, { json() {} }),
+    book: (body, role = "customer") => {
+      const appointment = { id: "booking", customerId: "customer", status: "Pending", serviceId: "low-cost-kapon", scheduleDate: "2030-01-05", scheduleTime: "09:00", petRecordId: "pet", ...body };
+      appointment.serviceIds ||= [appointment.serviceId];
+      appointment.clinicalSelections ||= [
+        {category:"consultation",serviceId:"consultation"},
+        {category:"vaccination",serviceId:"anti-rabies"},
+        {category:"laboratory-testing",serviceId:"cbc-plain"},
+      ];
+      return bookingController.saveAppointment({ params: { id: "booking" }, auth: { user: { uid: "customer", role } }, body: appointment }, { json() {} });
+    },
   };
 }
 const config = { formLink: "https://forms.gle/example123", title: "Low-Cost Kapon", description: "Limited slots" };
@@ -90,6 +99,7 @@ test("deleting a pet removes its pending and approved reservations and frees the
   for (const status of ["Completed", "Rejected", "Cancelled"]) assert.equal(system.records.has(`appointments/${status}`), true);
   assert.equal(system.records.has("appointments/other"), true);
   await assert.rejects(system.book({ serviceId: "consultation", petRecordId: "pet", slotId: "block" }), /pet profile was deleted/);
+  system.records.set("pets/new-pet", { customerId: "customer", petType: "Cat" });
   await system.book({ serviceId: "consultation", petRecordId: "new-pet", slotId: "block" });
 });
 
@@ -112,6 +122,29 @@ test("approval retains the reservation for its date and time block", async () =>
   const next = fixture({ "appointments/reserved": { ...approved, id: "reserved" }, "availabilitySlots/block": slot });
   await assert.rejects(next.book({ serviceId: "consultation", slotId: "block" }), /already full/);
   await next.book({ serviceId: "consultation", slotId: "different-block", scheduleTime: "11:00" });
+});
+
+test("different bookings for the same customer, pet, and slot each reserve capacity", async () => {
+  const slot = { date: "2030-01-05", time: "09:00", capacity: 3, isOpen: true };
+  const existingBookings = Object.fromEntries([1, 2].map((index) => [`appointments/booking-${index}`, {
+    id: `booking-${index}`, customerId: "customer", petRecordId: "pet", status: "Pending",
+    slotId: "block", scheduleDate: slot.date, scheduleTime: slot.time,
+    createdAt: `2030-01-0${index}T00:00:00.000Z`,
+  }]));
+  const app = fixture({ "pets/pet": { customerId: "customer", petType: "Cat" }, "availabilitySlots/block": slot, ...existingBookings });
+  await app.book({ serviceId: "vaccination", serviceIds: ["vaccination"], petRecordId: "pet", slotId: "block",
+    scheduleDate: slot.date, scheduleTime: slot.time,
+    clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}] });
+  assert.equal(app.records.get("appointments/booking").status, "Pending");
+
+  const cancellationWins = fixture({ "pets/pet": { customerId: "customer", petType: "Cat" }, "availabilitySlots/block": slot,
+    "appointments/older-pending": { id:"older-pending", customerId:"customer", petRecordId:"pet", status:"Pending", slotId:"block", scheduleDate:slot.date, scheduleTime:slot.time, createdAt:"2030-01-01T00:00:00.000Z" },
+    "appointments/newer-cancelled": { id:"newer-cancelled", customerId:"customer", petRecordId:"pet", status:"Cancelled", slotId:"block", scheduleDate:slot.date, scheduleTime:slot.time, createdAt:"2030-01-02T00:00:00.000Z" },
+  });
+  await cancellationWins.book({ serviceId: "vaccination", serviceIds: ["vaccination"], petRecordId: "pet", slotId: "block",
+    scheduleDate: slot.date, scheduleTime: slot.time,
+    clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}] });
+  assert.equal(cancellationWins.records.get("appointments/booking").status, "Pending");
 });
 
 test("staff sessions start once on the clinic date and end with persisted duration", async () => {
@@ -239,7 +272,7 @@ test("fixed block capacity cannot be increased by a forged slot ID or submitted 
     delete occupied[`appointments/other-${capacity - 1}`];
     const available = fixture(occupied);
     await available.book(body);
-    assert.equal(available.writes.length, 1);
+    assert.equal(available.writes.length, 2);
   }
 });
 

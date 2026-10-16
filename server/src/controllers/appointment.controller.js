@@ -218,23 +218,28 @@ async function saveAppointment(req, res) {
       const bySlot = await transaction.get(
         db.collection("appointments")
           .where("slotId", "==", nextAppointment.slotId)
-          .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
           .limit(MAX_APPOINTMENT_LOOKUP_LIMIT),
       );
       const byDate = nextAppointment.scheduleDate && nextAppointment.scheduleTime
         ? await transaction.get(
           db.collection("appointments")
             .where("scheduleDate", "==", nextAppointment.scheduleDate)
-            .where("status", "in", ACTIVE_APPOINTMENT_STATUSES)
             .limit(MAX_APPOINTMENT_LOOKUP_LIMIT),
         )
         : { docs: [] };
       const candidates = new Map([...bySlot.docs, ...byDate.docs].map((entry) => [entry.id, entry]));
-      const activeCount = [...candidates.values()].filter((entry) =>
-        entry.id !== id && ACTIVE_APPOINTMENT_STATUSES.includes(entry.data().status) &&
-          (entry.data().slotId === nextAppointment.slotId || !nextAppointment.scheduleDate || !nextAppointment.scheduleTime ||
-            entry.data().scheduleTime?.slice(0, 5) === nextAppointment.scheduleTime.slice(0, 5)),
-      ).length;
+      const activeAppointments = new Map();
+      for (const entry of candidates.values()) {
+        if (entry.id === id) continue;
+        const appointment = entry.data();
+        const sameSlot = appointment.slotId === nextAppointment.slotId || Boolean(nextAppointment.scheduleDate && nextAppointment.scheduleTime &&
+          appointment.scheduleDate === nextAppointment.scheduleDate && appointment.scheduleTime?.slice(0, 5) === nextAppointment.scheduleTime.slice(0, 5));
+        if (!sameSlot) continue;
+        // Firestore document IDs are booking identities. Two bookings for the
+        // same customer, pet, and slot still reserve two openings.
+        activeAppointments.set(entry.id, appointment);
+      }
+      const activeCount = [...activeAppointments.values()].filter((appointment) => ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)).length;
       const { getBlockCapacity } = await import("../../../shared/bookingServices.mjs");
       const capacity = getBlockCapacity({ time: availability.time || nextAppointment.scheduleTime, capacity: availability.capacity });
       if (activeCount >= capacity) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
+import { BookingAdditions } from "../BookingAdditions.jsx";
 import { createPortal } from "react-dom";
 import { PricelistManager } from "./PricelistManager.jsx";
 import { KaponPromoManager } from "./KaponPromoManager.jsx";
@@ -598,6 +599,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
                 <PawPrint size={16} />
                 <span>{appointment.petName} | {appointment.petType || "Pet type not saved"}</span>
               </div>
+              <BookingAdditions appointment={appointment}/>
               {appointment.decision?.reason && <p className="text-sm text-[#607277]">Reason: {appointment.decision.reason}</p>}
 
               <div className="flex items-center gap-3">

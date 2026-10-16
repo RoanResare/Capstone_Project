@@ -7,8 +7,8 @@ const require=createRequire(import.meta.url);
 test("clinical choices match the image and enforce one species-appropriate option per category",()=>{
  assert.equal(clinicalOptions("consultation",{petType:"Dog"}).length,17);
  assert.equal(clinicalOptions("laboratory-testing",{petType:"Cat"}).length,3);
- assert.deepEqual(clinicalOptions("vaccination",{petType:"Cat"}).map(option=>option.id),["4-in-1","anti-rabies","doctors-fee"]);
- assert.equal(buildClinicalSelections(["vaccination"],{vaccination:"5-in-1"},{petType:"Dog"})[0].name,"5 in 1 Vaccine");
+ assert.deepEqual(clinicalOptions("vaccination",{petType:"Cat"}).map(option=>option.id),["4-in-1","anti-rabies"]);
+ assert.deepEqual(buildClinicalSelections(["vaccination"],{vaccination:"5-in-1"},{petType:"Dog"}).map(choice=>choice.name),["5 in 1 Vaccine","Doctor's Fee"]);
  for(const [choice,petType] of [["5-in-1","Cat"],["4-in-1","Dog"],["anti-rabies","Rabbit"]])assert.throws(()=>buildClinicalSelections(["vaccination"],{vaccination:choice},{petType}));
  assert.throws(()=>buildClinicalSelections(["consultation"],{}, {petType:"Cat"}));
 });

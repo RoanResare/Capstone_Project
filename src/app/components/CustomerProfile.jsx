@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
+import { BookingAdditions } from "./BookingAdditions.jsx";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
@@ -1431,6 +1432,7 @@ export function CustomerProfile() {
                         <StatusChip label={appointmentStatusLabel(selectedAppointment.status)} />
                       </div>
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
+                      <BookingAdditions appointment={selectedAppointment}/>
                       {(selectedAppointment.rejectionReason || selectedAppointment.cancellationReason) && (
                         <p className="mt-4 rounded-lg border border-[#F2CED6] bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">
                           {selectedAppointment.rejectionReason || selectedAppointment.cancellationReason}

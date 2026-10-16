@@ -103,6 +103,17 @@ async function saveAppointment(req, res) {
     const requiresBookingValidation = !existing.exists || changedServices || changedSchedule ||
       (["Cancelled", "Rejected", "Expired", "No Show", "Completed"].includes(previous.status) && ["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus));
     let serviceFields = {};
+    const {REQUIRED_VACCINATION_FEE,dewormingForPet,dewormingDescription}=await import("../../../shared/bookingAdditions.mjs");
+    serviceFields.vaccinationFee=nextAppointment.serviceIds?.includes("vaccination") || nextAppointment.serviceId==="vaccination" ? REQUIRED_VACCINATION_FEE : null;
+    if(nextAppointment.serviceIds?.includes("deworming")){
+      const dewormingChanged=JSON.stringify(nextAppointment.deworming)!==JSON.stringify(previous.deworming);
+      if(!existing.exists || changedServices || nextAppointment.petRecordId!==previous.petRecordId || dewormingChanged){
+        const pet=await transaction.get(db.collection("pets").doc(nextAppointment.petRecordId));
+        if(!pet.exists)throw new ApiError(400,"Choose a saved pet for deworming.");
+        if(user.role==="customer"&&pet.data().customerId!==user.uid)throw new ApiError(403,"Choose your own pet.");
+        serviceFields.deworming=dewormingForPet(pet.data());
+      }
+    }else if(changedServices){serviceFields.deworming=null;}
     const clinicalChanged=JSON.stringify(nextAppointment.clinicalSelections)!==JSON.stringify(previous.clinicalSelections);
     if ((!existing.exists || changedServices || clinicalChanged || nextAppointment.petRecordId!==previous.petRecordId) && nextAppointment.serviceIds?.some(id=>["consultation","vaccination","laboratory-testing"].includes(id))) {
       const pet=await transaction.get(db.collection("pets").doc(nextAppointment.petRecordId));
@@ -114,9 +125,10 @@ async function saveAppointment(req, res) {
         if(!Array.isArray(selections)||new Set(selections.map(item=>item?.category)).size!==selections.length)throw new Error("Choose one specific service per clinical category.");
         serviceFields.clinicalSelections=buildClinicalSelections(nextAppointment.serviceIds,Object.fromEntries(selections.map(choice=>[choice?.category,choice?.serviceId])),pet.data());
         serviceFields.service=nextAppointment.serviceIds.map(id=>{
-          const choice=serviceFields.clinicalSelections.find(choice=>choice.category===id);
+          if(id==="deworming")return dewormingDescription(serviceFields.deworming || nextAppointment.deworming);
+          const choices=serviceFields.clinicalSelections.filter(choice=>choice.category===id);
           const name={vaccination:"Vaccination",consultation:"Consultation","laboratory-testing":"Laboratory Testing",deworming:"Deworming","pet-grooming":"Pet Grooming","low-cost-kapon":"Low Cost Kapon"}[id]||id;
-          return choice?`${name}: ${choice.name}`:name;
+          return choices.length?`${name}: ${choices.map(choice=>choice.name).join(" + ")}`:name;
         }).join(" + ");
         serviceFields.servicePrice="";
       } catch(error){throw new ApiError(400,error.message);}

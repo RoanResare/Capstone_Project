@@ -2460,7 +2460,7 @@ export function AppProvider({ children }) {
       const sessionAction = nextUpdates.sessionAction;
       delete nextUpdates.sessionAction;
       if (typeof savedAppointment === "object") {
-        for (const field of ["decision", "rejectionReason", "cancellationReason", "clinicalSelections", "service", "servicePrice", "grooming", "updatedAt", "sessionStartedAt", "sessionStartedBy", "sessionEndedAt", "sessionEndedBy", "sessionDurationSeconds"]) {
+        for (const field of ["vaccinationFee", "deworming", "decision", "rejectionReason", "cancellationReason", "clinicalSelections", "service", "servicePrice", "grooming", "updatedAt", "sessionStartedAt", "sessionStartedBy", "sessionEndedAt", "sessionEndedBy", "sessionDurationSeconds"]) {
           if (savedAppointment[field] !== undefined) nextUpdates[field] = savedAppointment[field];
         }
         if (sessionAction === "end") nextUpdates.status = savedAppointment.status;

@@ -49,20 +49,11 @@ test("database failure is reported instead of returning empty success",async()=>
  await assert.rejects(()=>loadPricelists({runTransaction:async()=>{throw Error("database offline");}}),/database offline/);
 });
 
-test("list and save controllers persist records, reject conflicts, and clean up failed uploads",async()=>{
+test("Firestore-only saves persist data URLs, reject conflicts and oversized payloads, and preserve failed updates",async()=>{
  const {db,records}=memoryDatabase();
- const uploaded=new Map(),deleted=[];
- let uploadError=null;
- const bucket={name:"test-bucket",file:path=>({
-  async save(buffer){if(uploadError)throw uploadError;uploaded.set(path,buffer);},
-  async delete(){deleted.push(path);uploaded.delete(path);}
- })};
  const firebasePath=require.resolve("../server/src/config/firebaseAdmin.js");
- const serverRequire=createRequire(new URL("../server/src/controllers/pricelist.controller.js",import.meta.url));
- const storagePath=serverRequire.resolve("firebase-admin/storage");
- const originalFirebase=require.cache[firebasePath],originalStorage=require.cache[storagePath];
+ const originalFirebase=require.cache[firebasePath];
  require.cache[firebasePath]={id:firebasePath,filename:firebasePath,loaded:true,exports:{db}};
- require.cache[storagePath]={id:storagePath,filename:storagePath,loaded:true,exports:{getStorage:()=>({bucket:()=>bucket})}};
  const controllerPath=require.resolve("../server/src/controllers/pricelist.controller.js");
  delete require.cache[controllerPath];
  try{
@@ -75,35 +66,28 @@ test("list and save controllers persist records, reject conflicts, and clean up 
   const req={params:{category:"vaccination"},body:{imageDataUrl,expectedRevision:0},auth:{user:{uid:"admin"}}};
   await savePricelist(req,res);
   assert.equal(response.pricelist.revision,1);
-  assert.match(records.get("vaccination").imageUrl,/test-bucket/);
+  assert.equal(records.get("vaccination").imageUrl,imageDataUrl);
+  assert.equal(records.get("vaccination").objectPath, "");
   assert.equal(records.get("deworming").imageUrl,"");
   const saved=records.get("vaccination");
   await assert.rejects(()=>savePricelist(req,res),/changed/);
   assert.deepEqual(records.get("vaccination"),saved);
-  assert.equal(deleted.length,1);
-  assert.equal(uploaded.size,1);
-  for(const [code,message] of [[404,/bucket was not found/],[403,/access was denied/],[500,/could not be uploaded/]]){
-   uploadError=Object.assign(new Error("Storage failure"),{code});
-   await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl,expectedRevision:1}},res),error=>error.statusCode===503&&message.test(error.message));
-   assert.deepEqual(records.get("vaccination"),saved);
-   assert.equal(uploaded.size,1);
-  }
-  uploadError=null;
+  const {MAX_PRICELIST_DATA_URL_BYTES}=await import("../shared/pricelists.mjs");
+  await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl:"a".repeat(MAX_PRICELIST_DATA_URL_BYTES+1),expectedRevision:1}},res),error=>error.statusCode===413);
+  assert.deepEqual(records.get("vaccination"),saved);
   const transaction=db.runTransaction;
   db.runTransaction=async()=>{throw new Error("Database unavailable");};
   await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl,expectedRevision:1}},res),error=>error.statusCode===503&&/could not be saved/.test(error.message));
   db.runTransaction=transaction;
   assert.deepEqual(records.get("vaccination"),saved);
-  assert.equal(uploaded.size,1);
   await savePricelist({...req,body:{imageDataUrl,expectedRevision:1}},res);
   assert.equal(records.get("vaccination").revision,2);
-  assert.equal(uploaded.size,1);
-  assert.ok(deleted.includes(saved.objectPath));
+  await listPricelists({},res);
+  assert.equal(response.pricelists.vaccination.imageUrl,imageDataUrl);
   await assert.rejects(()=>savePricelist({...req,params:{category:"unknown"}},res),/Unknown category/);
   await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl:"invalid",expectedRevision:1}},res),/valid JPG/);
  }finally{
   delete require.cache[controllerPath];
   if(originalFirebase)require.cache[firebasePath]=originalFirebase;else delete require.cache[firebasePath];
-  if(originalStorage)require.cache[storagePath]=originalStorage;else delete require.cache[storagePath];
  }
 });

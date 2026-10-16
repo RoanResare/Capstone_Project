@@ -4,6 +4,7 @@ import {ShieldCheck,Syringe,Stethoscope,FlaskConical,Scissors,UploadCloud,CheckC
 import {useAuth} from "../../context/AuthContext.jsx";
 import {usePricelists,PricelistPreview} from "../PricelistImage.jsx";
 import {savePricelist} from "../../services/pricelists.js";
+import {compressPricelist} from "../../services/pricelistCompression.mjs";
 import {PRICELIST_CATEGORIES,validatePricelistFile} from "../../../../shared/pricelists.mjs";
 
 const icons=[ShieldCheck,Syringe,Stethoscope,FlaskConical,Scissors];
@@ -18,30 +19,26 @@ export function PricelistManager(){
  const {accessToken}=useAuth(),{images,error:loadError,ready,retry,updateImage}=usePricelists();
  const [category,setCategory]=useState(null),[pending,setPending]=useState(null),[preview,setPreview]=useState(""),[error,setError]=useState(""),[modal,setModal]=useState(""),[saving,setSaving]=useState(false);
  const lock=useRef(false),selection=useRef(0);
- const [dragging,setDragging]=useState(false);
+ const [dragging,setDragging]=useState(false),[processing,setProcessing]=useState(false);
  useEffect(()=>()=>{selection.current++;},[]);
- useEffect(()=>{if(!pending){setPreview("");return;}const url=URL.createObjectURL(pending);setPreview(url);return ()=>URL.revokeObjectURL(url);},[pending]);
  async function choose(file){
   const version=++selection.current;
-  setError("");
+  setError("");setPending(null);setPreview("");setProcessing(true);
   try{
-   validatePricelistFile(file);
-   const url=URL.createObjectURL(file);
-   try{await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>image.naturalWidth&&image.naturalHeight?resolve():reject(new Error("The image is empty."));image.onerror=()=>reject(new Error("This image could not be opened. Choose another file."));image.src=url;});}
-   finally{URL.revokeObjectURL(url);}
-   if(version===selection.current)setPending(file);
-  }catch(error){if(version===selection.current){setPending(null);setError(error.message);}}
+   const dataUrl=await compressPricelist(file);
+   if(version===selection.current){setPending(file);setPreview(dataUrl);}
+  }catch(error){if(version===selection.current)setError(error.message);}
+  finally{if(version===selection.current)setProcessing(false);}
  }
- function leave(){selection.current++;setCategory(null);setPending(null);setError("");}
+ function leave(){selection.current++;setCategory(null);setPending(null);setPreview("");setProcessing(false);setError("");}
  async function confirm(){
   if(lock.current)return;
   lock.current=true;setSaving(true);setError("");
   try{
    validatePricelistFile(pending);
-   const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error("Unable to read image."));reader.readAsDataURL(pending);});
-   const saved=await savePricelist(accessToken,category.id,dataUrl,images[category.id]?.revision||0);
+   const saved=await savePricelist(accessToken,category.id,preview,images[category.id]?.revision||0);
    updateImage(category.id,saved);
-   setPending(null);setModal("success");
+   setPending(null);setPreview("");setModal("success");
   }catch(error){setError(error.message);setModal("");}
   finally{lock.current=false;setSaving(false);}
  }
@@ -63,9 +60,10 @@ export function PricelistManager(){
  <span>or <span className="font-semibold underline underline-offset-4">browse files</span></span>
  <span className="text-xs text-[#607277]">JPG, PNG or WebP · Maximum 5 MB</span>
  {pending&&<span role="status" className="mt-2 flex max-w-full items-center gap-2 rounded-lg bg-white px-3 py-2"><CheckCircle2 aria-hidden="true" size={16} className="shrink-0"/><span className="min-w-0 break-all">{pending.name} · {(pending.size/1024/1024).toFixed(2)} MB</span></span>}</label>
- {preview&&<div className="mt-4"><p className="mb-2 text-sm">Pending preview: visible to customers after saving</p><PricelistPreview imageUrl={preview} name={category.name}/></div>}</div></div>
+ {processing&&<p role="status" className="mt-3 text-sm text-[#607277]">Optimizing image for saving...</p>}
+ {preview&&<div className="mt-4"><p className="mb-2 text-sm">Optimized preview: check that all prices are readable before saving</p><PricelistPreview imageUrl={preview} name={category.name}/></div>}</div></div>
  {error&&<p role="alert" className="mt-4 text-[#B23949]">{error}</p>}
- <div className="mt-5 flex justify-end gap-3"><button disabled={saving} onClick={leave} className="rounded-xl border border-[#BDD9D7] px-5 py-3">Cancel</button><button disabled={!pending||saving||!ready||!!loadError} onClick={()=>setModal("confirm")} className={button}>Save Changes</button></div></>}
+ <div className="mt-5 flex justify-end gap-3"><button disabled={saving} onClick={leave} className="rounded-xl border border-[#BDD9D7] px-5 py-3">Cancel</button><button disabled={!pending||processing||saving||!ready||!!loadError} onClick={()=>setModal("confirm")} className={button}>Save Changes</button></div></>}
  {modal==="confirm"&&<Modal title="Confirm Changes" busy={saving} onClose={()=>setModal("")}><p className="my-5 text-sm leading-6">Are you sure you want to save the updated pricelist image for {category.name}? The new image will replace the currently displayed pricelist for this category and will be visible to customers after saving.</p><div className="flex justify-end gap-3"><button disabled={saving} onClick={()=>setModal("")} className="px-4 py-3">Cancel</button><button disabled={saving} onClick={confirm} className={button}>{saving?"Saving...":"Confirm and Save"}</button></div></Modal>}
  {modal==="success"&&<Modal title="Changes Saved!" onClose={()=>setModal("")}><p className="my-5">The service image and pricelist have been successfully updated.</p><button autoFocus onClick={()=>setModal("")} className={button}>OK</button></Modal>}
  </section>;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateServiceIds, validateAppointmentServices, validateSinglePet, getEstimatedDuration, appointmentsOverlap, canPairServices, getDefaultBlockCapacity, getBlockCapacity, matchesAppointmentBlock } from "../shared/bookingServices.mjs";
+import { validateServiceIds, validateAppointmentServices, validateSinglePet, getEstimatedDuration, appointmentsOverlap, canPairServices, getDefaultBlockCapacity, getBlockCapacity, matchesAppointmentBlock, getActiveAppointmentCountForSlot } from "../shared/bookingServices.mjs";
 import { serviceCatalog } from "../src/app/data/systemData.js";
 
 test("different service pairs respect the excluded combination and two-hour limit in either order", () => {
@@ -36,6 +36,13 @@ test("legacy slot IDs and matching dates and times identify the same block", () 
   assert.ok(matchesAppointmentBlock({ slotId: "slot" }, slot));
   assert.ok(matchesAppointmentBlock({ slotId: "alias", scheduleDate: slot.date, scheduleTime: "09:00" }, slot));
   assert.equal(matchesAppointmentBlock({ slotId: "other", scheduleDate: slot.date, scheduleTime: "11:00" }, slot), false);
+});
+
+test("Pending appointments occupy a slot and cancelled appointments release it", () => {
+  const slot = { id: "slot", date: "2030-01-05", time: "09:00" };
+  const appointment = { slotId: "slot", status: "Pending" };
+  assert.equal(getActiveAppointmentCountForSlot([appointment], slot), 1);
+  assert.equal(getActiveAppointmentCountForSlot([{...appointment,status:"Cancelled"}], slot), 0);
 });
 
 test("each grouped appointment has exactly one pet", () => {

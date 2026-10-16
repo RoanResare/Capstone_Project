@@ -846,7 +846,7 @@ export function CustomerProfile() {
     }
   };
 
-  const cancelAppointment = (appointmentId) => {
+  const cancelAppointment = async (appointmentId) => {
     const appointment = customerAppointments.find((item) => item.id === appointmentId);
     if (!canCancelAppointment(appointment)) {
       const message = "Same-day appointments can only be cancelled before the scheduled time.";
@@ -860,10 +860,16 @@ export function CustomerProfile() {
       return;
     }
 
-    updateAppointment(appointmentId, { status: "Cancelled" }, profileForm.fullName);
-    const message = "Appointment cancelled. The clinic queue has been updated.";
-    setFeedback({ type: "success", message });
-    toast.success(message);
+    try {
+      await updateAppointment(appointmentId, { status: "Cancelled" }, profileForm.fullName);
+      const message = "Appointment cancelled. The clinic queue has been updated.";
+      setFeedback({ type: "success", message });
+      toast.success(message);
+    } catch (error) {
+      const message = error?.message || "Unable to cancel this appointment. Please try again.";
+      setFeedback({ type: "error", message });
+      toast.error(message);
+    }
   };
 
   const continueToBooking = (serviceId) => {

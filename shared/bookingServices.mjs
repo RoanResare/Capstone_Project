@@ -59,6 +59,11 @@ export function matchesAppointmentBlock(appointment, slot) {
     appointment.scheduleTime?.slice(0, 5) === slot.time.slice(0, 5));
 }
 
+export function getActiveAppointmentCountForSlot(appointments = [], slot) {
+  return appointments.filter((appointment) => matchesAppointmentBlock(appointment, slot) &&
+    ["Pending", "Confirmed", "Accepted", "Approved"].includes(appointment.status)).length;
+}
+
 export function validateSinglePet(appointment) {
   const petIds = [appointment.petRecordId,
     ...(Array.isArray(appointment.petRecordIds) ? appointment.petRecordIds : []),

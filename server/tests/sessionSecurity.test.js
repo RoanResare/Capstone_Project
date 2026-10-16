@@ -587,19 +587,19 @@ test("booking transaction enforces ownership and capacity before writing", async
   const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
   const transaction = {
     get: async (ref) => ref.query
-      ? { docs: full ? [{ data: () => ({ status: "Pending" }) }] : [] }
-      : { exists: false },
+      ? { docs: full ? Array.from({length:3}, (_, index) => ({ id: `other-${index}`, data: () => ({ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }) })) : [] }
+      : { exists: ref.name === "pets", data: () => ({ customerId: "user", petType: "Cat" }) },
     set: () => { writes++; },
   };
   const controller = loadService("../controllers/appointment.controller.js", {
     "../config/firebaseAdmin": { db: {
-      collection: () => ({ doc: () => ({}), where: () => makeQuery() }),
+      collection: (name) => ({ doc: (id) => ({name,id}), where: () => makeQuery() }),
       runTransaction: async (action) => action(transaction),
     } },
   });
   const req = {
     auth: { user: { uid: "user", role: "customer" } }, params: { id: "booking" },
-    body: { id: "booking", customerId: "other", status: "Pending", slotId: "slot", slotCapacity: 1 },
+    body: { id: "booking", customerId: "other", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", slotCapacity: 1 },
   };
   await assert.rejects(controller.saveAppointment(req, { json() {} }), { statusCode: 403 });
   assert.equal(writes, 0);
@@ -609,26 +609,29 @@ test("booking transaction enforces ownership and capacity before writing", async
   assert.equal(writes, 0);
   full = false;
   await controller.saveAppointment(req, { json() {} });
-  assert.equal(writes, 1);
+  assert.equal(writes, 2);
 });
 
 function appointmentFixture({ existing, slot, active = [] } = {}) {
   const writes = [];
+  const existingAppointment = existing ? { serviceId: "vaccination", serviceIds: ["vaccination"], petRecordId: "pet",
+    slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00",
+    clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], ...existing } : undefined;
   const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
   const controller = loadService("../controllers/appointment.controller.js", {
     "../config/firebaseAdmin": { db: {
       collection: (name) => ({ doc: (id) => ({ name, id }), where: () => makeQuery() }),
       runTransaction: async (action) => action({
         get: async (ref) => ref.query ? { docs: active.map((data, index) => ({ id: `other-${index}`, data: () => data })) }
-          : { exists: Boolean(ref.name === "appointments" ? existing : slot),
-            data: () => ref.name === "appointments" ? existing : slot },
+          : { exists: Boolean(ref.name === "appointments" ? existingAppointment : ref.name === "pets" ? true : ref.name === "deletedPets" ? false : slot),
+            data: () => ref.name === "appointments" ? existingAppointment : ref.name === "pets" ? {customerId:"user",petType:"Cat"} : slot },
         set: (ref, data) => writes.push(data),
       }),
     } },
   });
   return { writes, save: (body, role = "customer") => controller.saveAppointment({
     params: { id: "booking" }, auth: { user: { uid: "user", role } },
-    body: { id: "booking", customerId: "user", status: "Pending", ...body },
+    body: { id: "booking", customerId: "user", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId:"slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body },
   }, { json() {} }) };
 }
 
@@ -658,11 +661,11 @@ test("disabled slots reject new bookings and rescheduling; reopened slots accept
   }
   const reopened = appointmentFixture({ slot: { isOpen: true, disabled: false, status: "Open", capacity: 3 } });
   await reopened.save({ slotId: "reopened" });
-  assert.equal(reopened.writes.length, 1);
+  assert.equal(reopened.writes.length, 2);
 });
 
 test("stored slot capacity overrides customer input and customers cannot approve or reopen appointments", async () => {
-  const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending" }] });
+  const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
   await assert.rejects(full.save({ slotId: "slot", slotCapacity: 99 }), { statusCode: 409 });
   const customer = appointmentFixture({ existing: { customerId: "user", status: "Pending" } });
   await assert.rejects(customer.save({ status: "Confirmed", assignedStaff: "Staff" }), { statusCode: 403 });
@@ -670,5 +673,20 @@ test("stored slot capacity overrides customer input and customers cannot approve
   const confirmed = appointmentFixture({ existing: { customerId: "user", status: "Confirmed", assignedStaff: "Staff" } });
   await assert.rejects(confirmed.save({ status: "Pending" }), { statusCode: 403 });
   await confirmed.save({ status: "Cancelled" });
-  assert.equal(confirmed.writes.length, 1);
+  assert.equal(confirmed.writes.length, 2);
+});
+
+test("Pending appointments reserve slot capacity and cancellations free the slot", async () => {
+  const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
+  await assert.rejects(full.save({ slotId: "slot" }), { statusCode: 409 });
+  assert.equal(full.writes.length, 0);
+
+  const released = appointmentFixture({ slot: { isOpen: true, capacity: 1 } });
+  await released.save({ slotId: "slot" });
+  assert.equal(released.writes.length, 2);
+  assert.equal(released.writes[0].reservationVersion, 1);
+
+  const reactivated = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, existing: { status: "Cancelled" }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
+  await assert.rejects(reactivated.save({ status: "Pending" }, "staff"), { statusCode: 409 });
+  assert.equal(reactivated.writes.length, 0);
 });

@@ -99,6 +99,8 @@ async function saveAppointment(req, res) {
     const changedSchedule = ["slotId", "scheduleDate", "scheduleTime", "schedule"].some(
       (field) => nextAppointment[field] !== previous[field],
     );
+    const wasActive = ACTIVE_APPOINTMENT_STATUSES.includes(previous.status);
+    const willBeActive = ACTIVE_APPOINTMENT_STATUSES.includes(nextStatus);
     const changedServices = JSON.stringify(nextAppointment.serviceIds) !== JSON.stringify(previous.serviceIds) || nextAppointment.serviceId !== previous.serviceId;
     const requiresBookingValidation = !existing.exists || changedServices || changedSchedule ||
       (["Cancelled", "Rejected", "Expired", "No Show", "Completed"].includes(previous.status) && ["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus));
@@ -202,7 +204,7 @@ async function saveAppointment(req, res) {
         throw new ApiError(409, KAPON_UNAVAILABLE_MESSAGE, { code: "KAPON_PROMO_INACTIVE" });
       }
     }
-    if (nextAppointment.slotId && (!existing.exists || changedSchedule)) {
+    if (nextAppointment.slotId && willBeActive && (!existing.exists || !wasActive || changedSchedule)) {
       const slot = await transaction.get(db.collection("availabilitySlots").doc(nextAppointment.slotId));
       const availability = slot.data?.() || {};
       if (nextAppointment.serviceIds && ((availability.date && availability.date !== nextAppointment.scheduleDate) ||
@@ -238,6 +240,23 @@ async function saveAppointment(req, res) {
       if (activeCount >= capacity) {
         throw new ApiError(409, "That time slot is already full. Please choose another slot.", { code: "SLOT_FULL" });
       }
+    }
+    // Touch each affected slot document in the same transaction. This serializes
+    // concurrent reservations and makes Pending -> inactive releases visible to
+    // every portal through the existing availability subscription.
+    const changedReservationSlotIds = new Set();
+    if (willBeActive && (!wasActive || changedSchedule) && nextAppointment.slotId) changedReservationSlotIds.add(nextAppointment.slotId);
+    if (wasActive && (!willBeActive || changedSchedule) && previous.slotId) changedReservationSlotIds.add(previous.slotId);
+    const reservationSlots = [];
+    for (const slotId of changedReservationSlotIds) {
+      const slotRef = db.collection("availabilitySlots").doc(slotId);
+      reservationSlots.push({ ref: slotRef, snapshot: await transaction.get(slotRef) });
+    }
+    for (const {ref, snapshot} of reservationSlots) {
+      transaction.set(ref, {
+        reservationVersion: (Number(snapshot.data?.()?.reservationVersion) || 0) + 1,
+        reservationUpdatedAt: new Date().toISOString(),
+      }, {merge:true});
     }
     const { sessionAction, ...payload } = appointment;
     savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields, updatedAt: new Date().toISOString() };

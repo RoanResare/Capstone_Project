@@ -19,7 +19,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { groomingOptionsForPet, buildGroomingSelection, MAX_GROOMING_SELECTIONS } from "../../../shared/groomingServices.mjs";
-import { validateAppointmentServices, getEstimatedDuration, canPairServices, matchesAppointmentBlock, getBlockCapacity, APPOINTMENT_BLOCK_MINUTES } from "../../../shared/bookingServices.mjs";
+import { validateAppointmentServices, getEstimatedDuration, canPairServices, getActiveAppointmentCountForSlot, getBlockCapacity, APPOINTMENT_BLOCK_MINUTES } from "../../../shared/bookingServices.mjs";
 import {
   buildSeedAvailabilitySlots,
   isServiceAvailableOnDate,
@@ -190,11 +190,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
     () =>
       availabilitySlots
         .map((slot) => {
-          const bookedCount = appointments.filter(
-            (appointment) =>
-              matchesAppointmentBlock(appointment, slot) &&
-              ["Pending", "Confirmed", "Accepted", "Approved"].includes(appointment.status),
-          ).length;
+          const bookedCount = getActiveAppointmentCountForSlot(appointments, slot);
           return { ...slot, bookedCount, remaining: Math.max(getBlockCapacity(slot) - bookedCount, 0) };
         })
         .filter(isBookableFutureSlot)
@@ -210,11 +206,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
       .filter(isBookableFutureSlot)
       .filter((slot) => isServiceAvailableOnDate(appointmentServiceId, slot.date))
       .forEach((slot) => {
-        const bookedCount = appointments.filter(
-          (appointment) =>
-            matchesAppointmentBlock(appointment, slot) &&
-            ["Pending", "Confirmed", "Accepted", "Approved"].includes(appointment.status),
-        ).length;
+        const bookedCount = getActiveAppointmentCountForSlot(appointments, slot);
         const remaining = Math.max(getBlockCapacity(slot) - bookedCount, 0);
         const entry = bookedByDate.get(slot.date) || { total: 0, full: 0 };
         entry.total += 1;

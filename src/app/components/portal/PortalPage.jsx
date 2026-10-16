@@ -23,6 +23,7 @@ import {
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
+import { getActiveAppointmentCountForSlot, getBlockCapacity } from "../../../../shared/bookingServices.mjs";
 import { groupPendingAppointments, appointmentDateKey } from "../../utils/appointmentPresentation.js";
 import {
   canApproveAppointment,
@@ -1126,6 +1127,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
         .sort((left, right) => String(left.time).localeCompare(String(right.time))),
     [selectedDate, slotsById],
   );
+  const appointments = state.appointments || [];
   const closedSlots = Array.from(slotsById.values()).filter((slot) => slot.isOpen === false);
 
   const toggleSlot = async (slot, isOpen) => {
@@ -1179,6 +1181,10 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
             <div className="grid gap-3 md:grid-cols-2">
               {selectedDateSlots.map((slot) => {
                 const isOpen = slot.isOpen !== false;
+                const bookedCount = getActiveAppointmentCountForSlot(appointments, slot);
+                const capacity = getBlockCapacity(slot);
+                const remaining = Math.max(capacity - bookedCount, 0);
+                const capacityLabel = !isOpen ? "slot closed" : remaining ? `${remaining} spots open` : "fully booked";
                 return (
                   <div
                     key={slot.id}
@@ -1187,7 +1193,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-semibold text-[#20343B]">{formatTimeLabel(slot.time)}</p>
-                        <p className="mt-1 text-sm text-[#607277]">Capacity {slot.capacity || 1}</p>
+                        <p className="mt-1 text-sm text-[#607277]">{bookedCount}/{capacity} appointments booked · {capacityLabel}</p>
                       </div>
                       <StatusBadge status={isOpen ? "Open" : "Cancelled"} />
                     </div>

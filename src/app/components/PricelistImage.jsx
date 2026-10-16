@@ -1,10 +1,17 @@
 import {useEffect,useState} from "react";
+import {useAuth} from "../context/AuthContext.jsx";
 import {subscribePricelists} from "../services/pricelists.js";
 import {PRICELIST_CATEGORIES} from "../../../shared/pricelists.mjs";
 export function usePricelists(){
+ const {accessToken}=useAuth();
  const [images,setImages]=useState({}),[error,setError]=useState(""),[ready,setReady]=useState(false);
- useEffect(()=>subscribePricelists(data=>{setImages(data);setReady(true);setError("");},error=>{setError(error.message);setReady(true);}),[]);
- return {images,error,ready};
+ const [attempt,setAttempt]=useState(0);
+ useEffect(()=>{
+  setImages({});setError("");setReady(false);
+  if(!accessToken)return;
+  return subscribePricelists(accessToken,data=>{setImages(data);setReady(true);setError("");},error=>{setError(error.message);setReady(true);});
+ },[accessToken,attempt]);
+ return {images,error,ready,retry:()=>setAttempt(value=>value+1),updateImage:(category,image)=>setImages(current=>({...current,[category]:image}))};
 }
 export function PricelistPreview({imageUrl,name}){
  const [failedUrl,setFailedUrl]=useState("");

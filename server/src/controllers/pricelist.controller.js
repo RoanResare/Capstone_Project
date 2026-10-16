@@ -3,7 +3,13 @@ const {getStorage}=require("firebase-admin/storage");
 const {db}=require("../config/firebaseAdmin");
 const {ApiError}=require("../utils/ApiError");
 const {validateImage}=require("../utils/pricelistImage");
+async function listPricelists(req,res) {
+ res.set("Cache-Control", "no-store");
+ const {loadPricelists}=require("../services/pricelists.service");
+ res.json({pricelists:await loadPricelists(db)});
+}
 async function savePricelist(req,res) {
+ if(!db) throw new ApiError(503,"Pricelist storage is not configured. Please contact the administrator.");
  const {PRICELIST_CATEGORIES}=await import("../../../shared/pricelists.mjs");
  if(!PRICELIST_CATEGORIES.some(c=>c.id===req.params.category)) throw new ApiError(400,"Unknown category.");
  const {buffer,contentType}=validateImage(req.body?.imageDataUrl);
@@ -26,4 +32,4 @@ async function savePricelist(req,res) {
  if(previousPath?.startsWith("pricelists/"+req.params.category+"/")) bucket.file(previousPath).delete().catch(()=>{});
  res.json({pricelist:next});
 }
-module.exports={savePricelist};
+module.exports={savePricelist,listPricelists};

@@ -1,4 +1,10 @@
 # Pricelist management
+The replacement picker supports clicking, keyboard selection, and dropping one image. It shows an upload icon, drag feedback, and the selected filename and size; all selections use the same image validation and preview flow.
+
+Storage failures now return actionable service-unavailable messages for missing buckets and denied permissions. Database publication failures retain the previous record and attempt to delete the new upload. Regression coverage includes upload failures, failed publication cleanup, revision conflicts, and successful replacement cleanup.
+
+During investigation, read-only Admin SDK metadata requests returned HTTP 404 ("The specified bucket does not exist") for the configured `capstoneproject-client.firebasestorage.app` bucket and the legacy `capstoneproject-client.appspot.com` name. Firebase Storage must be provisioned for this project, or `FIREBASE_STORAGE_BUCKET` must be changed to an existing accessible bucket before live saves can succeed. This requires external Firebase configuration; the code changes do not create a bucket.
+
 Administrators open Manage Services and Pricelist from the dashboard or portal sidebar. Each category has an independent image. Selection validates MIME type, size (5 MB, configured in shared/pricelists.mjs and server/src/utils/pricelistImage.js), and browser image decoding. Selecting a file only creates a local preview.
 
 Save Changes opens Confirm Changes. Cancel retains the preview. Confirm and Save sends the image to the existing authenticated Express API, which independently requires the stored admin role and validates size, encoding and binary image signatures. Uploaded raster images are served as image content, never executed.

@@ -52,8 +52,9 @@ test("database failure is reported instead of returning empty success",async()=>
 test("list and save controllers persist records, reject conflicts, and clean up failed uploads",async()=>{
  const {db,records}=memoryDatabase();
  const uploaded=new Map(),deleted=[];
+ let uploadError=null;
  const bucket={name:"test-bucket",file:path=>({
-  async save(buffer){uploaded.set(path,buffer);},
+  async save(buffer){if(uploadError)throw uploadError;uploaded.set(path,buffer);},
   async delete(){deleted.push(path);uploaded.delete(path);}
  })};
  const firebasePath=require.resolve("../server/src/config/firebaseAdmin.js");
@@ -81,6 +82,23 @@ test("list and save controllers persist records, reject conflicts, and clean up 
   assert.deepEqual(records.get("vaccination"),saved);
   assert.equal(deleted.length,1);
   assert.equal(uploaded.size,1);
+  for(const [code,message] of [[404,/bucket was not found/],[403,/access was denied/],[500,/could not be uploaded/]]){
+   uploadError=Object.assign(new Error("Storage failure"),{code});
+   await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl,expectedRevision:1}},res),error=>error.statusCode===503&&message.test(error.message));
+   assert.deepEqual(records.get("vaccination"),saved);
+   assert.equal(uploaded.size,1);
+  }
+  uploadError=null;
+  const transaction=db.runTransaction;
+  db.runTransaction=async()=>{throw new Error("Database unavailable");};
+  await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl,expectedRevision:1}},res),error=>error.statusCode===503&&/could not be saved/.test(error.message));
+  db.runTransaction=transaction;
+  assert.deepEqual(records.get("vaccination"),saved);
+  assert.equal(uploaded.size,1);
+  await savePricelist({...req,body:{imageDataUrl,expectedRevision:1}},res);
+  assert.equal(records.get("vaccination").revision,2);
+  assert.equal(uploaded.size,1);
+  assert.ok(deleted.includes(saved.objectPath));
   await assert.rejects(()=>savePricelist({...req,params:{category:"unknown"}},res),/Unknown category/);
   await assert.rejects(()=>savePricelist({...req,body:{imageDataUrl:"invalid",expectedRevision:1}},res),/valid JPG/);
  }finally{

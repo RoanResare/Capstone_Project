@@ -51,6 +51,22 @@ async function saveAppointment(req, res) {
     const { isLowCostKaponAppointment, isKaponPromoAvailable, KAPON_UNAVAILABLE_MESSAGE } =
       await import("../../../shared/lowCostKaponPromo.mjs");
     const previous = existing.data?.() || {};
+    if(!existing.exists && !Array.isArray(appointment.serviceIds))throw new ApiError(400,"Choose valid appointment services.");
+    const decisionFields = {};
+    const decisionChanged = JSON.stringify(appointment.decision) !== JSON.stringify(previous.decision);
+    const staffDecision = ["admin","staff"].includes(user.role) && nextStatus === "Rejected" && (nextStatus !== previous.status || decisionChanged);
+    const staffCancellation = ["admin","staff"].includes(user.role) && nextStatus === "Cancelled" && nextStatus !== previous.status;
+    if (user.role === "customer" && (decisionChanged || appointment.rejectionReason !== previous.rejectionReason || appointment.cancellationReason !== previous.cancellationReason)) throw new ApiError(403,"Only clinic staff can set a rejection or cancellation reason.");
+    if (nextStatus !== "Rejected" && decisionChanged) throw new ApiError(400,"Rejection reasons can only be set when rejecting an appointment.");
+    if (staffDecision) {
+      if (!existing.exists || previous.status !== "Pending") throw new ApiError(409,"Only pending appointments can be rejected.");
+      const {validateAppointmentDecision} = await import("../../../shared/appointmentDecisions.mjs");
+      try {
+        const decision=validateAppointmentDecision(appointment.decision);
+        decisionFields.decision={...decision,by:user.uid,at:new Date().toISOString()};
+        decisionFields.rejectionReason=decision.reason;
+      } catch(error) { throw new ApiError(400,error.message); }
+    }
     const sessionFields = {};
     const action = appointment.sessionAction;
     if (action) {
@@ -85,8 +101,26 @@ async function saveAppointment(req, res) {
     );
     const changedServices = JSON.stringify(nextAppointment.serviceIds) !== JSON.stringify(previous.serviceIds) || nextAppointment.serviceId !== previous.serviceId;
     const requiresBookingValidation = !existing.exists || changedServices || changedSchedule ||
-      (["Cancelled", "Rejected", "Expired", "Completed"].includes(previous.status) && ["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus));
+      (["Cancelled", "Rejected", "Expired", "No Show", "Completed"].includes(previous.status) && ["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus));
     let serviceFields = {};
+    const clinicalChanged=JSON.stringify(nextAppointment.clinicalSelections)!==JSON.stringify(previous.clinicalSelections);
+    if ((!existing.exists || changedServices || clinicalChanged || nextAppointment.petRecordId!==previous.petRecordId) && nextAppointment.serviceIds?.some(id=>["consultation","vaccination","laboratory-testing"].includes(id))) {
+      const pet=await transaction.get(db.collection("pets").doc(nextAppointment.petRecordId));
+      if(!pet.exists)throw new ApiError(400,"Choose a saved cat or dog profile.");
+      if(user.role==="customer"&&pet.data().customerId!==user.uid)throw new ApiError(403,"Choose your own pet.");
+      const {buildClinicalSelections}=await import("../../../shared/clinicalServices.mjs");
+      try {
+        const selections=nextAppointment.clinicalSelections;
+        if(!Array.isArray(selections)||new Set(selections.map(item=>item?.category)).size!==selections.length)throw new Error("Choose one specific service per clinical category.");
+        serviceFields.clinicalSelections=buildClinicalSelections(nextAppointment.serviceIds,Object.fromEntries(selections.map(choice=>[choice?.category,choice?.serviceId])),pet.data());
+        serviceFields.service=nextAppointment.serviceIds.map(id=>{
+          const choice=serviceFields.clinicalSelections.find(choice=>choice.category===id);
+          const name={vaccination:"Vaccination",consultation:"Consultation","laboratory-testing":"Laboratory Testing",deworming:"Deworming","pet-grooming":"Pet Grooming","low-cost-kapon":"Low Cost Kapon"}[id]||id;
+          return choice?`${name}: ${choice.name}`:name;
+        }).join(" + ");
+        serviceFields.servicePrice="";
+      } catch(error){throw new ApiError(400,error.message);}
+    }
     if (nextAppointment.serviceIds !== undefined) {
       const { validateAppointmentServices, validateSinglePet, getEstimatedDuration, APPOINTMENT_BLOCK_MINUTES, getDefaultBlockCapacity } = await import("../../../shared/bookingServices.mjs");
       try {
@@ -117,7 +151,12 @@ async function saveAppointment(req, res) {
         serviceFields.grooming = buildGroomingSelection(serviceIds, petData);
         const { name, size } = serviceFields.grooming;
         const groomingLabel = 'Pet Grooming: ' + name + (size ? ' (' + size + ')' : '');
-        serviceFields.service = nextAppointment.serviceIds.map((id, index) => id === 'pet-grooming' ? groomingLabel : String(nextAppointment.service || '').split(' + ')[index] || id).join(' + ');
+        serviceFields.service = nextAppointment.serviceIds.map(id => {
+          if(id === "pet-grooming")return groomingLabel;
+          const choice=(serviceFields.clinicalSelections || nextAppointment.clinicalSelections || []).find(choice=>choice.category===id);
+          const name={vaccination:"Vaccination",consultation:"Consultation",deworming:"Deworming","low-cost-kapon":"Low Cost Kapon"}[id]||id;
+          return choice?`${name}: ${choice.name}`:name;
+        }).join(' + ');
         serviceFields.servicePrice = '';
 
       } catch (error) { throw new ApiError(400, error.message); }
@@ -187,8 +226,20 @@ async function saveAppointment(req, res) {
       }
     }
     const { sessionAction, ...payload } = appointment;
-    savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, updatedAt: new Date().toISOString() };
+    savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields, updatedAt: new Date().toISOString() };
+    if(savedAppointment.status==="Expired")savedAppointment.status="No Show";
     transaction.set(reference, savedAppointment, { merge: true });
+    if(staffDecision || staffCancellation){
+      const notificationId=`appointment-${id}-${nextStatus.toLowerCase()}`;
+      transaction.set(db.collection("notifications").doc(notificationId),{
+        id:notificationId,title:nextStatus==="Rejected"?"Appointment rejected":"Appointment cancelled",
+        message:`${savedAppointment.petName || "Your appointment"} was ${nextStatus.toLowerCase()}.${staffDecision ? ` Reason: ${decisionFields.decision.reason}` : ""}`,
+        targetRoles:["customer"],targetUserId:savedAppointment.customerId,email:savedAppointment.customerEmail||"",
+        targetType:"appointment",targetId:id,relatedAppointmentId:id,petName:savedAppointment.petName||"",serviceName:savedAppointment.service||"",
+        appointmentDate:savedAppointment.scheduleDate||"",appointmentTime:savedAppointment.scheduleTime||"",
+        actorName:user.name||user.fullName||"Clinic team",actorRole:user.role,level:"info",readBy:[],createdAt:new Date().toISOString(),
+      });
+    }
   });
   res.json({ success: true, appointment: savedAppointment });
 }

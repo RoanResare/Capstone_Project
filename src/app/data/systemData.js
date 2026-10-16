@@ -123,7 +123,7 @@ export const appointmentStatusOptions = [
   "Rejected",
   "Completed",
   "Cancelled",
-  "Expired",
+  "No Show",
 ];
 
 export const appointmentFilters = [
@@ -133,7 +133,7 @@ export const appointmentFilters = [
   "Rejected",
   "Completed",
   "Cancelled",
-  "Expired",
+  "No Show",
 ];
 
 export const chatbotSuggestionChips = [

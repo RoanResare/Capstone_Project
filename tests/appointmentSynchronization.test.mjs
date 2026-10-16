@@ -16,6 +16,13 @@ const booking = { id: "appointment", customerId: "customer", petRecordId: "pet",
   scheduleDate: "2030-01-12", scheduleTime: "11:00", status: "Pending", createdAt: "2030-01-01T00:00:00Z" };
 const create = { type: "CREATE_APPOINTMENT", payload: booking, meta: { actorName: "Customer", actorRole: "customer" } };
 
+test("legacy expired and elapsed pending bookings become No Show",()=>{
+ for(const status of ["Expired","No-show","Pending"]){
+  const normalized=normalizeStoredState({appointments:[{...booking,status,scheduleDate:"2020-01-12"}]});
+  assert.equal(normalized.appointments[0].status,"No Show");
+ }
+});
+
 test("approved bookings remain occupied after their scheduled start passes", () => {
   for (const status of ["Accepted", "Confirmed", "Approved"]) {
     const loaded = normalizeStoredState({ appointments: [{ ...booking, status, scheduleDate: "2020-01-12" }] });

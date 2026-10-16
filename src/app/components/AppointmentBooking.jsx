@@ -1,3 +1,4 @@
+import {CLINICAL_SERVICES,clinicalOptions,buildClinicalSelections} from "../../../shared/clinicalServices.mjs";
 import { PricelistImage } from "./PricelistImage.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -117,7 +118,7 @@ function createPetSelection(serviceId = "") {
     petRecordId: "",
     serviceId,
     additionalServiceId: null,
-    groomingServiceIds: [],
+    groomingServiceIds: [], clinicalChoices: {},
   };
 }
 
@@ -151,7 +152,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   useEffect(() => {
     if (!initialServiceId) return;
     setPetSelections((current) => current.map((selection, index) => index === 0
-      ? { ...selection, serviceId: initialServiceId, additionalServiceId: null, groomingServiceIds: [] }
+      ? { ...selection, serviceId: initialServiceId, additionalServiceId: null, groomingServiceIds: [], clinicalChoices: {} }
       : selection));
     setSelectedDate("");
     setSelectedSlotId("");
@@ -275,6 +276,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
 
     petSelections.forEach((selection, index) => {
       const ids = [selection.serviceId, selection.additionalServiceId].filter(Boolean);
+      try { buildClinicalSelections(ids, selection.clinicalChoices, customerPetRecords.find(record => record.id === selection.petRecordId)); }
+      catch(error) { nextErrors[`clinical-${selection.id}`] = error.message; }
       if (ids.includes(KAPON_SERVICE_ID) && !kaponPromoAvailable) {
         nextErrors[`service-${selection.id}`] = KAPON_UNAVAILABLE_MESSAGE;
       }
@@ -342,6 +345,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
         const service = serviceCatalog.find((item) => item.id === selection.serviceId);
         if (!pet || !service) continue;
         const serviceIds = [selection.serviceId, selection.additionalServiceId].filter(Boolean);
+        const clinicalSelections = buildClinicalSelections(serviceIds, selection.clinicalChoices, pet);
         const services = serviceIds.map((id) => serviceCatalog.find((item) => item.id === id));
         const grooming = serviceIds.includes("pet-grooming") ? buildGroomingSelection(selection.groomingServiceIds, pet) : null;
 
@@ -373,8 +377,9 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
             breed: pet.breed,
             serviceId: service.id,
             serviceIds,
-            service: services.map((item) => item.id === "pet-grooming" ? `Pet Grooming: ${grooming.name}${grooming.size ? ` (${grooming.size})` : ""}` : item.name).join(" + "),
-            servicePrice: services.filter((item) => item.id !== "pet-grooming").map((item) => item.priceLabel).join(" + "),
+            clinicalSelections,
+            service: services.map((item) => item.id === "pet-grooming" ? `Pet Grooming: ${grooming.name}${grooming.size ? ` (${grooming.size})` : ""}` : clinicalSelections.find(choice => choice.category === item.id) ? `${item.name}: ${clinicalSelections.find(choice => choice.category === item.id).name}` : item.name).join(" + "),
+            servicePrice: "",
             ...(grooming ? { grooming } : {}),
             estimatedDurationMinutes: getEstimatedDuration(serviceIds),
             blockDurationMinutes: APPOINTMENT_BLOCK_MINUTES,
@@ -484,7 +489,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                               updateSelection(selection.id, {
                                 petRecordId: event.target.value,
                                 serviceId: selection.serviceId,
-                                groomingServiceIds: [],
+                                groomingServiceIds: [], clinicalChoices: {},
                               })
                             }
                             className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
@@ -515,7 +520,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                               <option value="">Choose service</option>
                               {serviceCatalog.map((service) => (
                                 <option key={service.id} value={service.id} disabled={!canPairServices(service.id, selection.additionalServiceId) || (service.id === KAPON_SERVICE_ID && !kaponPromoAvailable)}>
-                                  {service.name}{service.id !== "pet-grooming" ? ` - ${service.priceLabel}` : ""}{service.id === KAPON_SERVICE_ID && !kaponPromoAvailable ? " (Currently unavailable)" : ""}
+                                  {service.name}{service.id === KAPON_SERVICE_ID && !kaponPromoAvailable ? " (Currently unavailable)" : ""}
                                 </option>
                               ))}
                             </select>
@@ -530,7 +535,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                                   className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none focus:border-[#2D9B9B]">
                                   <option value="">Choose a different service</option>
                                   {serviceCatalog.map((item) => (
-                                    <option key={item.id} value={item.id} disabled={!canPairServices(selection.serviceId, item.id) || (item.id === KAPON_SERVICE_ID && !kaponPromoAvailable)}>{item.name}{item.id !== "pet-grooming" ? ` - ${item.priceLabel}` : ""}</option>
+                                    <option key={item.id} value={item.id} disabled={!canPairServices(selection.serviceId, item.id) || (item.id === KAPON_SERVICE_ID && !kaponPromoAvailable)}>{item.name}</option>
                                   ))}
                                 </select>
                               </div>
@@ -541,6 +546,21 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
 
                           </div>
                         )}
+                        {selectedPet && [selection.serviceId,selection.additionalServiceId].filter(id => Object.hasOwn(CLINICAL_SERVICES,id)).map(category => (
+                          <fieldset key={category} className="rounded-lg border border-[#D9E7E7] bg-[#F3F8F8] p-3 md:col-span-2">
+                            <legend className="px-1 text-sm font-semibold">{serviceCatalog.find(item => item.id === category)?.name} services</legend>
+                            <p className="mb-3 text-xs text-[#607277]">Choose one service for {selectedPet.petName}.</p>
+                            <div className="grid gap-2 sm:grid-cols-2">{clinicalOptions(category,selectedPet).map(option => (
+                              <label key={option.id} className="flex items-start gap-3 rounded-lg border border-[#D9E7E7] bg-white p-3 text-sm">
+                                <input type="radio" name={`clinical-${selection.id}-${category}`} checked={selection.clinicalChoices[category] === option.id}
+                                  onChange={() => updateSelection(selection.id,{clinicalChoices:{...selection.clinicalChoices,[category]:option.id}})} className="mt-1 accent-[#173E44]"/>
+                                <span>{option.name}{option.description && <span className="mt-1 block text-xs text-[#607277]">{option.description}</span>}</span>
+                              </label>
+                            ))}</div>
+                            {!clinicalOptions(category,selectedPet).length && <p className="text-sm text-[#B23949]">Available for saved cat and dog profiles only.</p>}
+                          </fieldset>
+                        ))}
+                        {errors[`clinical-${selection.id}`] && <p role="alert" className="text-sm text-[#B23949] md:col-span-2">{errors[`clinical-${selection.id}`]}</p>}
                         {selectedPet && ([selection.serviceId, selection.additionalServiceId].includes("pet-grooming") && (
                               <fieldset className="mt-4 rounded-lg border border-[#D9E7E7] bg-[#F3F8F8] p-3 md:col-span-2">
                                 <legend className="px-1 text-sm font-semibold text-[#365057]">{selectedPet.petType} grooming</legend>
@@ -722,6 +742,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                 <div key={selection.id} className="border-b border-white/10 pb-3 last:border-0 last:pb-0">
                   <p className="font-semibold">Pet #{index + 1}: {pet?.petName || "Choose pet"}</p>
                   <p className="mt-1 text-white/72">{[service?.name, additionalService?.name].filter(Boolean).join(" + ") || "Choose service"}</p>
+                  {[selection.serviceId,selection.additionalServiceId].filter(id=>Object.hasOwn(CLINICAL_SERVICES,id)).map(category=><p key={category} className="mt-1 text-white/90">{clinicalOptions(category,pet).find(option=>option.id===selection.clinicalChoices[category])?.name || "Choose a specific service"}</p>)}
                   {[selection.serviceId, selection.additionalServiceId].includes("pet-grooming") && (() => {
                     try {
                       const quote = buildGroomingSelection(selection.groomingServiceIds, pet);

@@ -20,7 +20,7 @@ const appMock = `
     ['completed', 'Finished', 'Completed', '15', '09:00'],
     ['cancelled', 'Cancelled Pet', 'Cancelled', '16', '09:00'],
     ['rejected', 'Rejected Pet', 'Rejected', '16', '11:00'],
-    ['expired', 'Expired Pet', 'Expired', '17', '14:00'],
+    ['expired', 'Expired Pet', 'No Show', '17', '14:00'],
     ['accepted', 'Approved Pet', 'Accepted', '18', '09:00'],
   ].map(([id, petName, status, day, time], index) => ({id, petName, status, scheduleDate: month + '-' + day, scheduleTime: time,
     customerId: 'customer', customerEmail: 'customer@example.com', ownerName: 'Customer', petType: 'Dog', service: 'Vaccination',

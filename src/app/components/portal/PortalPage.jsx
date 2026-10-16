@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { groomingDescription } from "../../../../shared/groomingServices.mjs";
+import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
 import { createPortal } from "react-dom";
 import { PricelistManager } from "./PricelistManager.jsx";
 import { KaponPromoManager } from "./KaponPromoManager.jsx";
@@ -212,7 +212,7 @@ function statusClasses(status) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
-  if (status === "Expired") return "bg-[#F1F3F5] text-[#5B636D]";
+  if (status === "No Show") return "bg-[#F1F3F5] text-[#5B636D]";
   if (["Rejected", "Cancelled"].includes(status)) {
     return "bg-[#FCE8EB] text-[#B23949]";
   }
@@ -501,6 +501,7 @@ function MetricCard({ label, value, tone = "teal" }) {
 }
 
 function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack, isSaving = false }) {
+  const [decisionStatus,setDecisionStatus]=useState("");
   const [sessionNow, setSessionNow] = useState(Date.now());
   useEffect(() => {
     setSessionNow(Date.now());
@@ -530,6 +531,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
     ? Math.max(0, Math.floor(((appointment.sessionEndedAt ? Date.parse(appointment.sessionEndedAt) : sessionNow) - Date.parse(appointment.sessionStartedAt)) / 1000)) : 0;
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
+    if (status === "Rejected") { setDecisionStatus(status); return; }
     if (status === "Completed") {
       if (window.confirm("Are you certain you want to mark this appointment as completed? Please confirm that the appointment has been fully completed.")) {
         updateAppointment(appointment.id, { status });
@@ -543,6 +545,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
     }
   };
 
+  if(decisionStatus)return <AppointmentDecisionForm busy={isSaving} onSave={updates=>updateAppointment(appointment.id,updates)} onClose={()=>setDecisionStatus("")}/>;
   return (
     <PanelCard
       title={`${appointment.petName} | ${appointment.service}`}
@@ -595,17 +598,8 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
                 <PawPrint size={16} />
                 <span>{appointment.petName} | {appointment.petType || "Pet type not saved"}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <CalendarDays size={16} />
-                <span>Service: {appointment.service || "Service not specified"}</span>
-              </div>
-              {appointment.grooming && (
-                <div className="rounded-xl border border-[#BDD9D7] bg-[#F3FAFA] p-3 text-sm text-[#173E44]">
-                  <p className="font-semibold">Requested grooming services</p>
-                  <p className="mt-1">{groomingDescription(appointment.grooming) || "Grooming type not specified"}</p>
-                  <p className="mt-1 text-xs text-[#607277]">{appointment.grooming.petType || appointment.petType}{appointment.grooming.size ? ` · ${appointment.grooming.size}` : ""}</p>
-                </div>
-              )}
+              {appointment.decision?.reason && <p className="text-sm text-[#607277]">Reason: {appointment.decision.reason}</p>}
+
               <div className="flex items-center gap-3">
                 <Clock3 size={16} />
                 <span>Booked: {formatDateTime(appointment.createdAt, "Booking timestamp unavailable")}</span>
@@ -877,13 +871,14 @@ function AppointmentsWorkspace({
     const appointment = appointments.find((entry) => entry.id === appointmentId);
     if (updates?.status && !canChangeAppointmentStatus(appointment?.status, updates.status)) {
       toast.error("This action is unavailable for the appointment's current status.");
-      return;
+      return false;
     }
     try {
       await updateAppointment(appointmentId, updates, currentUser.name);
+      return true;
     } catch (error) {
       toast.error(error.message || "Unable to update appointment.");
-      return;
+      return false;
     }
 
   };
@@ -901,7 +896,7 @@ function AppointmentsWorkspace({
   ).length;
   const rejectedCount = appointments.filter((appointment) => appointment.status === "Rejected").length;
   const cancelledCount = appointments.filter((appointment) => appointment.status === "Cancelled").length;
-  const expiredCount = appointments.filter((appointment) => appointment.status === "Expired").length;
+  const expiredCount = appointments.filter((appointment) => appointment.status === "No Show").length;
 
   const selectedNotificationId = searchParams.get("notification") || "";
   const selectedNotification =
@@ -951,7 +946,7 @@ function AppointmentsWorkspace({
     { title: "Completed", statuses: ["Completed"] },
     { title: "Rejected", statuses: ["Rejected"] },
     { title: "Cancelled", statuses: ["Cancelled"] },
-    { title: "Expired", statuses: ["Expired"] },
+    { title: "No Show", statuses: ["No Show"] },
   ]
     .filter((section) => statusFilter === "All" || section.statuses.includes(statusFilter))
     .map((section) => ({
@@ -967,7 +962,7 @@ function AppointmentsWorkspace({
         <MetricCard label="Completed" value={completedCount} tone="forest" />
         <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
         <MetricCard label="Cancelled" value={cancelledCount} tone="rose" />
-        <MetricCard label="Expired" value={expiredCount} tone="slate" />
+        <MetricCard label="No Show" value={expiredCount} tone="slate" />
       </div>
 
       <AppointmentCalendar appointments={appointments} onOpenAppointment={openAppointment} />

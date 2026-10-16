@@ -39,7 +39,7 @@ function renderAppointment(status, filter = status === "Accepted" ? "Approved" :
     visibleNotifications: [],
     state: {
       users: [{ name: "Staff", role: "staff", status: "active" }],
-      appointments: [{ id: "test", petName: "Test pet", status, assignedStaff: "Staff", grooming }],
+      appointments: [{ id: "test", petName: "Test pet", status, assignedStaff: "Staff", grooming, service:grooming?`Pet Grooming: ${grooming.services?.map(service=>service.name).join(", ") || grooming.name}`:"Consultation" }],
     },
   };
   return renderToString(createElement(MemoryRouter, {
@@ -47,15 +47,15 @@ function renderAppointment(status, filter = status === "Accepted" ? "Approved" :
   }, createElement(PortalPage)));
 }
 
-test("admin and staff see grooming choices before approving pending appointments", () => {
+test("admin and staff appointment details omit the duplicate grooming panel", () => {
   for (const role of ["admin", "staff"]) {
     const html = renderAppointment("Pending", "Pending", {petType:"Cat",services:[{id:"ear-cleaning",name:"Ear Cleaning"},{id:"nail-clipping",name:"Nail Clipping"}]}, role);
-    assert.ok(html.includes("Requested grooming services"));
-    assert.ok(html.includes("Ear Cleaning, Nail Clipping"));
+    assert.ok(!html.includes("Requested grooming services"));
+    assert.ok(html.includes("Pet Grooming: Ear Cleaning, Nail Clipping"));
     assert.ok(html.includes("Approve appointment"));
-    assert.ok(renderAppointment("Pending", "Pending", {petType:"Cat",services:[{id:"feline-full",name:"Full Grooming"}]}, role).includes("Full Grooming"));
+
   }
-  assert.ok(renderAppointment("Pending", "Pending", {name:"Feline Basic Groom",price:500}).includes("Feline Basic Groom"));
+
 });
 
 test("appointment categories retain selected details and enforce disabled controls", () => {

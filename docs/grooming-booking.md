@@ -10,6 +10,6 @@ Choose exactly one grooming service OR one or two à la carte services. A groomi
 
 The shared grooming model validates counts, duplicates, mutually exclusive categories and species in both the browser and API. The server reads the saved pet document, checks customer ownership, and builds canonical service names from selected IDs instead of trusting submitted names or prices. New appointment grooming data contains serviceIds, services (id/name/category), name, petType and size. No grooming price is stored. Legacy single-service records remain readable and can be approved without requiring rebooking.
 
-Admin and staff appointment details show a dedicated Requested grooming services panel before approval. Customer summaries and appointment service labels also include the selected services. Pending-to-approved updates preserve these details.
+Admin and staff see the selected grooming services in the appointment heading. The duplicate Requested grooming services panel and repeated service row were removed. Customer summaries and appointment service labels include the selected services. Pending-to-approved updates preserve these details.
 
 Validation covers the complete species catalogs, rejected mixed/duplicate/oversized selections, canonical server persistence, approval preservation, admin/staff detail rendering, and desktop/mobile booking interactions. The browser fixture mocks authentication, app data and pricelist content; it checks UI behavior and submitted payloads without creating live appointments.

@@ -1,4 +1,4 @@
-export const APPOINTMENT_STATUSES = ["Pending", "Approved", "Completed", "Rejected", "Cancelled", "Expired"];
+export const APPOINTMENT_STATUSES = ["Pending", "Approved", "Completed", "Rejected", "Cancelled", "No Show"];
 
 export const APPOINTMENT_COLORS = {
   Pending: { background: "#FFF4D6", text: "#8C5A08", border: "#E8B958" },
@@ -6,10 +6,11 @@ export const APPOINTMENT_COLORS = {
   Completed: { background: "#165B3B", text: "#FFFFFF", border: "#165B3B" },
   Rejected: { background: "#FDE8EC", text: "#B32943", border: "#EAA0AE" },
   Cancelled: { background: "#FDE8EC", text: "#B32943", border: "#EAA0AE" },
-  Expired: { background: "#F1F3F5", text: "#5B636D", border: "#9CA3AF" },
+  "No Show": { background: "#F1F3F5", text: "#5B636D", border: "#9CA3AF" },
 };
 
 export function appointmentStatusLabel(status) {
+  if (["Expired", "No-show"].includes(status)) return "No Show";
   return ["Accepted", "Confirmed"].includes(status) ? "Approved" : status;
 }
 

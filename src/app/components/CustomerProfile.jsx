@@ -67,7 +67,7 @@ function statusTone(status) {
     return "bg-[#E8F7EE] text-[#1D7C45]";
   }
 
-  if (["Cancelled", "Rejected", "No-show", "Expired", "suspended"].includes(status)) {
+  if (["Cancelled", "Rejected", "No-show", "No Show", "suspended"].includes(status)) {
     return "bg-[#FCE8EB] text-[#B23949]";
   }
 
@@ -969,7 +969,6 @@ export function CustomerProfile() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3">
                           <h2 className="text-xl font-semibold text-[#20343B]">Low-Cost Kapon</h2>
-                          <span className="rounded-lg bg-[#F7F2E9] px-3 py-1 text-xs font-semibold text-[#6A5D4A]">{kaponService.priceLabel}</span>
                         </div>
                         <p className="mt-2 text-sm leading-6 text-[#607277]">{kaponService.description}</p>
                         <p className="mt-3 text-xs font-semibold text-[#2D6B73]">Estimated visit time: {kaponService.duration}</p>
@@ -1324,9 +1323,7 @@ export function CustomerProfile() {
                             {service.name}
                           </h3>
                         </div>
-                        {service.id !== "pet-grooming" && <span className="min-w-[8.5rem] shrink-0 whitespace-nowrap rounded-lg bg-[#F7F2E9] px-3.5 py-1 text-center text-xs font-semibold text-[#6A5D4A]">
-                          {service.priceLabel}
-                        </span>}
+
                       </div>
                       <p className="mt-3 flex-1 text-sm leading-6 text-[#607277]">{service.description}</p>
                       <p className="mt-3 text-xs font-semibold text-[#2D6B73]">
@@ -1434,9 +1431,9 @@ export function CustomerProfile() {
                         <StatusChip label={appointmentStatusLabel(selectedAppointment.status)} />
                       </div>
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
-                      {selectedAppointment.cancellationReason && (
+                      {(selectedAppointment.rejectionReason || selectedAppointment.cancellationReason) && (
                         <p className="mt-4 rounded-lg border border-[#F2CED6] bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">
-                          {selectedAppointment.cancellationReason}
+                          {selectedAppointment.rejectionReason || selectedAppointment.cancellationReason}
                         </p>
                       )}
                       <div className="mt-6 grid gap-4 md:grid-cols-2">

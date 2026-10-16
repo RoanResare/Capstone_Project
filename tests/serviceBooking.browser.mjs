@@ -57,7 +57,20 @@ try{
    await pet.selectOption('pet');
    const service=page.getByLabel('Selected service',{exact:true});
    assert.equal(await service.inputValue(),id);
+   assert.ok(!(await service.textContent()).includes('PHP'));
+   assert.ok(!(await card.textContent()).includes('PHP'));
+   if(['vaccination','consultation','laboratory-testing'].includes(id)){
+    const options=page.getByRole('group',{name:name+' services',exact:true}).getByRole('radio');
+    assert.equal(await options.count(),id==='vaccination'?6:id==='consultation'?17:3);
+    await options.first().check();await options.last().check();
+    assert.equal(await options.and(page.locator(':checked')).count(),1);
+   }
    await pet.selectOption('pet2');assert.equal(await service.inputValue(),id);
+   if(['vaccination','consultation','laboratory-testing'].includes(id)){
+    const options=page.getByRole('group',{name:name+' services',exact:true}).getByRole('radio');
+    assert.equal(await options.and(page.locator(':checked')).count(),0);
+    if(id==='vaccination')assert.equal(await options.count(),3);
+   }
    // Manual changes survive changing the selected pet.
    await service.selectOption(id==='vaccination'?'deworming':'vaccination');
    await pet.selectOption('pet');

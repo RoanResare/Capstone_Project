@@ -9,6 +9,7 @@ const PORTAL_PATHS = new Set([
   "/portal/schedule",
   "/portal/pet-records",
   "/portal/manage-users",
+  "/portal/pricelists",
 ]);
 const HOME_PATHS = Object.freeze({
   [CUSTOMER_ROLE]: "/customer/dashboard",
@@ -113,7 +114,7 @@ export function canAccessPath(role = "", path = "") {
       return true;
     }
 
-    return PORTAL_PATHS.has(normalizedPath) && normalizedPath !== "/portal/manage-users";
+    return PORTAL_PATHS.has(normalizedPath) && !["/portal/manage-users", "/portal/pricelists"].includes(normalizedPath);
   }
 
   return false;

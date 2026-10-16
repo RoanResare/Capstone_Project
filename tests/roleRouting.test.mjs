@@ -109,3 +109,17 @@ test("return destinations agree with registered routes and preserve role restric
   assert.equal(isValidPortalSessionRoute("staff", "/portal/manage-users"), true);
   assert.equal(isValidPortalSessionRoute("staff", "/admin/dashboard"), true);
 });
+
+test("pricelist routes preserve admin sessions while retaining admin-only access", () => {
+  for (const path of ["/portal/pricelists", "/portal/pricelists/", "/portal/pricelists?category=vaccination#image"]) {
+    assert.equal(isValidPortalSessionRoute("admin", path), true);
+    assert.equal(canAccessPath("admin", path), true);
+    assert.equal(resolveAuthorizedPath("admin", path), path);
+    assert.equal(canAccessPath("staff", path), false);
+    assert.equal(canAccessPath("customer", path), false);
+    // A registered address is not a reason to revoke a staff session.
+    // RequireAuth independently denies staff access to the module.
+    assert.equal(isValidPortalSessionRoute("staff", path), true);
+  }
+  assert.equal(isValidPortalSessionRoute("admin", "/portal/pricelists/unknown"), false);
+});

@@ -99,6 +99,7 @@ export const breedsByPetType = {
 };
 
 export const portalModules = [
+  { id: "pricelists", label: "Manage Services and Pricelist", adminOnly: true },
   { id: "appointments", label: "Manage Appointments" },
   { id: "schedule", label: "Manage Schedule" },
   { id: "pet-records", label: "Manage Pet Records" },

@@ -183,6 +183,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="appointments" replace /> },
       { path: "appointments", element: <RouteLoader Component={PortalPage} /> },
+      { path: "pricelists", element: <RequireAuth allowedRoles={["admin"]}><RouteLoader Component={PortalPage} /></RequireAuth> },
       { path: "schedule", element: <RouteLoader Component={PortalPage} /> },
       { path: "pet-records", element: <RouteLoader Component={PortalPage} /> },
       {

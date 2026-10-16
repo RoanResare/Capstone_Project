@@ -21,6 +21,11 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    match /servicePricelists/{category} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     match /services/{document=**} {
       allow read: if true;
     }

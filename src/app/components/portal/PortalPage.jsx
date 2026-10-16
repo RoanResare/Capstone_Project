@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PricelistManager } from "./PricelistManager.jsx";
 import { KaponPromoManager } from "./KaponPromoManager.jsx";
 import { AppointmentCalendar } from "./AppointmentCalendar.jsx";
 import { useLocation, useSearchParams } from "react-router-dom";
@@ -2445,6 +2446,7 @@ export function PortalPage() {
     updateUser,
     deleteUser,
   } = useApp();
+  if (location.pathname.endsWith("/pricelists")) return currentUser?.role === "admin" ? <PricelistManager /> : <p>Administrator access required.</p>;
   const activeModule = location.pathname.endsWith("/pet-records")
     ? "pet-records"
     : location.pathname.endsWith("/schedule")

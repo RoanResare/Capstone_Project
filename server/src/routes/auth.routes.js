@@ -28,6 +28,7 @@ router.post("/register/check", authRateLimiter, asyncHandler(checkCustomerRegist
 router.post("/login", authRateLimiter, asyncHandler(loginUnified));
 router.post("/validate-reset-code", authRateLimiter, asyncHandler(validateResetCode));
 router.post("/reset-password", authRateLimiter, asyncHandler(resetPassword));
+router.put("/pricelists/:category", verifyToken, verifyRole(["admin"]), asyncHandler(require("../controllers/pricelist.controller").savePricelist));
 router.get("/me", verifyToken, asyncHandler(me));
 router.post("/validate-email", authRateLimiter, verifyToken, asyncHandler(validateEmail));
 router.get("/session-security", verifyToken, asyncHandler(sessionSecurity));

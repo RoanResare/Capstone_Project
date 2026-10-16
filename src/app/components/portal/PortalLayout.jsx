@@ -7,6 +7,7 @@ import { BrandMark } from "../BrandMark.jsx";
 import { resolveHomePath } from "../../utils/roleUtils.js";
 
 const iconMap = {
+  pricelists: PawPrint,
   appointments: CalendarDays,
   schedule: Clock3,
   "pet-records": PawPrint,

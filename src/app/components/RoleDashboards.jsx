@@ -120,6 +120,7 @@ function DashboardShell({ role }) {
           aria-label="Workspace actions"
           className={`grid auto-rows-fr gap-5 ${role === "admin" ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"}`}
         >
+          {role === "admin" && <QuickLink to="/portal/pricelists" icon={PawPrint} title="Manage Services and Pricelist" description="Review and update category pricelist images." />}
           <QuickLink
             to="/portal/appointments"
             icon={CalendarDays}

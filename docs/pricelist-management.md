@@ -1,0 +1,12 @@
+# Pricelist management
+Administrators open Manage Services and Pricelist from the dashboard or portal sidebar. Each category has an independent image. Selection validates MIME type, size (5 MB, configured in shared/pricelists.mjs and server/src/utils/pricelistImage.js), and browser image decoding. Selecting a file only creates a local preview.
+
+Save Changes opens Confirm Changes. Cancel retains the preview. Confirm and Save sends the image to the existing authenticated Express API, which independently requires the stored admin role and validates size, encoding and binary image signatures. Uploaded raster images are served as image content, never executed.
+
+Firebase Admin writes a unique object under pricelists/{category}/{uuid} in the existing Firebase Storage bucket, then transactionally publishes its reference in servicePricelists/{category}. Revision conflicts reject stale edits. A failed database publication deletes the pending object where possible; the previous reference remains intact. Successful replacement attempts to remove the old object. Cleanup failure can leave an unreferenced object. Success is shown only after the API completes. Firestore snapshots update customer and admin displays.
+
+Deploy the updated firestore.rules using the existing Firebase deployment process before use. Direct client writes to servicePricelists are denied. Storage rules remain deny-all: only the existing Admin SDK uploads; saved images are available through download-token URLs. No new dependencies, paid services, or authentication design changes were introduced. Ensure the existing FIREBASE_STORAGE_BUCKET (or configured storage bucket alias in server configuration) points to an accessible provisioned bucket and the backend service account can write objects. No data migration is required: records are created on first save.
+
+The supplied attachment is a six-panel UI mockup, not a standalone pricelist. No screenshot or generated replacement is seeded. Upload the original pricelist through the admin screen; until then each category shows its own unavailable state.
+
+Validation executed: production Vite build; 4 pricelist validation tests; 10 existing booking, grooming and promotion tests. Live Firebase writes, deployed rules, browser interactions and end-to-end booking were not exercised. Binary validation checks signatures and container boundaries, not full server-side raster decoding; browser decoding additionally rejects unreadable selected files.

@@ -1,3 +1,4 @@
+import { PricelistImage } from "./PricelistImage.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
@@ -147,21 +148,6 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!initialServiceId || !serviceCatalog.some((service) => service.id === initialServiceId)) {
-      return;
-    }
-
-    setPetSelections((current) =>
-      current.length
-        ? current.map((selection, index) =>
-            index === 0 ? { ...selection, serviceId: initialServiceId,
-              additionalServiceId: !canPairServices(initialServiceId, selection.additionalServiceId) ? null : selection.additionalServiceId } : selection,
-          )
-        : [{ ...createPetSelection(), serviceId: initialServiceId }],
-    );
-    setFeedback({ type: "success", message: "Selected service carried into booking." });
-  }, [initialServiceId]);
 
   const customerPetRecords = useMemo(
     () =>
@@ -437,6 +423,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "" }) 
 
       <form onSubmit={handleSubmit} className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
+          <PricelistImage category={initialServiceId} />
           <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">

@@ -1,7 +1,7 @@
 const { randomUUID } = require("node:crypto");
 
 const SLOT_LABELS = { "09:00": "09:00 AM", "11:00": "11:00 AM", "14:00": "02:00 PM", "16:00": "04:00 PM" };
-const ACTIVE = ["pending", "approved", "accepted", "confirmed"];
+const ACTIVE = ["approved", "accepted", "confirmed"];
 const HOUR = 60 * 60 * 1000;
 
 function reminderSchedule(appointment) {

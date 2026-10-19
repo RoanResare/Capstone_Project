@@ -11,11 +11,18 @@ test("all four slots use clinic time and a one-hour lead", () => {
   assert.equal(reminderSchedule({ ...appointment, scheduleDate: "2026-02-30" }), null);
 });
 
-test("honors opt-in, terminal statuses, and reminder window", () => {
+test("honors opt-in, approved booking statuses, and reminder window", () => {
   const now = Date.parse("2026-10-20T00:00:00Z");
   assert.equal(isDue(appointment, now - 1), false);
   assert.equal(isDue(appointment, now), true);
   assert.equal(isDue(appointment, now + 3600000), false);
+  for (const status of ["Approved", "Accepted", "Confirmed"]) {
+    assert.equal(isDue({ ...appointment, status }, now), true);
+    assert.equal(isDue({ ...appointment, status, reminderEnabled: false }, now), false);
+  }
+  for (const status of ["Pending", "pending"]) {
+    assert.equal(isDue({ ...appointment, status }, now), false);
+  }
   for (const override of [{ reminderEnabled: false }, { reminderEnabled: "true" }, { status: "Cancelled" }, { status: "Completed" }, { sessionStartedAt: "started" }, { customerEmail: "" }]) {
     assert.equal(isDue({ ...appointment, ...override }, now), false);
   }

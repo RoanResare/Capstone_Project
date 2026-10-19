@@ -1,6 +1,6 @@
 # Appointment reminder emails
 
-The backend checks at startup and each wall-clock minute. Bookings with `reminderEnabled: true` and a Pending, Approved, Accepted, or Confirmed status receive a Gmail SMTP reminder one hour before their saved slot, in Asia/Manila:
+The backend checks at startup and each wall-clock minute. Only bookings with `reminderEnabled: true` and an Approved, Accepted, or Confirmed status receive a Gmail SMTP reminder one hour before their saved slot, in Asia/Manila. Pending bookings do not receive reminders:
 
 | Appointment | Reminder |
 | --- | --- |

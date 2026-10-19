@@ -5,6 +5,7 @@ import { Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { getPasswordRecoveryEmailError } from "../utils/passwordRecovery.js";
+import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
 
 export function ForgotPassword() {
   const { isOnline, requestPasswordReset } = useAuth();
@@ -49,8 +50,9 @@ export function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 lg:py-18">
-      <div className="mx-auto grid max-w-[1120px] items-start gap-10 lg:grid-cols-[1fr_0.92fr]">
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 lg:py-18">
+      <AuthPageBackdrop />
+      <div className="relative z-10 mx-auto grid max-w-[1120px] items-start gap-10 lg:grid-cols-[1fr_0.92fr]">
         <motion.section
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}

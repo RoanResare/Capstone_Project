@@ -662,6 +662,7 @@ async function createPortalUser(payload) {
   await assertAccountText(payload);
   const email = payload.email.trim().toLowerCase();
   assertRegistrationEmailAllowed(email);
+  await assertEmailIsDeliverable(email);
   const fullName = payload.fullName.trim();
   const password = payload.password;
   const username = assertValidUsername(payload.username || deriveUsernameFromEmail(email));

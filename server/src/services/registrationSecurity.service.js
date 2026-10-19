@@ -81,6 +81,10 @@ function getEmailDomain(email = "") {
   return String(email || "").trim().toLowerCase().split("@").pop() || "";
 }
 
+function isTrustedEmailDomain(domain) {
+  return trustedEmailDomains.has(domain) || domain.endsWith(".sti.edu");
+}
+
 function assertRegistrationEmailAllowed(email) {
   assertValidEmail(email);
   const domain = getEmailDomain(email);
@@ -94,7 +98,7 @@ async function assertEmailIsDeliverable(email) {
   assertRegistrationEmailAllowed(email);
   const domain = getEmailDomain(email);
 
-  if (trustedEmailDomains.has(domain) && !env.security.emailValidationUrl) {
+  if (isTrustedEmailDomain(domain) && !env.security.emailValidationUrl) {
     return;
   }
 
@@ -145,7 +149,7 @@ async function assertEmailIsDeliverable(email) {
 }
 
 async function validateRegistrationSecurity(req, email) {
-  assertRegistrationEmailAllowed(email);
+  await assertEmailIsDeliverable(email);
   // Retain IP as registration metadata only, never as an access restriction.
   return { registrationIp: getClientIp(req) };
 }

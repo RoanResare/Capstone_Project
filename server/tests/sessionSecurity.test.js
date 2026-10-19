@@ -489,7 +489,7 @@ test("built-in disposable domains and subdomains reject before DNS or provider r
   }
 });
 
-test("registration allows real providers and institutional/custom domains without DNS or heuristic false positives", async () => {
+test("registration allows major providers immediately and custom domains only when they publish mail records", async () => {
   const dnsCalls = [];
   const service = loadService("registrationSecurity.service.js", {
     "../config/env": { env: { security: {} } },
@@ -505,14 +505,15 @@ test("registration allows real providers and institutional/custom domains withou
   for (const domain of ["sti.edu", "students.sti.edu", "school.edu.ph", "business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.example"]) {
     await service.validateRegistrationSecurity({}, `user@${domain}`);
   }
-  assert.deepEqual(dnsCalls, []);
+  assert.deepEqual(dnsCalls, ["school.edu.ph", "business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.example"]);
 });
 
-test("every registration checks disposable domains regardless of reused personal details or provider classification", async () => {
+test("every registration checks disposable domains before any provider request", async () => {
+  let providerCalls = 0;
   const service = loadService("registrationSecurity.service.js", {
     "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}", failClosed: true } } },
     "node:dns/promises": { Resolver: class { async resolveMx() { assert.fail("Registration does not classify custom domains by DNS"); } } },
-  }, { fetch: async () => assert.fail("Registration does not trust external disposable heuristics") });
+  }, { fetch: async () => { providerCalls++; return response({ valid: true, deliverable: true }); } });
   const req = { ip: "1.2.3.4", body: { fullName: "Same Name", password: "Test123!", phone: "09620614953" } };
   for (let attempt = 0; attempt < 3; attempt++) {
     await service.validateRegistrationSecurity(req, "student@sti.edu");
@@ -520,6 +521,20 @@ test("every registration checks disposable domains regardless of reused personal
       await assert.rejects(service.validateRegistrationSecurity(req, `same@${domain}`),
         { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
     }
+  }
+  assert.equal(providerCalls, 3);
+});
+
+test("registration rejects custom domains without mail records and reports DNS outages as temporary", async () => {
+  for (const [records, code, statusCode] of [[[], null, 400], [null, "ENOTFOUND", 400], [null, "ETIMEOUT", 503]]) {
+    const service = loadService("registrationSecurity.service.js", {
+      "../config/env": { env: { security: {} } },
+      "node:dns/promises": { Resolver: class { async resolveMx() {
+        if (code) throw Object.assign(new Error(code), { code });
+        return records;
+      } } },
+    });
+    await assert.rejects(service.validateRegistrationSecurity({}, "user@example.org"), { statusCode });
   }
 });
 

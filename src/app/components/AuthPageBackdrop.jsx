@@ -6,9 +6,9 @@ export function AuthPageBackdrop() {
       <img
         src={heroImage}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover object-center opacity-25"
+        className="absolute inset-0 h-full w-full object-cover object-[42%_center] opacity-45"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(246,240,231,0.48)_0%,rgba(246,240,231,0.78)_48%,rgba(246,240,231,0.88)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(246,240,231,0.22)_0%,rgba(246,240,231,0.52)_46%,rgba(246,240,231,0.84)_100%)]" />
     </div>
   );
 }

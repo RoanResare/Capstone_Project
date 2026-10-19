@@ -70,8 +70,8 @@ export function Home() {
   return (
     <div className="bg-[#F6F0E7] pb-6">
       <section id="home" className="scroll-mt-28 relative overflow-hidden">
-        <img aria-hidden="true" src={heroImage} alt="" className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center opacity-[0.12] mix-blend-multiply" />
-        <div className="absolute inset-x-0 top-0 z-[1] h-[300px] bg-[#2D9B9B]" />
+        <img aria-hidden="true" src={heroImage} alt="" className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center opacity-[0.34]" />
+        <div className="absolute inset-x-0 top-0 z-[1] h-[300px] bg-[#2D9B9B]/82" />
         <div className="relative z-[2] mx-auto max-w-[1360px] px-3 pb-5 pt-5 sm:px-4 md:pt-6">
           <motion.div
             initial={{ opacity: 0, y: 28 }}
@@ -79,7 +79,7 @@ export function Home() {
             transition={{ duration: 0.6 }}
             className="grid items-stretch gap-4 lg:grid-cols-[1.3fr_0.7fr]"
           >
-            <div className="flex min-h-[320px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44]/95 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[360px] md:p-7">
+            <div className="flex min-h-[320px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44]/92 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[360px] md:p-7">
               <div>
                 <p className="inline-flex rounded-full border border-[#F4C16A]/50 bg-[#245B62] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#FFF4D8]">
                   {businessBranchDetails.name}
@@ -112,7 +112,7 @@ export function Home() {
               initial={{ opacity: 0, x: 26 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.65, delay: 0.12 }}
-              className="flex h-full min-h-[320px] flex-col justify-center rounded-lg bg-[#FFFDFC]/95 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[360px] md:p-6"
+              className="flex h-full min-h-[320px] flex-col justify-center rounded-lg bg-[#FFFDFC]/90 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[360px] md:p-6"
             >
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                 Public overview
@@ -131,9 +131,8 @@ export function Home() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.1 }}
-            className="relative isolate mt-5 rounded-lg bg-white/95 p-4 shadow-[0_16px_34px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:p-5"
+            className="relative isolate mt-5 rounded-lg bg-white/88 p-4 shadow-[0_16px_34px_rgba(94,81,60,0.12)] backdrop-blur-[3px] md:p-5"
           >
-            <img aria-hidden="true" src={heroImage} alt="" className="pointer-events-none absolute inset-0 z-0 h-full w-full rounded-lg object-cover object-center opacity-[0.12]" />
             <div className="relative z-10 grid gap-5 lg:grid-cols-[0.78fr_1.22fr]">
               <div className="rounded-lg bg-[#F9F5EE] p-4">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">

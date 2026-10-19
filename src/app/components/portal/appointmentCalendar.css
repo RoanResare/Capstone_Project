@@ -35,18 +35,29 @@
   padding: 3px 5px;
   font-size: 11px;
   line-height: 1.25;
-  overflow: hidden;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .appointment-calendar .calendar-event-name {
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.appointment-calendar .calendar-event-name,
-.appointment-calendar .calendar-event-service {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.appointment-calendar .calendar-event-service,
+.appointment-calendar .calendar-event-pet,
+.appointment-calendar .calendar-event-assignee {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.appointment-calendar .calendar-event-contact,
+.appointment-calendar .calendar-event-assignee {
+  display: none;
+}
+
+.appointment-calendar .fc-popover .calendar-event-contact,
+.appointment-calendar .fc-popover .calendar-event-assignee {
+  display: block;
 }
 
 .appointment-calendar .fc-more-link {
@@ -55,8 +66,22 @@
 }
 
 .appointment-calendar .fc-popover {
-  max-width: min(320px, calc(100vw - 32px));
+  width: min(420px, calc(100vw - 32px));
+  max-width: min(420px, calc(100vw - 32px));
+  max-height: min(72vh, 680px);
+  display: flex;
+  flex-direction: column;
   z-index: 10;
+}
+
+.appointment-calendar .fc-popover-header {
+  flex: 0 0 auto;
+}
+
+.appointment-calendar .fc-popover-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .appointment-detail-dialog > section {
@@ -71,12 +96,9 @@
   }
 
   .appointment-calendar .calendar-event-content {
-    padding: 2px;
+    padding: 3px;
     font-size: 9px;
-  }
-
-  .appointment-calendar .calendar-event-service {
-    display: none;
+    line-height: 1.25;
   }
 
   .appointment-calendar .fc-timegrid-axis,

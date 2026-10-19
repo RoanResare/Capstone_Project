@@ -33,9 +33,12 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
     const end = new Date(`${start}+08:00`);
     end.setMinutes(end.getMinutes() + 120);
     const endParts = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).format(end).replace(" ", "T");
+    const ownerName = appointment.ownerName || "Customer not saved";
+    const assignedStaff = appointment.assignedStaff || "Not assigned";
+    const petType = appointment.petType || "Pet type not saved";
     return [{ id: appointment.id, title: `${appointment.petName || "Pet"} | ${appointment.service || "Appointment"}`, start, end: endParts,
       backgroundColor: colors.background, borderColor: colors.border, textColor: colors.text,
-      extendedProps: { status, petName: appointment.petName, service: appointment.service } }];
+      extendedProps: { status, petName: appointment.petName || "Pet", petType, service: appointment.service || "Appointment", ownerName, customerEmail: appointment.customerEmail || "No email saved", assignedStaff } }];
   }), [appointments]);
   const changeView = (nextView, date) => {
     const calendar = calendarRef.current?.getApi();
@@ -83,8 +86,23 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
         datesSet={(info) => { setTitle(info.view.title); setView(info.view.type); }}
         dateClick={(info) => changeView("timeGridDay", info.dateStr)}
         eventClick={(info) => onOpenAppointment(info.event.id)}
-        eventDidMount={(info) => { info.el.title = `${info.event.title} | ${info.event.extendedProps.status}`; }}
-        eventContent={(info) => <div className="calendar-event-content"><span className="calendar-event-name">{info.event.extendedProps.petName || "Pet"}</span><span className="calendar-event-service">{info.event.extendedProps.service}</span><span>{info.timeText}</span></div>}
+        eventDidMount={(info) => {
+          const { ownerName, customerEmail, petName, petType, service, status, assignedStaff } = info.event.extendedProps;
+          info.el.title = `${ownerName} | ${customerEmail} | ${petName} (${petType}) | ${service} | ${info.timeText} | ${status} | Staff: ${assignedStaff}`;
+        }}
+        eventContent={(info) => {
+          const { ownerName, customerEmail, petName, petType, service, status, assignedStaff } = info.event.extendedProps;
+          return (
+            <div className="calendar-event-content">
+              <span className="calendar-event-name">{ownerName}</span>
+              <span className="calendar-event-contact">{customerEmail}</span>
+              <span className="calendar-event-pet">{petName} | {petType}</span>
+              <span className="calendar-event-service">{service}</span>
+              <span>{info.timeText} - {status}</span>
+              <span className="calendar-event-assignee">Staff: {assignedStaff}</span>
+            </div>
+          );
+        }}
       />
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#D9E7E7] pt-3 text-xs text-[#425A60]" aria-label="Appointment status colors">
         {APPOINTMENT_STATUSES.map((status) => <span key={status} className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full border" style={{ backgroundColor: status === "Completed" ? APPOINTMENT_COLORS[status].background : APPOINTMENT_COLORS[status].border, borderColor: APPOINTMENT_COLORS[status].border }} />{status}</span>)}

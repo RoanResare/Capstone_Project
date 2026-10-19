@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { readSessionStorageItem, removeSessionStorageItem } from "../utils/browserState.js";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, ShieldCheck, UserPlus } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus, X } from "lucide-react";
 import { BrandMark } from "./BrandMark.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -39,6 +39,7 @@ export function Login() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
 
@@ -132,29 +133,6 @@ export function Login() {
             </div>
           </div>
 
-          <h2 className="mt-8 text-4xl font-semibold leading-tight sm:text-5xl">
-            One login for customers, staff, and admins.
-          </h2>
-          <p className="mt-4 max-w-xl text-sm leading-7 text-white/78 sm:text-base">
-            Enter your email or username and password once. The system authenticates the account,
-            detects the saved role, and sends each user to the correct existing dashboard.
-          </p>
-
-          <div className="mt-7 rounded-lg border border-white/12 bg-white/8 px-4 py-4 text-sm text-white/80">
-            <p className="font-semibold uppercase tracking-[0.16em] text-white/64">
-              Terms and Conditions
-            </p>
-            <div className="mt-3 grid gap-3">
-              <div className="flex items-center gap-3">
-                <ShieldCheck size={18} />
-                Customer, Staff, and Admin dashboards remain separate.
-              </div>
-              <div className="flex items-center gap-3">
-                <UserPlus size={18} />
-                Remembered devices must be private, trusted browsers.
-              </div>
-            </div>
-          </div>
         </motion.section>
 
         <motion.section
@@ -240,7 +218,8 @@ export function Login() {
               <LogIn size={16} />
             </button>
 
-            <label className="flex items-start justify-end gap-3 text-right text-sm font-semibold text-[#415D62]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-start gap-3 text-sm font-semibold text-[#415D62]">
               <span>Remember me</span>
               <input
                 type="checkbox"
@@ -269,6 +248,10 @@ export function Login() {
                 className="mt-1 h-4 w-4 accent-[#2D9B9B]"
               />
             </label>
+            <button type="button" onClick={() => setShowTerms(true)} className="text-sm font-semibold text-[#2D6B73] underline underline-offset-4">
+              Terms and Conditions
+            </button>
+            </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
               <Link
@@ -300,6 +283,23 @@ export function Login() {
           )}
         </motion.section>
       </div>
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102D32]/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTerms(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="login-terms-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="login-terms-title" className="text-xl font-semibold text-[#20343B]">Terms and Conditions</h2>
+              <button type="button" onClick={() => setShowTerms(false)} aria-label="Close terms and conditions" className="rounded-full p-2 text-[#607277] hover:bg-[#F1F7F7]"><X size={20} /></button>
+            </div>
+            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 text-sm leading-6 text-[#607277]">
+              <p>Use accurate account information and keep your password private. You are responsible for activity under your account and should sign in only on devices you trust.</p>
+              <p className="mt-3">Use the service to book appointments for pets under your care. Provide accurate health and contact details so clinic staff can coordinate care and appointment updates.</p>
+              <p className="mt-3">Contact details and submitted pet notes or photos may be used for appointment coordination, account security, reminders, and clinic notices. Authorized clinic staff may review information relevant to your pet's care.</p>
+              <p className="mt-3">Do not attempt to access another person's account or disrupt the service. The clinic may restrict accounts involved in misuse or security concerns.</p>
+            </div>
+            <button type="button" onClick={() => setShowTerms(false)} className="mt-6 w-full rounded-xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white">Close</button>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, UserPlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
@@ -47,8 +47,11 @@ export function CustomerSignup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [termsRead, setTermsRead] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsReady, setTermsReady] = useState(false);
+  const termsScrollRef = useRef(null);
   const passwordStrength = getPasswordStrength(form.password);
   const passwordPolicyError = form.password ? getPasswordPolicyError(form.password) : "";
 
@@ -67,6 +70,12 @@ export function CustomerSignup() {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    if (!termsReady) {
+      setShowTerms(true);
+      setFeedback({ type: "", message: "" });
       return;
     }
 
@@ -89,11 +98,9 @@ export function CustomerSignup() {
         return;
       }
 
-      if (!termsAccepted) {
-        setFeedback({
-          type: "error",
-          message: "Read and accept the Terms and Conditions and Privacy Policy before creating an account.",
-        });
+      if (!termsAccepted || !termsRead) {
+        setTermsReady(false);
+        setShowTerms(true);
         return;
       }
 
@@ -132,38 +139,6 @@ export function CustomerSignup() {
           transition={{ duration: 0.55 }}
           className="rounded-[36px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_55%,#82C8C0_100%)] p-8 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-10"
         >
-          <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
-            Email verification
-          </p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[4.2rem]">
-            Create your account securely.
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            We’ll send a secure activation link to your email. Your account stays restricted until
-            you open that link and verify your address.
-          </p>
-
-          <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/64">
-              What happens next
-            </p>
-            <div className="mt-4 space-y-3 text-sm text-white/78">
-              <p>1. We check your registration details and send a one-time activation link.</p>
-              <p>2. Open the link from your inbox before it expires.</p>
-              <p>3. Sign in after your email has been verified.</p>
-            </div>
-          </div>
-
-          <p className="mt-8 text-sm text-white/74">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="font-semibold text-white underline underline-offset-4"
-            >
-              Sign in here
-            </Link>
-            .
-          </p>
         </motion.div>
 
         <motion.section
@@ -319,51 +294,12 @@ export function CustomerSignup() {
               </div>
             </div>
 
-            <div className="rounded-[22px] border border-[#D9E7E7] bg-[#F8FCFC] p-4">
-              <div
-                className="max-h-28 overflow-y-auto pr-2 text-sm leading-6 text-[#607277]"
-                onScroll={(event) => {
-                  const element = event.currentTarget;
-                  if (element.scrollTop + element.clientHeight >= element.scrollHeight - 4) {
-                    setTermsRead(true);
-                  }
-                }}
-              >
-                <p className="font-semibold text-[#20343B]">Terms and Conditions and Privacy Policy</p>
-                <p className="mt-2">
-                  Use your own accurate account information, keep your password private, and book
-                  appointments only for pets under your care. Your contact details are used for
-                  appointment coordination, account security, service updates, and clinic notices.
-                </p>
-                <p className="mt-2">
-                  Submitted pet notes and optional photos may be reviewed by clinic staff. The
-                  clinic may contact you about bookings, reminders, and account concerns through
-                  your registered email or phone number.
-                </p>
-              </div>
-              <label className="mt-3 flex items-start gap-3 text-sm font-semibold text-[#415D62]">
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(event) => setTermsAccepted(event.target.checked)}
-                  disabled={!termsRead || isSubmitting}
-                  className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed"
-                />
-                <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
-              </label>
-              {!termsRead && (
-                <p className="mt-2 text-xs text-[#7A9297]">
-                  Scroll through the policy text before checking the box.
-                </p>
-              )}
-            </div>
-
             <button
               type="submit"
-              disabled={isSubmitting || !termsAccepted}
+              disabled={isSubmitting}
               className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
             >
-              Create account
+              {isSubmitting ? "Creating account..." : "Create account"}
               <UserPlus size={16} />
             </button>
 
@@ -403,6 +339,50 @@ export function CustomerSignup() {
           )}
         </motion.section>
       </div>
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102D32]/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTerms(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="signup-terms-title" className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="signup-terms-title" className="text-xl font-semibold text-[#20343B]">Terms and Conditions and Privacy Policy</h2>
+                <p className="mt-1 text-sm text-[#607277]">Scroll to the bottom to enable account creation.</p>
+              </div>
+              <button type="button" onClick={() => setShowTerms(false)} aria-label="Close terms and conditions" className="rounded-full p-2 text-[#607277] hover:bg-[#F1F7F7]"><X size={20} /></button>
+            </div>
+            <div
+              ref={termsScrollRef}
+              className="mt-5 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-5 text-sm leading-6 text-[#607277]"
+              onScroll={(event) => {
+                const element = event.currentTarget;
+                if (element.scrollTop + element.clientHeight >= element.scrollHeight - 4) setTermsRead(true);
+              }}
+            >
+              <p className="font-semibold text-[#20343B]">Account information and security</p>
+              <p className="mt-2">Provide accurate information that belongs to you. Keep your password private and use your account only on devices you trust. You are responsible for activity performed through your account.</p>
+              <p className="mt-4 font-semibold text-[#20343B]">Appointments and pet care</p>
+              <p className="mt-2">Use the service to book appointments for pets under your care. Provide accurate contact and health details so clinic staff can coordinate appointments and appropriate care.</p>
+              <p className="mt-4 font-semibold text-[#20343B]">Use of your information</p>
+              <p className="mt-2">Your contact details are used for appointment coordination, account security, service updates, reminders, and clinic notices. Pet notes and optional photos may be reviewed by authorized clinic staff to support your pet's care.</p>
+              <p className="mt-4 font-semibold text-[#20343B]">Responsible use</p>
+              <p className="mt-2">Do not access another person's account, submit misleading information, or interfere with the service. The clinic may restrict accounts when needed to address misuse, safety, or security concerns.</p>
+              <p className="mt-4">By continuing, you confirm that you have read and agree to these Terms and Conditions and the Privacy Policy.</p>
+            </div>
+            <label className="mt-4 flex items-start gap-3 text-sm font-semibold text-[#415D62]">
+              <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} disabled={!termsRead || isSubmitting} className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed" />
+              <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
+            </label>
+            {!termsRead && <p className="mt-2 text-xs text-[#7A9297]">Scroll to the bottom of the terms before continuing.</p>}
+            <button
+              type="button"
+              disabled={!termsRead || !termsAccepted || isSubmitting}
+              onClick={() => { setTermsReady(true); setShowTerms(false); setFeedback({ type: "", message: "" }); }}
+              className="mt-5 w-full rounded-xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Agree and continue
+            </button>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

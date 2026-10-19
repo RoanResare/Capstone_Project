@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { readSessionStorageItem, removeSessionStorageItem } from "../utils/browserState.js";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, UserPlus, X } from "lucide-react";
-import { BrandMark } from "./BrandMark.jsx";
+import { Eye, EyeOff, LogIn, PawPrint, X } from "lucide-react";
+import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { branchDetails } from "../data/systemData.js";
@@ -113,40 +113,31 @@ export function Login() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-[#F6F0E7] px-4 py-8 sm:px-6">
-      <div className="mx-auto w-full max-w-[860px]">
-        <motion.section
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
+      <div className="mx-auto grid w-full max-w-[1280px] items-center gap-6 lg:min-h-[calc(100vh-8rem)] lg:grid-cols-[1.04fr_0.96fr] lg:gap-8">
+        <motion.div
           initial={{ opacity: 0, x: -18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45 }}
-          className="mb-5 flex items-center gap-4 rounded-lg bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_62%,#7BC2BB_100%)] p-5 text-white shadow-[0_18px_42px_rgba(20,43,46,0.2)] sm:p-7"
+          className="order-1 lg:order-1"
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandMark className="h-14 w-14 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                Charming Fur-fection
-              </p>
-              <h1 className="text-xl font-semibold leading-tight sm:text-2xl">
-                Pet Care Services - Las Piñas City
-              </h1>
-            </div>
-          </div>
-
-        </motion.section>
+          <AuthHeroPanel />
+        </motion.div>
 
         <motion.section
           initial={{ opacity: 0, x: 18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, delay: 0.06 }}
-          className="rounded-lg bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] sm:p-8"
+          className="order-2 rounded-[30px] bg-white p-6 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-8 lg:order-2 lg:p-9"
         >
           <div className="mb-6 text-center">
-            <h2 className="text-2xl font-semibold text-[#20343B]">
+            <PawPrint className="mx-auto mb-2 text-[#168985]" size={30} />
+            <h2 className="text-3xl font-extrabold text-[#07545A]">Welcome Back!</h2>
+            <h3 className="mt-1 text-base font-bold text-[#20343B]">
               {branchDetails.name}
-            </h2>
+            </h3>
             <p className="mt-2 text-sm text-[#607277]">
-              Log in with your account credentials.
+              Log in with your account credentials to continue.
             </p>
           </div>
 
@@ -209,17 +200,8 @@ export function Login() {
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isSubmitting ? "Logging in..." : "Log In"}
-              <LogIn size={16} />
-            </button>
-
             <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="flex items-start gap-3 text-sm font-semibold text-[#415D62]">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#415D62]">
               <span>Remember me</span>
               <input
                 type="checkbox"
@@ -245,29 +227,35 @@ export function Login() {
                   setForm((current) => ({ ...current, rememberDevice: checked }));
                 }}
                 disabled={isSubmitting}
-                className="mt-1 h-4 w-4 accent-[#2D9B9B]"
+                className="h-4 w-4 accent-[#2D9B9B]"
               />
             </label>
-            <button type="button" onClick={() => setShowTerms(true)} className="text-sm font-semibold text-[#2D6B73] underline underline-offset-4">
-              Terms and Conditions
-            </button>
+            <Link to="/forgot-password" className="text-sm font-semibold text-[#2D6B73] underline underline-offset-4">
+              Forgot Password?
+            </Link>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-sm">
-              <Link
-                to="/customer/signup"
-                state={nextState}
-                className="font-semibold text-[#2D6B73] underline underline-offset-4"
-              >
-                Create Account
-              </Link>
-              <Link
-                to="/forgot-password"
-                className="font-semibold text-[#607277] underline underline-offset-4"
-              >
-                Forgot Password?
-              </Link>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#078F89] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#087C79] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? "Logging in..." : "Log In"}
+              <LogIn size={16} />
+            </button>
+
+            <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#8CA0A2]">
+              <span className="h-px flex-1 bg-[#E4ECE9]" /> Or <span className="h-px flex-1 bg-[#E4ECE9]" />
             </div>
+
+            <Link to="/customer/signup" state={nextState} className="inline-flex w-full items-center justify-center rounded-xl border border-[#78B8B2] px-5 py-3 text-sm font-bold text-[#14545A] transition hover:bg-[#F1FAF8]">
+              Create Account
+            </Link>
+
+            <p className="pt-1 text-center text-xs text-[#718387]">
+              By continuing, you agree to our{" "}
+              <button type="button" onClick={() => setShowTerms(true)} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>.
+            </p>
           </form>
 
           {feedback.message && (

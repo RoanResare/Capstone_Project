@@ -3,6 +3,7 @@ import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/te
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus, X } from "lucide-react";
+import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
@@ -131,22 +132,27 @@ export function CustomerSignup() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 lg:py-18">
-      <div className="mx-auto grid max-w-[1220px] items-start gap-10 lg:grid-cols-[1.02fr_0.98fr]">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
+      <div className="mx-auto grid max-w-[1320px] items-start gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-8">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55 }}
-          className="rounded-[36px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_55%,#82C8C0_100%)] p-8 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-10"
+          className="order-1 lg:order-1"
         >
+          <AuthHeroPanel />
         </motion.div>
 
         <motion.section
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, delay: 0.08 }}
-          className="rounded-[34px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-10"
+          className="order-2 rounded-[30px] bg-white p-6 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-8 lg:order-2 lg:p-9"
         >
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-extrabold text-[#07545A]">Create Account</h1>
+            <p className="mt-2 text-sm text-[#607277]">Join us to manage your pet care and appointments.</p>
+          </div>
           <form noValidate onSubmit={handleSubmit} className="space-y-5">
             {firebaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">

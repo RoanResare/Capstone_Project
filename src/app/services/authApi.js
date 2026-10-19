@@ -121,6 +121,24 @@ export async function checkCustomerRegistrationAvailability({ email, phone }) {
   }
 }
 
+export async function activateCustomerEmail(oobCode) {
+  try {
+    const response = await apiClient.post("/auth/register/activate", { oobCode });
+    return response.data;
+  } catch (error) {
+    throw createApiRequestError(error, "Unable to activate this account right now.", "email-activation");
+  }
+}
+
+export async function resendCustomerEmailVerification(email) {
+  try {
+    const response = await apiClient.post("/auth/register/resend-verification", { email });
+    return response.data;
+  } catch (error) {
+    throw createApiRequestError(error, "Unable to send a new verification link right now.", "email-verification-resend");
+  }
+}
+
 export async function resendPortalOtp(role, otpTicket) {
   try {
     const response = await apiClient.post(`/${normalizePortalRole(role)}/send-otp`, {

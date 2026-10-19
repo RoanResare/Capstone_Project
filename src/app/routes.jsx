@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { createBrowserRouter, Navigate, useLocation } from "react-router-dom";
 import { AppErrorBoundary } from "./components/AppErrorBoundary.jsx";
+import { ActivateAccount } from "./components/ActivateAccount.jsx";
 import { ForgotPassword } from "./components/ForgotPassword.jsx";
 import { Layout } from "./components/Layout.jsx";
 import { Home } from "./components/Home.jsx";
@@ -123,6 +124,7 @@ export const router = createBrowserRouter([
       { path: "verify-otp", element: <RouteLoader Component={OtpVerification} /> },
       { path: "unauthorized", element: <RouteLoader Component={UnauthorizedPage} /> },
       { path: "forgot-password", element: <RouteLoader Component={ForgotPassword} /> },
+      { path: "activate-account", element: <ActivateAccount /> },
       { path: "reset-password", element: <RouteLoader Component={ResetPassword} /> },
       { path: "customer-login", element: <Navigate to="/customer/login" replace /> },
       { path: "customer-signup", element: <Navigate to="/customer/signup" replace /> },

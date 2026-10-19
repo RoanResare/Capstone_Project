@@ -7,6 +7,8 @@ const IDENTITY_TOOLKIT_URL =
   "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 const PASSWORD_RESET_URL =
   "https://identitytoolkit.googleapis.com/v1/accounts:resetPassword";
+const APPLY_EMAIL_VERIFICATION_URL =
+  "https://identitytoolkit.googleapis.com/v1/accounts:update";
 
 function mapFirebaseAuthError(code = "") {
   switch (code) {
@@ -143,6 +145,52 @@ async function generatePasswordResetLink(email) {
   }
 }
 
+async function generateEmailVerificationLink(email) {
+  if (!firebaseAdminAuth || !env.runtime.firebaseAdminReady) {
+    throw new ApiError(503, "Firebase Admin is not configured for email verification.");
+  }
+  try {
+    return await firebaseAdminAuth.generateEmailVerificationLink(email, {
+      url: env.auth.emailVerificationUrl,
+      handleCodeInApp: false,
+    });
+  } catch (error) {
+    console.error("[firebase-auth] Email verification link generation failed.", {
+      firebaseCode: error?.code || error?.errorInfo?.code || "",
+      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
+    try {
+      return await firebaseAdminAuth.generateEmailVerificationLink(email);
+    } catch (fallbackError) {
+      throw new ApiError(500, "Unable to generate an email verification link right now.",
+        fallbackError instanceof Error ? { message: fallbackError.message } : null);
+    }
+  }
+}
+
+async function applyEmailVerificationCode(oobCode) {
+  const response = await fetch(
+    `${APPLY_EMAIL_VERIFICATION_URL}?key=${encodeURIComponent(env.firebase.webApiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ oobCode }),
+    },
+  );
+  const data = await parseJsonResponse(response);
+  if (!response.ok) {
+    const code = data?.error?.message || "";
+    const message = ["EXPIRED_OOB_CODE", "INVALID_OOB_CODE", "EMAIL_NOT_FOUND"].includes(code)
+      ? "This verification link has expired or was already used. Request a new link to continue."
+      : "Unable to verify this email link. Request a new link or try again later.";
+    throw new ApiError(400, message, { firebaseCode: code });
+  }
+  if (!data.localId || !data.emailVerified) {
+    throw new ApiError(400, "The verification link could not verify this email address.");
+  }
+  return { uid: data.localId, email: data.email || "" };
+}
+
 async function callPasswordResetEndpoint(payload) {
   const response = await fetch(
     `${PASSWORD_RESET_URL}?key=${encodeURIComponent(env.firebase.webApiKey)}`,
@@ -178,7 +226,9 @@ async function confirmPasswordResetCode(oobCode, newPassword) {
 }
 
 module.exports = {
+  applyEmailVerificationCode,
   confirmPasswordResetCode,
+  generateEmailVerificationLink,
   generatePasswordResetLink,
   signInWithEmailAndPassword,
   validatePasswordResetCode,

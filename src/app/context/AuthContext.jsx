@@ -610,7 +610,7 @@ export function AuthProvider({ children }) {
         phone: normalizedPhone,
       });
 
-      const { firebaseUser, profile } = await signUpCustomerWithEmailPassword({
+      const { profile } = await signUpCustomerWithEmailPassword({
         fullName,
         email,
         password,
@@ -618,20 +618,20 @@ export function AuthProvider({ children }) {
         username,
         registrationIp: registrationCheck.registrationIp || "",
       });
-      const token = await firebaseUser.getIdToken();
-
+      resetTransientAuthStorage();
       clearPortalSession();
       clearPendingOtpSession();
       setPendingOtp(null);
-      setCurrentUser(profile);
-      setAccessToken(token);
+      setCurrentUser(null);
+      setAccessToken("");
       setAuthHydrationError("");
-      setHasFirebaseSession(true);
+      setHasFirebaseSession(false);
 
       return {
         ok: true,
-        user: profile,
-        homePath: resolveHomePath(profile.role),
+        verificationRequired: true,
+        email: profile.email || email.trim(),
+        message: "Verification link sent! Please check your email inbox to activate your account.",
       };
     } catch (error) {
       if ((auth.currentUser?.uid || "") === previousSignupUid) {

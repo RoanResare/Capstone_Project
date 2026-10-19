@@ -2,11 +2,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isActiveAccount() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == 'active';
+    }
 
     match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && (
-        (request.auth.uid == userId && exists(/databases/$(database)/documents/users/$(userId))) ||
+      allow read: if isActiveAccount() && request.auth.uid == userId;
+      allow write: if isActiveAccount() && (
+        request.auth.uid == userId ||
         request.auth.token.admin == true ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fraudStatus', 'fraudReason', 'updatedAt'])
       );
@@ -14,7 +19,7 @@ service cloud.firestore {
 
     match /usernames/{username} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isActiveAccount();
     }
 
     match /chatbot_faqs/{document=**} {
@@ -22,7 +27,7 @@ service cloud.firestore {
     }
 
     match /servicePricelists/{category} {
-      allow read: if request.auth != null;
+      allow read: if isActiveAccount();
       allow write: if false;
     }
 
@@ -31,43 +36,39 @@ service cloud.firestore {
     }
 
     match /appointments/{appointmentId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /pets/{petId} {
-      allow read: if request.auth != null;
+      allow read: if isActiveAccount();
       // Validated API writes enforce ownership and multilingual text moderation.
       // Direct SDK writes would bypass the server-side filter.
       allow create, update: if false;
-      allow delete: if request.auth != null;
+      allow delete: if isActiveAccount();
     }
 
     match /notifications/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /customers/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /schedules/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /slot_management/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /lowCostKaponPromo/{promoId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /revoked_tokens/{tokenId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isActiveAccount();
     }
 
     match /{document=**} {

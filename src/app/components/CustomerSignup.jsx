@@ -111,6 +111,12 @@ export function CustomerSignup() {
         return;
       }
 
+      if (result.verificationRequired) {
+        setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
+        setFeedback({ type: "success", message: result.message, email: result.email });
+        return;
+      }
+
       navigate(result.homePath || "/customer/dashboard", { replace: true });
     } finally {
       setIsSubmitting(false);
@@ -127,15 +133,14 @@ export function CustomerSignup() {
           className="rounded-[36px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_55%,#82C8C0_100%)] p-8 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-10"
         >
           <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
-            Firebase Sign Up
+            Email verification
           </p>
           <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[4.2rem]">
-            Create your account with Firebase email and password.
+            Create your account securely.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Registration now goes directly through Firebase Authentication. Once your account is
-            created, the app signs you in immediately and saves your profile in {"users/{uid}"}
-            without relying on the shared portal lookup flow.
+            We’ll send a secure activation link to your email. Your account stays restricted until
+            you open that link and verify your address.
           </p>
 
           <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
@@ -143,9 +148,9 @@ export function CustomerSignup() {
               What happens next
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
-              <p>1. Firebase creates your email/password account.</p>
-              <p>2. Your customer profile is created after authentication finishes.</p>
-              <p>3. You are signed in automatically and taken to your dashboard.</p>
+              <p>1. We check your registration details and send a one-time activation link.</p>
+              <p>2. Open the link from your inbox before it expires.</p>
+              <p>3. Sign in after your email has been verified.</p>
             </div>
           </div>
 
@@ -176,8 +181,7 @@ export function CustomerSignup() {
             )}
             {!isOnline && (
               <div className="rounded-[22px] border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-4 text-sm text-[#48656A]">
-                You are offline. Reconnect before creating a Firebase account so the auth record
-                and Firestore profile can be created together.
+            You are offline. Reconnect before registering so we can securely send your activation link.
               </div>
             )}
 
@@ -381,6 +385,8 @@ export function CustomerSignup() {
 
           {feedback.message && (
             <p
+              role={feedback.type === "error" ? "alert" : "status"}
+              aria-live="polite"
               className={`mt-6 rounded-[22px] px-4 py-3 text-sm font-medium ${
                 feedback.type === "error"
                   ? "bg-[#FBECEF] text-[#B23949]"
@@ -389,6 +395,11 @@ export function CustomerSignup() {
             >
               {feedback.message}
             </p>
+          )}
+          {feedback.type === "success" && feedback.email && (
+            <Link to={`/activate-account?email=${encodeURIComponent(feedback.email)}`} className="mt-3 inline-flex text-sm font-semibold text-[#2D6B73] underline underline-offset-4">
+              Link expired or missing? Request another activation link
+            </Link>
           )}
         </motion.section>
       </div>

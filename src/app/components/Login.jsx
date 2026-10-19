@@ -32,7 +32,10 @@ export function Login() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [feedback, setFeedback] = useState(() => {
     const message = readSessionStorageItem("furfection-security-warning") || "";
-    return { type: message ? "error" : "", message };
+    const verified = new URLSearchParams(location.search).get("emailVerified") === "1";
+    return verified
+      ? { type: "success", message: "Your email is verified. You can now sign in." }
+      : { type: message ? "error" : "", message };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

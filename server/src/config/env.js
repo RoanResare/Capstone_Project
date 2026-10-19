@@ -151,6 +151,9 @@ const frontendUrl = readOptional("FRONTEND_URL", defaultFrontendUrl).replace(/\/
 const defaultPasswordResetUrl = frontendUrl.endsWith("/reset-password")
   ? frontendUrl
   : `${frontendUrl}/reset-password`;
+const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
+  ? frontendUrl
+  : `${frontendUrl}/activate-account`;
 
 const env = {
   nodeEnv,
@@ -181,6 +184,7 @@ const env = {
     otpSecret: readRequired("OTP_HASH_SECRET"),
     passwordHashPepper: readRequired("PASSWORD_HASH_PEPPER"),
     passwordResetUrl: readOptional("PASSWORD_RESET_URL", defaultPasswordResetUrl),
+    emailVerificationUrl: readOptional("EMAIL_VERIFICATION_URL", defaultEmailVerificationUrl),
   },
   otp: {
     ttlMinutes: readNumber("OTP_TTL_MINUTES", 5),

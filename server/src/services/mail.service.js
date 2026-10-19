@@ -76,6 +76,28 @@ function buildPasswordResetHtml({ fullName, resetLink }) {
   `;
 }
 
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[character]);
+}
+
+function buildEmailVerificationHtml({ fullName, verificationLink }) {
+  const greeting = fullName ? `Hi ${escapeHtml(fullName)},` : "Hello,";
+  return `
+    <div style="background:#f4f0e8;padding:32px;font-family:Arial,sans-serif;color:#1f353b;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:24px;padding:32px;box-shadow:0 18px 36px rgba(66,74,76,0.12);">
+        <p style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#6c8c92;margin:0 0 16px;">Email verification</p>
+        <h1 style="font-size:28px;line-height:1.2;margin:0 0 16px;">Charming Fur-fection Pet Care</h1>
+        <p style="font-size:16px;line-height:1.7;margin:0 0 16px;">${greeting}</p>
+        <p style="font-size:16px;line-height:1.7;margin:0 0 20px;">Confirm your email address to activate your customer account.</p>
+        <p style="margin:24px 0;"><a href="${escapeHtml(verificationLink)}" style="display:inline-block;background:#173e44;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:14px;font-weight:700;">Activate account</a></p>
+        <p style="font-size:14px;line-height:1.7;color:#5d7075;margin:0 0 12px;">This secure link expires automatically and can only be used once.</p>
+        <p style="font-size:13px;line-height:1.7;color:#173e44;word-break:break-all;margin:0;">${escapeHtml(verificationLink)}</p>
+      </div>
+    </div>`;
+}
+
 function maskEmail(value = "") {
   const [localPart = "", domain = ""] = String(value || "").trim().split("@");
 
@@ -191,7 +213,18 @@ async function sendPasswordResetEmail({ to, fullName, resetLink }) {
   });
 }
 
+async function sendEmailVerificationLink({ to, fullName, verificationLink }) {
+  return deliverMail({
+    type: "email-verification",
+    to,
+    subject: "Activate your Charming Fur-fection account",
+    html: buildEmailVerificationHtml({ fullName, verificationLink }),
+    text: `Activate your Charming Fur-fection account using this secure link: ${verificationLink}\nThis link expires automatically and can only be used once.`,
+  });
+}
+
 module.exports = {
+  sendEmailVerificationLink,
   sendOtpEmail,
   sendPasswordResetEmail,
 };

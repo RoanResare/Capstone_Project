@@ -47,6 +47,7 @@ const {
   assertEmailIsDeliverable,
   validateRegistrationSecurity,
 } = require("../services/registrationSecurity.service");
+const { purgeExpiredPendingRegistrations } = require("../services/pendingRegistrationCleanup.service");
 
 function normalizeEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -181,6 +182,9 @@ async function resolveEmailFromIdentifier(identifier = "") {
 }
 
 async function checkCustomerRegistrationAvailability(req, res) {
+  await purgeExpiredPendingRegistrations().catch((error) => {
+    console.warn("[registration] Skipping expired-account cleanup during availability check.", { error: error.message });
+  });
   assertAuthSetupReady();
   const { assertAppropriateText, ACCOUNT_TEXT_FIELDS } = await import("../../../shared/textModeration.mjs");
   try { assertAppropriateText(req.body, ACCOUNT_TEXT_FIELDS); }
@@ -368,6 +372,12 @@ function assertRoleMatchesExpected(user, expectedRole) {
 function assertActiveAccount(user) {
   if (user.accountStatus === USER_STATUSES.ACTIVE) {
     return;
+  }
+
+  if (user.verificationStatus === "pending") {
+    throw new ApiError(403, "Verify your email using the activation link we sent before signing in. Request a new link if it has expired.", {
+      code: "EMAIL_VERIFICATION_REQUIRED",
+    });
   }
 
   throw new ApiError(403, `This account is ${user.accountStatus}.`);

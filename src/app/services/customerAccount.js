@@ -7,6 +7,7 @@ import {
   getIdTokenResult,
   reauthenticateWithCredential,
   signInWithEmailAndPassword,
+  signOut,
   updateEmail,
   updatePassword,
   updateProfile as updateFirebaseProfile,
@@ -182,6 +183,8 @@ function buildCustomerProfile(firebaseUser, profile = {}) {
     role: "customer",
     accountStatus,
     status: accountStatus,
+    emailVerified: profile.emailVerified === true,
+    verificationStatus: normalizeString(profile.verificationStatus).toLowerCase(),
     fraudStatus: normalizeString(profile.fraudStatus).toLowerCase() || "normal",
     registrationIp: normalizeString(profile.registrationIp),
   };
@@ -319,9 +322,12 @@ async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options
   const payload = buildCustomerProfilePayload(firebaseUser, profile);
   const usernameReference = doc(db, "usernames", payload.username);
   if (options.isNew) {
+    let registrationProfile = null;
     try {
       const token = await firebaseUser.getIdToken();
-      await apiClient.post("/auth/register/profile", payload, { headers: buildAuthHeaders(token) });
+      const response = await apiClient.post("/auth/register/profile", payload, { headers: buildAuthHeaders(token) });
+      registrationProfile = response.data?.profile || null;
+      if (registrationProfile) return buildCustomerProfile(firebaseUser, registrationProfile);
     } catch (error) {
       throw new Error(extractApiError(error, "Unable to create your customer profile."));
     }
@@ -379,7 +385,9 @@ function assertCustomerProfileIsActive(profile) {
 
   throw createCustomerAppError(
     "auth/account-disabled",
-    `This customer account is ${accountStatus}.`,
+    profile?.verificationStatus === "pending"
+      ? "Please activate your account using the verification link sent to your email before signing in."
+      : `This customer account is ${accountStatus}.`,
   );
 }
 
@@ -437,10 +445,10 @@ export async function loadOrCreateCustomerProfile(firebaseUser, defaults = {}) {
     phone: normalizeString(defaults.phone || existingData?.phone),
     role: "customer",
     accountStatus: normalizeAccountStatus(
-      defaults.accountStatus || existingData?.accountStatus || existingData?.status,
+      existingData?.accountStatus || existingData?.status || defaults.accountStatus,
     ),
     status: normalizeAccountStatus(
-      defaults.accountStatus || existingData?.accountStatus || existingData?.status,
+      existingData?.accountStatus || existingData?.status || defaults.accountStatus,
     ),
     fraudStatus: normalizeString(existingData?.fraudStatus).toLowerCase() || "normal",
     registrationIp: normalizeString(existingData?.registrationIp),
@@ -532,6 +540,8 @@ export async function signUpCustomerWithEmailPassword({
         isNew: true,
       },
     );
+
+    await signOut(auth);
 
     console.info("[customer-auth] Customer sign-up completed successfully.", {
       uid: authenticatedUser.uid,

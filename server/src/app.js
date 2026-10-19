@@ -127,6 +127,7 @@ app.get("/", (_req, res, next) => {
 // Firebase password-reset links include mode/oobCode query parameters. Serve
 // the SPA shell explicitly so Render never treats this browser route as a 404.
 app.get("/reset-password", sendFrontendIndex);
+app.get("/activate-account", sendFrontendIndex);
 
 app.get(/^\/reset-password\/.+$/, sendFrontendIndex);
 

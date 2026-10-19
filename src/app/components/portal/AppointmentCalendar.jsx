@@ -80,7 +80,8 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
       </div>
       <FullCalendar ref={calendarRef} plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth" headerToolbar={false} height={520} events={events} editable={false}
-        dayMaxEvents={3} moreLinkClick="popover" eventDisplay="block" displayEventEnd={false}
+        dayMaxEvents={3} eventMaxStack={3} moreLinkClick="popover" eventDisplay="block" displayEventEnd={false}
+        slotEventOverlap={false}
         eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short", omitZeroMinute: true }}
         slotMinTime="08:00:00" slotMaxTime="19:00:00" allDaySlot={false} nowIndicator
         datesSet={(info) => { setTitle(info.view.title); setView(info.view.type); }}
@@ -92,6 +93,15 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
         }}
         eventContent={(info) => {
           const { ownerName, customerEmail, petName, petType, service, status, assignedStaff } = info.event.extendedProps;
+          if (info.view.type.startsWith("timeGrid")) {
+            return (
+              <div className="calendar-event-content calendar-event-timegrid">
+                <span className="calendar-event-name">{petName}</span>
+                <span className="calendar-event-service">{service}</span>
+                <span>{info.timeText} - {status}</span>
+              </div>
+            );
+          }
           return (
             <div className="calendar-event-content">
               <span className="calendar-event-name">{ownerName}</span>

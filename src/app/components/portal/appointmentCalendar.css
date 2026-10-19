@@ -60,6 +60,20 @@
   display: block;
 }
 
+.appointment-calendar .fc-timegrid-event .calendar-event-content {
+  overflow: hidden;
+  overflow-wrap: normal;
+  padding: 2px 4px;
+  line-height: 1.2;
+}
+
+.appointment-calendar .fc-timegrid-event .calendar-event-content > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .appointment-calendar .fc-more-link {
   font-weight: 600;
   color: #2d6b73;

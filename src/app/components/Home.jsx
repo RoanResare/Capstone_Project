@@ -71,13 +71,12 @@ export function Home() {
     <div className="bg-[#F6F0E7] pb-6">
       <section id="home" className="scroll-mt-28 relative overflow-hidden">
         <img aria-hidden="true" src={heroImage} alt="" className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-center opacity-[0.34]" />
-        <div className="absolute inset-x-0 top-0 z-[1] h-[300px] bg-[#2D9B9B]/82" />
-        <div className="relative z-[2] mx-auto max-w-[1360px] px-3 pb-5 pt-5 sm:px-4 md:pt-6">
+        <div className="relative z-[2] mx-auto max-w-[1180px] px-3 pb-5 pt-5 sm:px-4 md:pt-6">
           <motion.div
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="grid items-stretch gap-4 lg:grid-cols-[1.3fr_0.7fr]"
+            className="grid items-stretch gap-4 lg:grid-cols-[1.2fr_0.9fr]"
           >
             <div className="flex min-h-[320px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44]/92 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[360px] md:p-7">
               <div>
@@ -112,17 +111,28 @@ export function Home() {
               initial={{ opacity: 0, x: 26 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.65, delay: 0.12 }}
-              className="flex h-full min-h-[320px] flex-col justify-center rounded-lg bg-[#FFFDFC]/90 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[360px] md:p-6"
+              className="flex h-full min-h-[360px] flex-col rounded-lg bg-[#FFFDFC]/92 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[400px] md:p-6"
             >
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
-                Public overview
+                Branch details
               </p>
-              <h2 className="mt-3 text-2xl font-semibold text-[#20343B]">
-                Plan your pet’s care with confidence.
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-[#607277]">
-                Sign in to manage pet profiles, book available appointment slots, and review appointment updates.
-              </p>
+              <div className="mt-4 space-y-3">
+                {branchDetailsList.map((detail) => {
+                  const Icon = detail.icon;
+
+                  return (
+                    <div key={detail.label} className="flex gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#2D6B73] shadow-[0_8px_16px_rgba(94,81,60,0.08)]">
+                        <Icon size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#20343B]">{detail.label}</p>
+                        <p className="mt-1 text-sm leading-5 text-[#607277]">{detail.value}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </motion.div>
           </motion.div>
 
@@ -133,29 +143,7 @@ export function Home() {
             transition={{ duration: 0.55, delay: 0.1 }}
             className="relative isolate mt-5 rounded-lg bg-white/88 p-4 shadow-[0_16px_34px_rgba(94,81,60,0.12)] backdrop-blur-[3px] md:p-5"
           >
-            <div className="relative z-10 grid gap-5 lg:grid-cols-[0.78fr_1.22fr]">
-              <div className="rounded-lg bg-[#F9F5EE] p-4">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
-                  Branch details
-                </p>
-                <div className="mt-3 space-y-2.5">
-                  {branchDetailsList.map((detail) => {
-                    const Icon = detail.icon;
-
-                    return (
-                      <div key={detail.label} className="flex gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-[#2D6B73] shadow-[0_8px_16px_rgba(94,81,60,0.08)]">
-                          <Icon size={18} />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[#20343B]">{detail.label}</p>
-                          <p className="mt-1 text-sm leading-5 text-[#607277]">{detail.value}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="relative z-10">
               <div className="flex min-w-0 flex-col">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                   Visit policies

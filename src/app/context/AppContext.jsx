@@ -25,6 +25,7 @@ import {
   loadPhotoModerationDocuments,
   loadAppointmentDocuments,
   loadRecentNotifications,
+  subscribeAppointments,
   loadMoreRecentNotifications,
   hasMoreRecentNotifications,
   loadMoreAppointmentDocuments,
@@ -1866,22 +1867,31 @@ export function AppProvider({ children }) {
     const loadAppointments = ({ force = false } = {}) => isCustomer ? loadCustomerAppointments(currentUser) : loadAppointmentDocuments({ force });
     const loadNotifications = ({ force = false } = {}) => isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force });
     const refresh = () => {
-      void Promise.all([loadAppointments({ force: true }), loadNotifications({ force: true })]).then(([appointments, notifications]) => {
+      void Promise.all([isCustomer ? loadAppointments({ force: true }) : Promise.resolve(null), loadNotifications({ force: true })]).then(([appointments, notifications]) => {
         if (disposed) return;
-        dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
+        if (appointments) dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
         dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
         if (!isCustomer) setHasMoreNotificationPages(hasMoreRecentNotifications());
         if (!isCustomer) setNotificationRefreshVersion((version) => version + 1);
       }).catch((error) => console.error("Unable to refresh appointment or notification data.", error));
     };
-    Promise.all([loadAppointments(), loadNotifications()]).then(([appointments, notifications]) => {
+    Promise.all([isCustomer ? loadAppointments() : Promise.resolve(null), loadNotifications()]).then(([appointments, notifications]) => {
       if (disposed) return;
-      dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
+      if (appointments) dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
       dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
       if (!isCustomer) setHasMoreNotificationPages(hasMoreRecentNotifications());
     }).catch((error) => console.error("Unable to load appointment or notification data.", error));
     return () => { disposed = true; };
   }, [currentUser?.role, currentUser?.uid, notificationRefreshVersion]);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role === "customer") return undefined;
+    return subscribeAppointments((appointments) => {
+      dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
+    }, (error) => {
+      console.error("Unable to keep the staff appointment queue current.", error);
+    });
+  }, [currentUser?.role, currentUser?.uid]);
 
   const loadMoreAppointments = useCallback(async () => {
     if (!currentUser) return [];
@@ -1903,11 +1913,11 @@ export function AppProvider({ children }) {
     if (!currentUser) return;
     const isCustomer = currentUser.role === "customer";
     const [appointments, notifications, petRecords] = await Promise.all([
-      isCustomer ? loadCustomerAppointments(currentUser) : loadAppointmentDocuments({ force: true }),
+      isCustomer ? loadCustomerAppointments(currentUser) : Promise.resolve(null),
       isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force: true }),
       isCustomer ? loadCustomerPetRecords(currentUser) : loadPetRecordDocuments(),
     ]);
-    dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments, petRecords } });
+    dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { ...(appointments ? { appointments } : {}), petRecords } });
     dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
   }, [currentUser?.role, currentUser?.uid]);
 

@@ -5,6 +5,7 @@ import {
   doc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   startAfter,
@@ -208,9 +209,9 @@ export async function loadPhotoModerationDocuments() {
 export function loadAppointmentDocuments({ force = false } = {}) {
   if (!canSyncScheduleData()) return Promise.resolve([]);
   const request = loadPagedFilteredScheduleDocuments("appointments:recent", (cursor) => query(
-    collection(db, COLLECTIONS.appointments), orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
-    ...(cursor ? [startAfter(doc(db, COLLECTIONS.appointments, cursor))] : []),
-  ), { maxPages: 1, force });
+    collection(db, COLLECTIONS.appointments), orderBy("createdAt", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
+    ...(cursor ? [startAfter(cursor)] : []),
+  ), { maxPages: 1, force, cursorType: "snapshot" });
   return request.then((documents) => {
     const uid = auth.currentUser?.uid;
     if (uid) collectionCache.set(`${uid}:appointments:recent`, { fetchedAt: Date.now(), documents });
@@ -259,8 +260,12 @@ export function loadMoreAppointmentDocuments({ customer = null, force = false } 
   const cached = collectionCache.get(loadKey);
   if (!force && cached && cached.documents.length > SCHEDULE_PAGE_SIZE) return Promise.resolve(cached.documents);
   if (force) invalidateScheduleCache(COLLECTIONS.appointments);
-  const loadPages = (cacheKeySuffix, buildQuery) => {
-    const request = loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPages: MAX_PORTAL_APPOINTMENT_PAGES, force });
+  const loadPages = (cacheKeySuffix, buildQuery, options = {}) => {
+    const request = loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, {
+      maxPages: MAX_PORTAL_APPOINTMENT_PAGES,
+      force,
+      ...options,
+    });
     return request.then((documents) => {
       const uid = auth.currentUser?.uid;
       if (uid) collectionCache.set(`${uid}:${cacheKeySuffix}`, { fetchedAt: Date.now(), documents });
@@ -274,9 +279,9 @@ export function loadMoreAppointmentDocuments({ customer = null, force = false } 
     ));
   }
   return loadPages("appointments:recent", (cursor) => query(
-    collection(db, COLLECTIONS.appointments), orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
+    collection(db, COLLECTIONS.appointments), orderBy("createdAt", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
     ...(cursor ? [startAfter(cursor)] : []),
-  ));
+  ), { cursorType: "snapshot" });
 }
 
 export function loadCustomerAppointments(customer) {
@@ -292,7 +297,7 @@ export function loadCustomerNotifications(customer) {
   return loadFilteredScheduleDocuments(`customer-notifications:${customer.uid}`, query(collection(db, COLLECTIONS.notifications), where("targetUserId", "==", customer.uid), orderBy("createdAt", "desc"), limit(50)));
 }
 
-function loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPages = 1, force = false } = {}) {
+function loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPages = 1, force = false, cursorType = "id" } = {}) {
   const uid = auth.currentUser.uid;
   const cacheKey = `${uid}:${cacheKeySuffix}`;
   const cached = collectionCache.get(cacheKey);
@@ -309,7 +314,9 @@ function loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPag
       documents.push(...pageDocuments.slice(0, cacheKeySuffix === "notifications:recent" ? 50 : undefined));
       if (cacheKeySuffix === "notifications:recent") break;
       if (snapshot.docs.length <= SCHEDULE_PAGE_SIZE) break;
-      cursor = pageDocuments.at(-1)?.id || "";
+      cursor = cursorType === "snapshot"
+        ? snapshot.docs[SCHEDULE_PAGE_SIZE - 1] || null
+        : pageDocuments.at(-1)?.id || "";
       if (!cursor) break;
     }
     collectionCache.set(cacheKey, { fetchedAt: Date.now(), documents, hasMore });
@@ -380,7 +387,23 @@ function subscribeScheduleDocuments(collectionName, onChange, onError = () => {}
 }
 
 export function subscribeAppointments(onChange, onError) {
-  return subscribeScheduleDocuments(COLLECTIONS.appointments, onChange, onError);
+  if (!canSyncScheduleData()) return () => {};
+  const uid = auth.currentUser.uid;
+  const cacheKey = `${uid}:appointments:recent`;
+  const appointmentsQuery = query(
+    collection(db, COLLECTIONS.appointments),
+    orderBy("createdAt", "desc"),
+    limit(SCHEDULE_PAGE_SIZE),
+  );
+  return onSnapshot(appointmentsQuery, (snapshot) => {
+    const documents = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    collectionCache.set(cacheKey, { fetchedAt: Date.now(), documents });
+    collectionCache.set(`${uid}:appointments`, { fetchedAt: Date.now(), documents });
+    onChange(documents);
+  }, (error) => {
+    logSyncError("appointments listener", error);
+    onError?.(error);
+  });
 }
 
 export function subscribeNotifications(onChange, onError) {

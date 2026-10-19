@@ -1563,9 +1563,6 @@ export function CustomerProfile() {
                         maxLength={120}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
                       />
-                      <p className="mt-2 text-xs text-[#7A9297]">
-                        Email updates follow the existing Firebase Authentication profile flow.
-                      </p>
                     </div>
                     <div>
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Phone</label>

@@ -75,7 +75,7 @@ export function Home() {
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="grid items-stretch gap-4 lg:grid-cols-[1.02fr_0.98fr]"
+            className="grid items-stretch gap-4 lg:grid-cols-[1.3fr_0.7fr]"
           >
             <div className="flex min-h-[320px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44] p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[360px] md:p-7">
               <div>
@@ -116,14 +116,10 @@ export function Home() {
                 Public overview
               </p>
               <h2 className="mt-3 text-2xl font-semibold text-[#20343B]">
-                Book pet care through one secure account.
+                Plan your pet’s care with confidence.
               </h2>
               <p className="mt-3 text-sm leading-6 text-[#607277]">
-                Customers can sign in to create pet records, reserve available appointment slots,
-                track appointment history, and keep profile details current.
-              </p>
-              <p className="mt-5 rounded-lg bg-[#EAF6F6] px-4 py-3 text-sm font-semibold text-[#24444A]">
-                One secure login routes customers, staff, and admins to the right workspace.
+                Sign in to manage pet profiles, book available appointment slots, and review appointment updates.
               </p>
             </motion.div>
           </motion.div>

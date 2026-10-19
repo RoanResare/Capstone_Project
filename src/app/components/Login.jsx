@@ -113,21 +113,21 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
-      <div className="mx-auto grid max-w-[1040px] items-center gap-8 lg:min-h-[calc(100vh-8rem)] lg:grid-cols-[0.95fr_1.05fr]">
+    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-[#F6F0E7] px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-[860px]">
         <motion.section
           initial={{ opacity: 0, x: -18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45 }}
-          className="rounded-lg bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_62%,#7BC2BB_100%)] p-7 text-white shadow-[0_18px_42px_rgba(20,43,46,0.2)] sm:p-9"
+          className="mb-5 flex items-center gap-4 rounded-lg bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_62%,#7BC2BB_100%)] p-5 text-white shadow-[0_18px_42px_rgba(20,43,46,0.2)] sm:p-7"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <BrandMark className="h-14 w-14 shrink-0" />
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
                 Charming Fur-fection
               </p>
-              <h1 className="text-2xl font-semibold leading-tight">
+              <h1 className="text-xl font-semibold leading-tight sm:text-2xl">
                 Pet Care Services - Las Piñas City
               </h1>
             </div>

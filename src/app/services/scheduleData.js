@@ -386,19 +386,28 @@ function subscribeScheduleDocuments(collectionName, onChange, onError = () => {}
   return () => { disposed = true; window.removeEventListener("focus", handleFocus); };
 }
 
-export function subscribeAppointments(onChange, onError) {
+export function subscribeAppointments(onChange, onError, { customerId = "" } = {}) {
   if (!canSyncScheduleData()) return () => {};
   const uid = auth.currentUser.uid;
-  const cacheKey = `${uid}:appointments:recent`;
-  const appointmentsQuery = query(
-    collection(db, COLLECTIONS.appointments),
-    orderBy("createdAt", "desc"),
-    limit(SCHEDULE_PAGE_SIZE),
-  );
+  const cacheKey = customerId
+    ? `${uid}:customer-appointments:${customerId}`
+    : `${uid}:appointments:recent`;
+  const appointmentsQuery = customerId
+    ? query(
+      collection(db, COLLECTIONS.appointments),
+      where("customerId", "==", customerId),
+      orderBy("__name__", "desc"),
+      limit(SCHEDULE_PAGE_SIZE),
+    )
+    : query(
+      collection(db, COLLECTIONS.appointments),
+      orderBy("createdAt", "desc"),
+      limit(SCHEDULE_PAGE_SIZE),
+    );
   return onSnapshot(appointmentsQuery, (snapshot) => {
     const documents = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
     collectionCache.set(cacheKey, { fetchedAt: Date.now(), documents });
-    collectionCache.set(`${uid}:appointments`, { fetchedAt: Date.now(), documents });
+    if (!customerId) collectionCache.set(`${uid}:appointments`, { fetchedAt: Date.now(), documents });
     onChange(documents);
   }, (error) => {
     logSyncError("appointments listener", error);

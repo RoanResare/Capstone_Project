@@ -20,10 +20,8 @@ import {
   subscribeAvailabilitySlots,
   loadPetRecordDocuments,
   loadCustomerPetRecords,
-  loadCustomerAppointments,
   loadCustomerNotifications,
   loadPhotoModerationDocuments,
-  loadAppointmentDocuments,
   loadRecentNotifications,
   subscribeAppointments,
   loadMoreRecentNotifications,
@@ -458,7 +456,8 @@ function normalizeAppointment(appointment) {
       ? current.status.trim()
       : "Pending";
   const shouldExpire =
-    rawStatus === "Pending" &&
+    ["Pending", "Accepted", "Approved", "Confirmed"].includes(rawStatus) &&
+    !current.sessionStartedAt &&
     resolvedSchedule &&
     resolvedSchedule.getTime() < Date.now();
 
@@ -1864,20 +1863,17 @@ export function AppProvider({ children }) {
     if (!currentUser) return undefined;
     let disposed = false;
     const isCustomer = currentUser.role === "customer";
-    const loadAppointments = ({ force = false } = {}) => isCustomer ? loadCustomerAppointments(currentUser) : loadAppointmentDocuments({ force });
     const loadNotifications = ({ force = false } = {}) => isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force });
     const refresh = () => {
-      void Promise.all([isCustomer ? loadAppointments({ force: true }) : Promise.resolve(null), loadNotifications({ force: true })]).then(([appointments, notifications]) => {
+      void loadNotifications({ force: true }).then((notifications) => {
         if (disposed) return;
-        if (appointments) dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
         dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
         if (!isCustomer) setHasMoreNotificationPages(hasMoreRecentNotifications());
         if (!isCustomer) setNotificationRefreshVersion((version) => version + 1);
       }).catch((error) => console.error("Unable to refresh appointment or notification data.", error));
     };
-    Promise.all([isCustomer ? loadAppointments() : Promise.resolve(null), loadNotifications()]).then(([appointments, notifications]) => {
+    loadNotifications().then((notifications) => {
       if (disposed) return;
-      if (appointments) dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
       dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
       if (!isCustomer) setHasMoreNotificationPages(hasMoreRecentNotifications());
     }).catch((error) => console.error("Unable to load appointment or notification data.", error));
@@ -1885,12 +1881,12 @@ export function AppProvider({ children }) {
   }, [currentUser?.role, currentUser?.uid, notificationRefreshVersion]);
 
   useEffect(() => {
-    if (!currentUser || currentUser.role === "customer") return undefined;
+    if (!currentUser) return undefined;
     return subscribeAppointments((appointments) => {
       dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
     }, (error) => {
-      console.error("Unable to keep the staff appointment queue current.", error);
-    });
+      console.error("Unable to keep appointments current.", error);
+    }, { customerId: currentUser.role === "customer" ? currentUser.uid : "" });
   }, [currentUser?.role, currentUser?.uid]);
 
   const loadMoreAppointments = useCallback(async () => {
@@ -1912,12 +1908,11 @@ export function AppProvider({ children }) {
   const refreshScheduleData = useCallback(async () => {
     if (!currentUser) return;
     const isCustomer = currentUser.role === "customer";
-    const [appointments, notifications, petRecords] = await Promise.all([
-      isCustomer ? loadCustomerAppointments(currentUser) : Promise.resolve(null),
+    const [notifications, petRecords] = await Promise.all([
       isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force: true }),
       isCustomer ? loadCustomerPetRecords(currentUser) : loadPetRecordDocuments(),
     ]);
-    dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { ...(appointments ? { appointments } : {}), petRecords } });
+    dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { petRecords } });
     dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
   }, [currentUser?.role, currentUser?.uid]);
 

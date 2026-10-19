@@ -4,6 +4,14 @@ const { ApiError } = require("../utils/ApiError");
 const ACTIVE_APPOINTMENT_STATUSES = ["Pending", "Confirmed", "Accepted", "Approved"];
 const MAX_APPOINTMENT_LOOKUP_LIMIT = 200;
 
+function normalizeAppointmentStatus(status = "") {
+  const normalized = String(status).trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  if (["accepted", "confirmed", "approved"].includes(normalized)) return "Approved";
+  if (["no show", "expired"].includes(normalized)) return "No Show";
+  if (normalized === "canceled") return "Cancelled";
+  return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "Pending";
+}
+
 async function saveAppointment(req, res) {
   const appointment = req.body;
   const id = req.params.id;
@@ -51,6 +59,18 @@ async function saveAppointment(req, res) {
     const { isLowCostKaponAppointment, isKaponPromoAvailable, KAPON_UNAVAILABLE_MESSAGE } =
       await import("../../../shared/lowCostKaponPromo.mjs");
     const previous = existing.data?.() || {};
+    if (["admin", "staff"].includes(user.role) && existing.exists) {
+      const previousStatus = normalizeAppointmentStatus(previous.status);
+      const requestedStatus = appointment.sessionAction === "end"
+        ? "Completed"
+        : normalizeAppointmentStatus(appointment.status || previous.status);
+      const allowedTransition = previousStatus === requestedStatus ||
+        (previousStatus === "Pending" && ["Approved", "Rejected", "Cancelled"].includes(requestedStatus)) ||
+        (previousStatus === "Approved" && ["Cancelled", "Completed"].includes(requestedStatus));
+      if (!allowedTransition) {
+        throw new ApiError(400, "This status change is not allowed for the appointment's current status.");
+      }
+    }
     if(!existing.exists && !Array.isArray(appointment.serviceIds))throw new ApiError(400,"Choose valid appointment services.");
     const decisionFields = {};
     const decisionChanged = JSON.stringify(appointment.decision) !== JSON.stringify(previous.decision);

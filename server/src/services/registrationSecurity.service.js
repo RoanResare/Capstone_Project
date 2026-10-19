@@ -4,6 +4,7 @@ const { Resolver } = require("node:dns/promises");
 const { assertValidEmail, ILLEGITIMATE_EMAIL_ERROR } = require("../utils/emailValidation");
 const { isDisposableEmailDomain } = require("./disposableEmailDomains.service");
 const DISPOSABLE_EMAIL_ERROR = "Temporary or disposable email addresses are not allowed";
+const UNTRUSTED_EMAIL_DOMAIN_ERROR = "Use a trusted email provider or a school email ending in .edu.ph to register.";
 
 function normalizeIp(value = "") {
   const candidate = String(value || "").split(",")[0].trim();
@@ -85,6 +86,10 @@ function isTrustedEmailDomain(domain) {
   return trustedEmailDomains.has(domain) || domain.endsWith(".sti.edu");
 }
 
+function isAllowedRegistrationEmailDomain(domain) {
+  return isTrustedEmailDomain(domain) || domain.endsWith(".edu.ph");
+}
+
 function assertRegistrationEmailAllowed(email) {
   assertValidEmail(email);
   const domain = getEmailDomain(email);
@@ -92,11 +97,18 @@ function assertRegistrationEmailAllowed(email) {
   if (isDisposableEmailDomain(domain)) {
     throw new ApiError(400, DISPOSABLE_EMAIL_ERROR, { code: "DISPOSABLE_EMAIL_DOMAIN" });
   }
+  if (!isAllowedRegistrationEmailDomain(domain)) {
+    throw new ApiError(400, UNTRUSTED_EMAIL_DOMAIN_ERROR, { code: "UNTRUSTED_EMAIL_DOMAIN" });
+  }
 }
 
 async function assertEmailIsDeliverable(email) {
-  assertRegistrationEmailAllowed(email);
+  assertValidEmail(email);
   const domain = getEmailDomain(email);
+
+  if (isDisposableEmailDomain(domain)) {
+    throw new ApiError(400, DISPOSABLE_EMAIL_ERROR, { code: "DISPOSABLE_EMAIL_DOMAIN" });
+  }
 
   if (isTrustedEmailDomain(domain) && !env.security.emailValidationUrl) {
     return;
@@ -149,6 +161,7 @@ async function assertEmailIsDeliverable(email) {
 }
 
 async function validateRegistrationSecurity(req, email) {
+  assertRegistrationEmailAllowed(email);
   await assertEmailIsDeliverable(email);
   // Retain IP as registration metadata only, never as an access restriction.
   return { registrationIp: getClientIp(req) };

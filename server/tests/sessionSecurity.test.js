@@ -489,7 +489,7 @@ test("built-in disposable domains and subdomains reject before DNS or provider r
   }
 });
 
-test("registration allows major providers immediately and custom domains only when they publish mail records", async () => {
+test("registration allows trusted providers and school domains while rejecting custom domains", async () => {
   const dnsCalls = [];
   const service = loadService("registrationSecurity.service.js", {
     "../config/env": { env: { security: {} } },
@@ -502,10 +502,14 @@ test("registration allows major providers immediately and custom domains only wh
     await service.validateRegistrationSecurity({}, `user+tag@${domain}`);
   }
   assert.equal(dnsCalls.length, 0);
-  for (const domain of ["sti.edu", "students.sti.edu", "school.edu.ph", "business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.example"]) {
+  for (const domain of ["sti.edu", "students.sti.edu", "school.edu.ph", "students.school.edu.ph"]) {
     await service.validateRegistrationSecurity({}, `user@${domain}`);
   }
-  assert.deepEqual(dnsCalls, ["school.edu.ph", "business.com.ph", "company.org", "mailinator.com.business.org", "notmailinator.example"]);
+  assert.deepEqual(dnsCalls, ["school.edu.ph", "students.school.edu.ph"]);
+  for (const domain of ["business.com.ph", "company.org", "lala.com", "mailinator.com.business.org", "notmailinator.example"]) {
+    await assert.rejects(service.validateRegistrationSecurity({}, `user@${domain}`),
+      (error) => error.statusCode === 400 && error.details.code === "UNTRUSTED_EMAIL_DOMAIN");
+  }
 });
 
 test("every registration checks disposable domains before any provider request", async () => {
@@ -534,7 +538,7 @@ test("registration rejects custom domains without mail records and reports DNS o
         return records;
       } } },
     });
-    await assert.rejects(service.validateRegistrationSecurity({}, "user@example.org"), { statusCode });
+    await assert.rejects(service.validateRegistrationSecurity({}, "user@school.edu.ph"), { statusCode });
   }
 });
 

@@ -38,6 +38,7 @@ import {
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
 import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy.js";
+import { appointmentStatusLabel } from "../utils/appointmentPresentation.js";
 import { subscribeKaponPromo, saveKaponPromo } from "../services/kaponPromo.js";
 import { isKaponPromoAvailable, isLowCostKaponAppointment, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { validateAppointmentServices, validateSinglePet } from "../../../shared/bookingServices.mjs";
@@ -473,7 +474,7 @@ function normalizeAppointment(appointment) {
         ? toLocalTimeKey(resolvedSchedule)
         : rawScheduleTime,
     schedule: resolvedSchedule ? resolvedSchedule.toISOString() : null,
-    status: shouldExpire || ["Expired", "No-show"].includes(rawStatus) ? "No Show" : rawStatus,
+    status: appointmentStatusLabel(shouldExpire ? "No Show" : rawStatus),
     assignedStaff:
       typeof current.assignedStaff === "string" && current.assignedStaff.trim()
         ? current.assignedStaff.trim()

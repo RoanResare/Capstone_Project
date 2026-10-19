@@ -10,8 +10,14 @@ export const APPOINTMENT_COLORS = {
 };
 
 export function appointmentStatusLabel(status) {
-  if (["Expired", "No-show"].includes(status)) return "No Show";
-  return ["Accepted", "Confirmed"].includes(status) ? "Approved" : status;
+  const normalized = typeof status === "string" ? status.trim().toLowerCase().replace(/[\s_-]+/g, " ") : "";
+  if (["expired", "no show"].includes(normalized)) return "No Show";
+  if (["accepted", "confirmed", "approved"].includes(normalized)) return "Approved";
+  if (["pending", "completed", "rejected", "cancelled", "canceled"].includes(normalized)) {
+    if (normalized === "canceled") return "Cancelled";
+    return normalized[0].toUpperCase() + normalized.slice(1);
+  }
+  return status || "Pending";
 }
 
 export function appointmentDateKey(appointment) {

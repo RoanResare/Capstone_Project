@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
+import { usePricelistWarmup } from "./PricelistImage.jsx";
 import { BookingAdditions } from "./BookingAdditions.jsx";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { BrandMark } from "./BrandMark.jsx";
@@ -359,6 +360,7 @@ function EmptyState({ title, message }) {
 }
 
 export function CustomerProfile() {
+  usePricelistWarmup();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -1197,7 +1199,7 @@ export function CustomerProfile() {
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                           Saved pets
                         </p>
-                        <div className={`mt-3 ${petCardGridClass}`}>
+                        <div className={`mt-3 max-h-[30rem] overflow-y-auto overscroll-contain pr-2 [scrollbar-gutter:stable] ${petCardGridClass}`}>
                           {customerPetRecords.map((record) => {
                             return (
                               <div

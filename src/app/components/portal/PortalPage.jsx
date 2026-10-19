@@ -974,7 +974,7 @@ function AppointmentsWorkspace({
         <PanelCard
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
-          className="flex h-[640px] min-h-0 flex-col xl:h-[clamp(420px,calc(100dvh-18rem),720px)] xl:self-start"
+          className="flex h-[min(78dvh,900px)] min-h-[640px] flex-col xl:h-[clamp(600px,calc(100dvh-12rem),900px)] xl:self-start"
           bodyClassName="flex min-h-0 flex-1 flex-col"
         >
           <div className="flex min-h-0 flex-1 flex-col gap-3">

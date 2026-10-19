@@ -103,17 +103,24 @@ try {
  assert.equal(saved.decision.reason,reason);
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await list.getByRole('button',{name:/Later/}).click();await dialog.waitFor();
- page.once('dialog',confirmation=>confirmation.dismiss());
- await dialog.getByRole('button',{name:'Cancel appointment',exact:true}).click();
- assert.equal(await category.count(),0);
- assert.equal(await page.evaluate(()=>window.__appointmentSnapshot().state.appointments.find(a=>a.id==='later').status),'Pending');
- page.once('dialog',confirmation=>{assert.match(confirmation.message(),/cancel this appointment/i);return confirmation.accept();});
- await dialog.getByRole('button',{name:'Cancel appointment',exact:true}).click();
- await page.waitForFunction(()=>window.__appointmentSnapshot().state.appointments.find(a=>a.id==='later').status==='Cancelled');
- assert.equal(await page.evaluate(()=>window.__appointmentSnapshot().state.appointments.find(a=>a.id==='later').decision),undefined);
+ for (const [pet,id] of [['Later','later'],['Green','approved']]) {
+  if (id==='approved') {await dialog.getByRole('button',{name:'Back',exact:true}).click();await list.getByRole('button',{name:/Green/}).click();await dialog.waitFor();}
+  await dialog.getByRole('button',{name:'Cancel appointment',exact:true}).click();
+  await category.selectOption('A');
+  assert.equal(await dialog.getByRole('radio').count(),3);
+  await dialog.getByRole('button',{name:'Back',exact:true}).click();
+  assert.notEqual(await page.evaluate(id=>window.__appointmentSnapshot().state.appointments.find(a=>a.id===id).status,id),'Cancelled');
+  await dialog.getByRole('button',{name:'Cancel appointment',exact:true}).click();
+  await category.selectOption('B');
+  await dialog.getByRole('radio').first().check();
+  const reason=await dialog.getByRole('radio').first().locator('..').innerText();
+  await dialog.getByRole('button',{name:'Confirm cancellation',exact:true}).click();
+  await page.waitForFunction(id=>window.__appointmentSnapshot().state.appointments.find(a=>a.id===id).status==='Cancelled',id);
+  assert.equal(await page.evaluate(id=>window.__appointmentSnapshot().state.appointments.find(a=>a.id===id).decision.category,id),'B');
+ }
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  assert.equal(await page.getByRole('option',{name:'Expired',exact:true}).count(),0);
  assert.ok(await page.getByRole('option',{name:'No Show',exact:true}).count());
  assert.deepEqual(errors,[]);
- console.log('Passed: rejection-only A/B/C reasons, validation and trimming, simple cancellation confirmation with accept/dismiss, and No Show status.');
+ console.log('Passed: shared rejection/cancellation A/B/C reasons, validation and trimming, pending and approved cancellation, and No Show status.');
 }finally{await browser?.close();await server.close();}

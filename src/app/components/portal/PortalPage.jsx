@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
+import { AppointmentApprovalDialog } from "./AppointmentApprovalDialog.jsx";
 import { BookingAdditions } from "../BookingAdditions.jsx";
 import { createPortal } from "react-dom";
 import { PricelistManager } from "./PricelistManager.jsx";
@@ -503,6 +504,7 @@ function MetricCard({ label, value, tone = "teal" }) {
 }
 
 function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack, isSaving = false }) {
+  const [approvalOpen, setApprovalOpen] = useState(false);
   const [decisionStatus,setDecisionStatus]=useState("");
   const [sessionNow, setSessionNow] = useState(Date.now());
   useEffect(() => {
@@ -533,7 +535,8 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
     ? Math.max(0, Math.floor(((appointment.sessionEndedAt ? Date.parse(appointment.sessionEndedAt) : sessionNow) - Date.parse(appointment.sessionStartedAt)) / 1000)) : 0;
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
-    if (status === "Rejected") { setDecisionStatus(status); return; }
+    if (status === "Accepted") { setApprovalOpen(true); return; }
+    if (["Rejected", "Cancelled"].includes(status)) { setDecisionStatus(status); return; }
     if (status === "Completed") {
       if (window.confirm("Are you certain you want to mark this appointment as completed? Please confirm that the appointment has been fully completed.")) {
         updateAppointment(appointment.id, { status });
@@ -547,13 +550,16 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
     }
   };
 
-  if(decisionStatus)return <AppointmentDecisionForm busy={isSaving} onSave={updates=>updateAppointment(appointment.id,updates)} onClose={()=>setDecisionStatus("")}/>;
+  if(decisionStatus)return <AppointmentDecisionForm status={decisionStatus} busy={isSaving} onSave={updates=>updateAppointment(appointment.id,updates)} onClose={()=>setDecisionStatus("")}/>;
   return (
     <PanelCard
       title={`${appointment.petName} | ${appointment.service}`}
       description="Review customer information, current status, and assignment details."
     >
       <div className="space-y-5">
+        {approvalOpen && <AppointmentApprovalDialog appointment={appointment} busy={isSaving}
+          onConfirm={() => updateAppointment(appointment.id, { status: "Accepted" })}
+          onClose={() => setApprovalOpen(false)} />}
         <button
           type="button"
           onClick={onBack}

@@ -74,17 +74,17 @@ async function saveAppointment(req, res) {
     if(!existing.exists && !Array.isArray(appointment.serviceIds))throw new ApiError(400,"Choose valid appointment services.");
     const decisionFields = {};
     const decisionChanged = JSON.stringify(appointment.decision) !== JSON.stringify(previous.decision);
-    const staffDecision = ["admin","staff"].includes(user.role) && nextStatus === "Rejected" && (nextStatus !== previous.status || decisionChanged);
+    const staffDecision = ["admin","staff"].includes(user.role) && ["Rejected", "Cancelled"].includes(nextStatus) && (nextStatus !== previous.status || decisionChanged);
     const staffCancellation = ["admin","staff"].includes(user.role) && nextStatus === "Cancelled" && nextStatus !== previous.status;
     if (user.role === "customer" && (decisionChanged || appointment.rejectionReason !== previous.rejectionReason || appointment.cancellationReason !== previous.cancellationReason)) throw new ApiError(403,"Only clinic staff can set a rejection or cancellation reason.");
-    if (nextStatus !== "Rejected" && decisionChanged) throw new ApiError(400,"Rejection reasons can only be set when rejecting an appointment.");
+    if (!["Rejected", "Cancelled"].includes(nextStatus) && decisionChanged) throw new ApiError(400,"Decision reasons can only be set when rejecting or cancelling an appointment.");
     if (staffDecision) {
-      if (!existing.exists || previous.status !== "Pending") throw new ApiError(409,"Only pending appointments can be rejected.");
+      if (!existing.exists || (nextStatus === "Rejected" ? previous.status !== "Pending" : !["Pending", "Approved"].includes(normalizeAppointmentStatus(previous.status)))) throw new ApiError(409,"Only pending appointments can be rejected, and only pending or approved appointments can be cancelled.");
       const {validateAppointmentDecision} = await import("../../../shared/appointmentDecisions.mjs");
       try {
         const decision=validateAppointmentDecision(appointment.decision);
         decisionFields.decision={...decision,by:user.uid,at:new Date().toISOString()};
-        decisionFields.rejectionReason=decision.reason;
+        decisionFields[nextStatus === "Rejected" ? "rejectionReason" : "cancellationReason"]=decision.reason;
       } catch(error) { throw new ApiError(400,error.message); }
     }
     const sessionFields = {};

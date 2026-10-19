@@ -45,8 +45,8 @@ test("API validates clinical radios against saved pets and atomically saves deci
   await save({serviceId:"laboratory-testing",serviceIds:["laboratory-testing"],clinicalSelections:[{category:"laboratory-testing",serviceId:"cbc-basic-chemistry"}]});
   assert.equal(records.get("appointments/appointment").clinicalSelections[0].name,"CBC Basic Chemistry");
   for(const role of ["admin","staff"]){
-   for(const status of ["Rejected"]){
-    records.set("appointments/appointment",initial);
+   for(const [status,previousStatus] of [["Rejected","Pending"],["Cancelled","Pending"],["Cancelled","Approved"]]){
+    records.set("appointments/appointment",{...initial,status:previousStatus});
     await assert.rejects(()=>save({status},{uid:role,role}),error=>error.statusCode===400);
     const reason="The requested appointment cannot be accommodated today.";
     await save({status,decision:{category:"C",reason:"  "+reason+"  "}},{uid:role,role});
@@ -55,15 +55,7 @@ test("API validates clinical radios against saved pets and atomically saves deci
     assert.equal(saved[status==="Rejected"?"rejectionReason":"cancellationReason"],reason);
     assert.ok(notice.message.includes(reason));assert.equal(notice.targetUserId,"customer");assert.deepEqual(notice.targetRoles,["customer"]);
    }
-   records.set("appointments/appointment",initial);
-   await save({status:"Cancelled"},{uid:role,role});
-   const cancelled=records.get("appointments/appointment");
-   assert.equal(cancelled.status,"Cancelled");
-   assert.equal(cancelled.decision,undefined);
-   assert.equal(cancelled.cancellationReason,undefined);
-   assert.ok(!records.get("notifications/appointment-appointment-cancelled").message.includes("Reason:"));
-   records.set("appointments/appointment",initial);
-   await assert.rejects(()=>save({status:"Cancelled",decision:{category:"C",reason:"A cancellation must not use the rejection form."}},{uid:role,role}),error=>error.statusCode===400);
+
   }
   records.set("appointments/appointment",initial);
   await assert.rejects(()=>save({status:"Cancelled",decision:{category:"C",reason:"Forged customer reason"}}),error=>error.statusCode===403);

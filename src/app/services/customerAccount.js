@@ -25,8 +25,12 @@ import { auth, authPersistenceReadyPromise, db, firebaseConfigError, isFirebaseC
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";
 import { beginCustomerRegistration, waitForCustomerRegistration } from "../utils/customerRegistration.js";
+import { readJsonCache, writeJsonCache } from "../utils/browserState.js";
 
 const USERS_COLLECTION = "users";
+const CUSTOMER_PROFILE_CACHE_TTL_MS = 60 * 1000;
+
+function customerProfileCacheKey(uid) { return `furfection-cache:customer-profile:${uid}`; }
 
 function normalizeString(value = "") {
   return typeof value === "string" ? value.trim() : "";
@@ -226,7 +230,9 @@ async function tryReadCustomerProfileFromCache(reference) {
 
 async function readCustomerProfileSnapshot(reference) {
   try {
-    return await getDoc(reference);
+    const snapshot = await getDoc(reference);
+    if (snapshot.exists()) writeJsonCache(customerProfileCacheKey(reference.id), snapshot.data());
+    return snapshot;
   } catch (error) {
     if (isCustomerConnectionIssue(error)) {
       const cachedSnapshot = await tryReadCustomerProfileFromCache(reference);
@@ -243,6 +249,8 @@ async function readCustomerProfileSnapshot(reference) {
 async function writeCustomerProfileSnapshot(reference, payload, options = { merge: true }) {
   try {
     await setDoc(reference, payload, options);
+    const existing = readJsonCache(customerProfileCacheKey(reference.id), CUSTOMER_PROFILE_CACHE_TTL_MS) || {};
+    writeJsonCache(customerProfileCacheKey(reference.id), { ...existing, ...payload, uid: reference.id });
   } catch (error) {
     throw normalizeCustomerServiceError(error);
   }
@@ -422,8 +430,9 @@ export async function loadOrCreateCustomerProfile(firebaseUser, defaults = {}) {
   });
 
   const reference = customerProfileReference(authenticatedUser.uid);
-  const snapshot = await readCustomerProfileSnapshot(reference);
-  const existingData = snapshot.exists() ? snapshot.data() || {} : null;
+  const cachedProfile = readJsonCache(customerProfileCacheKey(authenticatedUser.uid), CUSTOMER_PROFILE_CACHE_TTL_MS);
+  const snapshot = cachedProfile ? null : await readCustomerProfileSnapshot(reference);
+  const existingData = cachedProfile || (snapshot?.exists() ? snapshot.data() || {} : null);
   const storedRole = normalizeRoleClaim(existingData?.role);
 
   if (storedRole === "admin" || storedRole === "staff") {
@@ -699,6 +708,11 @@ export async function updateCustomerProfile(currentUser, updates = {}) {
       role: "customer",
       accountStatus: normalizeAccountStatus(existingProfile.accountStatus),
       status: normalizeAccountStatus(existingProfile.status),
+    });
+    writeJsonCache(customerProfileCacheKey(activeAuthUser.uid), {
+      uid: activeAuthUser.uid, email: nextEmail, username: nextUsername, fullName: nextFullName,
+      phone: nextPhone, role: "customer", accountStatus: profile.accountStatus, status: profile.status,
+      emailVerified: profile.emailVerified, verificationStatus: profile.verificationStatus,
     });
 
     console.info("[customer-auth] Customer profile updated successfully.", {

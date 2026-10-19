@@ -778,7 +778,7 @@ function NotificationContextPanel({ notification, relatedAppointment, openAppoin
   );
 }
 
-function RecentNotificationList({ currentUser, notifications, openAppointment }) {
+function RecentNotificationList({ currentUser, notifications, openAppointment, onLoadMore, isLoadingMore, hasMore }) {
   return (
     <PanelCard
       title="History"
@@ -834,6 +834,11 @@ function RecentNotificationList({ currentUser, notifications, openAppointment })
               </button>
             );
           })}
+          {hasMore && (
+            <button type="button" disabled={isLoadingMore} onClick={onLoadMore} className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">
+              {isLoadingMore ? "Loading older events..." : "Load older events"}
+            </button>
+          )}
         </div>
       )}
     </PanelCard>
@@ -845,8 +850,14 @@ function AppointmentsWorkspace({
   state,
   visibleNotifications,
   updateAppointment,
+  loadMoreAppointments,
+  loadMoreNotifications,
+  hasMoreNotifications,
+  refreshScheduleData,
 }) {
   const toast = useToast();
+  const [isLoadingAllAppointments, setIsLoadingAllAppointments] = useState(false);
+  const [isLoadingOlderNotifications, setIsLoadingOlderNotifications] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const savedStatus = searchParams.get("status") || "All";
   const requestedStatus = ["Confirmed", "Accepted"].includes(savedStatus) ? "Approved" : savedStatus;
@@ -878,6 +889,7 @@ function AppointmentsWorkspace({
     }
     try {
       await updateAppointment(appointmentId, updates, currentUser.name);
+      await refreshScheduleData();
       return true;
     } catch (error) {
       toast.error(error.message || "Unable to update appointment.");
@@ -1081,6 +1093,20 @@ function AppointmentsWorkspace({
                     )}
                   </section>
                 ))}
+                {appointments.length >= 200 && (
+                  <button
+                    type="button"
+                    disabled={isLoadingAllAppointments}
+                    onClick={async () => {
+                      setIsLoadingAllAppointments(true);
+                      try { await loadMoreAppointments(); }
+                      finally { setIsLoadingAllAppointments(false); }
+                    }}
+                    className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm font-semibold text-[#2D6B73] disabled:opacity-60"
+                  >
+                    {isLoadingAllAppointments ? "Loading older appointments..." : "Load older appointments"}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1100,6 +1126,9 @@ function AppointmentsWorkspace({
         currentUser={currentUser}
         notifications={visibleNotifications}
         openAppointment={openAppointment}
+        hasMore={hasMoreNotifications}
+        onLoadMore={async () => { setIsLoadingOlderNotifications(true); try { await loadMoreNotifications(); } finally { setIsLoadingOlderNotifications(false); } }}
+        isLoadingMore={isLoadingOlderNotifications}
       />
     </div>
   );
@@ -2451,6 +2480,10 @@ export function PortalPage() {
     state,
     visibleNotifications,
     updateAppointment,
+    loadMoreAppointments,
+    loadMoreNotifications,
+    hasMoreNotifications,
+    refreshScheduleData,
     saveAvailabilitySlot,
     savePetRecord,
     createStaff,
@@ -2505,6 +2538,9 @@ export function PortalPage() {
       state={state}
       visibleNotifications={visibleNotifications}
       updateAppointment={updateAppointment}
+      loadMoreAppointments={loadMoreAppointments}
+      loadMoreNotifications={loadMoreNotifications}
+      refreshScheduleData={refreshScheduleData}
     />
   );
 }

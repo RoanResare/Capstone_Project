@@ -26,10 +26,9 @@ export async function loadPricelists(token) {
 export function subscribePricelists(token, onChange, onError) {
   let disposed = false;
   let running = false;
-  let refreshPending = false;
   const refresh = async () => {
     if (disposed) return;
-    if (running) { refreshPending = true; return; }
+    if (running) return;
     running = true;
     try {
       const response = await apiClient.get("/auth/pricelists", {headers: buildAuthHeaders(token)});
@@ -40,16 +39,13 @@ export function subscribePricelists(token, onChange, onError) {
       if (!disposed && !pricelistCache.has(token)) onError(new Error(extractApiError(error, "Unable to load pricelists. Please try again.")));
     } finally {
       running = false;
-      if (refreshPending && !disposed) { refreshPending = false; void refresh(); }
     }
   };
   void refresh();
-  const interval = window.setInterval(refresh, 30000);
   window.addEventListener(PRICELIST_UPDATED, refresh);
   window.addEventListener("focus", refresh);
   return () => {
     disposed = true;
-    window.clearInterval(interval);
     window.removeEventListener(PRICELIST_UPDATED, refresh);
     window.removeEventListener("focus", refresh);
   };

@@ -1,4 +1,4 @@
-import { doc, onSnapshot, runTransaction } from "firebase/firestore";
+import { doc, getDoc, runTransaction } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 import { normalizePromoInput } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
@@ -13,9 +13,16 @@ export function subscribeKaponPromo(onChange, onError) {
   }
   const cachedPromo = readJsonCache(KAPON_PROMO_CACHE_KEY, KAPON_PROMO_CACHE_TTL_MS);
   if (cachedPromo) onChange(cachedPromo);
-  return onSnapshot(doc(db, "lowCostKaponPromo", "low-cost-kapon"), { includeMetadataChanges: true },
-    (snapshot) => {
-      if (snapshot.metadata.fromCache) return;
+  let disposed = false;
+  const refresh = async (force = false) => {
+    if (disposed || document.visibilityState === "hidden") return;
+    if (!force) {
+      const latest = readJsonCache(KAPON_PROMO_CACHE_KEY, KAPON_PROMO_CACHE_TTL_MS);
+      if (latest) { onChange(latest); return; }
+    }
+    try {
+      const snapshot = await getDoc(doc(db, "lowCostKaponPromo", "low-cost-kapon"));
+      if (disposed) return;
       if (snapshot.exists()) {
         const data = snapshot.data();
         writeJsonCache(KAPON_PROMO_CACHE_KEY, data);
@@ -24,11 +31,17 @@ export function subscribeKaponPromo(onChange, onError) {
         removeJsonCache(KAPON_PROMO_CACHE_KEY);
         onChange(null);
       }
-    },
-    (error) => onError(new Error(error.code === "permission-denied"
-      ? "Promotion access was denied. Please publish the updated Firestore rules and sign in again."
-      : "Unable to load promotion availability. Please try again later.")),
-  );
+    } catch (error) {
+      if (!disposed) onError(new Error(error.code === "permission-denied"
+        ? "Promotion access was denied. Please publish the updated Firestore rules and sign in again."
+        : "Unable to load promotion availability. Please try again later."));
+    }
+  };
+  void refresh();
+  const refreshOnFocus = () => { void refresh(true); };
+  window.addEventListener("focus", refreshOnFocus);
+  document.addEventListener("visibilitychange", refreshOnFocus);
+  return () => { disposed = true; window.removeEventListener("focus", refreshOnFocus); document.removeEventListener("visibilitychange", refreshOnFocus); };
 }
 
 export async function saveKaponPromo(payload) {

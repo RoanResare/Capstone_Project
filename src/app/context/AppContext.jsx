@@ -16,11 +16,20 @@ import {
 import { useAuth } from "./AuthContext.jsx";
 import {
   deletePetRecordDocument,
-  subscribeNotifications,
-  subscribeAppointments,
+  clearScheduleCache,
   subscribeAvailabilitySlots,
   loadPetRecordDocuments,
+  loadCustomerPetRecords,
+  loadCustomerAppointments,
+  loadCustomerNotifications,
   loadPhotoModerationDocuments,
+  loadAppointmentDocuments,
+  loadRecentNotifications,
+  loadMoreRecentNotifications,
+  hasMoreRecentNotifications,
+  loadMoreAppointmentDocuments,
+  markNotificationReadDocument,
+  markAllNotificationsReadDocuments,
   saveAppointmentDocument,
   saveAvailabilitySlotDocument,
   savePetRecordDocument,
@@ -1705,6 +1714,8 @@ export function AppProvider({ children }) {
   const [availabilityError, setAvailabilityError] = useState("");
   const [promoState, setPromoState] = useState({ uid: null, promo: null, ready: false, error: "" });
   const [promoClock, setPromoClock] = useState(Date.now);
+  const [notificationRefreshVersion, setNotificationRefreshVersion] = useState(0);
+  const [hasMoreNotificationPages, setHasMoreNotificationPages] = useState(false);
   const portalUsersRequestRef = useRef({ key: "", fetchedAt: 0, promise: null, users: null });
   const currentUser = authenticatedUser ? normalizeSessionUser(authenticatedUser) : null;
   const kaponPromoReady = Boolean(currentUser?.uid && promoState.uid === currentUser.uid && promoState.ready);
@@ -1712,6 +1723,7 @@ export function AppProvider({ children }) {
   const kaponPromoAvailable = kaponPromoReady && isKaponPromoAvailable(kaponPromo, promoClock);
 
   useEffect(() => {
+    clearScheduleCache();
     setPromoState({ uid: null, promo: null, ready: false, error: "" });
     if (!currentUser?.uid) return undefined;
     let disposed = false;
@@ -1725,6 +1737,7 @@ export function AppProvider({ children }) {
     });
     return () => { disposed = true; unsubscribe(); };
   }, [currentUser?.uid]);
+
 
   useEffect(() => {
     const tick = () => setPromoClock(Date.now());
@@ -1816,8 +1829,8 @@ export function AppProvider({ children }) {
     let cancelled = false;
 
     Promise.all([
-      loadPetRecordDocuments(),
-      loadPhotoModerationDocuments(),
+      currentUser.role === "customer" ? loadCustomerPetRecords(currentUser) : loadPetRecordDocuments(),
+      currentUser.role === "admin" ? loadPhotoModerationDocuments() : Promise.resolve([]),
     ]).then(
       ([petRecords, photoRecords]) => {
         if (cancelled) {
@@ -1847,14 +1860,65 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!currentUser) return undefined;
-    const stopAppointments = subscribeAppointments((appointments) => {
+    let disposed = false;
+    const isCustomer = currentUser.role === "customer";
+    const loadAppointments = ({ force = false } = {}) => isCustomer ? loadCustomerAppointments(currentUser) : loadAppointmentDocuments({ force });
+    const loadNotifications = ({ force = false } = {}) => isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force });
+    const refresh = () => {
+      void Promise.all([loadAppointments({ force: true }), loadNotifications({ force: true })]).then(([appointments, notifications]) => {
+        if (disposed) return;
+        dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
+        dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
+        if (!isCustomer) setHasMoreNotificationPages(hasMoreRecentNotifications());
+        if (!isCustomer) setNotificationRefreshVersion((version) => version + 1);
+      }).catch((error) => console.error("Unable to refresh appointment or notification data.", error));
+    };
+    Promise.all([loadAppointments(), loadNotifications()]).then(([appointments, notifications]) => {
+      if (disposed) return;
       dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
-    });
-    const stopNotifications = subscribeNotifications((notifications) => {
       dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
-    });
-    return () => { stopAppointments(); stopNotifications(); };
-  }, [currentUser?.uid]);
+      if (!isCustomer) setHasMoreNotificationPages(hasMoreRecentNotifications());
+    }).catch((error) => console.error("Unable to load appointment or notification data.", error));
+    return () => { disposed = true; };
+  }, [currentUser?.role, currentUser?.uid, notificationRefreshVersion]);
+
+  const loadMoreAppointments = useCallback(async () => {
+    if (!currentUser) return [];
+    const appointments = await loadMoreAppointmentDocuments({ customer: currentUser.role === "customer" ? currentUser : null, force: true });
+    dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
+    return appointments;
+  }, [currentUser?.role, currentUser?.uid]);
+
+  const loadMoreNotifications = useCallback(async () => {
+    if (!currentUser || currentUser.role === "customer") return [];
+    const notifications = await loadMoreRecentNotifications();
+    dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
+    setHasMoreNotificationPages(false);
+    setNotificationRefreshVersion((version) => version + 1);
+    return notifications;
+  }, [currentUser?.role, currentUser?.uid]);
+
+  const refreshScheduleData = useCallback(async () => {
+    if (!currentUser) return;
+    const isCustomer = currentUser.role === "customer";
+    const [appointments, notifications, petRecords] = await Promise.all([
+      isCustomer ? loadCustomerAppointments(currentUser) : loadAppointmentDocuments({ force: true }),
+      isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force: true }),
+      isCustomer ? loadCustomerPetRecords(currentUser) : loadPetRecordDocuments(),
+    ]);
+    dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments, petRecords } });
+    dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
+  }, [currentUser?.role, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") void refreshScheduleData();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); };
+  }, [currentUser?.uid, refreshScheduleData]);
 
   useEffect(() => {
     setAvailabilityUserId(null);
@@ -2014,12 +2078,18 @@ export function AppProvider({ children }) {
     kaponPromoError: promoState.uid === currentUser?.uid ? promoState.error : "",
     async manageKaponPromo(payload) {
       if (!["admin", "staff"].includes(currentUser?.role)) throw new Error("Only admin and staff can manage promotions.");
-      return saveKaponPromo(payload);
+      const promo = await saveKaponPromo(payload);
+      setPromoState({ uid: currentUser.uid, promo, ready: true, error: "" });
+      return promo;
     },
     availabilityReady: Boolean(currentUser?.uid && availabilityUserId === currentUser.uid),
     availabilityError,
     currentUser,
     visibleNotifications,
+    refreshScheduleData,
+    loadMoreAppointments,
+    loadMoreNotifications,
+    hasMoreNotifications: hasMoreNotificationPages,
     accessibleModules: currentUser
       ? portalModules.filter(
           (module) => currentUser.role === "admin" || !module.adminOnly,
@@ -2353,6 +2423,7 @@ export function AppProvider({ children }) {
         type: "MARK_NOTIFICATION_READ",
         payload: { notificationId, userId: currentUser.id },
       });
+      void markNotificationReadDocument(notificationId, currentUser.uid || currentUser.id);
     },
     markAllNotificationsRead() {
       if (!currentUser) {
@@ -2363,6 +2434,7 @@ export function AppProvider({ children }) {
         type: "MARK_ALL_NOTIFICATIONS_READ",
         payload: { userId: currentUser.id },
       });
+      void markAllNotificationsReadDocuments(visibleNotifications, currentUser.uid || currentUser.id);
     },
     getPendingAppointmentCount(customerId, customerEmail) {
       return countPendingAppointments(state.appointments, customerId, customerEmail);

@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus, X } from "lucide-react";
 import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
+import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
@@ -132,8 +133,9 @@ export function CustomerSignup() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
-      <div className="mx-auto grid max-w-[1320px] items-start gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-8">
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
+      <AuthPageBackdrop />
+      <div className="relative z-10 mx-auto grid max-w-[1320px] items-start gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-8">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}

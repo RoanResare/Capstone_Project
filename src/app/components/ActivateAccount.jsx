@@ -39,7 +39,7 @@ export function ActivateAccount() {
 
   const handleResend = async (event) => {
     event.preventDefault();
-    if (resending) return;
+    if (resending || !email.trim()) return;
     setResending(true);
     try {
       const result = await resendCustomerEmailVerification(email.trim());
@@ -80,7 +80,7 @@ export function ActivateAccount() {
             <label htmlFor="verification-email" className="block text-sm font-medium text-[#415D62]">Email used to register</label>
             <div className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 focus-within:border-[#2D9B9B]">
               <Mail size={17} className="shrink-0 text-[#6B898E]" />
-              <input id="verification-email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} className="min-w-0 flex-1 outline-none" placeholder="you@example.com" />
+              <input id="verification-email" type="email" autoComplete="email" disabled readOnly value={email} className="min-w-0 flex-1 cursor-not-allowed bg-transparent text-[#20343B] opacity-100 outline-none" />
             </div>
             <button type="submit" disabled={resending || !email.trim()} className="min-h-12 w-full rounded-2xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
               {resending ? "Requesting a new link..." : "Request a new activation link"}

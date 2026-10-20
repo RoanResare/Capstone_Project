@@ -41,6 +41,12 @@ test("SMTP verification and OTP delivery use the configured app password without
       assert.equal(options.auth.type, undefined);
       assert.equal(options.auth.pass, env.mail.smtp.pass);
       assert.equal(options.auth.user, env.mail.smtp.user);
+      assert.equal(options.tls.servername, env.mail.smtp.host);
+      assert.equal(options.tls.rejectUnauthorized, true);
+      assert.equal(options.tls.minVersion, "TLSv1.2");
+      assert.equal(options.connectionTimeout, 30000);
+      assert.equal(options.greetingTimeout, 30000);
+      assert.equal(options.socketTimeout, 60000);
       return {
         verify: async () => true,
         sendMail: async (value) => {
@@ -119,6 +125,12 @@ test("environment credentials come only from EMAIL_USER and EMAIL_PASS", () => {
   assert.equal(configured.env.mail.smtp.pass, "abcdefghijklmnop");
   assert.equal(configured.env.mail.fromEmail, "sender@gmail.com");
   assert.equal(configured.env.mail.oauth, undefined);
+  const gmail = load({ EMAIL_USER: "sender@gmail.com", EMAIL_PASS: "app-password", SMTP_PORT: "587", SMTP_SECURE: "false" });
+  assert.equal(gmail.env.mail.smtp.port, 465);
+  assert.equal(gmail.env.mail.smtp.secure, true);
+  const custom = load({ EMAIL_USER: "sender@example.com", EMAIL_PASS: "password", SMTP_HOST: "smtp.example.com", SMTP_PORT: "587", SMTP_SECURE: "false" });
+  assert.equal(custom.env.mail.smtp.port, 587);
+  assert.equal(custom.env.mail.smtp.secure, false);
   assert.equal(load(legacy).env.runtime.mailDeliveryReady, false);
   const failures = load(legacy).getStartupDiagnostics().failedChecks;
   assert.deepEqual(Array.from(failures.find(check => check.label === "Mail Delivery").required), ["EMAIL_USER", "EMAIL_PASS"]);

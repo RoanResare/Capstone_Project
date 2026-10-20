@@ -152,6 +152,7 @@ const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
   : `${frontendUrl}/activate-account`;
 
 const smtpHost = readOptional("SMTP_HOST", "smtp.gmail.com");
+const isGmailSmtp = smtpHost.toLowerCase() === "smtp.gmail.com";
 const smtpUser = readOptional("EMAIL_USER");
 const smtpPassword = readOptional("EMAIL_PASS");
 
@@ -221,10 +222,11 @@ const env = {
     ).toLowerCase(),
     smtp: {
       host: smtpHost,
-      port: readNumber("SMTP_PORT", 465),
-      secure: readBoolean("SMTP_SECURE", readNumber("SMTP_PORT", 465) === 465),
+      // Gmail uses implicit TLS even if a stale deployment variable says 587.
+      port: isGmailSmtp ? 465 : readNumber("SMTP_PORT", 465),
+      secure: isGmailSmtp ? true : readBoolean("SMTP_SECURE", readNumber("SMTP_PORT", 465) === 465),
       user: smtpUser,
-      pass: smtpHost.toLowerCase() === "smtp.gmail.com" ? smtpPassword.replace(/\s/g, "") : smtpPassword,
+      pass: isGmailSmtp ? smtpPassword.replace(/\s/g, "") : smtpPassword,
     },
   },
 };

@@ -9,28 +9,41 @@ function getSmtpTransport() {
       port: env.mail.smtp.port,
       secure: env.mail.smtp.secure,
       auth: { user: env.mail.smtp.user, pass: env.mail.smtp.pass },
+      tls: { servername: env.mail.smtp.host, minVersion: "TLSv1.2", rejectUnauthorized: true },
       // Use the OS resolver (including Windows/VPN DNS) rather than direct DNS queries.
       getSocket(options, callback) {
-        const socket = require("node:net").connect({ host: options.host, port: options.port });
+        const connectionOptions = {
+          host: options.host,
+          port: options.port,
+          autoSelectFamily: true,
+          ...(options.secure ? options.tls : {}),
+        };
+        // Port 465 must complete TLS before waiting for the SMTP greeting.
+        const socket = options.secure
+          ? require("node:tls").connect(connectionOptions)
+          : require("node:net").connect(connectionOptions);
         const onError = (error) => {
+          socket.removeListener("timeout", onTimeout);
           socket.destroy();
           callback(error);
         };
-        socket.once("error", onError);
-        socket.setTimeout(15000, () => {
+        const onTimeout = () => {
           const error = new Error("SMTP connection timed out.");
           error.code = "ETIMEDOUT";
           socket.destroy(error);
-        });
-        socket.once("connect", () => {
+        };
+        socket.once("error", onError);
+        socket.setTimeout(30000, onTimeout);
+        socket.once(options.secure ? "secureConnect" : "connect", () => {
           socket.setTimeout(0);
+          socket.removeListener("timeout", onTimeout);
           socket.removeListener("error", onError);
-          callback(null, { connection: socket });
+          callback(null, { connection: socket, secured: options.secure === true });
         });
       },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 30000,
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 60000,
     });
   }
   return smtpTransport;

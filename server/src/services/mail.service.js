@@ -1,7 +1,6 @@
 const {
   getMailTransportSettings,
   sendMail,
-  verifyMailerConnection,
 } = require("../config/mailer");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
@@ -122,7 +121,10 @@ function buildMailConfigurationError() {
 function buildMailDeliveryError(error) {
   if (env.runtime.mailDeliveryMode === "smtp") {
     if (error?.code === "EAUTH") {
-      return new ApiError(503, "Gmail rejected the SMTP credentials. Update the sender account's app password in the backend configuration, then restart the backend.");
+      return new ApiError(503, "The SMTP server rejected the credentials. Update the sender account's app password in the backend configuration, then restart the backend.");
+    }
+    if (["ETIMEDOUT", "ECONNECTION", "ESOCKET", "EDNS"].includes(error?.code)) {
+      return new ApiError(503, "Unable to connect to the email server. Check SMTP host, port, TLS settings, and outbound network access.");
     }
     return new ApiError(503, "Unable to send email right now. Check the SMTP connection and app password, then try again.");
   }
@@ -148,12 +150,12 @@ function buildMailDeliveryError(error) {
   );
 }
 
-async function deliverMail({ type, to, subject, html, text }) {
+async function deliverMail({ type, to, subject, html, text, messageId }) {
   if (!env.runtime.mailDeliveryReady) {
     throw buildMailConfigurationError();
   }
 
-  const senderEmail = env.mail.user || env.mail.fromEmail;
+  const senderEmail = env.mail.fromEmail;
   const transportSettings = getMailTransportSettings();
 
   console.info(`[mail:${type}] Attempting email delivery.`, {
@@ -164,12 +166,12 @@ async function deliverMail({ type, to, subject, html, text }) {
   });
 
   try {
-    await verifyMailerConnection();
     const result = await sendMail({
       fromName: env.mail.fromName,
       fromEmail: senderEmail,
       to,
       subject,
+      messageId,
       html,
       text,
     });
@@ -230,6 +232,7 @@ async function sendEmailVerificationLink({ to, fullName, verificationLink }) {
 }
 
 module.exports = {
+  deliverMail,
   sendEmailVerificationLink,
   sendOtpEmail,
   sendPasswordResetEmail,

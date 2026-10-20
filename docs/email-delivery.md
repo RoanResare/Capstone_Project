@@ -1,8 +1,8 @@
 # Authentication email delivery
 
-Verification codes, account activation links, and password reset links use the backend's `MAIL_DELIVERY_MODE`.
+Verification codes, account activation links, password reset links, and appointment reminders use the backend's `MAIL_DELIVERY_MODE`.
 
-Providing `EMAIL_PASS`, `GMAIL_APP_PASSWORD`, or `SMTP_PASS` automatically selects Nodemailer SMTP, including when an older configuration sets `MAIL_DELIVERY_MODE=gmail-api`. An explicitly disabled delivery mode remains disabled. OAuth is used only when no app password is supplied.
+Use `MAIL_DELIVERY_MODE=smtp` for app passwords, `gmail-api` for HTTPS OAuth delivery, or `auto` (the default) to prefer SMTP credentials and otherwise use Gmail API. Explicit `gmail-api` and disabled modes are respected, even if an app password is present. All email flows share the same transport, sender, and failure handling.
 
 For Gmail SMTP, set `MAIL_DELIVERY_MODE=smtp`, `EMAIL_USER` (or `GMAIL_USER`), and `EMAIL_PASS` (a Gmail app password). The sender must match the account that owns the app password. `SMTP_USER` and `SMTP_PASS` override these values; `GMAIL_APP_PASSWORD` also takes precedence over `EMAIL_PASS`. Restart the backend after changing configuration.
 
@@ -16,4 +16,8 @@ node -e "require('./server/src/config/mailer').verifyMailerConnection().then(() 
 
 For Gmail API delivery, set `MAIL_DELIVERY_MODE=gmail-api`, `GMAIL_USER`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and `GMAIL_REFRESH_TOKEN` instead. SMTP configuration does not supply OAuth credentials.
 
-Run the mocked OTP delivery regression test with `node --test server/tests/mailer.test.js`.
+Run the mocked authentication and reminder delivery regression tests with `node --test server/tests/mailer.test.js`.
+
+SMTP port 465 uses `SMTP_SECURE=true`; port 587 uses `SMTP_SECURE=false` with STARTTLS. Gmail app-password spaces are removed; passwords for other SMTP hosts retain internal spaces. `SMTP_FROM_EMAIL` and `SMTP_FROM_NAME` override the sender settings. SMTP-only setups do not require Gmail OAuth credentials.
+
+If SMTP verification times out, check outbound network access on the backend host. Hosts that block SMTP require HTTPS delivery: explicitly select `gmail-api` and configure valid OAuth credentials. Changing an app password cannot fix a blocked TCP connection.

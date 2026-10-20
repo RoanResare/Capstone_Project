@@ -141,10 +141,10 @@ function loadServiceAccount() {
 }
 
 const serviceAccount = loadServiceAccount();
-const gmailUser = readRequired("GMAIL_USER", readOptional("EMAIL_USER")).toLowerCase();
-const gmailClientId = readRequired("GMAIL_CLIENT_ID");
-const gmailClientSecret = readRequired("GMAIL_CLIENT_SECRET");
-const gmailRefreshToken = readRequired("GMAIL_REFRESH_TOKEN");
+const gmailUser = readOptional("GMAIL_USER", readOptional("EMAIL_USER")).toLowerCase();
+const gmailClientId = readOptional("GMAIL_CLIENT_ID");
+const gmailClientSecret = readOptional("GMAIL_CLIENT_SECRET");
+const gmailRefreshToken = readOptional("GMAIL_REFRESH_TOKEN");
 const nodeEnv = readOptional("NODE_ENV", "development");
 const defaultFrontendUrl = "https://capstone-project-1-yqto.onrender.com";
 const frontendUrl = readOptional("FRONTEND_URL", defaultFrontendUrl).replace(/\/+$/, "");
@@ -154,6 +154,10 @@ const defaultPasswordResetUrl = frontendUrl.endsWith("/reset-password")
 const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
   ? frontendUrl
   : `${frontendUrl}/activate-account`;
+
+const smtpHost = readOptional("SMTP_HOST", "smtp.gmail.com");
+const smtpUser = readOptional("SMTP_USER", gmailUser);
+const smtpPassword = readOptional("SMTP_PASS", readOptional("GMAIL_APP_PASSWORD", readOptional("EMAIL_PASS")));
 
 const env = {
   nodeEnv,
@@ -211,13 +215,13 @@ const env = {
     ),
   },
   mail: {
-    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "gmail-api").toLowerCase(),
+    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "auto").toLowerCase(),
     provider: "gmail-api",
     user: gmailUser,
-    fromName: readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
+    fromName: readOptional("SMTP_FROM_NAME", readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care")),
     fromEmail: readOptional(
-      "GMAIL_FROM_EMAIL",
-      readOptional("EMAIL_FROM", gmailUser),
+      "SMTP_FROM_EMAIL",
+      readOptional("EMAIL_FROM", readOptional("GMAIL_FROM_EMAIL", smtpUser)),
     ).toLowerCase(),
     oauth: {
       clientId: gmailClientId,
@@ -225,11 +229,11 @@ const env = {
       refreshToken: gmailRefreshToken,
     },
     smtp: {
-      host: readOptional("SMTP_HOST", "smtp.gmail.com"),
+      host: smtpHost,
       port: readNumber("SMTP_PORT", 465),
       secure: readBoolean("SMTP_SECURE", readNumber("SMTP_PORT", 465) === 465),
-      user: readOptional("SMTP_USER", gmailUser),
-      pass: readOptional("SMTP_PASS", readOptional("GMAIL_APP_PASSWORD", readOptional("EMAIL_PASS"))).replace(/\s/g, ""),
+      user: smtpUser,
+      pass: smtpHost.toLowerCase() === "smtp.gmail.com" ? smtpPassword.replace(/\s/g, "") : smtpPassword,
     },
   },
 };
@@ -241,7 +245,11 @@ function resolveMailDeliveryMode() {
     return "disabled";
   }
 
-  // An app password selects SMTP even when an older deployment still sets gmail-api.
+  // Explicit API mode supports deployments that block SMTP ports.
+  if (configuredMode === "gmail-api") {
+    return env.runtime.gmailApiReady ? "gmail-api" : "disabled";
+  }
+  // Auto mode prefers configured SMTP credentials.
   if (env.mail.smtp.pass || configuredMode === "smtp") {
     return env.runtime.smtpReady ? "smtp" : "disabled";
   }

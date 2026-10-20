@@ -113,12 +113,13 @@ async function getAccessToken() {
   return accessToken;
 }
 
-function buildRawMessage({ from, to, subject, html, text }) {
+function buildRawMessage({ from, to, subject, html, text, messageId }) {
   const boundary = `charming-furfection-${Date.now().toString(36)}`;
   const message = [
     `From: ${from}`,
     `To: ${sanitizeHeader(to)}`,
     `Subject: ${encodeHeader(subject)}`,
+    ...(messageId ? [`Message-ID: ${sanitizeHeader(messageId)}`] : []),
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
@@ -141,11 +142,11 @@ function buildRawMessage({ from, to, subject, html, text }) {
   return base64UrlEncode(message);
 }
 
-async function sendMail({ fromName, fromEmail, to, subject, html, text }) {
+async function sendMail({ fromName, fromEmail, to, subject, html, text, messageId }) {
   if (env.runtime.mailDeliveryMode === "smtp") {
     const result = await getSmtpTransport().sendMail({
       from: { name: fromName, address: fromEmail || env.mail.fromEmail },
-      to, subject, html, text,
+      to, subject, html, text, messageId,
     });
     if (!result.accepted?.length) throw new Error("SMTP server did not accept the recipient.");
     return { ...result, id: result.messageId };
@@ -158,7 +159,7 @@ async function sendMail({ fromName, fromEmail, to, subject, html, text }) {
 
   const token = await getAccessToken();
   const from = formatAddress(fromName, fromEmail || env.mail.fromEmail);
-  const raw = buildRawMessage({ from, to, subject, html, text });
+  const raw = buildRawMessage({ from, to, subject, html, text, messageId });
   const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
     headers: {

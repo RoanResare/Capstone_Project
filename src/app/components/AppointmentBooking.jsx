@@ -423,13 +423,13 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="rounded-lg bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-5 text-white shadow-[0_20px_42px_rgba(20,43,46,0.18)] md:p-6"
+          className="rounded-lg bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-5 text-white shadow-[0_20px_42px_rgba(20,43,46,0.18)] md:p-5"
         >
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/72">
             Book Appointment
           </p>
           <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Select a pet and services, then reserve a slot.</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/76">
+          <p className="mt-3 max-w-3xl text-sm leading-5 text-white/76">
             Contact details are pulled from your customer profile. Add pets from the dashboard first, then choose which pet needs which service.
           </p>
         </motion.section>
@@ -490,7 +490,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                                 groomingServiceIds: [], clinicalChoices: {},
                               })
                             }
-                            className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                            className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                           >
                             <option value="">Choose a saved pet</option>
                             {customerPetRecords.map((record) => (
@@ -513,7 +513,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                               id={`booking-service-${selection.id}`}
                               value={selection.serviceId}
                               onChange={(event) => updateSelection(selection.id, { serviceId: event.target.value })}
-                              className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                              className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                             >
                               <option value="">Choose service</option>
                               {serviceCatalog.map((service) => (
@@ -530,7 +530,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                                 </div>
                                 <select id={`second-service-${selection.id}`} value={selection.additionalServiceId}
                                   onChange={(event) => updateSelection(selection.id, { additionalServiceId: event.target.value })}
-                                  className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-3 outline-none focus:border-[#2D9B9B]">
+                                  className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none focus:border-[#2D9B9B]">
                                   <option value="">Choose a different service</option>
                                   {serviceCatalog.map((item) => (
                                     <option key={item.id} value={item.id} disabled={!canPairServices(selection.serviceId, item.id) || (item.id === KAPON_SERVICE_ID && !kaponPromoAvailable)}>{item.name}</option>
@@ -573,7 +573,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                                         const checked = selection.groomingServiceIds.includes(item.id);
                                         const hasPackage = groomingOptionsForPet(selectedPet).packages.some(option => selection.groomingServiceIds.includes(option.id));
                                         const unavailable = !checked && (group === "packages" ? selection.groomingServiceIds.length > 0 : hasPackage || selection.groomingServiceIds.length >= MAX_GROOMING_SELECTIONS);
-                                        return <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-[#D9E7E7] bg-white px-3 py-3 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
+                                        return <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-[#D9E7E7] bg-white px-3 py-2.5 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
                                           <input type="checkbox" checked={checked} disabled={unavailable}
                                             onChange={() => updateSelection(selection.id, {groomingServiceIds: checked ? selection.groomingServiceIds.filter(id => id !== item.id) : [...selection.groomingServiceIds, item.id]})}
                                             className="h-4 w-4 shrink-0 accent-[#173E44]"/>{item.name}
@@ -596,7 +596,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                     type="button"
                     onClick={addServiceSelection}
                     disabled={petSelections[petSelections.length - 1]?.additionalServiceId !== null}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-2.5 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Plus size={16} />
                     Add another service
@@ -719,7 +719,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-5 text-sm leading-6 text-[#607277]">
+                  <p className="mt-5 text-sm leading-5 text-[#607277]">
                     {availabilityError || (availabilityReady ? "Choose a highlighted date to see available times." : "Loading available times...")}
                   </p>
                 )}
@@ -765,7 +765,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
               Fully booked dates
             </p>
             {fullyBookedDates.length === 0 ? (
-              <p className="mt-2 text-sm leading-6 text-[#607277]">
+              <p className="mt-2 text-sm leading-5 text-[#607277]">
                 No fully booked dates in the current availability window.
               </p>
             ) : (
@@ -779,7 +779,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
             )}
           </div>
 
-          <label className="mt-4 flex items-center gap-3 rounded-lg bg-[#F5FAFA] px-4 py-3 text-sm text-[#33545A]">
+          <label className="mt-4 flex items-center gap-3 rounded-lg bg-[#F5FAFA] px-4 py-2.5 text-sm text-[#33545A]">
             <input
               type="checkbox"
               checked={reminderEnabled}
@@ -791,7 +791,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
           <button
             type="submit"
             disabled={isSubmitting || customerPetRecords.length === 0 || customer?.status !== "active" || hasUnavailableKapon}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61] disabled:bg-[#9CB5B8]"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#235A61] disabled:bg-[#9CB5B8]"
           >
             <CheckCircle2 size={16} />
             {isSubmitting ? "Saving appointment..." : "Confirm appointment booking"}
@@ -799,7 +799,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
           {hasUnavailableKapon && <p role="status" className="mt-3 text-sm text-[#607277]">{KAPON_UNAVAILABLE_MESSAGE}</p>}
           {feedback.message && (
             <p
-              className={`mt-4 rounded-lg px-4 py-3 text-sm font-medium ${
+              className={`mt-4 rounded-lg px-4 py-2.5 text-sm font-medium ${
                 feedback.type === "error"
                   ? "bg-[#FBECEF] text-[#B23949]"
                   : "bg-[#EAF7F7] text-[#2D6B73]"

@@ -83,7 +83,7 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
   return createPortal(
     <dialog ref={dialogRef} aria-labelledby="kapon-promo-title"
       onCancel={(event) => { event.preventDefault(); if (!saving) onClose(); }}
-      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-6">
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <h2 id="kapon-promo-title" className="text-xl font-semibold text-[#20343B]">{editing ? "Edit Promo" : "Activate Low-Cost Kapon"}</h2>
         <button type="button" onClick={onClose} disabled={saving} aria-label="Close promotion form" title="Close" className="p-1 text-[#607277] disabled:opacity-50"><X size={20} /></button>

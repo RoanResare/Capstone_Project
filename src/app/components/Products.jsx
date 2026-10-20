@@ -38,7 +38,7 @@ export function Products() {
       : products.filter((product) => product.category === selectedCategory);
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F5F0E8] py-12 px-6">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F5F0E8] py-10 px-6">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -50,15 +50,15 @@ export function Products() {
           <p className="text-xl text-gray-700">Quality products for your beloved pets</p>
         </motion.div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-6">
           <motion.aside
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="lg:w-64 flex-shrink-0"
           >
-            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">Categories</h2>
+            <div className="bg-white rounded-2xl shadow-lg p-5 sticky top-24">
+              <h2 className="text-xl font-bold text-gray-800 mb-5">Categories</h2>
               <div className="space-y-3">
                 {categories.map((category) => {
                   const count =
@@ -71,7 +71,7 @@ export function Products() {
                       key={category.id}
                       type="button"
                       onClick={() => setSelectedCategory(category.id)}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                      className={`w-full text-left px-4 py-2.5 rounded-lg transition-all ${
                         selectedCategory === category.id
                           ? "bg-[#2D9B9B] text-white font-semibold shadow-md"
                           : "bg-gray-50 text-gray-700 hover:bg-gray-100"
@@ -102,7 +102,7 @@ export function Products() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.4 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
               >
                 {filteredProducts.map((product, index) => (
                   <motion.div
@@ -117,7 +117,7 @@ export function Products() {
                       <span className="text-7xl">{product.image}</span>
                     </div>
 
-                    <div className="p-6 text-center">
+                    <div className="p-5 text-center">
                       <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
                     </div>
                   </motion.div>
@@ -129,7 +129,7 @@ export function Products() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-center py-16"
+                className="text-center py-12"
               >
                 <p className="text-xl text-gray-500">No products found in this category.</p>
               </motion.div>

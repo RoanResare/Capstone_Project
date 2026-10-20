@@ -9,10 +9,10 @@ const highlights = [
 
 export function AuthHeroPanel() {
   return (
-    <section className="relative flex min-h-[430px] flex-col justify-center py-6 sm:min-h-[500px] sm:py-8 lg:min-h-[650px] lg:py-10">
-      <div className="flex h-full flex-1 flex-col px-4 sm:px-8 lg:px-10">
+    <section className="relative flex min-h-[360px] flex-col justify-center py-6 sm:min-h-[420px] sm:py-6 lg:min-h-[550px] lg:py-8">
+      <div className="flex h-full flex-1 flex-col px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
-          <BrandMark className="h-[68px] w-[68px] shrink-0 rounded-full bg-white/70 p-1" />
+          <BrandMark className="h-14 w-14 shrink-0 rounded-full bg-white/70 p-1" />
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.19em] text-[#55777A]">Charming Fur-fection</p>
             <h1 className="mt-1 max-w-[370px] text-xl font-extrabold leading-tight text-[#17464B] sm:text-2xl">
@@ -21,18 +21,18 @@ export function AuthHeroPanel() {
           </div>
         </div>
 
-        <div className="mt-7 max-w-[390px]">
+        <div className="mt-5 max-w-[390px]">
           <p className="text-3xl font-extrabold leading-tight text-[#07545A] sm:text-4xl">
             Loving care for happier, healthier pets — always.
           </p>
-          <p className="mt-3 max-w-sm text-sm leading-6 text-[#385D61] sm:text-base">
+          <p className="mt-3 max-w-sm text-sm leading-5 text-[#385D61] sm:text-base">
             Friendly care and simple booking, all in one place.
           </p>
         </div>
 
-        <div className="mt-auto grid max-w-[430px] grid-cols-3 gap-2 pt-10">
+        <div className="mt-auto grid max-w-[430px] grid-cols-3 gap-2 pt-6">
           {highlights.map(({ icon: Icon, label }) => (
-            <div key={label} className="rounded-2xl border border-white/70 bg-white/85 px-2 py-3 text-center shadow-sm backdrop-blur-sm">
+            <div key={label} className="rounded-2xl border border-white/70 bg-white/85 px-2 py-2.5 text-center shadow-sm backdrop-blur-sm">
               <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#E8F5F2] text-[#168985]">
                 <Icon size={18} />
               </span>

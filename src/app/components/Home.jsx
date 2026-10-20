@@ -78,7 +78,7 @@ export function Home() {
             transition={{ duration: 0.6 }}
             className="grid items-stretch gap-4 lg:grid-cols-[1.2fr_0.9fr]"
           >
-            <div className="flex min-h-[320px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44]/92 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[360px] md:p-7">
+            <div className="flex min-h-[280px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44]/92 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[320px] md:p-5">
               <div>
                 <p className="inline-flex rounded-full border border-[#F4C16A]/50 bg-[#245B62] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#FFF4D8]">
                   {businessBranchDetails.name}
@@ -89,7 +89,7 @@ export function Home() {
               </div>
 
               <div className="pt-8">
-                <p className="max-w-2xl text-sm leading-6 text-[#E9F7F7] md:text-base">
+                <p className="max-w-2xl text-sm leading-5 text-[#E9F7F7] md:text-base">
                   Review the essentials, then sign in to book a visit or manage your pet care
                   details from your customer account.
                 </p>
@@ -98,7 +98,7 @@ export function Home() {
                   <button
                     type="button"
                     onClick={openCustomerBooking}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F4C16A] px-5 py-3 text-sm font-semibold text-[#173E44] transition hover:bg-[#F8CD82]"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F4C16A] px-5 py-2.5 text-sm font-semibold text-[#173E44] transition hover:bg-[#F8CD82]"
                   >
                     Start booking
                     <ArrowRight size={16} />
@@ -111,7 +111,7 @@ export function Home() {
               initial={{ opacity: 0, x: 26 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.65, delay: 0.12 }}
-              className="flex h-full min-h-[360px] flex-col rounded-lg bg-[#FFFDFC]/92 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[400px] md:p-6"
+              className="flex h-full min-h-[320px] flex-col rounded-lg bg-[#FFFDFC]/92 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[350px] md:p-5"
             >
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                 Branch details
@@ -151,7 +151,7 @@ export function Home() {
                 <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                   Plan your visit, then complete service selection inside your account.
                 </h2>
-                <p className="mt-3 text-sm leading-6 text-[#607277]">
+                <p className="mt-3 text-sm leading-5 text-[#607277]">
                   Booking now happens in the customer dashboard so pet details, profile information,
                   appointment history, and clinic updates stay connected to one authenticated account.
                 </p>
@@ -164,7 +164,7 @@ export function Home() {
                     {clinicPolicies.map((policy) => (
                       <div
                         key={policy}
-                        className="rounded-lg border border-[#E2ECEB] bg-[#FBFDFC] px-3.5 py-3 text-sm leading-5 text-[#607277] shadow-[0_8px_18px_rgba(94,81,60,0.06)]"
+                        className="rounded-lg border border-[#E2ECEB] bg-[#FBFDFC] px-3.5 py-2.5 text-sm leading-5 text-[#607277] shadow-[0_8px_18px_rgba(94,81,60,0.06)]"
                       >
                         {policy}
                       </div>

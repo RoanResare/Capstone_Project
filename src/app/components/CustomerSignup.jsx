@@ -133,9 +133,9 @@ export function CustomerSignup() {
   };
 
   return (
-    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 lg:py-8">
       <AuthPageBackdrop />
-      <div className="relative z-10 mx-auto grid max-w-[1320px] items-start gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-8">
+      <div className="relative z-10 mx-auto grid max-w-[1320px] items-start gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-6">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
@@ -149,13 +149,13 @@ export function CustomerSignup() {
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, delay: 0.08 }}
-          className="order-2 rounded-[30px] bg-white p-6 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-8 lg:order-2 lg:p-9"
+          className="order-2 rounded-[24px] bg-white p-5 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-6 lg:order-2 lg:p-7"
         >
-          <div className="mb-6 text-center">
+          <div className="mb-5 text-center">
             <h1 className="text-3xl font-extrabold text-[#07545A]">Create Account</h1>
             <p className="mt-2 text-sm text-[#607277]">Join us to manage your pet care and appointments.</p>
           </div>
-          <form noValidate onSubmit={handleSubmit} className="space-y-5">
+          <form noValidate onSubmit={handleSubmit} className="space-y-4">
             {firebaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
                 Firebase client setup is incomplete. Fill the `VITE_FIREBASE_*` values in the
@@ -175,7 +175,7 @@ export function CustomerSignup() {
                 autoComplete="name"
                 onChange={handleChange("fullName")}
                 disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your full name"
               />
             </div>
@@ -188,7 +188,7 @@ export function CustomerSignup() {
                 autoComplete="email"
                 onChange={handleChange("email")}
                 disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your email"
               />
             </div>
@@ -202,7 +202,7 @@ export function CustomerSignup() {
                 autoComplete="username"
                 onChange={handleChange("username")}
                 disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Choose a profile username"
               />
               <p className="mt-2 text-xs text-[#7A9297]">
@@ -216,7 +216,7 @@ export function CustomerSignup() {
                 Phone number
               </label>
               <label className="flex overflow-hidden rounded-[20px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
-                <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-2.5 text-sm font-semibold text-[#33545A]">
                   +63
                 </span>
                 <input
@@ -228,7 +228,7 @@ export function CustomerSignup() {
                   pattern="9[0-9]{9}"
                   maxLength={10}
                   autoComplete="tel"
-                  className="min-w-0 flex-1 px-4 py-3 outline-none"
+                  className="min-w-0 flex-1 px-4 py-2.5 outline-none"
                   placeholder="9XXXXXXXXX"
                 />
               </label>
@@ -237,7 +237,7 @@ export function CustomerSignup() {
               </p>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
                 <div className="relative">
@@ -247,7 +247,7 @@ export function CustomerSignup() {
                     autoComplete="new-password"
                     onChange={handleChange("password")}
                     disabled={isSubmitting}
-                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Create a password"
                   />
                   <button
@@ -287,7 +287,7 @@ export function CustomerSignup() {
                     autoComplete="new-password"
                     onChange={handleChange("confirmPassword")}
                     disabled={isSubmitting}
-                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Repeat your password"
                   />
                   <button
@@ -305,7 +305,7 @@ export function CustomerSignup() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
             >
               {isSubmitting ? "Creating account..." : "Create account"}
               <UserPlus size={16} />
@@ -331,7 +331,7 @@ export function CustomerSignup() {
             <p
               role={feedback.type === "error" ? "alert" : "status"}
               aria-live="polite"
-              className={`mt-6 rounded-[22px] px-4 py-3 text-sm font-medium ${
+              className={`mt-5 rounded-[22px] px-4 py-2.5 text-sm font-medium ${
                 feedback.type === "error"
                   ? "bg-[#FBECEF] text-[#B23949]"
                   : "bg-[#EAF7F7] text-[#2D6B73]"
@@ -349,7 +349,7 @@ export function CustomerSignup() {
       </div>
       {showTerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102D32]/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTerms(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="signup-terms-title" className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+          <section role="dialog" aria-modal="true" aria-labelledby="signup-terms-title" className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="signup-terms-title" className="text-xl font-semibold text-[#20343B]">Terms and Conditions and Privacy Policy</h2>
@@ -359,7 +359,7 @@ export function CustomerSignup() {
             </div>
             <div
               ref={termsScrollRef}
-              className="mt-5 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-5 text-sm leading-6 text-[#607277]"
+              className="mt-5 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-5 text-sm leading-5 text-[#607277]"
               onScroll={(event) => {
                 const element = event.currentTarget;
                 if (element.scrollTop + element.clientHeight >= element.scrollHeight - 4) setTermsRead(true);
@@ -384,7 +384,7 @@ export function CustomerSignup() {
               type="button"
               disabled={!termsRead || !termsAccepted || isSubmitting}
               onClick={() => { setTermsReady(true); setShowTerms(false); setFeedback({ type: "", message: "" }); }}
-              className="mt-5 w-full rounded-xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 w-full rounded-xl bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               Agree and continue
             </button>

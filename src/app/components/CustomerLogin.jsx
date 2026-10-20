@@ -96,18 +96,18 @@ export function CustomerLogin() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 lg:py-18">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10 lg:py-18">
       <div className="mx-auto grid max-w-[1220px] items-start gap-10 lg:grid-cols-[1.02fr_0.98fr]">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55 }}
-          className="rounded-[36px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_55%,#82C8C0_100%)] p-8 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-10"
+          className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_55%,#82C8C0_100%)] p-6 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-8"
         >
           <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
             Firebase Sign In
           </p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[4.2rem]">
+          <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[3.5rem]">
             Sign in with your customer email and password.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
@@ -115,7 +115,7 @@ export function CustomerLogin() {
             and password.
           </p>
 
-          <div className="mt-8 rounded-[28px] border border-white/12 bg-white/8 p-5">
+          <div className="mt-6 rounded-[24px] border border-white/12 bg-white/8 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/64">
               Terms and Conditions
             </p>
@@ -126,7 +126,7 @@ export function CustomerLogin() {
             </div>
           </div>
 
-          <p className="mt-8 text-sm text-white/74">
+          <p className="mt-6 text-sm text-white/74">
             Need a new account?{" "}
             <Link
               to="/customer/signup"
@@ -142,9 +142,9 @@ export function CustomerLogin() {
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, delay: 0.08 }}
-          className="rounded-[34px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-10"
+          className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
         >
-          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-5">
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {firebaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
                 Firebase client setup is incomplete. Fill the `VITE_FIREBASE_*` values in the
@@ -167,7 +167,7 @@ export function CustomerLogin() {
                   setForm((current) => ({ ...current, identifier: event.target.value }))
                 }
                 disabled={isSubmitting}
-                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your email or username"
               />
             </div>
@@ -183,7 +183,7 @@ export function CustomerLogin() {
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }
                   disabled={isSubmitting}
-                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Enter your password"
                 />
                 <button
@@ -200,7 +200,7 @@ export function CustomerLogin() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
             >
               Sign in as customer
               <ShieldCheck size={16} />
@@ -244,7 +244,7 @@ export function CustomerLogin() {
 
           {feedback.message && (
             <p
-              className={`mt-6 rounded-[22px] px-4 py-3 text-sm font-medium ${
+              className={`mt-5 rounded-[22px] px-4 py-2.5 text-sm font-medium ${
                 feedback.type === "error"
                   ? "bg-[#FBECEF] text-[#B23949]"
                   : "bg-[#EAF7F7] text-[#2D6B73]"

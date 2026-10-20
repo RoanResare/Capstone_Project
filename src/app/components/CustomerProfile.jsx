@@ -240,10 +240,10 @@ function formatNotificationDate(value) {
 
 function MetricCard({ label, value, description }) {
   return (
-    <div className="rounded-[26px] bg-white p-5 shadow-[0_14px_30px_rgba(94,81,60,0.1)]">
+    <div className="rounded-[20px] bg-white p-5 shadow-[0_14px_30px_rgba(94,81,60,0.1)]">
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">{label}</p>
       <p className="mt-3 text-4xl font-bold text-[#20343B]">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-[#607277]">{description}</p>
+      <p className="mt-2 text-sm leading-5 text-[#607277]">{description}</p>
     </div>
   );
 }
@@ -254,7 +254,7 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
   const unreadCount = notifications.filter((notification) => !notification.readBy.includes(currentUserId)).length;
 
   return (
-    <section className="rounded-[24px] bg-white p-5 shadow-[0_16px_32px_rgba(102,91,72,0.12)]">
+    <section className="app-card bg-white shadow-[0_16px_32px_rgba(102,91,72,0.12)]">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
@@ -305,7 +305,7 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
                   key={notification.id}
                   type="button"
                   onClick={() => onReadNotification(notification.id)}
-                  className={`w-full rounded-[18px] border px-4 py-3 text-left transition ${
+                  className={`w-full rounded-[18px] border px-4 py-2.5 text-left transition ${
                     isUnread
                       ? "border-[#2D9B9B] bg-[#F5FBFB]"
                       : "border-[#E6EFEE] bg-[#FBFDFC]"
@@ -315,7 +315,7 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
                     <p className="font-semibold text-[#20343B]">{notification.title}</p>
                     <StatusChip label={notification.actionLabel} />
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-[#607277]">{notification.message}</p>
+                  <p className="mt-2 text-sm leading-5 text-[#607277]">{notification.message}</p>
                   <p className="mt-3 text-xs text-[#7A9297]">
                     {formatNotificationDate(notification.createdAt)}
                   </p>
@@ -341,18 +341,18 @@ function MetricButton({ label, value, description, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[26px] bg-white p-5 text-left shadow-[0_14px_30px_rgba(94,81,60,0.1)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(94,81,60,0.14)]"
+      className="rounded-[20px] bg-white p-5 text-left shadow-[0_14px_30px_rgba(94,81,60,0.1)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(94,81,60,0.14)]"
     >
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">{label}</p>
       <p className="mt-3 text-4xl font-bold text-[#20343B]">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-[#607277]">{description}</p>
+      <p className="mt-2 text-sm leading-5 text-[#607277]">{description}</p>
     </button>
   );
 }
 
 function EmptyState({ title, message }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-[#D7E5E5] bg-[#FBFDFC] px-6 py-10 text-center">
+    <div className="rounded-[24px] border border-dashed border-[#D7E5E5] bg-[#FBFDFC] px-6 py-8 text-center">
       <h3 className="text-lg font-semibold text-[#20343B]">{title}</h3>
       <p className="mt-2 text-sm text-[#607277]">{message}</p>
     </div>
@@ -898,19 +898,19 @@ export function CustomerProfile() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-8">
-      <div className="w-full min-w-0 space-y-6">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 md:py-6">
+      <div className="w-full min-w-0 space-y-5">
         <section
           aria-label="Customer welcome"
-          className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-4 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-5"
+          className="rounded-[24px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-4 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-5"
         >
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
                   Customer Dashboard
                 </p>
-                <h1 className="mt-2 truncate text-3xl font-semibold md:text-4xl">
+                <h1 className="mt-1 truncate text-2xl font-semibold md:text-[28px]">
                   Hi, {profileForm.username || customer?.username || "Customer"}
                 </h1>
                 <p className="mt-1 truncate text-sm text-white/72">{profileForm.email}</p>
@@ -925,7 +925,7 @@ export function CustomerProfile() {
           </div>
 
           {profileForm.status !== "active" && (
-            <div className="mt-6 rounded-[24px] border border-[#F4B7BE] bg-[#FFF1F3] px-5 py-4 text-sm text-[#8A3240]">
+            <div className="mt-5 rounded-[24px] border border-[#F4B7BE] bg-[#FFF1F3] px-5 py-4 text-sm text-[#8A3240]">
               Your account is currently suspended. You can still review your profile, but new
               bookings are disabled until the clinic reactivates your account.
             </div>
@@ -933,9 +933,9 @@ export function CustomerProfile() {
         </section>
 
 
-        <div className="grid items-start gap-6 lg:grid-cols-[224px_minmax(0,1fr)]">
+        <div className="grid items-start gap-5 lg:grid-cols-[216px_minmax(0,1fr)]">
           <aside className="self-start rounded-2xl bg-white p-3 shadow-[0_14px_30px_rgba(102,91,72,0.1)] lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto">
-            <nav className="grid gap-2">
+            <nav className="grid grid-cols-2 gap-2 lg:grid-cols-1">
               {dashboardTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -945,7 +945,7 @@ export function CustomerProfile() {
                     key={tab.id}
                     type="button"
                     onClick={() => openTab(tab.id)}
-                      className={`flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
                       isActive
                         ? "bg-[#2D9B9B] text-white shadow-[0_12px_24px_rgba(45,155,155,0.25)]"
                         : "text-[#365057] hover:bg-[#E9F3F3]"
@@ -960,7 +960,7 @@ export function CustomerProfile() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="mt-3 w-full rounded-xl border border-[#D9E7E7] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#F4FBFB]"
+              className="mt-3 w-full rounded-xl border border-[#D9E7E7] px-4 py-2.5 text-sm font-semibold text-[#24444A] transition hover:bg-[#F4FBFB]"
             >
               Log Out
             </button>
@@ -968,18 +968,18 @@ export function CustomerProfile() {
 
           <main className="min-w-0">
             {activeTab === "overview" && (
-              <div className="space-y-5">
-                <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="min-w-0 space-y-5">
+              <div className="space-y-4">
+                <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="min-w-0 space-y-4">
                   {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
-                  <article aria-label="Low-Cost Kapon service" className="min-w-0 rounded-[24px] border border-[#D9E7E7] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                      <BrandMark className="h-24 w-24 shrink-0 self-start rounded-2xl bg-[#EAF6F6] p-3" />
+                  <article aria-label="Low-Cost Kapon service" className="min-w-0 rounded-[24px] border border-[#D9E7E7] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                      <BrandMark className="h-20 w-20 shrink-0 self-start rounded-2xl bg-[#EAF6F6] p-3" />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3">
                           <h2 className="text-xl font-semibold text-[#20343B]">Low-Cost Kapon</h2>
                         </div>
-                        <p className="mt-2 text-sm leading-6 text-[#607277]">{kaponService.description}</p>
+                        <p className="mt-2 text-sm leading-5 text-[#607277]">{kaponService.description}</p>
                         <p className="mt-3 text-xs font-semibold text-[#2D6B73]">Estimated visit time: {kaponService.duration}</p>
                         <p role="status" className={`mt-2 text-sm font-semibold ${kaponPromoAvailable ? "text-[#1D7C45]" : "text-[#607277]"}`}>
                           Status: {kaponPromoAvailable ? "Available" : kaponPromoError ? "Promotion availability could not be verified" : !kaponPromoReady ? "Checking promotion availability..." : "Currently unavailable"}
@@ -987,7 +987,7 @@ export function CustomerProfile() {
                       </div>
                     </div>
                   </article>
-                  <section className="min-w-0 rounded-[24px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                  <section className="min-w-0 app-card bg-white shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Next step
@@ -995,14 +995,14 @@ export function CustomerProfile() {
                       <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
                         To book a service, please fill out the 'Add Pet' form.
                       </h2>
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-[#607277]">
+                      <p className="mt-3 max-w-2xl text-sm leading-5 text-[#607277]">
                         Add your pet details first, then continue to service selection and appointment booking.
                       </p>
                     </div>
                   </section>
 
-                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-24 rounded-[30px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                <section ref={petSectionRef} className="@container min-w-0 scroll-mt-24 rounded-[24px] bg-white p-4 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Pet widget
@@ -1013,7 +1013,7 @@ export function CustomerProfile() {
                     </div>
                   </div>
 
-                  <div className="mt-6 grid grid-cols-1 items-start gap-5 @min-[32rem]:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] @min-[48rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
+                  <div className="mt-5 grid grid-cols-1 items-start gap-4 @min-[32rem]:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] @min-[48rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
                     <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
@@ -1028,14 +1028,14 @@ export function CustomerProfile() {
                             setPetTextErrors((current) => ({ ...current, petName: undefined }));
                           }}
                           maxLength={60}
-                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          className="rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                           placeholder="Pet name"
                         />
                         {petTextErrors.petName && <p id="pet-name-error" role="alert" className="text-sm text-[#B23949]">{petTextErrors.petName}</p>}
                         <select
                           value={petForm.petType}
                           onChange={handlePetTypeChange}
-                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                         >
                           <option value="">Select pet type</option>
                           {petTypeOptions.map((petType) => (
@@ -1048,7 +1048,7 @@ export function CustomerProfile() {
                           value={petForm.breed}
                           onChange={handleBreedChange}
                           disabled={!petForm.petType}
-                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+                          className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
                         >
                           <option value="">
                             {petForm.petType ? "Select breed" : "Select pet type first"}
@@ -1067,7 +1067,7 @@ export function CustomerProfile() {
                               setPetForm((current) => ({ ...current, customBreed: event.target.value }))
                             }
                             maxLength={60}
-                            className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                            className="rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                             placeholder="Specify breed"
                           />
                         )}
@@ -1083,7 +1083,7 @@ export function CustomerProfile() {
                             }
                             inputMode="numeric"
                             maxLength={2}
-                            className="rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                            className="rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                             placeholder="Age"
                           />
                           <select
@@ -1095,7 +1095,7 @@ export function CustomerProfile() {
                                 ageValue: normalizeAgeInput(current.ageValue, event.target.value),
                               }))
                             }
-                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                           >
                             <option value="months">Months</option>
                             <option value="years">Years</option>
@@ -1113,10 +1113,10 @@ export function CustomerProfile() {
                             }
                             inputMode="decimal"
                             maxLength={6}
-                            className="min-w-0 flex-1 px-4 py-3 outline-none"
+                            className="min-w-0 flex-1 px-4 py-2.5 outline-none"
                             placeholder="000.00"
                           />
-                          <span className="shrink-0 border-l border-[#E2ECEC] bg-[#F6FAFA] px-4 py-3 text-sm font-semibold text-[#33545A]">
+                          <span className="shrink-0 border-l border-[#E2ECEC] bg-[#F6FAFA] px-4 py-2.5 text-sm font-semibold text-[#33545A]">
                             kg
                           </span>
                         </label>
@@ -1124,7 +1124,7 @@ export function CustomerProfile() {
                           Pet gender
                           <select required value={petForm.gender}
                             onChange={(event) => setPetForm((current) => ({ ...current, gender: event.target.value }))}
-                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 outline-none focus:border-[#2D9B9B]">
+                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none focus:border-[#2D9B9B]">
                             <option value="" disabled>Select pet gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -1141,7 +1141,7 @@ export function CustomerProfile() {
                             setPetTextErrors((current) => ({ ...current, notes: undefined }));
                           }}
                           maxLength={500}
-                          className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                          className="min-h-28 rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                           placeholder="Notes for staff or future visits"
                         />
                         {petTextErrors.notes && <p id="pet-notes-error" role="alert" className="text-sm text-[#B23949]">{petTextErrors.notes}</p>}
@@ -1151,7 +1151,7 @@ export function CustomerProfile() {
                             type="file"
                             accept="image/*"
                             onChange={handlePetPhotoChange}
-                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition file:mr-3 file:rounded-xl file:border-0 file:bg-[#EEF6F6] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#2B555C] focus:border-[#2D9B9B]"
+                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none transition file:mr-3 file:rounded-xl file:border-0 file:bg-[#EEF6F6] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#2B555C] focus:border-[#2D9B9B]"
                           />
                         </label>
                         {petForm.photoURL && (
@@ -1174,7 +1174,7 @@ export function CustomerProfile() {
                           <button
                             type="submit"
                             disabled={isSavingPet || !petFormChanged}
-                            className="rounded-[18px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
+                            className="rounded-[18px] bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
                           >
                             {isSavingPet
                               ? "Saving pet..."
@@ -1186,7 +1186,7 @@ export function CustomerProfile() {
                             type="button"
                             onClick={() => { setPetForm(buildEmptyPetForm()); setPetTextErrors({}); }}
                             disabled={isSavingPet}
-                            className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#2B555C]"
+                            className="rounded-[18px] bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#2B555C]"
                           >
                             Clear
                           </button>
@@ -1194,7 +1194,7 @@ export function CustomerProfile() {
                       </div>
                     </form>
 
-                    <div className="min-w-0 space-y-5">
+                    <div className="min-w-0 space-y-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                           Saved pets
@@ -1236,7 +1236,7 @@ export function CustomerProfile() {
                                   ].filter(Boolean).join(" | ")}
                                 </p>
                                 {record.notes && (
-                                  <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[#50666B]">
+                                  <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-5 text-[#50666B]">
                                     {containsInappropriatePetText(record.notes) ? "Notes hidden: inappropriate language. Please edit this pet record." : record.notes}
                                   </p>
                                 )}
@@ -1266,8 +1266,8 @@ export function CustomerProfile() {
                   </div>
                 </section>
                   </div>
-                  <div className="min-w-0 space-y-5">
-                    <section className="rounded-[24px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                  <div className="min-w-0 space-y-4">
+                    <section className="app-card bg-white shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Booking
                       </p>
@@ -1278,7 +1278,7 @@ export function CustomerProfile() {
                         <button
                           type="button"
                           onClick={() => openTab("services")}
-                          className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61]"
+                          className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#235A61]"
                         >
                           Choose service &amp; book
                         </button>
@@ -1317,7 +1317,7 @@ export function CustomerProfile() {
                     </div>
                   ))}
                 </div>
-                <div className="mt-5 grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-5 grid gap-3 md:auto-rows-fr md:grid-cols-2 xl:grid-cols-3">
                   {serviceCatalog.map((service) => (
                     <article
                       key={service.id}
@@ -1334,7 +1334,7 @@ export function CustomerProfile() {
                         </div>
 
                       </div>
-                      <p className="mt-3 flex-1 text-sm leading-6 text-[#607277]">{service.description}</p>
+                      <p className="mt-3 flex-1 text-sm leading-5 text-[#607277]">{service.description}</p>
                       <p className="mt-3 text-xs font-semibold text-[#2D6B73]">
                         Estimated visit time: {service.duration}
                       </p>
@@ -1344,13 +1344,13 @@ export function CustomerProfile() {
                         </p>
                       )}
                       {service.id === KAPON_SERVICE_ID ? (
-                        kaponPromoAvailable ? <a href={kaponPromo.formLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#235A61]">Register Now</a>
-                          : <button type="button" disabled className="mt-4 w-full rounded-xl bg-[#E6EFEE] px-4 py-3 text-sm font-semibold text-[#607277] disabled:cursor-not-allowed">Register Now</button>
+                        kaponPromoAvailable ? <a href={kaponPromo.formLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#235A61]">Register Now</a>
+                          : <button type="button" disabled className="mt-4 w-full rounded-xl bg-[#E6EFEE] px-4 py-2.5 text-sm font-semibold text-[#607277] disabled:cursor-not-allowed">Register Now</button>
                       ) : <button
                         type="button"
                         onClick={() => continueToBooking(service.id)}
                         disabled={service.id === KAPON_SERVICE_ID && !kaponPromoAvailable}
-                        className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white transition duration-200 enabled:hover:scale-[1.03] enabled:hover:bg-[#235A61] disabled:cursor-not-allowed disabled:bg-[#E6EFEE] disabled:text-[#607277]"
+                        className="mt-4 w-full cursor-pointer rounded-xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white transition duration-200 enabled:hover:scale-[1.03] enabled:hover:bg-[#235A61] disabled:cursor-not-allowed disabled:bg-[#E6EFEE] disabled:text-[#607277]"
                       >
                         Continue to booking
                       </button>}
@@ -1358,7 +1358,7 @@ export function CustomerProfile() {
                   ))}
                 </div>
                 {preselectedServiceId && (
-                  <div ref={bookingSectionRef} className="mt-6 scroll-mt-24">
+                  <div ref={bookingSectionRef} className="mt-5 scroll-mt-24">
                     <AppointmentBooking embedded initialServiceId={preselectedServiceId} serviceSelectionRequest={bookingScrollRequest} />
                   </div>
                 )}
@@ -1366,8 +1366,8 @@ export function CustomerProfile() {
             )}
 
             {activeTab === "appointments" && (
-              <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-                <section className="min-w-0 self-start rounded-[30px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-6">
+              <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                <section className="min-w-0 self-start app-card bg-white shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-5">
                   <h2 className="text-xl font-semibold text-[#20343B]">My appointments</h2>
                   <div className="mt-4 grid gap-3 sm:grid-cols-[140px_minmax(0,1fr)]">
                     <select aria-label="Filter my appointments by status" value={appointmentFilter}
@@ -1430,7 +1430,7 @@ export function CustomerProfile() {
                   )}
                 </section>
 
-                <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                <section className="app-card bg-white shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
                   {selectedAppointment ? (
                     <>
                       <div className="flex flex-wrap items-center gap-3">
@@ -1442,11 +1442,11 @@ export function CustomerProfile() {
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
                       <BookingAdditions appointment={selectedAppointment}/>
                       {(selectedAppointment.rejectionReason || selectedAppointment.cancellationReason) && (
-                        <p className="mt-4 rounded-lg border border-[#F2CED6] bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">
+                        <p className="mt-4 rounded-lg border border-[#F2CED6] bg-[#FBECEF] px-4 py-2.5 text-sm text-[#B23949]">
                           {selectedAppointment.rejectionReason || selectedAppointment.cancellationReason}
                         </p>
                       )}
-                      <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
                         <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
                             Service
@@ -1487,12 +1487,12 @@ export function CustomerProfile() {
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
                           Pet details and notes
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-[#607277]">
+                        <p className="mt-2 text-sm leading-5 text-[#607277]">
                           {[selectedAppointment.petType, selectedAppointment.breed]
                             .filter(Boolean)
                             .join(" | ") || "Pet type not specified."}
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-[#607277]">
+                        <p className="mt-2 text-sm leading-5 text-[#607277]">
                           {selectedAppointment.notes || "No additional notes."}
                         </p>
                       </div>
@@ -1501,7 +1501,7 @@ export function CustomerProfile() {
                           <button
                             type="button"
                             onClick={() => cancelAppointment(selectedAppointment.id)}
-                            className="mt-6 rounded-[20px] bg-[#FBECEF] px-5 py-3 text-sm font-semibold text-[#B23949]"
+                            className="mt-5 rounded-[20px] bg-[#FBECEF] px-5 py-2.5 text-sm font-semibold text-[#B23949]"
                           >
                             Cancel appointment
                           </button>
@@ -1518,8 +1518,8 @@ export function CustomerProfile() {
             )}
 
             {activeTab === "profile" && (
-              <section className="rounded-[30px] bg-white p-6 shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <section className="app-card bg-white shadow-[0_18px_36px_rgba(102,91,72,0.12)]">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                       Manage account
@@ -1530,8 +1530,8 @@ export function CustomerProfile() {
                   </div>
                 </div>
 
-                <form noValidate onSubmit={saveProfile} className="mt-6 space-y-5">
-                  <div className="grid gap-5 md:grid-cols-2">
+                <form noValidate onSubmit={saveProfile} className="mt-5 space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Full Name</label>
                       <input
@@ -1539,7 +1539,7 @@ export function CustomerProfile() {
                         autoComplete="off"
                         onChange={handleProfileChange("fullName")}
                         maxLength={80}
-                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
                     <div>
@@ -1550,7 +1550,7 @@ export function CustomerProfile() {
                         onChange={handleProfileChange("username")}
                         maxLength={24}
                         pattern="[a-z0-9._-]{3,24}"
-                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
                     <div>
@@ -1561,7 +1561,7 @@ export function CustomerProfile() {
                         autoComplete="off"
                         onChange={handleProfileChange("email")}
                         maxLength={120}
-                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                       />
                     </div>
                     <div>
@@ -1575,7 +1575,7 @@ export function CustomerProfile() {
                         pattern="\+63 9[0-9]{2}-[0-9]{3}-[0-9]{4}"
                         maxLength={16}
                         placeholder={PH_MOBILE_FORMAT}
-                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 outline-none transition focus:border-[#2D9B9B]"
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                       />
                       <p className="mt-2 text-xs text-[#7A9297]">
                         Format: {PH_MOBILE_FORMAT}
@@ -1586,7 +1586,7 @@ export function CustomerProfile() {
                   <button
                     type="submit"
                         disabled={isSavingProfile}
-                    className="rounded-[20px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#288A8A] disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
+                    className="rounded-[20px] bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#288A8A] disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
                   >
                     {isSavingProfile ? "Saving profile..." : "Save profile"}
                   </button>
@@ -1599,7 +1599,7 @@ export function CustomerProfile() {
                     aria-labelledby="save-profile-title"
                     className="fixed inset-0 z-[90] flex items-center justify-center bg-[#173E44]/45 px-4 py-6 backdrop-blur-sm"
                   >
-                    <div className="max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto rounded-[28px] bg-white p-6 shadow-[0_24px_56px_rgba(20,43,46,0.24)]">
+                    <div className="max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto app-card bg-white shadow-[0_24px_56px_rgba(20,43,46,0.24)]">
                       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                         Save changes?
                       </p>
@@ -1630,7 +1630,7 @@ export function CustomerProfile() {
                         id="profile-confirmation-password" required autoFocus autoComplete="current-password"
                         onChange={(event) => setProfileVerificationPassword(event.target.value)}
                         disabled={isSavingProfile}
-                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                        className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
                         placeholder="Enter your password to authorize this change"
                       />
                       <button
@@ -1647,12 +1647,12 @@ export function CustomerProfile() {
                     </p>
                   </div>
                       {profileConfirmationError && <p role="alert" className="mt-3 text-sm text-[#B23949]">{profileConfirmationError}</p>}
-                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
                         <button
                           type="button"
                           onClick={() => { setPendingProfilePayload(null); setProfileVerificationPassword(""); setShowProfileVerificationPassword(false); setProfileConfirmationError(""); }}
                           disabled={isSavingProfile}
-                          className="rounded-[18px] bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+                          className="rounded-[18px] bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#24444A]"
                         >
                           Cancel
                         </button>
@@ -1660,7 +1660,7 @@ export function CustomerProfile() {
                           type="button"
                           onClick={confirmProfileSave}
                           disabled={isSavingProfile || !profileVerificationPassword}
-                          className="rounded-[18px] bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
+                          className="rounded-[18px] bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9CB5B8]"
                         >
                           {isSavingProfile ? "Saving profile..." : "Save changes"}
                         </button>
@@ -1669,7 +1669,7 @@ export function CustomerProfile() {
                   </div>
                 )}
 
-                <form onSubmit={savePassword} className="mt-8 rounded-[28px] bg-[#FBFDFC] p-6">
+                <form onSubmit={savePassword} className="mt-6 rounded-[24px] bg-[#FBFDFC] p-5">
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
                     Change password
                   </p>
@@ -1681,7 +1681,7 @@ export function CustomerProfile() {
                           value={passwordForm.current}
                           onChange={(event) => setPasswordForm((current) => ({ ...current, current: event.target.value }))}
                           autoComplete="current-password"
-                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none focus:border-[#2D9B9B]"
+                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none focus:border-[#2D9B9B]"
                           placeholder="Current password"
                           required
                         />
@@ -1702,7 +1702,7 @@ export function CustomerProfile() {
                           value={passwordForm.next}
                           onChange={(event) => setPasswordForm((current) => ({ ...current, next: event.target.value }))}
                           autoComplete="new-password"
-                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none focus:border-[#2D9B9B]"
+                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none focus:border-[#2D9B9B]"
                           placeholder="New password"
                           required
                         />
@@ -1732,7 +1732,7 @@ export function CustomerProfile() {
                           value={passwordForm.confirm}
                           onChange={(event) => setPasswordForm((current) => ({ ...current, confirm: event.target.value }))}
                           autoComplete="new-password"
-                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-3 pr-12 outline-none focus:border-[#2D9B9B]"
+                          className="w-full rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none focus:border-[#2D9B9B]"
                           placeholder="Confirm new password"
                           required
                         />
@@ -1750,7 +1750,7 @@ export function CustomerProfile() {
                   <button
                     type="submit"
                     disabled={isChangingPassword}
-                    className="mt-4 rounded-[18px] bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="mt-4 rounded-[18px] bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {isChangingPassword ? "Changing password..." : "Change password"}
                   </button>
@@ -1762,7 +1762,7 @@ export function CustomerProfile() {
 
             {feedback.message && (
               <p
-                className={`mt-5 rounded-[22px] px-4 py-3 text-sm font-medium ${
+                className={`mt-5 rounded-[22px] px-4 py-2.5 text-sm font-medium ${
                   feedback.type === "error"
                     ? "bg-[#FBECEF] text-[#B23949]"
                     : "bg-[#EAF7F7] text-[#2D6B73]"

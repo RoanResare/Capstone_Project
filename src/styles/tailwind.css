@@ -1,2 +1,29 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+
+/* Compact type scale. Keep the root at 16px so layout units and browser zoom
+   stay unchanged; text utilities use these explicit, shared sizes instead. */
+@theme {
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.45;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.375rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 1.625rem;
+  --text-3xl--line-height: 1.25;
+  --text-4xl: 2rem;
+  --text-4xl--line-height: 1.2;
+  --text-5xl: 2.5rem;
+  --text-5xl--line-height: 1.15;
+}
+
+@utility app-card {
+  @apply min-w-0 rounded-2xl border border-[#E2EBEB] p-4 sm:p-5;
+}

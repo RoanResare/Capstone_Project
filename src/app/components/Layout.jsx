@@ -115,7 +115,7 @@ export function Layout() {
       isActive ? "bg-white/16 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]" : "hover:bg-white/10"
     }`;
   const mobileLinkClassName = ({ isActive }) =>
-    `block rounded-xl px-4 py-3 text-base font-semibold text-white transition-all duration-200 ${
+    `block rounded-xl px-4 py-2.5 text-base font-semibold text-white transition-all duration-200 ${
       isActive ? "bg-white/16 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]" : "hover:bg-white/10"
     }`;
 
@@ -130,7 +130,7 @@ export function Layout() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-3 md:gap-5">
+          <div className="flex items-center gap-3 md:gap-4">
             <div className="hidden items-center gap-3 md:flex">
               {landingNavItems.map((item) => (
                 <button
@@ -176,7 +176,7 @@ export function Layout() {
                       role="menu"
                       className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-72 rounded-[24px] border border-[#DCEAEA] bg-white p-3 text-[#20343B] shadow-[0_22px_52px_rgba(20,43,46,0.2)]"
                     >
-                      <div className="border-b border-[#EEF3F3] px-3 py-3">
+                      <div className="border-b border-[#EEF3F3] px-3 py-2.5">
                         <p className="font-semibold">{accountName}</p>
                         <p className="mt-1 truncate text-sm text-[#607277]">{currentUser.email}</p>
                       </div>
@@ -239,7 +239,7 @@ export function Layout() {
                     key={item.id}
                     type="button"
                     onClick={() => handleLandingNavClick(item.id)}
-                    className="block w-full rounded-xl px-4 py-3 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
+                    className="block w-full rounded-xl px-4 py-2.5 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
                   >
                     {item.label}
                   </button>
@@ -248,7 +248,7 @@ export function Layout() {
                   <button
                     type="button"
                     onClick={handleDashboardClick}
-                    className="block w-full rounded-xl px-4 py-3 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
+                    className="block w-full rounded-xl px-4 py-2.5 text-left text-base font-semibold text-white transition-all duration-200 hover:bg-white/10"
                   >
                     Dashboard
                   </button>
@@ -274,7 +274,7 @@ export function Layout() {
                           key={`${item.to}-${item.label}`}
                           to={item.to}
                           onClick={closeMobileMenu}
-                          className="rounded-xl px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                          className="rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
                         >
                           {item.label}
                         </NavLink>
@@ -282,7 +282,7 @@ export function Layout() {
                       <button
                         type="button"
                         onClick={handleSignOut}
-                        className="rounded-xl px-4 py-3 text-left text-sm font-semibold text-white transition hover:bg-white/10"
+                        className="rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-white transition hover:bg-white/10"
                       >
                         Log Out
                       </button>

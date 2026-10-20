@@ -85,6 +85,8 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    font-size: var(--text-base);
+    line-height: 1.5;
   }
 
   .portal-scroll-panel {
@@ -159,5 +161,18 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+/* Preserve legible input text and avoid automatic input zoom on mobile Safari. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
+  }
+}
+
+@media (pointer: coarse) {
+  button, a[role="button"], input:not([type="checkbox"]):not([type="radio"]), select {
+    min-height: 44px;
   }
 }

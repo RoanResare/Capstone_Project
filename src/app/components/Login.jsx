@@ -114,9 +114,9 @@ export function Login() {
   };
 
   return (
-    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 lg:py-10">
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 lg:py-8">
       <AuthPageBackdrop />
-      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] items-center gap-6 lg:min-h-[calc(100vh-8rem)] lg:grid-cols-[1.04fr_0.96fr] lg:gap-8">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] items-center gap-5 lg:min-h-[calc(100vh-8rem)] lg:grid-cols-[1.04fr_0.96fr] lg:gap-6">
         <motion.div
           initial={{ opacity: 0, x: -18 }}
           animate={{ opacity: 1, x: 0 }}
@@ -130,9 +130,9 @@ export function Login() {
           initial={{ opacity: 0, x: 18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45, delay: 0.06 }}
-          className="order-2 rounded-[30px] bg-white p-6 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-8 lg:order-2 lg:p-9"
+          className="order-2 rounded-[24px] bg-white p-5 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-6 lg:order-2 lg:p-7"
         >
-          <div className="mb-6 text-center">
+          <div className="mb-5 text-center">
             <PawPrint className="mx-auto mb-2 text-[#168985]" size={30} />
             <h2 className="text-3xl font-extrabold text-[#07545A]">Welcome Back!</h2>
             <h3 className="mt-1 text-base font-bold text-[#20343B]">
@@ -145,12 +145,12 @@ export function Login() {
 
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {firebaseConfigError && (
-              <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-3 text-sm text-[#8A6410]">
+              <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-2.5 text-sm text-[#8A6410]">
                 Firebase setup is incomplete. Fill the required environment values to enable login.
               </div>
             )}
             {!isOnline && (
-              <div className="rounded-lg border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-3 text-sm text-[#48656A]">
+              <div className="rounded-lg border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-2.5 text-sm text-[#48656A]">
                 You are offline. Reconnect before signing in.
               </div>
             )}
@@ -164,7 +164,7 @@ export function Login() {
                 autoComplete="off"
                 onChange={updateField("identifier")}
                 disabled={isSubmitting}
-                className={`w-full rounded-lg border px-4 py-3 outline-none transition focus:border-[#2D9B9B] ${
+                className={`w-full rounded-lg border px-4 py-2.5 outline-none transition focus:border-[#2D9B9B] ${
                   fieldErrors.identifier ? "border-[#D95A6A]" : "border-[#D9E7E7]"
                 }`}
                 placeholder="Enter your email or username"
@@ -183,7 +183,7 @@ export function Login() {
                   autoComplete="new-password"
                   onChange={updateField("password")}
                   disabled={isSubmitting}
-                  className={`w-full rounded-lg border px-4 py-3 pr-11 outline-none transition focus:border-[#2D9B9B] ${
+                  className={`w-full rounded-lg border px-4 py-2.5 pr-11 outline-none transition focus:border-[#2D9B9B] ${
                     fieldErrors.password ? "border-[#D95A6A]" : "border-[#D9E7E7]"
                   }`}
                   placeholder="Enter your password"
@@ -240,7 +240,7 @@ export function Login() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#078F89] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#087C79] disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#078F89] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#087C79] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Logging in..." : "Log In"}
               <LogIn size={16} />
@@ -250,7 +250,7 @@ export function Login() {
               <span className="h-px flex-1 bg-[#E4ECE9]" /> Or <span className="h-px flex-1 bg-[#E4ECE9]" />
             </div>
 
-            <Link to="/customer/signup" state={nextState} className="inline-flex w-full items-center justify-center rounded-xl border border-[#78B8B2] px-5 py-3 text-sm font-bold text-[#14545A] transition hover:bg-[#F1FAF8]">
+            <Link to="/customer/signup" state={nextState} className="inline-flex w-full items-center justify-center rounded-xl border border-[#78B8B2] px-5 py-2.5 text-sm font-bold text-[#14545A] transition hover:bg-[#F1FAF8]">
               Create Account
             </Link>
 
@@ -262,7 +262,7 @@ export function Login() {
 
           {feedback.message && (
             <p
-              className={`mt-5 rounded-lg px-4 py-3 text-sm font-medium ${
+              className={`mt-5 rounded-lg px-4 py-2.5 text-sm font-medium ${
                 feedback.type === "error"
                   ? "bg-[#FBECEF] text-[#B23949]"
                   : "bg-[#EAF7F7] text-[#2D6B73]"
@@ -275,18 +275,18 @@ export function Login() {
       </div>
       {showTerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102D32]/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTerms(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="login-terms-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+          <section role="dialog" aria-modal="true" aria-labelledby="login-terms-title" className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <h2 id="login-terms-title" className="text-xl font-semibold text-[#20343B]">Terms and Conditions</h2>
               <button type="button" onClick={() => setShowTerms(false)} aria-label="Close terms and conditions" className="rounded-full p-2 text-[#607277] hover:bg-[#F1F7F7]"><X size={20} /></button>
             </div>
-            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 text-sm leading-6 text-[#607277]">
+            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 text-sm leading-5 text-[#607277]">
               <p>Use accurate account information and keep your password private. You are responsible for activity under your account and should sign in only on devices you trust.</p>
               <p className="mt-3">Use the service to book appointments for pets under your care. Provide accurate health and contact details so clinic staff can coordinate care and appointment updates.</p>
               <p className="mt-3">Contact details and submitted pet notes or photos may be used for appointment coordination, account security, reminders, and clinic notices. Authorized clinic staff may review information relevant to your pet's care.</p>
               <p className="mt-3">Do not attempt to access another person's account or disrupt the service. The clinic may restrict accounts involved in misuse or security concerns.</p>
             </div>
-            <button type="button" onClick={() => setShowTerms(false)} className="mt-6 w-full rounded-xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white">Close</button>
+            <button type="button" onClick={() => setShowTerms(false)} className="mt-5 w-full rounded-xl bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white">Close</button>
           </section>
         </div>
       )}

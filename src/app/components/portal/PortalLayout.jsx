@@ -67,14 +67,14 @@ function PortalNavLink({ module }) {
       to={module.id === "appointments" ? "/portal/appointments" : `/portal/${module.id}`}
       end
       className={({ isActive }) =>
-        `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all ${
+        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
           isActive
             ? "bg-[#2D9B9B] text-white shadow-[0_12px_24px_rgba(45,155,155,0.25)]"
             : "text-[#365057] hover:bg-[#E9F3F3]"
         }`
       }
     >
-      <Icon size={18} />
+      <Icon size={18} className="shrink-0" />
       <span>{module.label}</span>
     </NavLink>
   );
@@ -152,7 +152,7 @@ function NotificationPanel({
                 key={notification.id}
                 type="button"
                 onClick={() => openNotification(notification)}
-                className={`w-full rounded-xl border px-3.5 py-3 text-left transition ${
+                className={`w-full rounded-xl border px-3.5 py-2.5 text-left transition ${
                   isUnread
                     ? "border-[#D7ECEC] bg-[#F8FCFC] hover:border-[#BFE1E1]"
                     : "border-[#EDF2F2] bg-white hover:border-[#D7E8E8]"
@@ -220,10 +220,10 @@ export function PortalLayout() {
 
   return (
     <div className="min-h-screen bg-[#F7F1E8] px-4 py-5 md:px-6">
-      <div className="mx-auto grid max-w-[1440px] gap-5 xl:h-[calc(100vh-2.5rem)] xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-[30px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] xl:sticky xl:top-5 xl:h-[calc(100vh-2.5rem)]">
-          <div className="flex items-center gap-3 border-b border-[#EAE5DC] pb-5">
-            <BrandMark className="h-14 w-14 flex-shrink-0" />
+      <div className="mx-auto grid max-w-[1440px] gap-4 xl:h-[calc(100vh-2.5rem)] xl:grid-cols-[216px_minmax(0,1fr)]">
+        <aside className="rounded-[24px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] xl:sticky xl:top-5 xl:h-[calc(100vh-2.5rem)]">
+          <div className="flex min-w-0 items-center gap-2 border-b border-[#EAE5DC] pb-5">
+            <BrandMark className="h-10 w-10 flex-shrink-0" />
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#6C8C92]">
                 {currentUser.role}
@@ -236,8 +236,8 @@ export function PortalLayout() {
 
           <div className="mt-5 rounded-[24px] bg-[#173E44] px-4 py-5 text-white">
             <p className="text-sm text-white/70">Signed in as</p>
-            <p className="mt-1 text-lg font-semibold">{currentUser.name}</p>
-            <p className="text-sm text-white/70">{currentUser.email}</p>
+            <p className="mt-1 break-words text-base font-semibold">{currentUser.name}</p>
+            <p className="break-all text-xs text-white/70">{currentUser.email}</p>
           </div>
 
           <nav className="mt-5 grid gap-2">
@@ -249,15 +249,15 @@ export function PortalLayout() {
           <button
             type="button"
             onClick={handleSignOut}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#F4FBFB]"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm font-semibold text-[#24444A] transition hover:bg-[#F4FBFB]"
           >
             <LogOut size={16} />
             Sign Out
           </button>
         </aside>
 
-        <section className="min-w-0 space-y-5 xl:flex xl:min-h-0 xl:flex-col">
-          <header className="flex flex-col gap-4 rounded-[30px] bg-white px-6 py-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] md:flex-row md:items-center md:justify-between">
+        <section className="min-w-0 space-y-4 xl:flex xl:min-h-0 xl:flex-col">
+          <header className="flex flex-col gap-4 rounded-[24px] bg-white px-6 py-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] md:flex-row md:items-center md:justify-between">
             <div>
               <Link
                 to={resolveHomePath(currentUser.role)}
@@ -282,7 +282,7 @@ export function PortalLayout() {
                 <button
                   type="button"
                   onClick={() => setPanelOpen((current) => !current)}
-                  className="relative flex items-center gap-2 rounded-2xl bg-[#F0F7F7] px-4 py-3 text-sm font-semibold text-[#24444A] transition hover:bg-[#E5F3F3]"
+                  className="relative flex items-center gap-2 rounded-2xl bg-[#F0F7F7] px-4 py-2.5 text-sm font-semibold text-[#24444A] transition hover:bg-[#E5F3F3]"
                 >
                   <Bell size={18} />
                   Notifications
@@ -304,7 +304,7 @@ export function PortalLayout() {
                 )}
               </div>
 
-              <div className="hidden rounded-2xl bg-[#173E44] px-4 py-3 text-sm text-white md:block">
+              <div className="hidden rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm text-white md:block">
                 <div className="font-semibold">Operations Workspace</div>
                 <div className="text-white/70">
                   {accessibleModules.length} enabled module

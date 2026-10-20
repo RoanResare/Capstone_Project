@@ -12,10 +12,10 @@ function DashboardCard({ title, value, description, tone = "teal" }) {
   };
 
   return (
-    <div className={`rounded-[26px] px-5 py-5 ${toneClasses[tone]}`}>
+    <div className={`rounded-[20px] px-5 py-5 ${toneClasses[tone]}`}>
       <p className="text-sm font-semibold uppercase tracking-[0.16em] opacity-80">{title}</p>
       <p className="mt-3 text-4xl font-bold">{value}</p>
-      <p className="mt-2 text-sm leading-6 opacity-80">{description}</p>
+      <p className="mt-2 text-sm leading-5 opacity-80">{description}</p>
     </div>
   );
 }
@@ -24,13 +24,13 @@ function QuickLink({ to, icon: Icon, title, description }) {
   return (
     <Link
       to={to}
-      className="flex h-full flex-col rounded-[26px] border border-[#E6EFEE] bg-[#FCFEFE] p-5 transition hover:-translate-y-1 hover:border-[#BDD9D7]"
+      className="flex h-full flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FCFEFE] p-5 transition hover:-translate-y-1 hover:border-[#BDD9D7]"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#EAF6F6] text-[#2D6B73]">
         <Icon size={22} />
       </div>
-      <h3 className="mt-5 text-xl font-semibold text-[#20343B]">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[#607277]">{description}</p>
+      <h3 className="mt-3 text-lg font-semibold text-[#20343B]">{title}</h3>
+      <p className="mt-2 text-sm leading-5 text-[#607277]">{description}</p>
     </Link>
   );
 }
@@ -49,18 +49,18 @@ function DashboardShell({ role }) {
   const employeeCount = state.users.filter((user) => ["admin", "staff"].includes(user.role)).length;
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14">
-      <div className="mx-auto max-w-[1240px] space-y-8">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10">
+      <div className="mx-auto max-w-[1240px] space-y-6">
         <section
           aria-label="Account verification status"
-          className="rounded-[36px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-8 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-10"
+          className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-6 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-8"
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
                 {role === "admin" ? "Admin Dashboard" : "Staff Dashboard"}
               </p>
-              <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] md:text-[4.2rem]">
+              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.03em] md:text-4xl">
                 {role === "admin"
                   ? "Review protected operations before entering the portal."
                   : "Track today's protected staff workload at a glance."}
@@ -78,14 +78,14 @@ function DashboardShell({ role }) {
             <button
               type="button"
               onClick={signOut}
-              className="whitespace-nowrap rounded-full border border-white/16 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/14"
+              className="whitespace-nowrap rounded-full border border-white/16 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/14"
             >
               Sign out
             </button>
           </div>
         </section>
 
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <DashboardCard
             title="Pending"
             value={pendingAppointments}
@@ -118,7 +118,7 @@ function DashboardShell({ role }) {
 
         <section
           aria-label="Workspace actions"
-          className={`grid auto-rows-fr gap-5 ${role === "admin" ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"}`}
+          className={`grid auto-rows-fr gap-4 ${role === "admin" ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"}`}
         >
           {role === "admin" && <QuickLink to="/portal/pricelists" icon={PawPrint} title="Manage Services and Pricelist" description="Review and update category pricelist images." />}
           <QuickLink

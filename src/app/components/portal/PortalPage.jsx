@@ -460,7 +460,7 @@ function PanelCard({ title, description, children, className = "", bodyClassName
 
 function EmptyState({ title, message }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#D8E5E5] bg-[#F8FBFB] px-5 py-8 text-center">
+    <div className="rounded-2xl border border-dashed border-[#D8E5E5] bg-[#F8FBFB] px-5 py-6 text-center">
       <h4 className="text-lg font-semibold text-[#20343B]">{title}</h4>
       <p className="mt-2 text-sm text-[#607277]">{message}</p>
     </div>
@@ -556,7 +556,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
       title={`${appointment.petName} | ${appointment.service}`}
       description="Review customer information, current status, and assignment details."
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         {approvalOpen && <AppointmentApprovalDialog appointment={appointment} busy={isSaving}
           onConfirm={() => updateAppointment(appointment.id, { status: "Accepted" })}
           onClose={() => setApprovalOpen(false)} />}
@@ -580,7 +580,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             </span>
           </div>
 
-          <div className="mt-4 grid gap-5 text-sm text-[#607277] md:grid-cols-2">
+          <div className="mt-4 grid gap-4 text-sm text-[#607277] md:grid-cols-2">
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
                 Owner details
@@ -631,7 +631,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             onChange={(event) =>
               updateAppointment(appointment.id, { assignedStaff: event.target.value })
             }
-            className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+            className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
           >
             <option value="" disabled>{staffOptions.length ? "Select staff" : "No active staff available"}</option>
             {appointment.assignedStaff && !staffOptions.includes(appointment.assignedStaff) && (
@@ -649,7 +649,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             onClick={() => requestStatusChange("Accepted")}
             disabled={isSaving || !appointment.assignedStaff?.trim() || !canApproveAppointment(appointment.status)}
             title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Approve appointment"}
-            className="rounded-2xl bg-[#E8F7EE] px-4 py-3 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+            className="rounded-2xl bg-[#E8F7EE] px-4 py-2.5 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Approve appointment
           </button>
@@ -657,7 +657,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             type="button"
             disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Rejected")}
             onClick={() => requestStatusChange("Rejected")}
-            className="rounded-2xl bg-[#FFF4DF] px-4 py-3 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+            className="rounded-2xl bg-[#FFF4DF] px-4 py-2.5 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Reject appointment
           </button>
@@ -665,7 +665,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             type="button"
             disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Cancelled")}
             onClick={() => requestStatusChange("Cancelled")}
-            className="rounded-2xl bg-[#FBECEF] px-4 py-3 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+            className="rounded-2xl bg-[#FBECEF] px-4 py-2.5 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Cancel appointment
           </button>
@@ -676,7 +676,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
             {appointment.sessionStartedAt && <p className="text-sm text-[#365057]" role="timer">Session duration: {Math.floor(elapsedSeconds / 3600)}h {Math.floor(elapsedSeconds / 60) % 60}m {elapsedSeconds % 60}s</p>}
             {canComplete && !appointment.sessionEndedAt && <button type="button" disabled={isSaving}
               onClick={() => updateAppointment(appointment.id, { sessionAction: appointment.sessionStartedAt ? "end" : "start" })}
-              className="rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+              className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {appointment.sessionStartedAt ? "End session" : "Start session"}
             </button>}
           </div>
@@ -686,7 +686,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
             Queue notes
           </p>
-          <p className="mt-3 text-sm leading-6 text-[#607277]">
+          <p className="mt-3 text-sm leading-5 text-[#607277]">
             {appointment.notes || "No appointment notes were provided by the customer."}
           </p>
           <p className="mt-4 text-xs text-[#7A9297]">
@@ -717,7 +717,7 @@ function AppointmentDetailDialog({ appointment, currentUser, staffOptions, updat
   const dialog = (
     <dialog ref={dialogRef} aria-label="Appointment details" aria-modal="true"
       onCancel={(event) => { event.preventDefault(); if (!isSaving) onBack(); }}
-      className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-6">
+      className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-5">
       <button type="button" aria-label="Close appointment details" title="Close" disabled={isSaving} onClick={onBack} className="mb-2 ml-auto flex h-8 w-8 items-center justify-center text-[#607277] disabled:opacity-50"><X size={20} /></button>
       <AppointmentDetailPanel appointment={appointment} currentUser={currentUser} staffOptions={staffOptions}
         updateAppointment={save} onBack={onBack} isSaving={isSaving} />
@@ -756,7 +756,7 @@ function NotificationContextPanel({ notification, relatedAppointment, openAppoin
           </span>
         </div>
 
-        <p className="text-sm leading-6 text-[#607277]">{notification.message}</p>
+        <p className="text-sm leading-5 text-[#607277]">{notification.message}</p>
 
         <div className="rounded-[24px] bg-[#F6FAFA] px-4 py-4 text-sm text-[#4E686E]">
           <p className="font-semibold text-[#20343B]">{describeNotification(notification)}</p>
@@ -769,12 +769,12 @@ function NotificationContextPanel({ notification, relatedAppointment, openAppoin
           <button
             type="button"
             onClick={() => openAppointment(relatedAppointment.id, notification.id)}
-            className="w-full rounded-2xl bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
+            className="w-full rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white"
           >
             Open related appointment
           </button>
         ) : (
-          <div className="rounded-[22px] bg-[#FFF4DF] px-4 py-3 text-sm text-[#A56A0F]">
+          <div className="rounded-[22px] bg-[#FFF4DF] px-4 py-2.5 text-sm text-[#A56A0F]">
             This notification is account-related, so its full detail is shown here without a
             linked appointment record.
           </div>
@@ -841,7 +841,7 @@ function RecentNotificationList({ currentUser, notifications, openAppointment, o
             );
           })}
           {hasMore && (
-            <button type="button" disabled={isLoadingMore} onClick={onLoadMore} className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">
+            <button type="button" disabled={isLoadingMore} onClick={onLoadMore} className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">
               {isLoadingMore ? "Loading older events..." : "Load older events"}
             </button>
           )}
@@ -1001,14 +1001,14 @@ function AppointmentsWorkspace({
                 aria-label="Filter managed appointments by status"
                 value={statusFilter}
                 onChange={(event) => updateListFilter("status", event.target.value)}
-                className="rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                className="rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
               >
                 {appointmentFilters.map((filter) => (
                   <option key={filter}>{filter}</option>
                 ))}
               </select>
 
-              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277]">
+              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm text-[#607277]">
                 <Search size={16} />
                 <input
                   aria-label="Search managed appointments"
@@ -1039,7 +1039,7 @@ function AppointmentsWorkspace({
                       </span>
                     </div>
                     {section.appointments.length === 0 ? (
-                      <p className="px-2 py-3 text-sm text-[#7A9297]">No {section.title.toLowerCase()} appointments.</p>
+                      <p className="px-2 py-2.5 text-sm text-[#7A9297]">No {section.title.toLowerCase()} appointments.</p>
                     ) : (
                       <div className="space-y-2.5">
                         {(section.title === "Pending" ? groupPendingAppointments(section.appointments) : [{ date: null, appointments: section.appointments }]).map((group) => (
@@ -1053,7 +1053,7 @@ function AppointmentsWorkspace({
                               key={appointment.id}
                               type="button"
                               onClick={() => openAppointment(appointment.id)}
-                              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                              className={`w-full rounded-2xl border px-4 py-2.5 text-left transition ${
                                 selectedAppointment?.id === appointment.id
                                   ? "border-[#BFE1E1] bg-[#F8FCFC]"
                                   : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
@@ -1108,7 +1108,7 @@ function AppointmentsWorkspace({
                       try { await loadMoreAppointments(); }
                       finally { setIsLoadingAllAppointments(false); }
                     }}
-                    className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm font-semibold text-[#2D6B73] disabled:opacity-60"
+                    className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D6B73] disabled:opacity-60"
                   >
                     {isLoadingAllAppointments ? "Loading older appointments..." : "Load older appointments"}
                   </button>
@@ -1184,9 +1184,9 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <KaponPromoManager />
-      <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.78fr_1.22fr]">
         <PanelCard
           title="Manage schedule"
           description="Choose a date, then disable or reopen individual appointment time slots."
@@ -1199,7 +1199,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
             min={todayKey}
             value={selectedDate}
             onChange={(event) => setSelectedDate(event.target.value)}
-            className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+            className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
           />
           <div className="mt-5 rounded-[22px] bg-[#F6FAFA] px-4 py-4 text-sm text-[#607277]">
             Disabled slots immediately disappear from customer booking availability. Reopen a slot when it can be booked again.
@@ -1235,7 +1235,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
                     <button
                       type="button"
                       onClick={() => toggleSlot(slot, !isOpen)}
-                      className={`mt-4 rounded-lg px-4 py-3 text-sm font-semibold transition ${
+                      className={`mt-4 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
                         isOpen
                           ? "bg-[#FBECEF] text-[#B23949] hover:bg-[#F8DDE2]"
                           : "bg-[#E8F7EE] text-[#1D7C45] hover:bg-[#DDF1E6]"
@@ -1257,7 +1257,7 @@ function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {closedSlots.slice(0, 12).map((slot) => (
-              <div key={slot.id} className="rounded-lg border border-[#F4D9DE] bg-[#FFF8F9] px-4 py-3">
+              <div key={slot.id} className="rounded-lg border border-[#F4D9DE] bg-[#FFF8F9] px-4 py-2.5">
                 <p className="font-semibold text-[#20343B]">{formatDateLabel(slot.date)}</p>
                 <p className="mt-1 text-sm text-[#607277]">{formatTimeLabel(slot.time)}</p>
               </div>
@@ -1419,7 +1419,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   </button>
                 ))}
               </div>
-              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
+              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm text-[#607277] md:flex-1">
                 <Search size={16} />
                 <input
                   value={searchValue}
@@ -1449,7 +1449,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                         setSelectedRecordId(record.id);
                         setFeedback({ type: "", message: "" });
                       }}
-                      className={`h-[96px] w-full rounded-2xl border px-4 py-3 text-left transition ${
+                      className={`h-[96px] w-full rounded-2xl border px-4 py-2.5 text-left transition ${
                       selectedRecord?.id === record.id
                           ? "border-[#BFE1E1] bg-[#F8FCFC]"
                           : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
@@ -1497,7 +1497,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
           bodyClassName="min-h-0 xl:flex-1 xl:overflow-y-auto"
         >
           {selectedRecord ? (
-            <form noValidate onSubmit={saveRecord} className="space-y-5">
+            <form noValidate onSubmit={saveRecord} className="space-y-4">
               <fieldset disabled className="grid gap-4 md:grid-cols-2 [&_input]:cursor-not-allowed [&_input]:bg-[#F1F5F5] [&_select]:cursor-not-allowed [&_select]:bg-[#F1F5F5] [&_select]:text-[#425A60]">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">
@@ -1508,7 +1508,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     readOnly
                     autoComplete="off"
                     maxLength={80}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Customer name"
                   />
                 </div>
@@ -1523,7 +1523,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     readOnly
                     autoComplete="off"
                     maxLength={120}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="customer@example.com"
                   />
                 </div>
@@ -1537,7 +1537,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     readOnly
                     autoComplete="off"
                     maxLength={60}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Pet name"
                   />
                 </div>
@@ -1549,7 +1549,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <select
                     value={form.petType}
                     disabled
-                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                   >
                     <option value="">Select pet type</option>
                     {petTypeOptions.map((petType) => (
@@ -1567,7 +1567,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   <select
                     value={form.breed}
                     disabled
-                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
                   >
                     <option value="">
                       {form.petType ? "Select breed" : "Select pet type first"}
@@ -1584,7 +1584,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                       readOnly
                       autoComplete="off"
                       maxLength={60}
-                      className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                      className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                       placeholder="Specify breed"
                     />
                   )}
@@ -1595,7 +1595,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     Pet gender
                   </label>
                   <select disabled value={form.gender}
-                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-3 text-sm outline-none focus:border-[#2D9B9B]">
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#2D9B9B]">
                     <option value="" disabled>Select pet gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -1613,7 +1613,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     max={todayKey}
                     autoComplete="off"
                     onChange={updateField("lastVisit")}
-                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                   />
                 </div>
               </div>
@@ -1626,7 +1626,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                   value={form.notes}
                   onChange={updateField("notes")}
                   maxLength={500}
-                  className="min-h-[120px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  className="min-h-[120px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Handling notes, special reminders, or grooming concerns"
                 />
               </div>
@@ -1640,7 +1640,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     value={form.visitRecordsText}
                     readOnly
                     maxLength={1200}
-                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-3 text-sm outline-none"
+                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-2.5 text-sm outline-none"
                     placeholder="One visit update per line"
                   />
                 </div>
@@ -1653,7 +1653,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                     value={form.medicalRecordsText}
                     readOnly
                     maxLength={1200}
-                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-3 text-sm outline-none"
+                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-2.5 text-sm outline-none"
                     placeholder="One medical note per line"
                   />
                 </div>
@@ -1673,7 +1673,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
               <div className="flex flex-col gap-3 md:flex-row">
                 <button
                   type="submit"
-                  className="rounded-2xl bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+                  className="rounded-2xl bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white"
                 >
                   Save pet record
                 </button>
@@ -1681,7 +1681,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 <button
                   type="button"
                   onClick={() => setForm(buildPetRecordForm(selectedRecord))}
-                  className="rounded-2xl bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+                  className="rounded-2xl bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#24444A]"
                 >
                   Reset changes
                 </button>
@@ -1689,7 +1689,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
 
               {feedback.message && (
                 <p
-                  className={`rounded-[22px] px-4 py-3 text-sm font-medium ${
+                  className={`rounded-[22px] px-4 py-2.5 text-sm font-medium ${
                     feedback.type === "error"
                       ? "bg-[#FBECEF] text-[#B23949]"
                       : "bg-[#EAF7F7] text-[#2D6B73]"
@@ -1735,7 +1735,7 @@ function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onConfirm }
         event.preventDefault();
         if (!isSaving) onCancel();
       }}
-      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-lg border border-[#BFE1E1] bg-[#F8FCFC] p-5 shadow-xl backdrop:bg-black/40 sm:p-6"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-lg border border-[#BFE1E1] bg-[#F8FCFC] p-5 shadow-xl backdrop:bg-black/40 sm:p-5"
     >
       <h4 id="save-employee-title" className="text-xl font-semibold text-[#20343B]">
         Confirm employee changes
@@ -1756,7 +1756,7 @@ function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onConfirm }
           </div>
         ))}
       </dl>
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <button
           type="button"
           autoFocus
@@ -2081,7 +2081,7 @@ function ManageUsersWorkspace({
   const selectedUserIsCurrentAdmin = selectedUser?.id === currentUser.id;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard label="Employee Accounts" value={portalUsers.length} />
         <MetricCard label="Active" value={activeCount} tone="teal" />
@@ -2089,14 +2089,14 @@ function ManageUsersWorkspace({
         <MetricCard label="Inactive" value={inactiveCount} tone="rose" />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.96fr_1.04fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
         <PanelCard
           title="Employee accounts"
           description="Create employees here; change account status from the list below."
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 md:flex-row">
-              <label className="flex items-center gap-3 rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm text-[#607277] md:flex-1">
+              <label className="flex items-center gap-3 rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm text-[#607277] md:flex-1">
                 <Search size={16} />
                 <input
                   value={searchValue}
@@ -2110,14 +2110,14 @@ function ManageUsersWorkspace({
               <button
                 type="button"
                 onClick={startNewUser}
-                className="rounded-lg bg-[#173E44] px-4 py-3 text-sm font-semibold text-white"
+                className="rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white"
               >
                 Add employee
               </button>
             </div>
 
             {selectedNotification?.targetType === "portal-account" && (
-              <div className="rounded-[22px] border border-[#E6F0F0] bg-[#F8FCFC] px-4 py-3 text-sm text-[#607277]">
+              <div className="rounded-[22px] border border-[#E6F0F0] bg-[#F8FCFC] px-4 py-2.5 text-sm text-[#607277]">
                 <p className="font-semibold text-[#20343B]">{selectedNotification.title}</p>
                 <p className="mt-1">{selectedNotification.message}</p>
               </div>
@@ -2159,7 +2159,7 @@ function ManageUsersWorkspace({
                         openUser(user.id, selectedNotificationId);
                       }
                     }}
-                    className={`min-h-[160px] w-full rounded-lg border px-4 py-3 text-left transition ${
+                    className={`min-h-[160px] w-full rounded-lg border px-4 py-2.5 text-left transition ${
                       selectedUser?.id === user.id && !isCreatingNew
                         ? "border-[#BFE1E1] bg-[#F8FCFC]"
                         : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
@@ -2219,7 +2219,7 @@ function ManageUsersWorkspace({
           }
         >
           {isCreatingNew || selectedUser ? (
-            <form noValidate onSubmit={saveUser} className="space-y-5">
+            <form noValidate onSubmit={saveUser} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#425A60]">Name</label>
@@ -2229,7 +2229,7 @@ function ManageUsersWorkspace({
                     onChange={updateField("name")}
                     disabled={isSaving}
                     maxLength={80}
-                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Employee full name"
                   />
                 </div>
@@ -2243,7 +2243,7 @@ function ManageUsersWorkspace({
                     onChange={updateField("email")}
                     disabled={isSaving}
                     maxLength={120}
-                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee@furfection.local"
                   />
                 </div>
@@ -2257,7 +2257,7 @@ function ManageUsersWorkspace({
                     disabled={isSaving}
                     maxLength={32}
                     pattern="[A-Za-z0-9_]{3,32}"
-                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee username"
                   />
                 </div>
@@ -2268,7 +2268,7 @@ function ManageUsersWorkspace({
                     value={form.role}
                     onChange={updateField("role")}
                     disabled={isSaving || selectedUserIsCurrentAdmin}
-                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                   >
                     {portalUserRoles.map((role) => (
                       <option key={role.value} value={role.value}>
@@ -2291,7 +2291,7 @@ function ManageUsersWorkspace({
                     autoComplete="new-password"
                     onChange={updateField("password")}
                     disabled={isSaving}
-                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-3 pr-11 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 pr-11 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder={
                       isCreatingNew
                         ? "Set an employee password"
@@ -2332,7 +2332,7 @@ function ManageUsersWorkspace({
                 <button
                   type="submit"
                   disabled={isSaving}
-                className="rounded-lg bg-[#173E44] px-5 py-3 text-sm font-semibold text-white"
+                className="rounded-lg bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white"
                 >
                   {isSaving
                     ? isCreatingNew
@@ -2347,7 +2347,7 @@ function ManageUsersWorkspace({
                   type="button"
                   onClick={resetForm}
                   disabled={isSaving}
-                  className="rounded-lg bg-[#EEF6F6] px-5 py-3 text-sm font-semibold text-[#24444A]"
+                  className="rounded-lg bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#24444A]"
                 >
                   {isCreatingNew ? "Clear form" : "Reset changes"}
                 </button>
@@ -2357,7 +2357,7 @@ function ManageUsersWorkspace({
                     type="button"
                   onClick={handleDelete}
                   disabled={isSaving}
-                    className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold ${
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold ${
                       confirmDelete
                         ? "bg-[#B23949] text-white"
                         : "bg-[#FBECEF] text-[#B23949]"
@@ -2456,7 +2456,7 @@ function ManageUsersWorkspace({
 
               {feedback.message && (
                 <p
-                  className={`rounded-[22px] px-4 py-3 text-sm font-medium ${
+                  className={`rounded-[22px] px-4 py-2.5 text-sm font-medium ${
                     feedback.type === "error"
                       ? "bg-[#FBECEF] text-[#B23949]"
                       : "bg-[#EAF7F7] text-[#2D6B73]"

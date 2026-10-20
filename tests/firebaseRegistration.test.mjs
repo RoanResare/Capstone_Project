@@ -14,6 +14,19 @@ const state = {
 };
 globalThis.__firebaseRegistrationTest = state;
 const mocks = {
+  "apiClient.js": `const state = globalThis.__firebaseRegistrationTest;
+    export const buildAuthHeaders = token => ({Authorization: 'Bearer ' + token});
+    export const extractApiError = (error, fallback) => error.message || fallback;
+    export const apiClient = {async post(url, payload, options) {
+      if (options.headers.Authorization !== 'Bearer valid-id-token') throw new Error('Missing token');
+      if (url !== '/auth/register/profile') throw new Error('Unexpected API call');
+      state.apiCalls = (state.apiCalls || 0) + 1;
+      if (state.invalidResponse) return {data: {profile: state.invalidResponse}};
+      const profile = {...payload, uid: state.auth.currentUser.uid,
+        accountStatus: 'inactive', status: 'inactive', verificationStatus: 'pending'};
+      state.documents.set('users/' + profile.uid, profile);
+      return {data: {profile}};
+    }};`,
   "authApi.js": `export async function validateBackendEmail() {}
     export async function checkCustomerRegistrationAvailability(data) {
       const state = globalThis.__firebaseRegistrationTest;
@@ -32,6 +45,7 @@ const mocks = {
     }
     export async function createUserWithEmailAndPassword() {return state.createUser();}
     export async function deleteUser(user) {if (state.auth.currentUser === user) state.auth.currentUser = null;}
+    export async function signOut() {state.auth.currentUser = null;}
     export async function confirmPasswordReset() {}
     export async function fetchSignInMethodsForEmail() {}
     export async function sendPasswordResetEmail() {}
@@ -86,9 +100,10 @@ const server = await createServer({
 });
 after(async () => {await server.close(); delete globalThis.__firebaseRegistrationTest;});
 const { waitForFirebaseUserSession } = await server.ssrLoadModule("/src/app/services/firebaseSession.js");
-const { signUpCustomerWithEmailPassword, loadOrCreateCustomerProfile } =
+const { signUpCustomerWithEmailPassword } =
   await server.ssrLoadModule("/src/app/services/customerAccount.js");
 const { signUpWithEmailPassword } = await server.ssrLoadModule("/src/app/services/firebaseAuth.js");
+const { waitForCustomerRegistration } = await server.ssrLoadModule("/src/app/utils/customerRegistration.js");
 
 test("registration waits for initialization, UID and token; restoration cannot race the profile write", async () => {
   const initialization = deferred();
@@ -112,17 +127,34 @@ test("registration waits for initialization, UID and token; restoration cannot r
   assert.equal(state.reads.length, 0);
   state.auth.currentUser = user;
   for (const callback of [...state.listeners]) callback(user);
-  const restoration = loadOrCreateCustomerProfile(user);
+  const restoration = waitForCustomerRegistration();
   await pause(20);
   assert.equal(state.reads.length, 0);
   token.resolve();
-  const [result, restored] = await Promise.all([registration, restoration]);
+  const [result] = await Promise.all([registration, restoration]);
   assert.equal(result.profile.uid, user.uid);
-  assert.equal(restored.username, "chosen_username");
-  assert.equal(state.commits.length, 1);
+  assert.equal(result.profile.verificationStatus, "pending");
+  assert.equal(state.apiCalls, 1);
+  assert.equal(state.commits.length, 0);
+  assert.equal(state.reads.length, 0);
+  assert.equal(state.auth.currentUser, null);
   assert.equal(state.documents.get(`users/${user.uid}`).username, "chosen_username");
   assert.equal(state.documents.has("usernames/customer"), false);
   assert.equal(state.listeners.size, 0);
+});
+
+test("registration rejects an API profile belonging to another UID without reading Firestore", async () => {
+  const user = { uid: 'second-customer', email: 'second@example.test', getIdToken: async () => 'valid-id-token' };
+  state.auth.authStateReady = async () => {};
+  state.createUser = () => {state.auth.currentUser = user; return {user};};
+  state.invalidResponse = {uid: 'other-customer'};
+  const reads = state.reads.length;
+  try {
+    await assert.rejects(signUpCustomerWithEmailPassword({fullName: 'Customer', email: user.email,
+      password: 'Test123!', username: 'second_customer'}), /did not return a profile/);
+    assert.equal(state.reads.length, reads);
+    assert.equal(state.auth.currentUser, null);
+  } finally {state.invalidResponse = null;}
 });
 
 test("both Firebase signup helpers validate every attempt before creation and preserve an existing session on rejection", async () => {

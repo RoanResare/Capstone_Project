@@ -7,7 +7,7 @@ const serverRoot = path.resolve(__dirname, "../../");
 
 let cachedReport = null;
 
-function loadSingleEnvFile(targetPath, override = false) {
+function loadSingleEnvFile(targetPath, override = false, inheritedEnv = {}) {
   if (!fs.existsSync(targetPath)) {
     return {
       path: targetPath,
@@ -18,10 +18,14 @@ function loadSingleEnvFile(targetPath, override = false) {
     };
   }
 
+  // Parse into a separate object so local files cannot replace credentials
+  // supplied by the deployment host or the process that launched the server.
+  const parsedEnv = {};
   const result = dotenv.config({
     path: targetPath,
     override,
     quiet: true,
+    processEnv: parsedEnv,
   });
 
   if (result.error) {
@@ -33,6 +37,11 @@ function loadSingleEnvFile(targetPath, override = false) {
       loadedKeys: [],
       error: result.error.message,
     };
+  }
+
+  for (const [key, value] of Object.entries(parsedEnv)) {
+    if (Object.prototype.hasOwnProperty.call(inheritedEnv, key)) continue;
+    if (override || process.env[key] === undefined) process.env[key] = value;
   }
 
   return {
@@ -49,9 +58,10 @@ function loadEnvFiles() {
     return cachedReport;
   }
 
+  const inheritedEnv = { ...process.env };
   const files = [
-    loadSingleEnvFile(path.join(projectRoot, ".env"), false),
-    loadSingleEnvFile(path.join(serverRoot, ".env"), true),
+    loadSingleEnvFile(path.join(projectRoot, ".env"), false, inheritedEnv),
+    loadSingleEnvFile(path.join(serverRoot, ".env"), true, inheritedEnv),
   ];
 
   cachedReport = {

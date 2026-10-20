@@ -9,7 +9,9 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isActiveAccount() && request.auth.uid == userId;
+      // Pending registrations must be able to load their own profile before
+      // activation. Creation and activation remain validated Admin SDK writes.
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if isActiveAccount() && (
         request.auth.uid == userId ||
         request.auth.token.admin == true ||
@@ -51,8 +53,14 @@ service cloud.firestore {
       allow read, write: if isActiveAccount();
     }
 
-    match /customers/{document=**} {
-      allow read, write: if isActiveAccount();
+    match /customers/{customerId} {
+      allow read: if request.auth != null && request.auth.uid == customerId;
+      allow create: if isActiveAccount() && request.auth.uid == customerId
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if isActiveAccount() && request.auth.uid == customerId
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isActiveAccount() && request.auth.uid == customerId;
     }
 
     match /schedules/{document=**} {

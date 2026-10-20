@@ -15,7 +15,7 @@ The credentials come exclusively from EMAIL_USER and EMAIL_PASS. Gmail app-passw
 
 The sender defaults to EMAIL_USER. EMAIL_FROM and EMAIL_FROM_NAME configure the sender; SMTP_FROM_EMAIL and SMTP_FROM_NAME override those sender settings. Use the account that owns the app password or an authorized sender alias.
 
-Local configuration loads .env first, then server/.env with overrides. Restart the backend after changes. Hosted backends need these same variables configured on the host and the latest server code redeployed; changing local files does not update a hosted API.
+Local configuration loads .env first, then server/.env with overrides. Variables supplied by the launching process or deployment host take precedence over both files, so a stale file cannot replace an updated hosted app password. Restart the backend after changes. Hosted backends need these same variables configured on the host and the latest server code redeployed; changing local files does not update a hosted API.
 
 Port 465 uses SMTP_SECURE=true. Port 587 uses SMTP_SECURE=false with STARTTLS. The transport uses the operating system DNS resolver and keeps TLS certificate verification enabled. Outbound SMTP access is required on the backend host.
 

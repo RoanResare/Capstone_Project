@@ -335,12 +335,13 @@ async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options
       const token = await firebaseUser.getIdToken();
       const response = await apiClient.post("/auth/register/profile", payload, { headers: buildAuthHeaders(token) });
       registrationProfile = response.data?.profile || null;
-      if (registrationProfile) return buildCustomerProfile(firebaseUser, registrationProfile);
+      if (!registrationProfile || registrationProfile.uid !== firebaseUser.uid) {
+        throw new Error("The registration API did not return a profile for your signed-in account. Please try again.");
+      }
+      return buildCustomerProfile(firebaseUser, registrationProfile);
     } catch (error) {
       throw new Error(extractApiError(error, "Unable to create your customer profile."));
     }
-    const snapshot = await readCustomerProfileSnapshot(reference);
-    return buildCustomerProfile(firebaseUser, snapshot.exists() ? snapshot.data() : payload);
   }
   const usernameSnapshot = await getDoc(usernameReference);
 

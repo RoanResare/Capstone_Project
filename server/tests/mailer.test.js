@@ -28,6 +28,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
       assert.equal(result.messageId, 'resend-email-id');
       assert.equal(result.deliveryMode, 'resend');
       assert.equal(request.payload.from, 'Clinic <notifications@verified.example>');
+      assert.deepEqual(request.payload.to, ['test@example.com']);
       assert.equal(request.payload.reply_to, 'charmingfurfectionpetcare2@gmail.com');
       assert.match(request.payload.html, new RegExp(role));
       assert.match(request.payload.text, /123456/);
@@ -60,6 +61,15 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
         return true;
       });
     }
+    failure = {name: 'validation_error', statusCode: 403,
+      message: 'You can only send testing emails to your own email address (owner@example.com). To send emails to other recipients, please verify a domain.'};
+    await assert.rejects(sendEmailVerificationLink({to: 'test@example.com', verificationLink: 'https://example.com'}), error => {
+      assert.equal(error.details.reason, 'RESEND_TEST_RECIPIENT_RESTRICTED');
+      assert.equal(error.details.providerStatus, 403);
+      assert.match(error.message, /Resend is in test mode/);
+      assert.doesNotMatch(error.message, /owner@example.com|API key permissions/);
+      return true;
+    });
     failure = {};
     await assert.rejects(mailer.sendMail({to: 'test@example.com'}), /delivery ID/);
     global.fetch = async () => {throw new Error('fetch failed');};

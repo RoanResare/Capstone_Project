@@ -22,7 +22,8 @@ async function sendMail({ fromName, fromEmail, to, subject, html, text, messageI
   const address = fromEmail || env.mail.fromEmail;
   const { data, error } = await resendClient.emails.send({
     from: senderName ? `${senderName} <${address}>` : address,
-    to, subject, html, text,
+    to: Array.isArray(to) ? to : [to],
+    subject, html, text,
     ...(env.mail.replyTo ? { replyTo: env.mail.replyTo } : {}),
     ...(messageId ? { headers: { "Message-ID": messageId } } : {}),
   }, {

@@ -119,6 +119,11 @@ function buildMailConfigurationError() {
 }
 
 function buildMailDeliveryError(error) {
+  if (error?.providerStatus === 403 && /can only send testing emails to your own email address/i.test(error?.message || "")) {
+    return new ApiError(503,
+      "Resend is in test mode: emails can only be sent to the email address of the Resend account that owns this API key. To email other customers or staff, verify a domain in Resend and set RESEND_FROM_EMAIL to an address on that domain.",
+      { reason: "RESEND_TEST_RECIPIENT_RESTRICTED" });
+  }
   if (error?.providerStatus === 401 || error?.code === "invalid_api_key" || error?.code === "missing_api_key") {
     return new ApiError(503, "Resend rejected the API key. Check RESEND_API_KEY in the backend environment.");
   }
@@ -177,7 +182,7 @@ async function deliverMail({ type, to, subject, html, text, messageId }) {
     }
 
     const deliveryError = buildMailDeliveryError(error);
-    deliveryError.details = { code: "MAIL_DELIVERY_FAILED", stage: type, provider: "resend", providerCode: error?.code || "", providerStatus: error?.providerStatus || null };
+    deliveryError.details = { ...deliveryError.details, code: "MAIL_DELIVERY_FAILED", stage: type, provider: "resend", providerCode: error?.code || "", providerStatus: error?.providerStatus || null };
     throw deliveryError;
   }
 }

@@ -10,7 +10,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
   let request;
   let failure;
   try {
-    Object.assign(env.mail, {apiKey: 're_test_only', fromEmail: 'notifications@verified.example', fromName: 'Clinic'});
+    Object.assign(env.mail, {apiKey: 're_test_only', fromEmail: 'notifications@verified.example', fromName: 'Clinic', replyTo: 'charmingfurfectionpetcare2@gmail.com'});
     Object.assign(env.runtime, {mailDeliveryMode: 'resend', mailDeliveryReady: true});
     global.fetch = async (url, options) => {
       assert.equal(String(url), 'https://api.resend.com/emails');
@@ -28,6 +28,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
       assert.equal(result.messageId, 'resend-email-id');
       assert.equal(result.deliveryMode, 'resend');
       assert.equal(request.payload.from, 'Clinic <notifications@verified.example>');
+      assert.equal(request.payload.reply_to, 'charmingfurfectionpetcare2@gmail.com');
       assert.match(request.payload.html, new RegExp(role));
       assert.match(request.payload.text, /123456/);
       assert.equal(request.headers.get('idempotency-key'), null);
@@ -92,7 +93,10 @@ test('Resend env ignores legacy SMTP credentials and mode, but honors explicit d
   assert.equal(configured.env.mail.fromEmail, 'mail@verified.example');
   assert.equal(configured.env.mail.smtp, undefined);
   assert.equal(load({EMAIL_USER: 'old@gmail.com', EMAIL_PASS: 'old'}).env.runtime.mailDeliveryReady, false);
-  assert.equal(load({RESEND_API_KEY: 're_test'}).env.runtime.mailDeliveryReady, false);
+  assert.equal(load({RESEND_API_KEY: 're_test'}).env.runtime.mailDeliveryReady, true);
+  assert.equal(load({RESEND_API_KEY: 're_test'}).env.mail.fromEmail, 'onboarding@resend.dev');
+  assert.equal(load({RESEND_FROM_EMAIL: '   ', EMAIL_FROM: 'old@gmail.com'}).env.mail.fromEmail, 'onboarding@resend.dev');
+  assert.equal(load({EMAIL_FROM: 'old@gmail.com'}).env.mail.fromEmail, 'onboarding@resend.dev');
   assert.equal(load({RESEND_API_KEY: 're_test', EMAIL_FROM: 'mail@verified.example'}).env.runtime.mailDeliveryReady, true);
   assert.equal(load({RESEND_API_KEY: 're_test', EMAIL_FROM: 'mail@verified.example', MAIL_DELIVERY_MODE: 'disabled'}).env.runtime.mailDeliveryReady, false);
   assert.equal(configured.getStartupDiagnostics().mail.apiKeyConfigured, true);

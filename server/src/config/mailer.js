@@ -23,6 +23,7 @@ async function sendMail({ fromName, fromEmail, to, subject, html, text, messageI
   const { data, error } = await resendClient.emails.send({
     from: senderName ? `${senderName} <${address}>` : address,
     to, subject, html, text,
+    ...(env.mail.replyTo ? { replyTo: env.mail.replyTo } : {}),
     ...(messageId ? { headers: { "Message-ID": messageId } } : {}),
   }, {
     signal: AbortSignal.timeout(30000),

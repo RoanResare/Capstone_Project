@@ -212,7 +212,8 @@ const env = {
     provider: "resend",
     apiKey: readOptional("RESEND_API_KEY"),
     fromName: readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
-    fromEmail: readOptional("RESEND_FROM_EMAIL", readOptional("EMAIL_FROM")).toLowerCase(),
+    fromEmail: readOptional("RESEND_FROM_EMAIL", "onboarding@resend.dev").toLowerCase(),
+    replyTo: readOptional("EMAIL_REPLY_TO"),
   },
 };
 
@@ -273,7 +274,7 @@ function collectStartupChecks() {
     },
     {
       label: "Mail Delivery",
-      required: ["RESEND_API_KEY", "RESEND_FROM_EMAIL (or EMAIL_FROM)"],
+      required: ["RESEND_API_KEY"],
       ready: env.runtime.mailDeliveryReady,
     },
   ];

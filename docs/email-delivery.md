@@ -11,7 +11,7 @@ RESEND_FROM_EMAIL=notifications@your-verified-domain.com
 EMAIL_FROM_NAME=Charming Fur-fection Pet Care
 ```
 
-RESEND_FROM_EMAIL must belong to a domain verified in your Resend account. EMAIL_FROM remains a fallback sender setting, but a personal Gmail address is not a verified Resend sender. The onboarding@resend.dev sender is limited to testing with the email address associated with your Resend account; it cannot deliver registration emails to arbitrary customers. See https://resend.com/docs/knowledge-base/403-error-resend-dev-domain.
+The sender reads process.env.RESEND_FROM_EMAIL and defaults to onboarding@resend.dev when unset or blank. EMAIL_FROM does not override this fallback. A custom sender must belong to a domain verified in your Resend account. The onboarding@resend.dev sender is limited to testing with the email address associated with your Resend account; it cannot deliver registration emails to arbitrary customers. See https://resend.com/docs/knowledge-base/403-error-resend-dev-domain.
 
 The supplied key is stored only in ignored server/.env. Local configuration uses onboarding@resend.dev for testing as requested. Set RESEND_FROM_EMAIL to an address on your verified domain and restart to switch senders without editing code. The local file does not update Render environment variables. Never prefix RESEND_API_KEY with VITE_ or expose it to the browser.
 

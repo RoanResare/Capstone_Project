@@ -119,7 +119,7 @@ app.get("/", (_req, res, next) => {
     message: "Charming Fur-fection backend is running.",
     authReady: env.runtime.authReady,
     mailDeliveryMode: env.runtime.mailDeliveryMode,
-    gmailApiReady: env.runtime.gmailApiReady,
+    smtpReady: env.runtime.smtpReady,
     setupMessage: env.runtime.authReady ? "Authentication services are configured." : buildSetupMessage(),
   });
 });

@@ -4,31 +4,23 @@ const { env } = require("../src/config/env");
 const nodemailer = require("nodemailer");
 const mailer = require("../src/config/mailer");
 
-test("auto mode selects SMTP; explicit Gmail API and disabled modes are respected", () => {
+test("legacy modes cannot select Gmail API; missing SMTP credentials fail closed", () => {
   const { resolveMailDeliveryMode } = require("../src/config/env");
   const originalMode = env.mail.deliveryMode;
-  const originalPass = env.mail.smtp.pass;
   const originalRuntime = { ...env.runtime };
   try {
-    env.mail.deliveryMode = "auto";
-    env.mail.smtp.pass = "test-app-password";
     env.runtime.smtpReady = true;
-    env.runtime.gmailApiReady = true;
-    assert.equal(resolveMailDeliveryMode(), "smtp");
-    env.runtime.gmailApiReady = false;
-    assert.equal(resolveMailDeliveryMode(), "smtp");
-    env.mail.deliveryMode = "gmail-api";
-    env.runtime.gmailApiReady = true;
-    assert.equal(resolveMailDeliveryMode(), "gmail-api");
+    for (const mode of ["smtp", "auto", "gmail-api"]) {
+      env.mail.deliveryMode = mode;
+      assert.equal(resolveMailDeliveryMode(), "smtp");
+    }
+    env.runtime.smtpReady = false;
+    assert.equal(resolveMailDeliveryMode(), "disabled");
+    env.runtime.smtpReady = true;
     env.mail.deliveryMode = "disabled";
     assert.equal(resolveMailDeliveryMode(), "disabled");
-    env.mail.deliveryMode = "gmail-api";
-    env.mail.smtp.pass = "";
-    env.runtime.gmailApiReady = true;
-    assert.equal(resolveMailDeliveryMode(), "gmail-api");
   } finally {
     env.mail.deliveryMode = originalMode;
-    env.mail.smtp.pass = originalPass;
     Object.assign(env.runtime, originalRuntime);
   }
 });
@@ -36,17 +28,23 @@ test("auto mode selects SMTP; explicit Gmail API and disabled modes are respecte
 test("SMTP verification and OTP delivery use the configured app password without OAuth", async () => {
   const originalCreate = nodemailer.createTransport;
   const originalRuntime = { ...env.runtime };
+  const originalFetch = global.fetch;
+  let transportCount = 0;
+  let deliveryError;
   let message;
   try {
     env.runtime.mailDeliveryMode = "smtp";
     env.runtime.mailDeliveryReady = true;
-    env.runtime.gmailApiReady = false;
+    global.fetch = async () => { throw new Error("Email must never request an OAuth token or API endpoint"); };
     nodemailer.createTransport = (options) => {
+      transportCount++;
+      assert.equal(options.auth.type, undefined);
       assert.equal(options.auth.pass, env.mail.smtp.pass);
       assert.equal(options.auth.user, env.mail.smtp.user);
       return {
         verify: async () => true,
         sendMail: async (value) => {
+          if (deliveryError) throw deliveryError;
           message = value;
           return { accepted: [value.to], messageId: "test-message" };
         },
@@ -70,38 +68,56 @@ test("SMTP verification and OTP delivery use the configured app password without
     assert.equal(reminder.messageId, "test-message");
     assert.match(message.text, /09:00 AM/);
     assert.match(message.messageId, /^<reminder-/);
+    assert.equal(transportCount, 1);
+    for (const code of ["EAUTH", "ETIMEDOUT", "EENVELOPE"]) {
+      deliveryError = Object.assign(new Error("test failure"), { code });
+      await assert.rejects(sendOtpEmail({ to: "customer@example.com", otpCode: "123456" }), error => {
+        assert.equal(error.statusCode, 503);
+        assert.doesNotMatch(error.message, /OAuth|Gmail API/);
+        assert.match(error.message, /SMTP|email server/);
+        return true;
+      });
+    }
     env.runtime.mailDeliveryReady = false;
+    await assert.rejects(mailer.sendMail({ to: "customer@example.com" }), /EMAIL_USER and EMAIL_PASS/);
+    await assert.rejects(mailer.verifyMailerConnection(), /EMAIL_USER and EMAIL_PASS/);
     await assert.rejects(sendAppointmentReminder({ customerEmail: "customer@example.com" }, "booking-2"), /not configured/);
   } finally {
+    global.fetch = originalFetch;
     nodemailer.createTransport = originalCreate;
     Object.assign(env.runtime, originalRuntime);
   }
 });
 
 
-test("Gmail API sends reminders through HTTPS with a stable message ID", async () => {
-  const originalRuntime = { ...env.runtime };
-  const originalFetch = global.fetch;
-  const requests = [];
-  try {
-    env.runtime.mailDeliveryMode = "gmail-api";
-    env.runtime.mailDeliveryReady = true;
-    env.runtime.gmailApiReady = true;
-    global.fetch = async (url, options) => {
-      requests.push({ url, options });
-      return { ok: true, json: async () => url.includes("oauth2.googleapis.com")
-        ? { access_token: "mock-token", expires_in: 3600 } : { id: "api-message" } };
+
+test("environment credentials come only from EMAIL_USER and EMAIL_PASS", () => {
+  const fs = require("node:fs");
+  const vm = require("node:vm");
+  const path = require("node:path");
+  function load(values) {
+    const sandbox = {
+      process: { env: values },
+      module: { exports: {} },
+      require(id) {
+        if (id === "fs") return { existsSync: () => false };
+        if (id === "path") return path;
+        if (id === "./loadEnv") return { loadEnvFiles: () => ({ projectRoot: __dirname, serverRoot: __dirname, files: [] }) };
+        throw new Error(id);
+      },
     };
-    const { sendAppointmentReminder } = require("../src/services/reminderMail.service");
-    const result = await sendAppointmentReminder({ customerEmail: "customer@example.com", scheduleDate: "2026-10-21", scheduleTime: "11:00" }, "api-booking");
-    assert.equal(result.messageId, "api-message");
-    const sent = requests.find(request => request.url.includes("messages/send"));
-    assert.ok(sent);
-    const raw = Buffer.from(JSON.parse(sent.options.body).raw, "base64url").toString();
-    assert.match(raw, /Message-ID: <reminder-/);
-    assert.match(raw, /To: customer@example.com/);
-  } finally {
-    global.fetch = originalFetch;
-    Object.assign(env.runtime, originalRuntime);
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../src/config/env.js"), "utf8"), sandbox);
+    return sandbox.module.exports;
   }
+  const legacy = { MAIL_DELIVERY_MODE: "gmail-api", SMTP_USER: "wrong@example.com", SMTP_PASS: "wrong", GMAIL_USER: "wrong@gmail.com", GMAIL_APP_PASSWORD: "wrong", GMAIL_CLIENT_ID: "old", GMAIL_CLIENT_SECRET: "old", GMAIL_REFRESH_TOKEN: "old" };
+  const configured = load({ ...legacy, EMAIL_USER: "sender@gmail.com", EMAIL_PASS: "abcd efgh ijkl mnop" });
+  assert.equal(configured.env.runtime.mailDeliveryMode, "smtp");
+  assert.equal(configured.env.mail.smtp.user, "sender@gmail.com");
+  assert.equal(configured.env.mail.smtp.pass, "abcdefghijklmnop");
+  assert.equal(configured.env.mail.fromEmail, "sender@gmail.com");
+  assert.equal(configured.env.mail.oauth, undefined);
+  assert.equal(load(legacy).env.runtime.mailDeliveryReady, false);
+  const failures = load(legacy).getStartupDiagnostics().failedChecks;
+  assert.deepEqual(Array.from(failures.find(check => check.label === "Mail Delivery").required), ["EMAIL_USER", "EMAIL_PASS"]);
+  assert.equal(load({ EMAIL_USER: "sender@example.com", EMAIL_PASS: "pass with spaces", SMTP_HOST: "smtp.example.com" }).env.mail.smtp.pass, "pass with spaces");
 });

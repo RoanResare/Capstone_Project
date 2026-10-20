@@ -114,40 +114,18 @@ function maskEmail(value = "") {
 function buildMailConfigurationError() {
   return new ApiError(
     503,
-    "Email delivery is not configured. Configure SMTP with an app password or Gmail API OAuth, then restart the backend.",
+    "Email delivery is not configured. Set EMAIL_USER and EMAIL_PASS (an app password) for SMTP, then restart the backend.",
   );
 }
 
 function buildMailDeliveryError(error) {
-  if (env.runtime.mailDeliveryMode === "smtp") {
-    if (error?.code === "EAUTH") {
-      return new ApiError(503, "The SMTP server rejected the credentials. Update the sender account's app password in the backend configuration, then restart the backend.");
-    }
-    if (["ETIMEDOUT", "ECONNECTION", "ESOCKET", "EDNS"].includes(error?.code)) {
-      return new ApiError(503, "Unable to connect to the email server. Check SMTP host, port, TLS settings, and outbound network access.");
-    }
-    return new ApiError(503, "Unable to send email right now. Check the SMTP connection and app password, then try again.");
+  if (error?.code === "EAUTH") {
+    return new ApiError(503, "The SMTP server rejected the credentials. Update EMAIL_USER and EMAIL_PASS with the sender account's app password, then restart the backend.");
   }
-  const message = error instanceof Error ? error.message : String(error || "");
-  const normalizedMessage = message.toLowerCase();
-
-  if (
-    normalizedMessage.includes("invalid_grant") ||
-    normalizedMessage.includes("invalid client") ||
-    normalizedMessage.includes("unauthorized")
-  ) {
-    return new ApiError(
-      503,
-      "Gmail rejected the OAuth credentials. Verify GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, and GMAIL_USER.",
-      { message },
-    );
+  if (["ETIMEDOUT", "ECONNECTION", "ESOCKET", "EDNS"].includes(error?.code)) {
+    return new ApiError(503, "Unable to connect to the email server. Check SMTP host, port, TLS settings, and outbound network access.");
   }
-
-  return new ApiError(
-    503,
-    "Unable to send email right now. Verify the Gmail API OAuth configuration and try again.",
-    { message },
-  );
+  return new ApiError(503, "Unable to send email right now. Check the SMTP connection and app password, then try again.");
 }
 
 async function deliverMail({ type, to, subject, html, text, messageId }) {

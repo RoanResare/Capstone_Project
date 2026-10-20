@@ -13,7 +13,7 @@ async function main() {
     if (!env.runtime.mailDeliveryReady) throw new Error('Email delivery is not configured.');
     await verifyMailerConnection();
     console.log('Live transport authentication passed.');
-    const to = env.runtime.mailDeliveryMode === 'smtp' ? env.mail.smtp.user : env.mail.user;
+    const to = env.mail.smtp.user;
     const fullName = 'EMAIL DELIVERY TEST — no action required';
     const tests = [
       ['OTP', () => sendOtpEmail({ to, fullName, otpCode: '000000', role: 'test', expiresInMinutes: 5 })],

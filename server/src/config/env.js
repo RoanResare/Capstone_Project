@@ -141,10 +141,6 @@ function loadServiceAccount() {
 }
 
 const serviceAccount = loadServiceAccount();
-const gmailUser = readOptional("GMAIL_USER", readOptional("EMAIL_USER")).toLowerCase();
-const gmailClientId = readOptional("GMAIL_CLIENT_ID");
-const gmailClientSecret = readOptional("GMAIL_CLIENT_SECRET");
-const gmailRefreshToken = readOptional("GMAIL_REFRESH_TOKEN");
 const nodeEnv = readOptional("NODE_ENV", "development");
 const defaultFrontendUrl = "https://capstone-project-1-yqto.onrender.com";
 const frontendUrl = readOptional("FRONTEND_URL", defaultFrontendUrl).replace(/\/+$/, "");
@@ -156,8 +152,8 @@ const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
   : `${frontendUrl}/activate-account`;
 
 const smtpHost = readOptional("SMTP_HOST", "smtp.gmail.com");
-const smtpUser = readOptional("SMTP_USER", gmailUser);
-const smtpPassword = readOptional("SMTP_PASS", readOptional("GMAIL_APP_PASSWORD", readOptional("EMAIL_PASS")));
+const smtpUser = readOptional("EMAIL_USER");
+const smtpPassword = readOptional("EMAIL_PASS");
 
 const env = {
   nodeEnv,
@@ -215,19 +211,14 @@ const env = {
     ),
   },
   mail: {
-    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "auto").toLowerCase(),
-    provider: "gmail-api",
-    user: gmailUser,
+    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "smtp").toLowerCase(),
+    provider: "smtp",
+    user: smtpUser,
     fromName: readOptional("SMTP_FROM_NAME", readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care")),
     fromEmail: readOptional(
       "SMTP_FROM_EMAIL",
-      readOptional("EMAIL_FROM", readOptional("GMAIL_FROM_EMAIL", smtpUser)),
+      readOptional("EMAIL_FROM", smtpUser),
     ).toLowerCase(),
-    oauth: {
-      clientId: gmailClientId,
-      clientSecret: gmailClientSecret,
-      refreshToken: gmailRefreshToken,
-    },
     smtp: {
       host: smtpHost,
       port: readNumber("SMTP_PORT", 465),
@@ -245,20 +236,8 @@ function resolveMailDeliveryMode() {
     return "disabled";
   }
 
-  // Explicit API mode supports deployments that block SMTP ports.
-  if (configuredMode === "gmail-api") {
-    return env.runtime.gmailApiReady ? "gmail-api" : "disabled";
-  }
-  // Auto mode prefers configured SMTP credentials.
-  if (env.mail.smtp.pass || configuredMode === "smtp") {
-    return env.runtime.smtpReady ? "smtp" : "disabled";
-  }
-
-  if (env.runtime?.gmailApiReady) {
-    return "gmail-api";
-  }
-
-  return "disabled";
+  // Legacy mode values cannot reactivate the removed API transport.
+  return env.runtime.smtpReady ? "smtp" : "disabled";
 }
 
 env.runtime = {
@@ -275,18 +254,11 @@ env.runtime = {
       env.auth.otpSecret &&
       env.auth.passwordHashPepper,
   ),
-  gmailApiReady: Boolean(
-    env.mail.user &&
-      env.mail.fromEmail &&
-      env.mail.oauth.clientId &&
-      env.mail.oauth.clientSecret &&
-      env.mail.oauth.refreshToken,
-  ),
 };
 
 env.runtime.mailDeliveryMode = resolveMailDeliveryMode();
 env.mail.provider = env.runtime.mailDeliveryMode;
-env.runtime.mailDeliveryReady = ["gmail-api", "smtp"].includes(env.runtime.mailDeliveryMode);
+env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "smtp";
 
 env.runtime.authReady = Boolean(
   env.runtime.firebaseAdminReady &&
@@ -314,13 +286,7 @@ function collectStartupChecks() {
     },
     {
       label: "Mail Delivery",
-      required: (env.mail.smtp.pass || env.mail.deliveryMode === "smtp") ? ["EMAIL_USER (or SMTP_USER/GMAIL_USER)", "EMAIL_PASS (or SMTP_PASS/GMAIL_APP_PASSWORD)"] : [
-        "GMAIL_USER",
-        "GMAIL_CLIENT_ID",
-        "GMAIL_CLIENT_SECRET",
-        "GMAIL_REFRESH_TOKEN",
-      ],
-      alternatives: ["GMAIL_FROM_EMAIL"],
+      required: ["EMAIL_USER", "EMAIL_PASS"],
       ready: env.runtime.mailDeliveryReady,
     },
   ];
@@ -334,7 +300,6 @@ function getStartupDiagnostics() {
     port: env.port,
     clientUrl: env.clientUrl,
     mailDeliveryMode: env.runtime.mailDeliveryMode,
-    gmailApiReady: env.runtime.gmailApiReady,
     authReady: env.runtime.authReady,
     loadedEnvFiles: env.runtime.loadedEnvFiles.map((file) => ({
       path: file.path,
@@ -348,8 +313,10 @@ function getStartupDiagnostics() {
       userConfigured: Boolean(env.mail.user),
       fromEmailConfigured: Boolean(env.mail.fromEmail),
       provider: env.mail.provider,
-      oauthClientConfigured: Boolean(env.mail.oauth.clientId),
-      oauthRefreshTokenConfigured: Boolean(env.mail.oauth.refreshToken),
+      smtpReady: env.runtime.smtpReady,
+      host: env.mail.smtp.host,
+      port: env.mail.smtp.port,
+      secure: env.mail.smtp.secure,
     },
     failedChecks: checks.filter((check) => !check.ready),
   };
@@ -362,7 +329,6 @@ function buildStartupSuccessSummary(diagnostics) {
     clientUrl: diagnostics.clientUrl,
     authReady: diagnostics.authReady,
     mailDeliveryMode: diagnostics.mailDeliveryMode,
-    gmailApiReady: diagnostics.gmailApiReady,
   };
 }
 

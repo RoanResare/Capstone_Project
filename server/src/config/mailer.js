@@ -3,6 +3,22 @@ const { env } = require("./env");
 let accessToken = null;
 let accessTokenExpiresAt = 0;
 let verificationPromise = null;
+let smtpTransport;
+
+function getSmtpTransport() {
+  if (!smtpTransport) {
+    smtpTransport = require("nodemailer").createTransport({
+      host: env.mail.smtp.host,
+      port: env.mail.smtp.port,
+      secure: env.mail.smtp.secure,
+      auth: { user: env.mail.smtp.user, pass: env.mail.smtp.pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+    });
+  }
+  return smtpTransport;
+}
 
 function assertFetchAvailable() {
   if (typeof fetch !== "function") {
@@ -51,6 +67,9 @@ function formatAddress(name, email) {
 }
 
 function getMailTransportSettings() {
+  if (env.runtime.mailDeliveryMode === "smtp") {
+    return { provider: "smtp", user: env.mail.smtp.user, fromEmail: env.mail.fromEmail, transport: "smtp" };
+  }
   return {
     provider: env.mail.provider,
     user: env.mail.user,
@@ -123,6 +142,14 @@ function buildRawMessage({ from, to, subject, html, text }) {
 }
 
 async function sendMail({ fromName, fromEmail, to, subject, html, text }) {
+  if (env.runtime.mailDeliveryMode === "smtp") {
+    const result = await getSmtpTransport().sendMail({
+      from: { name: fromName, address: fromEmail || env.mail.fromEmail },
+      to, subject, html, text,
+    });
+    if (!result.accepted?.length) throw new Error("SMTP server did not accept the recipient.");
+    return { ...result, id: result.messageId };
+  }
   if (!env.runtime.gmailApiReady) {
     throw new Error("Gmail API delivery is not configured.");
   }
@@ -151,6 +178,9 @@ async function sendMail({ fromName, fromEmail, to, subject, html, text }) {
 }
 
 async function verifyMailerConnection(options = {}) {
+  if (env.runtime.mailDeliveryMode === "smtp") {
+    return getSmtpTransport().verify();
+  }
   if (!env.runtime.gmailApiReady) {
     return false;
   }

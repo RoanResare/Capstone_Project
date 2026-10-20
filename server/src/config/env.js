@@ -224,6 +224,13 @@ const env = {
       clientSecret: gmailClientSecret,
       refreshToken: gmailRefreshToken,
     },
+    smtp: {
+      host: readOptional("SMTP_HOST", "smtp.gmail.com"),
+      port: readNumber("SMTP_PORT", 465),
+      secure: readBoolean("SMTP_SECURE", readNumber("SMTP_PORT", 465) === 465),
+      user: readOptional("SMTP_USER", gmailUser),
+      pass: readOptional("SMTP_PASS", readOptional("GMAIL_APP_PASSWORD", readOptional("EMAIL_PASS"))).replace(/\s/g, ""),
+    },
   },
 };
 
@@ -234,6 +241,10 @@ function resolveMailDeliveryMode() {
     return "disabled";
   }
 
+  if (configuredMode === "smtp") {
+    return env.runtime.smtpReady ? "smtp" : "disabled";
+  }
+
   if (env.runtime?.gmailApiReady) {
     return "gmail-api";
   }
@@ -242,6 +253,7 @@ function resolveMailDeliveryMode() {
 }
 
 env.runtime = {
+  smtpReady: Boolean(env.mail.smtp.user && env.mail.smtp.pass && env.mail.fromEmail),
   loadedEnvFiles,
   missingVariables: Array.from(new Set(missingVariables)),
   firebaseAdminReady: Boolean(
@@ -264,7 +276,7 @@ env.runtime = {
 };
 
 env.runtime.mailDeliveryMode = resolveMailDeliveryMode();
-env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "gmail-api";
+env.runtime.mailDeliveryReady = ["gmail-api", "smtp"].includes(env.runtime.mailDeliveryMode);
 
 env.runtime.authReady = Boolean(
   env.runtime.firebaseAdminReady &&
@@ -292,7 +304,7 @@ function collectStartupChecks() {
     },
     {
       label: "Mail Delivery",
-      required: [
+      required: env.mail.deliveryMode === "smtp" ? ["EMAIL_USER (or SMTP_USER/GMAIL_USER)", "EMAIL_PASS (or SMTP_PASS/GMAIL_APP_PASSWORD)"] : [
         "GMAIL_USER",
         "GMAIL_CLIENT_ID",
         "GMAIL_CLIENT_SECRET",

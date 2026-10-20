@@ -115,11 +115,17 @@ function maskEmail(value = "") {
 function buildMailConfigurationError() {
   return new ApiError(
     503,
-    "Real email delivery is not configured. Set GMAIL_USER, GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, and GMAIL_REFRESH_TOKEN, then restart the backend.",
+    "Email delivery is not configured. Configure SMTP with an app password or Gmail API OAuth, then restart the backend.",
   );
 }
 
 function buildMailDeliveryError(error) {
+  if (env.runtime.mailDeliveryMode === "smtp") {
+    if (error?.code === "EAUTH") {
+      return new ApiError(503, "Gmail rejected the SMTP credentials. Update the sender account's app password in the backend configuration, then restart the backend.");
+    }
+    return new ApiError(503, "Unable to send email right now. Check the SMTP connection and app password, then try again.");
+  }
   const message = error instanceof Error ? error.message : String(error || "");
   const normalizedMessage = message.toLowerCase();
 
@@ -143,14 +149,14 @@ function buildMailDeliveryError(error) {
 }
 
 async function deliverMail({ type, to, subject, html, text }) {
-  if (env.runtime.mailDeliveryMode !== "gmail-api") {
+  if (!env.runtime.mailDeliveryReady) {
     throw buildMailConfigurationError();
   }
 
   const senderEmail = env.mail.user || env.mail.fromEmail;
   const transportSettings = getMailTransportSettings();
 
-  console.info(`[mail:${type}] Attempting Gmail API delivery.`, {
+  console.info(`[mail:${type}] Attempting email delivery.`, {
     to: maskEmail(to),
     from: senderEmail,
     provider: transportSettings.provider,
@@ -168,18 +174,18 @@ async function deliverMail({ type, to, subject, html, text }) {
       text,
     });
 
-    console.info(`[mail:${type}] Gmail API delivery accepted.`, {
+    console.info(`[mail:${type}] Email delivery accepted.`, {
       to: maskEmail(to),
       messageId: result.id,
       threadId: result.threadId,
     });
 
     return {
-      deliveryMode: "gmail-api",
+      deliveryMode: env.runtime.mailDeliveryMode,
       messageId: result.id,
     };
   } catch (error) {
-    console.error(`[mail:${type}] Gmail API delivery failed.`, {
+    console.error(`[mail:${type}] Email delivery failed.`, {
       to: maskEmail(to),
       subject,
       error: error instanceof Error ? error.message : error,

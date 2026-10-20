@@ -31,7 +31,7 @@ app.listen(env.port, () => {
     .catch((error) => {
       const transportSettings = getMailTransportSettings();
 
-      console.error("[mail] Gmail API verification failed.", {
+      console.error("[mail] Email connection verification failed.", {
         provider: transportSettings.provider,
         transport: transportSettings.transport,
         error: error instanceof Error ? error.message : error,

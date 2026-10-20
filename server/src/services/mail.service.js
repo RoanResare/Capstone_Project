@@ -175,7 +175,9 @@ async function deliverMail({ type, to, subject, html, text, messageId }) {
       throw error;
     }
 
-    throw buildMailDeliveryError(error);
+    const deliveryError = buildMailDeliveryError(error);
+    deliveryError.details = { code: "MAIL_DELIVERY_FAILED", stage: type, smtpCode: error?.code || "" };
+    throw deliveryError;
   }
 }
 

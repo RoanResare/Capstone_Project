@@ -73,6 +73,9 @@ test("SMTP verification and OTP delivery use the configured app password without
       deliveryError = Object.assign(new Error("test failure"), { code });
       await assert.rejects(sendOtpEmail({ to: "customer@example.com", otpCode: "123456" }), error => {
         assert.equal(error.statusCode, 503);
+        assert.equal(error.details.code, "MAIL_DELIVERY_FAILED");
+        assert.equal(error.details.stage, "otp");
+        assert.equal(error.details.smtpCode, code);
         assert.doesNotMatch(error.message, /OAuth|Gmail API/);
         assert.match(error.message, /SMTP|email server/);
         return true;

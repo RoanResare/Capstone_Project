@@ -30,11 +30,30 @@ function pendingVerificationMessage(email) {
   return `Verification link sent! Check ${email} for the activation link. It expires automatically.`;
 }
 
+async function runRegistrationStage(stage, message, action) {
+  try { return await action(); }
+  catch (error) {
+    if (error instanceof ApiError) {
+      error.details = { ...error.details, stage: error.details?.stage || stage };
+      throw error;
+    }
+    console.error("[registration] Stage failed.", { stage, code: error?.code || "" });
+    throw new ApiError(503, message, { code: "REGISTRATION_DEPENDENCY_FAILED", stage, dependencyCode: String(error?.code || "") });
+  }
+}
+
 async function createCustomerProfile(req, res) {
-  const token = String(req.headers.authorization || "").replace(/^Bearer /, "");
+  if (!auth || !db) throw new ApiError(503, "Firebase Admin is not configured for registration.", { stage: "firebase-auth" });
+  const token = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization || ""))?.[1];
+  if (!token) throw new ApiError(401, "A valid Firebase session is required.", { stage: "firebase-auth" });
   let claims;
   try { claims = await auth.verifyIdToken(token, true); }
-  catch { throw new ApiError(401, "A valid Firebase session is required."); }
+  catch (error) {
+    const invalidSession = ["auth/argument-error", "auth/invalid-id-token", "auth/id-token-expired", "auth/id-token-revoked", "auth/user-disabled", "auth/user-not-found"].includes(error?.code);
+    throw new ApiError(invalidSession ? 401 : 503,
+      invalidSession ? "A valid Firebase session is required." : "Firebase could not verify your registration session right now. Please try again.",
+      { stage: "firebase-auth", code: invalidSession ? "INVALID_FIREBASE_SESSION" : "FIREBASE_AUTH_UNAVAILABLE" });
+  }
   const payload = req.body || {};
   const phone = String(payload.phone || "").trim();
   const username = String(payload.username || "").trim().toLowerCase();
@@ -52,7 +71,7 @@ async function createCustomerProfile(req, res) {
   await validateAccessSecurity(req);
   const profileRef = db.collection("users").doc(claims.uid);
   const usernameRef = db.collection("usernames").doc(username);
-  await db.runTransaction(async (transaction) => {
+  await runRegistrationStage("profile-save", "Unable to save your registration profile right now. Please try again.", () => db.runTransaction(async (transaction) => {
     const profile = await transaction.get(profileRef);
     const usernameDoc = await transaction.get(usernameRef);
     if (profile.exists) throw new ApiError(409, "This account already has a profile.");
@@ -68,29 +87,34 @@ async function createCustomerProfile(req, res) {
       uid: claims.uid, email, fullName, username, phone: normalizedPhone, role: "customer",
       accountStatus: "inactive", status: "inactive", emailVerified: false,
       verificationStatus: "pending", registrationIp: registrationSecurity.registrationIp || "",
+      verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       createdAt: now, updatedAt: now,
     });
     transaction.set(usernameRef, { uid: claims.uid, email, username, createdAt: now, updatedAt: now, verificationStatus: "pending" });
-  });
+  }));
 
   try {
-    const providerLink = await generateEmailVerificationLink(email);
+    const providerLink = await runRegistrationStage("verification-link", "Unable to generate your activation link right now. Please try again.", () => generateEmailVerificationLink(email));
     const verificationLink = buildAppVerificationLink(providerLink, email);
-    await sendEmailVerificationLink({ to: email, fullName, verificationLink });
-    const sentAt = new Date().toISOString();
-    await profileRef.update({
-      verificationSentAt: sentAt,
-      verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      updatedAt: sentAt,
-    });
+    await runRegistrationStage("email-verification", "Unable to send your activation email right now. Please try again.", () => sendEmailVerificationLink({ to: email, fullName, verificationLink }));
   } catch (error) {
-    await db.runTransaction(async (transaction) => {
+    try { await db.runTransaction(async (transaction) => {
       const profile = await transaction.get(profileRef);
       const usernameDoc = await transaction.get(usernameRef);
       if (profile.exists && profile.data().verificationStatus === "pending") transaction.delete(profileRef);
       if (usernameDoc.exists && usernameDoc.data().uid === claims.uid) transaction.delete(usernameRef);
-    });
+    }); } catch (cleanupError) {
+      console.error("[registration] Pending profile rollback failed.", { stage: "profile-rollback", code: cleanupError?.code || "" });
+    }
     throw error;
+  }
+
+  // SMTP has accepted the activation email. A failure to record its timestamp
+  // must not delete the profile or make the frontend delete the Auth account.
+  const sentAt = new Date().toISOString();
+  try { await profileRef.update({ verificationSentAt: sentAt, updatedAt: sentAt }); }
+  catch (error) {
+    console.warn("[registration] Activation email sent; delivery timestamp update failed.", { stage: "verification-metadata", code: error?.code || "" });
   }
 
   return res.status(202).json({

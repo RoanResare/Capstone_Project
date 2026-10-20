@@ -1,8 +1,9 @@
 import axios from "axios";
 import { getSecurityEpoch, isCurrentSecurityResponse } from "../utils/securitySession.js";
+import { resolveApiBaseUrl } from "../utils/apiBaseUrl.js";
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  baseURL: resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL, import.meta.env.PROD),
   headers: {
     "Content-Type": "application/json",
   },
@@ -44,7 +45,7 @@ export function extractApiError(error, fallbackMessage) {
   }
 
   if (error?.code === "ERR_NETWORK" || error?.message === "Network Error") {
-    return "Cannot reach the backend API. Start the server and verify it is listening on the URL configured by VITE_API_BASE_URL.";
+    return "Cannot reach the backend API. Check your connection and the configured API URL, then try again.";
   }
 
   if (error instanceof Error && error.message) {

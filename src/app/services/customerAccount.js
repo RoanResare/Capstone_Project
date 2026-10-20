@@ -103,23 +103,20 @@ function buildFirebaseErrorDetails(error) {
   return {
     code: getFirebaseErrorCode(error),
     message: getFirebaseErrorMessage(error) || "Unknown Firebase error.",
+    context: error?.context,
+    statusCode: error?.statusCode,
+    details: error?.details,
   };
 }
 
 function isCustomerConnectionIssue(error) {
   const code = getFirebaseErrorCode(error);
-  const message = getFirebaseErrorMessage(error).toLowerCase();
-
   return (
-    code === "auth/network-request-failed" ||
     code === "firestore/offline" ||
     code === "unavailable" ||
     code === "deadline-exceeded" ||
     code === "aborted" ||
-    code === "cancelled" ||
-    code === "failed-precondition" ||
-    message.includes("offline") ||
-    message.includes("network")
+    code === "cancelled"
   );
 }
 
@@ -136,7 +133,9 @@ function buildCustomerProfileOfflineMessage() {
 }
 
 function normalizeCustomerServiceError(error, options = {}) {
-  const subject = options.subject || "profile";
+  // API and SMTP failures are not Firestore connectivity errors. Preserve the
+  // backend's message and metadata instead of guessing from words like network.
+  if (error?.context || error?.response || error?.statusCode) return error;
 
   if (isFirestorePermissionDenied(error)) {
     return createCustomerAppError("permission-denied", buildCustomerProfileRulesMessage());
@@ -340,7 +339,15 @@ async function upsertCustomerProfileDocument(firebaseUser, profile = {}, options
       }
       return buildCustomerProfile(firebaseUser, registrationProfile);
     } catch (error) {
-      throw new Error(extractApiError(error, "Unable to create your customer profile."));
+      const requestError = createCustomerAppError(
+        "customer/registration-request-failed",
+        extractApiError(error, "Unable to create your customer profile."),
+      );
+      requestError.context = "customer-registration-profile";
+      requestError.statusCode = Number(error?.response?.status || 0);
+      requestError.details = error?.response?.data?.details || null;
+      requestError.cause = error;
+      throw requestError;
     }
   }
   const usernameSnapshot = await getDoc(usernameReference);

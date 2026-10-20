@@ -26,7 +26,6 @@ import {
 } from "../services/customerAccount.js";
 import {
   completeBackendPasswordReset,
-  checkCustomerRegistrationAvailability,
   loginCustomerUser,
   loginUnifiedUser,
   loginPortalUser,
@@ -605,18 +604,12 @@ export function AuthProvider({ children }) {
 
     const previousSignupUid = auth.currentUser?.uid || "";
     try {
-      const registrationCheck = await checkCustomerRegistrationAvailability({
-        email: email.trim(),
-        phone: normalizedPhone,
-      });
-
       const { profile } = await signUpCustomerWithEmailPassword({
         fullName,
         email,
         password,
         phone: normalizedPhone,
         username,
-        registrationIp: registrationCheck.registrationIp || "",
       });
       resetTransientAuthStorage();
       clearPortalSession();

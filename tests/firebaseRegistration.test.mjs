@@ -16,11 +16,12 @@ globalThis.__firebaseRegistrationTest = state;
 const mocks = {
   "apiClient.js": `const state = globalThis.__firebaseRegistrationTest;
     export const buildAuthHeaders = token => ({Authorization: 'Bearer ' + token});
-    export const extractApiError = (error, fallback) => error.message || fallback;
+    export const extractApiError = (error, fallback) => error.response?.data?.message || error.message || fallback;
     export const apiClient = {async post(url, payload, options) {
       if (options.headers.Authorization !== 'Bearer valid-id-token') throw new Error('Missing token');
       if (url !== '/auth/register/profile') throw new Error('Unexpected API call');
       state.apiCalls = (state.apiCalls || 0) + 1;
+      if (state.apiError) throw state.apiError;
       if (state.invalidResponse) return {data: {profile: state.invalidResponse}};
       const profile = {...payload, uid: state.auth.currentUser.uid,
         accountStatus: 'inactive', status: 'inactive', verificationStatus: 'pending'};
@@ -63,6 +64,7 @@ const mocks = {
     export async function getDoc(reference) {
       if (!state.auth.currentUser?.uid || !state.tokenReady) throw new Error('Premature Firestore access');
       state.reads.push(reference.path);
+      if (state.readError) throw state.readError;
       const data = state.documents.get(reference.path);
       return {exists: () => Boolean(data), data: () => data};
     }
@@ -100,9 +102,9 @@ const server = await createServer({
 });
 after(async () => {await server.close(); delete globalThis.__firebaseRegistrationTest;});
 const { waitForFirebaseUserSession } = await server.ssrLoadModule("/src/app/services/firebaseSession.js");
-const { signUpCustomerWithEmailPassword } =
+const { signUpCustomerWithEmailPassword, loadOrCreateCustomerProfile } =
   await server.ssrLoadModule("/src/app/services/customerAccount.js");
-const { signUpWithEmailPassword } = await server.ssrLoadModule("/src/app/services/firebaseAuth.js");
+const { signUpWithEmailPassword, formatFirebaseAuthError } = await server.ssrLoadModule("/src/app/services/firebaseAuth.js");
 const { waitForCustomerRegistration } = await server.ssrLoadModule("/src/app/utils/customerRegistration.js");
 
 test("registration waits for initialization, UID and token; restoration cannot race the profile write", async () => {
@@ -175,6 +177,51 @@ test("both Firebase signup helpers validate every attempt before creation and pr
   assert.equal(state.auth.currentUser, existing);
   assert.equal(state.reads.length, reads);
   assert.equal(state.commits.length, commits);
+});
+
+test("signup preserves backend SMTP and network failures instead of reporting Firestore offline", async () => {
+  const message = 'Unable to connect to the email server. Check SMTP host, port, TLS settings, and outbound network access.';
+  const smtpFailure = Object.assign(new Error('Request failed with status code 503'), {
+    response: {status: 503, data: {message, details: {code: 'MAIL_DELIVERY_FAILED', stage: 'email-verification', smtpCode: 'ETIMEDOUT'}}},
+  });
+  for (const failure of [smtpFailure, Object.assign(new Error('Network Error'), {code: 'ERR_NETWORK'})]) {
+    const user = {uid: 'failed-signup', email: 'failed@example.test', getIdToken: async () => 'valid-id-token'};
+    state.createUser = () => {state.auth.currentUser = user; return {user};};
+    state.apiError = failure;
+    const reads = state.reads.length;
+    try {
+      await assert.rejects(signUpCustomerWithEmailPassword({fullName: 'Customer', email: user.email,
+        password: 'Test123!', username: 'failed_customer'}), error => {
+        assert.equal(error.code, 'customer/registration-request-failed');
+        assert.equal(error.context, 'customer-registration-profile');
+        assert.equal(error.statusCode, failure.response?.status || 0);
+        assert.equal(error.message, failure.response?.data?.message || failure.message);
+        assert.equal(formatFirebaseAuthError(error), error.message);
+        assert.doesNotMatch(error.message, /Firestore/);
+        if (failure.response) assert.equal(error.details.smtpCode, 'ETIMEDOUT');
+        return true;
+      });
+      assert.equal(state.reads.length, reads);
+      assert.equal(state.auth.currentUser, null);
+    } finally {state.apiError = null;}
+  }
+});
+
+test("profile loading still identifies real Firestore connectivity and permission failures", async () => {
+  const user = {uid: 'profile-reader', email: 'reader@example.test', getIdToken: async () => 'valid-id-token'};
+  state.auth.currentUser = user;
+  state.tokenReady = true;
+  for (const code of ['unavailable', 'permission-denied']) {
+    state.readError = Object.assign(new Error('Firebase read failed'), {code});
+    try {
+      await assert.rejects(loadOrCreateCustomerProfile(user), error => {
+        assert.equal(error.code, code === 'unavailable' ? 'firestore/offline' : code);
+        assert.match(error.message, code === 'unavailable' ? /could not load or save/ : /permissions|signed-in/);
+        return true;
+      });
+    } finally {state.readError = null;}
+  }
+  state.auth.currentUser = null;
 });
 
 test("session readiness rejects token failures, null sessions, and account switches", async () => {

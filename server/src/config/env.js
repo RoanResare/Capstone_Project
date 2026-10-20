@@ -241,7 +241,8 @@ function resolveMailDeliveryMode() {
     return "disabled";
   }
 
-  if (configuredMode === "smtp") {
+  // An app password selects SMTP even when an older deployment still sets gmail-api.
+  if (env.mail.smtp.pass || configuredMode === "smtp") {
     return env.runtime.smtpReady ? "smtp" : "disabled";
   }
 
@@ -276,6 +277,7 @@ env.runtime = {
 };
 
 env.runtime.mailDeliveryMode = resolveMailDeliveryMode();
+env.mail.provider = env.runtime.mailDeliveryMode;
 env.runtime.mailDeliveryReady = ["gmail-api", "smtp"].includes(env.runtime.mailDeliveryMode);
 
 env.runtime.authReady = Boolean(
@@ -304,7 +306,7 @@ function collectStartupChecks() {
     },
     {
       label: "Mail Delivery",
-      required: env.mail.deliveryMode === "smtp" ? ["EMAIL_USER (or SMTP_USER/GMAIL_USER)", "EMAIL_PASS (or SMTP_PASS/GMAIL_APP_PASSWORD)"] : [
+      required: (env.mail.smtp.pass || env.mail.deliveryMode === "smtp") ? ["EMAIL_USER (or SMTP_USER/GMAIL_USER)", "EMAIL_PASS (or SMTP_PASS/GMAIL_APP_PASSWORD)"] : [
         "GMAIL_USER",
         "GMAIL_CLIENT_ID",
         "GMAIL_CLIENT_SECRET",
@@ -389,6 +391,7 @@ function validateStartupEnvironment() {
 
 module.exports = {
   env,
+  resolveMailDeliveryMode,
   getStartupDiagnostics,
   validateStartupEnvironment,
 };

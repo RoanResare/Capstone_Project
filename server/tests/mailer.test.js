@@ -4,6 +4,32 @@ const { env } = require("../src/config/env");
 const nodemailer = require("nodemailer");
 const mailer = require("../src/config/mailer");
 
+test("app passwords select SMTP over the legacy Gmail API setting; disabled stays disabled", () => {
+  const { resolveMailDeliveryMode } = require("../src/config/env");
+  const originalMode = env.mail.deliveryMode;
+  const originalPass = env.mail.smtp.pass;
+  const originalRuntime = { ...env.runtime };
+  try {
+    env.mail.deliveryMode = "gmail-api";
+    env.mail.smtp.pass = "test-app-password";
+    env.runtime.smtpReady = true;
+    env.runtime.gmailApiReady = true;
+    assert.equal(resolveMailDeliveryMode(), "smtp");
+    env.runtime.gmailApiReady = false;
+    assert.equal(resolveMailDeliveryMode(), "smtp");
+    env.mail.deliveryMode = "disabled";
+    assert.equal(resolveMailDeliveryMode(), "disabled");
+    env.mail.deliveryMode = "gmail-api";
+    env.mail.smtp.pass = "";
+    env.runtime.gmailApiReady = true;
+    assert.equal(resolveMailDeliveryMode(), "gmail-api");
+  } finally {
+    env.mail.deliveryMode = originalMode;
+    env.mail.smtp.pass = originalPass;
+    Object.assign(env.runtime, originalRuntime);
+  }
+});
+
 test("SMTP verification and OTP delivery use the configured app password without OAuth", async () => {
   const originalCreate = nodemailer.createTransport;
   const originalRuntime = { ...env.runtime };

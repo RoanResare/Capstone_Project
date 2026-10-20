@@ -12,6 +12,25 @@ function getSmtpTransport() {
       port: env.mail.smtp.port,
       secure: env.mail.smtp.secure,
       auth: { user: env.mail.smtp.user, pass: env.mail.smtp.pass },
+      // Use the OS resolver (including Windows/VPN DNS) rather than direct DNS queries.
+      getSocket(options, callback) {
+        const socket = require("node:net").connect({ host: options.host, port: options.port });
+        const onError = (error) => {
+          socket.destroy();
+          callback(error);
+        };
+        socket.once("error", onError);
+        socket.setTimeout(15000, () => {
+          const error = new Error("SMTP connection timed out.");
+          error.code = "ETIMEDOUT";
+          socket.destroy(error);
+        });
+        socket.once("connect", () => {
+          socket.setTimeout(0);
+          socket.removeListener("error", onError);
+          callback(null, { connection: socket });
+        });
+      },
       connectionTimeout: 15000,
       greetingTimeout: 15000,
       socketTimeout: 30000,

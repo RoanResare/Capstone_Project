@@ -1,0 +1,9 @@
+[env] Startup checks passed. {
+  nodeEnv: 'development',
+  port: 5000,
+  clientUrl: 'http://localhost:5173',
+  authReady: true,
+  mailDeliveryMode: 'smtp',
+  gmailApiReady: false
+}
+[startup] Server ready. { port: 5000, clientUrl: 'http://localhost:5173' }

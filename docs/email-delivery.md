@@ -1,32 +1,30 @@
-# SMTP email delivery
+# Resend email delivery
 
-OTPs, activation links, password resets, and appointment reminders all use one shared Nodemailer SMTP transport. Set these values in the backend environment:
+Registration activation links, admin/staff OTPs, password resets, and appointment reminders use the same Resend SDK client over HTTPS (port 443). Nodemailer and SMTP are no longer used.
+
+Set these backend variables in Render, then redeploy:
 
 ```dotenv
-MAIL_DELIVERY_MODE=smtp
-EMAIL_USER=your-mailbox@gmail.com
-EMAIL_PASS=your_gmail_app_password
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
+MAIL_DELIVERY_MODE=resend
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=notifications@your-verified-domain.com
+EMAIL_FROM_NAME=Charming Fur-fection Pet Care
 ```
 
-The credentials come exclusively from EMAIL_USER and EMAIL_PASS. Gmail app-password spaces are removed. Legacy Gmail API, OAuth, SMTP_USER, SMTP_PASS, and GMAIL_APP_PASSWORD settings are ignored. Even a stale MAIL_DELIVERY_MODE=gmail-api uses SMTP; explicit disabled/none/off/false modes still disable delivery. Missing credentials never fall back to another provider.
+RESEND_FROM_EMAIL must belong to a domain verified in your Resend account. EMAIL_FROM remains a fallback sender setting, but a personal Gmail address is not a verified Resend sender. The onboarding@resend.dev sender is limited to testing with the email address associated with your Resend account; it cannot deliver registration emails to arbitrary customers. See https://resend.com/docs/knowledge-base/403-error-resend-dev-domain.
 
-The sender defaults to EMAIL_USER. EMAIL_FROM and EMAIL_FROM_NAME configure the sender; SMTP_FROM_EMAIL and SMTP_FROM_NAME override those sender settings. Use the account that owns the app password or an authorized sender alias.
+The supplied key is stored only in ignored server/.env. Local configuration uses onboarding@resend.dev for testing as requested. Set RESEND_FROM_EMAIL to an address on your verified domain and restart to switch senders without editing code. The local file does not update Render environment variables. Never prefix RESEND_API_KEY with VITE_ or expose it to the browser.
 
-Local configuration loads .env first, then server/.env with overrides. Variables supplied by the launching process or deployment host take precedence over both files, so a stale file cannot replace an updated hosted app password. Restart the backend after changes. Hosted backends need these same variables configured on the host and the latest server code redeployed; changing local files does not update a hosted API.
+A stale MAIL_DELIVERY_MODE=smtp still selects Resend when the Resend variables are configured. Explicit disabled/none/off/false modes disable delivery. Legacy EMAIL_USER, EMAIL_PASS, SMTP and OAuth variables cannot select another transport. Variables supplied by the launching process or deployment host take precedence over local env files.
 
-Gmail (`smtp.gmail.com`) explicitly uses port 465 with `secure: true`, regardless of stale SMTP_PORT or SMTP_SECURE values. Custom SMTP hosts still support port 587 with SMTP_SECURE=false and STARTTLS. The transport uses the operating system DNS resolver, automatic IPv4/IPv6 selection, TLS 1.2 or newer, and certificate verification. TLS on port 465 completes before the SMTP greeting; the socket is marked secured so Nodemailer does not perform TLS twice. Connection and greeting timeouts are 30 seconds; socket inactivity times out after 60 seconds.
+Requests have a 30-second abort timeout. API rejection, sender restrictions, invalid keys, rate limits, and network failures fail delivery with a safe 503 response and provider diagnostics. A success requires Resend to return an email ID; API acceptance is not a guarantee of inbox placement. Reminder retries use a stable Idempotency-Key. Customer activation is required before sign-in.
 
-Render Free web services block outbound ports 25, 465, and 587: https://render.com/docs/free. Changing ports, TLS, credentials, or timeouts cannot bypass that restriction. To keep Gmail SMTP, use a Render instance that permits outbound SMTP. An HTTPS email API is an alternative requiring a separate provider integration; this application continues to use its unified SMTP transport.
+Sending-only keys cannot list domains or API keys. Startup checks configuration only; each send validates API acceptance. No test messages are sent automatically.
 
-A 535 authentication error means the server rejected the username/app password. Connection timeouts require checking DNS, firewall rules, host, port, and TLS settings.
-
-Verify authentication without sending mail:
+Run focused checks:
 
 ```powershell
-node -e "require('./server/src/config/mailer').verifyMailerConnection().then(() => console.log('SMTP verified')).catch(e => { console.error(e.message); process.exitCode = 1; })"
+node --test server/tests/mailer.test.js server/tests/registrationProfile.test.js server/tests/appointmentReminder.test.js tests/firebaseRegistration.test.mjs
 ```
 
-Run regression checks with `node --test server/tests/mailer.test.js server/tests/appointmentReminder.test.js`. To send four clearly marked live messages to the sender's inbox, run `node server/scripts/testEmailDelivery.js`. Test links are deliberately nonfunctional and do not change accounts.
+For a manual live test, set EMAIL_TEST_TO and run node server/scripts/testEmailDelivery.js. This sends four marked messages (OTP, activation, password reset, reminder) using nonfunctional example links. With onboarding@resend.dev, EMAIL_TEST_TO must be your Resend account address.

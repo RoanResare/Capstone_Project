@@ -1,77 +1,41 @@
 const { env } = require("./env");
 
-let smtpTransport;
+let resendClient;
 
-function getSmtpTransport() {
-  if (!smtpTransport) {
-    smtpTransport = require("nodemailer").createTransport({
-      host: env.mail.smtp.host,
-      port: env.mail.smtp.port,
-      secure: env.mail.smtp.secure,
-      auth: { user: env.mail.smtp.user, pass: env.mail.smtp.pass },
-      tls: { servername: env.mail.smtp.host, minVersion: "TLSv1.2", rejectUnauthorized: true },
-      // Use the OS resolver (including Windows/VPN DNS) rather than direct DNS queries.
-      getSocket(options, callback) {
-        const connectionOptions = {
-          host: options.host,
-          port: options.port,
-          autoSelectFamily: true,
-          ...(options.secure ? options.tls : {}),
-        };
-        // Port 465 must complete TLS before waiting for the SMTP greeting.
-        const socket = options.secure
-          ? require("node:tls").connect(connectionOptions)
-          : require("node:net").connect(connectionOptions);
-        const onError = (error) => {
-          socket.removeListener("timeout", onTimeout);
-          socket.destroy();
-          callback(error);
-        };
-        const onTimeout = () => {
-          const error = new Error("SMTP connection timed out.");
-          error.code = "ETIMEDOUT";
-          socket.destroy(error);
-        };
-        socket.once("error", onError);
-        socket.setTimeout(30000, onTimeout);
-        socket.once(options.secure ? "secureConnect" : "connect", () => {
-          socket.setTimeout(0);
-          socket.removeListener("timeout", onTimeout);
-          socket.removeListener("error", onError);
-          callback(null, { connection: socket, secured: options.secure === true });
-        });
-      },
-      connectionTimeout: 30000,
-      greetingTimeout: 30000,
-      socketTimeout: 60000,
-    });
+function assertResendReady() {
+  if (!env.runtime.mailDeliveryReady || env.runtime.mailDeliveryMode !== "resend") {
+    throw new Error("Resend email delivery is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL, then restart the backend.");
   }
-  return smtpTransport;
 }
 
 function getMailTransportSettings() {
-  return { provider: env.runtime.mailDeliveryMode, user: env.mail.smtp.user, fromEmail: env.mail.fromEmail, transport: "smtp" };
-}
-
-function assertSmtpReady() {
-  if (env.runtime.mailDeliveryMode !== "smtp" || !env.runtime.mailDeliveryReady) {
-    throw new Error("SMTP email delivery is not configured. Set EMAIL_USER and EMAIL_PASS, then restart the backend.");
-  }
+  return { provider: env.runtime.mailDeliveryMode, fromEmail: env.mail.fromEmail, transport: "https" };
 }
 
 async function sendMail({ fromName, fromEmail, to, subject, html, text, messageId }) {
-  assertSmtpReady();
-  const result = await getSmtpTransport().sendMail({
-    from: { name: fromName, address: fromEmail || env.mail.fromEmail },
-    to, subject, html, text, messageId,
+  assertResendReady();
+  if (!resendClient) {
+    const { Resend } = require("resend");
+    resendClient = new Resend(env.mail.apiKey);
+  }
+  const senderName = String(fromName || "").replace(/[\r\n"<>]/g, "");
+  const address = fromEmail || env.mail.fromEmail;
+  const { data, error } = await resendClient.emails.send({
+    from: senderName ? `${senderName} <${address}>` : address,
+    to, subject, html, text,
+    ...(messageId ? { headers: { "Message-ID": messageId } } : {}),
+  }, {
+    signal: AbortSignal.timeout(30000),
+    // Reminder retries reuse their delivery ID; OTPs and reset links remain distinct.
+    ...(messageId ? { idempotencyKey: messageId } : {}),
   });
-  if (!result.accepted?.length) throw new Error("SMTP server did not accept the recipient.");
-  return { ...result, id: result.messageId };
+  if (error) {
+    throw Object.assign(new Error(error.message || "Resend rejected the email request."), {
+      code: error.name || "resend_error", providerStatus: error.statusCode,
+    });
+  }
+  if (!data?.id) throw Object.assign(new Error("Resend did not return an email delivery ID."), { code: "invalid_resend_response" });
+  return { id: data.id, messageId: data.id };
 }
 
-async function verifyMailerConnection() {
-  assertSmtpReady();
-  return getSmtpTransport().verify();
-}
-
-module.exports = { getMailTransportSettings, sendMail, verifyMailerConnection };
+module.exports = { getMailTransportSettings, sendMail };

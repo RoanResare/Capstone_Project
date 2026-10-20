@@ -151,10 +151,6 @@ const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
   ? frontendUrl
   : `${frontendUrl}/activate-account`;
 
-const smtpHost = readOptional("SMTP_HOST", "smtp.gmail.com");
-const isGmailSmtp = smtpHost.toLowerCase() === "smtp.gmail.com";
-const smtpUser = readOptional("EMAIL_USER");
-const smtpPassword = readOptional("EMAIL_PASS");
 
 const env = {
   nodeEnv,
@@ -212,22 +208,11 @@ const env = {
     ),
   },
   mail: {
-    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "smtp").toLowerCase(),
-    provider: "smtp",
-    user: smtpUser,
-    fromName: readOptional("SMTP_FROM_NAME", readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care")),
-    fromEmail: readOptional(
-      "SMTP_FROM_EMAIL",
-      readOptional("EMAIL_FROM", smtpUser),
-    ).toLowerCase(),
-    smtp: {
-      host: smtpHost,
-      // Gmail uses implicit TLS even if a stale deployment variable says 587.
-      port: isGmailSmtp ? 465 : readNumber("SMTP_PORT", 465),
-      secure: isGmailSmtp ? true : readBoolean("SMTP_SECURE", readNumber("SMTP_PORT", 465) === 465),
-      user: smtpUser,
-      pass: isGmailSmtp ? smtpPassword.replace(/\s/g, "") : smtpPassword,
-    },
+    deliveryMode: readOptional("MAIL_DELIVERY_MODE", "resend").toLowerCase(),
+    provider: "resend",
+    apiKey: readOptional("RESEND_API_KEY"),
+    fromName: readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
+    fromEmail: readOptional("RESEND_FROM_EMAIL", readOptional("EMAIL_FROM")).toLowerCase(),
   },
 };
 
@@ -238,12 +223,12 @@ function resolveMailDeliveryMode() {
     return "disabled";
   }
 
-  // Legacy mode values cannot reactivate the removed API transport.
-  return env.runtime.smtpReady ? "smtp" : "disabled";
+  // Stale SMTP settings cannot reactivate the removed SMTP transport.
+  return env.runtime.resendReady ? "resend" : "disabled";
 }
 
 env.runtime = {
-  smtpReady: Boolean(env.mail.smtp.user && env.mail.smtp.pass && env.mail.fromEmail),
+  resendReady: Boolean(env.mail.apiKey && env.mail.fromEmail),
   loadedEnvFiles,
   missingVariables: Array.from(new Set(missingVariables)),
   firebaseAdminReady: Boolean(
@@ -260,7 +245,7 @@ env.runtime = {
 
 env.runtime.mailDeliveryMode = resolveMailDeliveryMode();
 env.mail.provider = env.runtime.mailDeliveryMode;
-env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "smtp";
+env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "resend";
 
 env.runtime.authReady = Boolean(
   env.runtime.firebaseAdminReady &&
@@ -288,7 +273,7 @@ function collectStartupChecks() {
     },
     {
       label: "Mail Delivery",
-      required: ["EMAIL_USER", "EMAIL_PASS"],
+      required: ["RESEND_API_KEY", "RESEND_FROM_EMAIL (or EMAIL_FROM)"],
       ready: env.runtime.mailDeliveryReady,
     },
   ];
@@ -312,13 +297,11 @@ function getStartupDiagnostics() {
       error: file.error || "",
     })),
     mail: {
-      userConfigured: Boolean(env.mail.user),
+      apiKeyConfigured: Boolean(env.mail.apiKey),
       fromEmailConfigured: Boolean(env.mail.fromEmail),
       provider: env.mail.provider,
-      smtpReady: env.runtime.smtpReady,
-      host: env.mail.smtp.host,
-      port: env.mail.smtp.port,
-      secure: env.mail.smtp.secure,
+      resendReady: env.runtime.resendReady,
+      transport: "https",
     },
     failedChecks: checks.filter((check) => !check.ready),
   };

@@ -83,8 +83,8 @@ test("a delivery timestamp write failure cannot erase a profile after its activa
   assert.ok(system.records.get("users/verified-uid").verificationExpiresAt instanceof Date);
 });
 
-test("SMTP failures preserve the real error and roll back the pending profile", async () => {
-  const error = new ApiError(503, "SMTP network connection timed out", {code: "MAIL_DELIVERY_FAILED"});
+test("Resend failures preserve the real error and roll back the pending profile", async () => {
+  const error = new ApiError(503, "Resend network connection timed out", {code: "MAIL_DELIVERY_FAILED"});
   const system = fixture({mailError: error});
   await assert.rejects(system.run(), e => e === error);
   assert.equal(system.records.size, 0);
@@ -109,16 +109,16 @@ test("profile storage and verification link failures identify their distinct sta
 });
 
 test("rollback errors cannot hide the original mail delivery failure", async () => {
-  const original = new ApiError(503, "SMTP connection failed");
+  const original = new ApiError(503, "Resend connection failed");
   const system = fixture({mailError: original, rollbackError: new Error("Firestore unavailable")});
   await assert.rejects(system.run(), error => error === original && error.details.stage === "email-verification");
 });
 
-test("POST registration returns the pending profile or the original SMTP failure through Express", async () => {
+test("POST registration returns the pending profile or the original Resend failure through Express", async () => {
   const express = require("express");
   const { asyncHandler } = require("../src/utils/asyncHandler");
   const { errorHandler } = require("../src/middlewares/errorHandler");
-  for (const mailError of [null, new ApiError(503, "SMTP network unavailable", {code: "MAIL_DELIVERY_FAILED"})]) {
+  for (const mailError of [null, new ApiError(503, "Resend network unavailable", {code: "MAIL_DELIVERY_FAILED"})]) {
     const system = fixture({mailError});
     const app = express();
     app.use(express.json());

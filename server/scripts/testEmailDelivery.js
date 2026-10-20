@@ -1,6 +1,5 @@
-// Sends four clearly marked test messages to the configured sender's inbox.
+// Sends four clearly marked test messages to EMAIL_TEST_TO via Resend.
 const { env } = require('../src/config/env');
-const { verifyMailerConnection } = require('../src/config/mailer');
 const { sendOtpEmail, sendEmailVerificationLink, sendPasswordResetEmail } = require('../src/services/mail.service');
 const { sendAppointmentReminder } = require('../src/services/reminderMail.service');
 
@@ -11,9 +10,8 @@ async function main() {
   }, 90000);
   try {
     if (!env.runtime.mailDeliveryReady) throw new Error('Email delivery is not configured.');
-    await verifyMailerConnection();
-    console.log('Live transport authentication passed.');
-    const to = env.mail.smtp.user;
+    const to = process.env.EMAIL_TEST_TO;
+    if (!to) throw new Error('Set EMAIL_TEST_TO to the test recipient address.');
     const fullName = 'EMAIL DELIVERY TEST — no action required';
     const tests = [
       ['OTP', () => sendOtpEmail({ to, fullName, otpCode: '000000', role: 'test', expiresInMinutes: 5 })],

@@ -114,18 +114,19 @@ function maskEmail(value = "") {
 function buildMailConfigurationError() {
   return new ApiError(
     503,
-    "Email delivery is not configured. Set EMAIL_USER and EMAIL_PASS (an app password) for SMTP, then restart the backend.",
+    "Email delivery is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL for Resend, then restart the backend.",
   );
 }
 
 function buildMailDeliveryError(error) {
-  if (error?.code === "EAUTH") {
-    return new ApiError(503, "The SMTP server rejected the credentials. Update EMAIL_USER and EMAIL_PASS with the sender account's app password, then restart the backend.");
+  if (error?.providerStatus === 401 || error?.code === "invalid_api_key" || error?.code === "missing_api_key") {
+    return new ApiError(503, "Resend rejected the API key. Check RESEND_API_KEY in the backend environment.");
   }
-  if (["ETIMEDOUT", "ECONNECTION", "ESOCKET", "EDNS"].includes(error?.code)) {
-    return new ApiError(503, "Unable to connect to the email server. Check SMTP host, port, TLS settings, and outbound network access.");
+  if (error?.providerStatus === 403 || ["validation_error", "restricted_api_key", "invalid_from_address"].includes(error?.code)) {
+    return new ApiError(503, "Resend rejected the sender or recipient. Use RESEND_FROM_EMAIL on a verified Resend domain and check your API key permissions. The Resend test sender can only email your account address.");
   }
-  return new ApiError(503, "Unable to send email right now. Check the SMTP connection and app password, then try again.");
+  if (error?.providerStatus === 429 || error?.code === "rate_limit_exceeded") return new ApiError(503, "Resend is temporarily rate limited. Please try again shortly.");
+  return new ApiError(503, "Unable to send email through Resend right now. Please try again shortly.");
 }
 
 async function deliverMail({ type, to, subject, html, text, messageId }) {
@@ -176,7 +177,7 @@ async function deliverMail({ type, to, subject, html, text, messageId }) {
     }
 
     const deliveryError = buildMailDeliveryError(error);
-    deliveryError.details = { code: "MAIL_DELIVERY_FAILED", stage: type, smtpCode: error?.code || "" };
+    deliveryError.details = { code: "MAIL_DELIVERY_FAILED", stage: type, provider: "resend", providerCode: error?.code || "", providerStatus: error?.providerStatus || null };
     throw deliveryError;
   }
 }

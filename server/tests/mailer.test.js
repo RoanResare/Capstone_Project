@@ -1,138 +1,100 @@
-const { test } = require("node:test");
-const assert = require("node:assert/strict");
-const { env } = require("../src/config/env");
-const nodemailer = require("nodemailer");
-const mailer = require("../src/config/mailer");
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { env } = require('../src/config/env');
+const mailer = require('../src/config/mailer');
 
-test("legacy modes cannot select Gmail API; missing SMTP credentials fail closed", () => {
-  const { resolveMailDeliveryMode } = require("../src/config/env");
-  const originalMode = env.mail.deliveryMode;
-  const originalRuntime = { ...env.runtime };
-  try {
-    env.runtime.smtpReady = true;
-    for (const mode of ["smtp", "auto", "gmail-api"]) {
-      env.mail.deliveryMode = mode;
-      assert.equal(resolveMailDeliveryMode(), "smtp");
-    }
-    env.runtime.smtpReady = false;
-    assert.equal(resolveMailDeliveryMode(), "disabled");
-    env.runtime.smtpReady = true;
-    env.mail.deliveryMode = "disabled";
-    assert.equal(resolveMailDeliveryMode(), "disabled");
-  } finally {
-    env.mail.deliveryMode = originalMode;
-    Object.assign(env.runtime, originalRuntime);
-  }
-});
-
-test("SMTP verification and OTP delivery use the configured app password without OAuth", async () => {
-  const originalCreate = nodemailer.createTransport;
-  const originalRuntime = { ...env.runtime };
+test('all email flows use Resend HTTPS, preserve IDs and handle provider failures', async () => {
   const originalFetch = global.fetch;
-  let transportCount = 0;
-  let deliveryError;
-  let message;
+  const originalRuntime = {...env.runtime};
+  const originalMail = {...env.mail};
+  let request;
+  let failure;
   try {
-    env.runtime.mailDeliveryMode = "smtp";
-    env.runtime.mailDeliveryReady = true;
-    global.fetch = async () => { throw new Error("Email must never request an OAuth token or API endpoint"); };
-    nodemailer.createTransport = (options) => {
-      transportCount++;
-      assert.equal(options.auth.type, undefined);
-      assert.equal(options.auth.pass, env.mail.smtp.pass);
-      assert.equal(options.auth.user, env.mail.smtp.user);
-      assert.equal(options.tls.servername, env.mail.smtp.host);
-      assert.equal(options.tls.rejectUnauthorized, true);
-      assert.equal(options.tls.minVersion, "TLSv1.2");
-      assert.equal(options.connectionTimeout, 30000);
-      assert.equal(options.greetingTimeout, 30000);
-      assert.equal(options.socketTimeout, 60000);
-      return {
-        verify: async () => true,
-        sendMail: async (value) => {
-          if (deliveryError) throw deliveryError;
-          message = value;
-          return { accepted: [value.to], messageId: "test-message" };
-        },
-      };
+    Object.assign(env.mail, {apiKey: 're_test_only', fromEmail: 'notifications@verified.example', fromName: 'Clinic'});
+    Object.assign(env.runtime, {mailDeliveryMode: 'resend', mailDeliveryReady: true});
+    global.fetch = async (url, options) => {
+      assert.equal(String(url), 'https://api.resend.com/emails');
+      const headers = new Headers(options.headers);
+      assert.equal(headers.get('authorization'), 'Bearer re_test_only');
+      assert.ok(options.signal);
+      request = {payload: JSON.parse(options.body), headers};
+      return new Response(JSON.stringify(failure || {id: 'resend-email-id'}), {
+        status: failure?.statusCode || 200, headers: {'Content-Type': 'application/json'},
+      });
     };
-    assert.equal(await mailer.verifyMailerConnection(), true);
-    const { sendOtpEmail } = require("../src/services/mail.service");
-    const result = await sendOtpEmail({ to: "customer@example.com", otpCode: "123456", role: "customer", expiresInMinutes: 5 });
-    assert.equal(result.deliveryMode, "smtp");
-    assert.equal(result.messageId, "test-message");
-    assert.match(message.text, /123456/);
-    assert.equal(message.to, "customer@example.com");
-    assert.equal(message.from.address, env.mail.fromEmail);
-    const { sendPasswordResetEmail, sendEmailVerificationLink } = require("../src/services/mail.service");
-    await sendPasswordResetEmail({ to: "customer@example.com", resetLink: "https://example.com/reset?code=reset" });
-    assert.match(message.text, /code=reset/);
-    await sendEmailVerificationLink({ to: "customer@example.com", verificationLink: "https://example.com/activate?code=activation" });
-    assert.match(message.text, /code=activation/);
-    const { sendAppointmentReminder } = require("../src/services/reminderMail.service");
-    const reminder = await sendAppointmentReminder({ customerEmail: "customer@example.com", scheduleDate: "2026-10-21", scheduleTime: "09:00" }, "booking-1");
-    assert.equal(reminder.messageId, "test-message");
-    assert.match(message.text, /09:00 AM/);
-    assert.match(message.messageId, /^<reminder-/);
-    assert.equal(transportCount, 1);
-    for (const code of ["EAUTH", "ETIMEDOUT", "EENVELOPE"]) {
-      deliveryError = Object.assign(new Error("test failure"), { code });
-      await assert.rejects(sendOtpEmail({ to: "customer@example.com", otpCode: "123456" }), error => {
+    const {sendOtpEmail, sendPasswordResetEmail, sendEmailVerificationLink} = require('../src/services/mail.service');
+    for (const role of ['admin', 'staff']) {
+      const result = await sendOtpEmail({to: 'test@example.com', fullName: 'Test', otpCode: '123456', role, expiresInMinutes: 5});
+      assert.equal(result.messageId, 'resend-email-id');
+      assert.equal(result.deliveryMode, 'resend');
+      assert.equal(request.payload.from, 'Clinic <notifications@verified.example>');
+      assert.match(request.payload.html, new RegExp(role));
+      assert.match(request.payload.text, /123456/);
+      assert.equal(request.headers.get('idempotency-key'), null);
+    }
+    await sendPasswordResetEmail({to: 'test@example.com', resetLink: 'https://example.com/reset?code=test'});
+    assert.match(request.payload.text, /code=test/);
+    await sendEmailVerificationLink({to: 'test@example.com', verificationLink: 'https://example.com/activate?code=test'});
+    assert.match(request.payload.html, /Activate account/);
+    const {sendAppointmentReminder} = require('../src/services/reminderMail.service');
+    const appointment = {customerEmail: 'test@example.com', scheduleDate: '2026-10-22', scheduleTime: '09:00'};
+    await sendAppointmentReminder(appointment, 'appointment-1');
+    assert.match(request.payload.text, /09:00 AM/);
+    const id = request.headers.get('idempotency-key');
+    assert.ok(id);
+    assert.equal(id, request.payload.headers['Message-ID']);
+    await sendAppointmentReminder(appointment, 'appointment-1');
+    assert.equal(request.headers.get('idempotency-key'), id);
+    for (const [name, statusCode, expected] of [
+      ['invalid_api_key', 401, /API key/], ['validation_error', 403, /verified Resend domain/],
+      ['rate_limit_exceeded', 429, /rate limited/], ['application_error', 500, /Resend/],
+    ]) {
+      failure = {name, statusCode, message: 'Provider test error'};
+      await assert.rejects(sendEmailVerificationLink({to: 'test@example.com', verificationLink: 'https://example.com'}), error => {
         assert.equal(error.statusCode, 503);
-        assert.equal(error.details.code, "MAIL_DELIVERY_FAILED");
-        assert.equal(error.details.stage, "otp");
-        assert.equal(error.details.smtpCode, code);
-        assert.doesNotMatch(error.message, /OAuth|Gmail API/);
-        assert.match(error.message, /SMTP|email server/);
+        assert.match(error.message, expected);
+        assert.equal(error.details.provider, 'resend');
+        assert.equal(error.details.providerCode, name);
+        assert.equal(error.details.stage, 'email-verification');
         return true;
       });
     }
+    failure = {};
+    await assert.rejects(mailer.sendMail({to: 'test@example.com'}), /delivery ID/);
+    global.fetch = async () => {throw new Error('fetch failed');};
+    await assert.rejects(sendPasswordResetEmail({to: 'test@example.com', resetLink: 'https://example.com'}), /Resend/);
     env.runtime.mailDeliveryReady = false;
-    await assert.rejects(mailer.sendMail({ to: "customer@example.com" }), /EMAIL_USER and EMAIL_PASS/);
-    await assert.rejects(mailer.verifyMailerConnection(), /EMAIL_USER and EMAIL_PASS/);
-    await assert.rejects(sendAppointmentReminder({ customerEmail: "customer@example.com" }, "booking-2"), /not configured/);
+    await assert.rejects(mailer.sendMail({to: 'test@example.com'}), /RESEND_API_KEY/);
+    await assert.rejects(sendEmailVerificationLink({to: 'test@example.com'}), /RESEND_API_KEY/);
   } finally {
     global.fetch = originalFetch;
-    nodemailer.createTransport = originalCreate;
+    Object.assign(env.mail, originalMail);
     Object.assign(env.runtime, originalRuntime);
   }
 });
 
-
-
-test("environment credentials come only from EMAIL_USER and EMAIL_PASS", () => {
-  const fs = require("node:fs");
-  const vm = require("node:vm");
-  const path = require("node:path");
+test('Resend env ignores legacy SMTP credentials and mode, but honors explicit disable', () => {
+  const fs = require('node:fs');
+  const vm = require('node:vm');
+  const path = require('node:path');
   function load(values) {
-    const sandbox = {
-      process: { env: values },
-      module: { exports: {} },
-      require(id) {
-        if (id === "fs") return { existsSync: () => false };
-        if (id === "path") return path;
-        if (id === "./loadEnv") return { loadEnvFiles: () => ({ projectRoot: __dirname, serverRoot: __dirname, files: [] }) };
-        throw new Error(id);
-      },
-    };
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../src/config/env.js"), "utf8"), sandbox);
-    return sandbox.module.exports;
+    const context = {process: {env: values}, module: {exports: {}}, require(id) {
+      if(id === 'fs') return {existsSync: () => false};
+      if(id === 'path') return path;
+      if(id === './loadEnv') return {loadEnvFiles: () => ({projectRoot: __dirname, serverRoot: __dirname, files: []})};
+      throw new Error(id);
+    }};
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/config/env.js'), 'utf8'), context);
+    return context.module.exports;
   }
-  const legacy = { MAIL_DELIVERY_MODE: "gmail-api", SMTP_USER: "wrong@example.com", SMTP_PASS: "wrong", GMAIL_USER: "wrong@gmail.com", GMAIL_APP_PASSWORD: "wrong", GMAIL_CLIENT_ID: "old", GMAIL_CLIENT_SECRET: "old", GMAIL_REFRESH_TOKEN: "old" };
-  const configured = load({ ...legacy, EMAIL_USER: "sender@gmail.com", EMAIL_PASS: "abcd efgh ijkl mnop" });
-  assert.equal(configured.env.runtime.mailDeliveryMode, "smtp");
-  assert.equal(configured.env.mail.smtp.user, "sender@gmail.com");
-  assert.equal(configured.env.mail.smtp.pass, "abcdefghijklmnop");
-  assert.equal(configured.env.mail.fromEmail, "sender@gmail.com");
-  assert.equal(configured.env.mail.oauth, undefined);
-  const gmail = load({ EMAIL_USER: "sender@gmail.com", EMAIL_PASS: "app-password", SMTP_PORT: "587", SMTP_SECURE: "false" });
-  assert.equal(gmail.env.mail.smtp.port, 465);
-  assert.equal(gmail.env.mail.smtp.secure, true);
-  const custom = load({ EMAIL_USER: "sender@example.com", EMAIL_PASS: "password", SMTP_HOST: "smtp.example.com", SMTP_PORT: "587", SMTP_SECURE: "false" });
-  assert.equal(custom.env.mail.smtp.port, 587);
-  assert.equal(custom.env.mail.smtp.secure, false);
-  assert.equal(load(legacy).env.runtime.mailDeliveryReady, false);
-  const failures = load(legacy).getStartupDiagnostics().failedChecks;
-  assert.deepEqual(Array.from(failures.find(check => check.label === "Mail Delivery").required), ["EMAIL_USER", "EMAIL_PASS"]);
-  assert.equal(load({ EMAIL_USER: "sender@example.com", EMAIL_PASS: "pass with spaces", SMTP_HOST: "smtp.example.com" }).env.mail.smtp.pass, "pass with spaces");
+  const configured = load({RESEND_API_KEY: 're_test', RESEND_FROM_EMAIL: 'mail@verified.example', EMAIL_FROM: 'old@gmail.com', MAIL_DELIVERY_MODE: 'smtp'});
+  assert.equal(configured.env.runtime.mailDeliveryMode, 'resend');
+  assert.equal(configured.env.mail.fromEmail, 'mail@verified.example');
+  assert.equal(configured.env.mail.smtp, undefined);
+  assert.equal(load({EMAIL_USER: 'old@gmail.com', EMAIL_PASS: 'old'}).env.runtime.mailDeliveryReady, false);
+  assert.equal(load({RESEND_API_KEY: 're_test'}).env.runtime.mailDeliveryReady, false);
+  assert.equal(load({RESEND_API_KEY: 're_test', EMAIL_FROM: 'mail@verified.example'}).env.runtime.mailDeliveryReady, true);
+  assert.equal(load({RESEND_API_KEY: 're_test', EMAIL_FROM: 'mail@verified.example', MAIL_DELIVERY_MODE: 'disabled'}).env.runtime.mailDeliveryReady, false);
+  assert.equal(configured.getStartupDiagnostics().mail.apiKeyConfigured, true);
+  assert.equal(JSON.stringify(configured.getStartupDiagnostics()).includes('re_test'), false);
 });

@@ -521,7 +521,7 @@ async function createOtpChallengeResponse(user, message, options = {}) {
   const otp = await createOtpVerification(user, {
     enforceCooldown: Boolean(options.enforceCooldown),
   });
-  let delivery = { deliveryMode: "smtp-unavailable" };
+  let delivery = { deliveryMode: "resend-unavailable" };
 
   try {
     delivery = await sendOtpEmail({
@@ -815,7 +815,7 @@ async function forgotPassword(req, res) {
 
   const providerLink = await generatePasswordResetLink(firebaseUser.email);
   const resetLink = buildAppPasswordResetLink(req, providerLink);
-  let delivery = { deliveryMode: "smtp-unavailable" };
+  let delivery = { deliveryMode: "resend-unavailable" };
 
   try {
     delivery = await sendPasswordResetEmail({

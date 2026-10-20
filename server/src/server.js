@@ -1,7 +1,7 @@
 const { logEnvLoadSummary } = require("./config/loadEnv");
 const { app } = require("./app");
 const { env, validateStartupEnvironment } = require("./config/env");
-const { getMailTransportSettings, verifyMailerConnection } = require("./config/mailer");
+const { getMailTransportSettings } = require("./config/mailer");
 const { startDisposableEmailUpdates } = require("./services/disposableEmailDomains.service");
 const { startPendingRegistrationCleanup } = require("./services/pendingRegistrationCleanup.service");
 const { startAppointmentReminders } = require("./services/appointmentReminder.service");
@@ -27,14 +27,7 @@ app.listen(env.port, () => {
     clientUrl: env.clientUrl,
   });
 
-  verifyMailerConnection()
-    .catch((error) => {
-      const transportSettings = getMailTransportSettings();
-
-      console.error("[mail] Email connection verification failed.", {
-        provider: transportSettings.provider,
-        transport: transportSettings.transport,
-        error: error instanceof Error ? error.message : error,
-      });
-    });
+  // Sending-only Resend keys cannot list account resources for an SMTP-style
+  // connection check. Actual API acceptance is checked on every email send.
+  console.info("[mail] Resend HTTPS delivery configured.", getMailTransportSettings());
 });

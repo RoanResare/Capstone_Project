@@ -43,7 +43,7 @@ test("persists delivery, retries failure, and leaves appointment status untouche
   let attempts = 0;
   const worker = createReminderWorker({ db, clock: () => now, sendReminder: async () => {
     attempts++;
-    if (attempts === 1) throw new Error("SMTP unavailable");
+    if (attempts === 1) throw new Error("Resend unavailable");
     return { messageId: "sent" };
   } });
   await worker.run();

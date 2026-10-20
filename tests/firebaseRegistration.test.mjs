@@ -179,12 +179,12 @@ test("both Firebase signup helpers validate every attempt before creation and pr
   assert.equal(state.commits.length, commits);
 });
 
-test("signup preserves backend SMTP and network failures instead of reporting Firestore offline", async () => {
-  const message = 'Unable to connect to the email server. Check SMTP host, port, TLS settings, and outbound network access.';
-  const smtpFailure = Object.assign(new Error('Request failed with status code 503'), {
-    response: {status: 503, data: {message, details: {code: 'MAIL_DELIVERY_FAILED', stage: 'email-verification', smtpCode: 'ETIMEDOUT'}}},
+test("signup preserves backend Resend and network failures instead of reporting Firestore offline", async () => {
+  const message = 'Unable to connect to the email server. Check Resend host, port, TLS settings, and outbound network access.';
+  const resendFailure = Object.assign(new Error('Request failed with status code 503'), {
+    response: {status: 503, data: {message, details: {code: 'MAIL_DELIVERY_FAILED', stage: 'email-verification', providerCode: 'application_error'}}},
   });
-  for (const failure of [smtpFailure, Object.assign(new Error('Network Error'), {code: 'ERR_NETWORK'})]) {
+  for (const failure of [resendFailure, Object.assign(new Error('Network Error'), {code: 'ERR_NETWORK'})]) {
     const user = {uid: 'failed-signup', email: 'failed@example.test', getIdToken: async () => 'valid-id-token'};
     state.createUser = () => {state.auth.currentUser = user; return {user};};
     state.apiError = failure;
@@ -198,7 +198,7 @@ test("signup preserves backend SMTP and network failures instead of reporting Fi
         assert.equal(error.message, failure.response?.data?.message || failure.message);
         assert.equal(formatFirebaseAuthError(error), error.message);
         assert.doesNotMatch(error.message, /Firestore/);
-        if (failure.response) assert.equal(error.details.smtpCode, 'ETIMEDOUT');
+        if (failure.response) assert.equal(error.details.providerCode, 'application_error');
         return true;
       });
       assert.equal(state.reads.length, reads);

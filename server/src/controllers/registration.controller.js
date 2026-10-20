@@ -109,7 +109,7 @@ async function createCustomerProfile(req, res) {
     throw error;
   }
 
-  // SMTP has accepted the activation email. A failure to record its timestamp
+  // The email provider accepted the activation email. A timestamp write failure
   // must not delete the profile or make the frontend delete the Auth account.
   const sentAt = new Date().toISOString();
   try { await profileRef.update({ verificationSentAt: sentAt, updatedAt: sentAt }); }

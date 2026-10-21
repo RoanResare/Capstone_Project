@@ -24,6 +24,7 @@ import {
   loadPhotoModerationDocuments,
   loadRecentNotifications,
   subscribeAppointments,
+  subscribePetRecords,
   loadMoreRecentNotifications,
   hasMoreRecentNotifications,
   loadMoreAppointmentDocuments,
@@ -1829,19 +1830,17 @@ export function AppProvider({ children }) {
 
     let cancelled = false;
 
-    Promise.all([
-      currentUser.role === "customer" ? loadCustomerPetRecords(currentUser) : loadPetRecordDocuments(),
-      currentUser.role === "admin" ? loadPhotoModerationDocuments() : Promise.resolve([]),
-    ]).then(
-      ([petRecords, photoRecords]) => {
+    const unsubscribePets = subscribePetRecords((petRecords) => {
+      if (!cancelled) dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { petRecords } });
+    }, (error) => console.error("Unable to synchronize pet profiles.", error), {
+      expectedUid: currentUser.uid,
+      customerId: currentUser.role === "customer" ? currentUser.uid : "",
+    });
+    (currentUser.role === "admin" ? loadPhotoModerationDocuments() : Promise.resolve([])).then(
+      (photoRecords) => {
         if (cancelled) {
           return;
         }
-
-        dispatch({
-          type: "HYDRATE_SCHEDULE_DATA",
-          payload: { petRecords },
-        });
 
         if (photoRecords.length > 0) {
           dispatch({ type: "HYDRATE_PHOTO_MODERATION", payload: photoRecords });
@@ -1856,8 +1855,9 @@ export function AppProvider({ children }) {
 
     return () => {
       cancelled = true;
+      unsubscribePets();
     };
-  }, [currentUser?.uid]);
+  }, [currentUser?.role, currentUser?.uid]);
 
   useEffect(() => {
     if (!currentUser) return undefined;
@@ -1886,7 +1886,7 @@ export function AppProvider({ children }) {
       dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
     }, (error) => {
       console.error("Unable to keep appointments current.", error);
-    }, { customerId: currentUser.role === "customer" ? currentUser.uid : "" });
+    }, { expectedUid: currentUser.uid, customerId: currentUser.role === "customer" ? currentUser.uid : "" });
   }, [currentUser?.role, currentUser?.uid]);
 
   const loadMoreAppointments = useCallback(async () => {

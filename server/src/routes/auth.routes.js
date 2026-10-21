@@ -20,6 +20,14 @@ const { verifyRole } = require("../middlewares/authorize");
 const { listAvailabilitySlots, saveAvailabilitySlot, disableAvailabilitySlot } = require("../controllers/schedule.controller");
 
 const router = express.Router();
+const { listRecords } = require("../services/scheduleRecords.service");
+for (const collectionName of ["pets", "appointments"]) {
+  router.get(`/${collectionName}`, verifyToken, asyncHandler(async (req, res) => {
+    const result = await listRecords(collectionName, req.auth.user, req.query);
+    res.set("Cache-Control", "no-store");
+    res.json(result);
+  }));
+}
 const { activateCustomerEmail, createCustomerProfile, resendCustomerEmailVerification } = require("../controllers/registration.controller");
 router.post("/register/profile", authRateLimiter, asyncHandler(createCustomerProfile));
 router.post("/register/activate", authRateLimiter, asyncHandler(activateCustomerEmail));

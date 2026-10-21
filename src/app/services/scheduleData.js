@@ -17,6 +17,7 @@ import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
 import { assertAppropriatePetText } from "../../../shared/petTextValidation.mjs";
+import { waitForFirebaseUserSession } from "./firebaseSession.js";
 
 const COLLECTIONS = {
   appointments: "appointments",
@@ -136,6 +137,25 @@ function logSyncError(action, error) {
   console.error(`[schedule-data] ${action} failed.`, error);
 }
 
+async function loadSharedRecords(collectionName) {
+  const user = auth?.currentUser;
+  if (!user) throw new Error("Sign in to load your saved records.");
+  const token = await user.getIdToken();
+  const documents = [];
+  let cursor = "";
+  do {
+    const response = await apiClient.get(`/auth/${collectionName}`, {
+      headers: buildAuthHeaders(token), params: { cursor, limit: 500 },
+    });
+    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
+    documents.push(...response.data.records);
+    const nextCursor = response.data.nextCursor || "";
+    if (nextCursor && nextCursor === cursor) throw new Error("Unable to finish loading saved records.");
+    cursor = nextCursor;
+  } while (cursor);
+  return documents;
+}
+
 export function saveAppointmentDocument(appointment) {
   const save = async () => {
     if (!canSyncScheduleData()) {
@@ -206,17 +226,8 @@ export async function loadPhotoModerationDocuments() {
   return loadScheduleDocuments(COLLECTIONS.photoModeration);
 }
 
-export function loadAppointmentDocuments({ force = false } = {}) {
-  if (!canSyncScheduleData()) return Promise.resolve([]);
-  const request = loadPagedFilteredScheduleDocuments("appointments:recent", (cursor) => query(
-    collection(db, COLLECTIONS.appointments), orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
-    ...(cursor ? [startAfter(cursor)] : []),
-  ), { maxPages: 1, force, cursorType: "snapshot" });
-  return request.then((documents) => {
-    const uid = auth.currentUser?.uid;
-    if (uid) collectionCache.set(`${uid}:appointments:recent`, { fetchedAt: Date.now(), documents });
-    return documents;
-  });
+export function loadAppointmentDocuments() {
+  return loadSharedRecords(COLLECTIONS.appointments);
 }
 
 export function loadRecentNotifications({ force = false } = {}) {
@@ -255,41 +266,12 @@ export function hasMoreRecentNotifications() {
   return Boolean(cached?.hasMore);
 }
 
-export function loadMoreAppointmentDocuments({ customer = null, force = false } = {}) {
-  const loadKey = customer?.uid ? `${customer.uid}:customer-appointments:${customer.uid}` : `${auth.currentUser?.uid}:appointments:recent`;
-  const cached = collectionCache.get(loadKey);
-  if (!force && cached && cached.documents.length > SCHEDULE_PAGE_SIZE) return Promise.resolve(cached.documents);
-  if (force) invalidateScheduleCache(COLLECTIONS.appointments);
-  const loadPages = (cacheKeySuffix, buildQuery, options = {}) => {
-    const request = loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, {
-      maxPages: MAX_PORTAL_APPOINTMENT_PAGES,
-      force,
-      ...options,
-    });
-    return request.then((documents) => {
-      const uid = auth.currentUser?.uid;
-      if (uid) collectionCache.set(`${uid}:${cacheKeySuffix}`, { fetchedAt: Date.now(), documents });
-      return documents;
-    });
-  };
-  if (customer?.uid) {
-    return loadPages(`customer-appointments:${customer.uid}`, (cursor) => query(
-      collection(db, COLLECTIONS.appointments), where("customerId", "==", customer.uid), orderBy("__name__", "desc"),
-      limit(SCHEDULE_PAGE_SIZE + 1), ...(cursor ? [startAfter(cursor)] : []),
-    ));
-  }
-  return loadPages("appointments:recent", (cursor) => query(
-    collection(db, COLLECTIONS.appointments), orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
-    ...(cursor ? [startAfter(cursor)] : []),
-  ), { cursorType: "snapshot" });
+export function loadMoreAppointmentDocuments() {
+  return loadSharedRecords(COLLECTIONS.appointments);
 }
 
-export function loadCustomerAppointments(customer) {
-  if (!canSyncScheduleData() || !customer?.uid) return Promise.resolve([]);
-  return loadPagedFilteredScheduleDocuments(`customer-appointments:${customer.uid}`, (cursor) => query(
-    collection(db, COLLECTIONS.appointments), where("customerId", "==", customer.uid), orderBy("__name__", "desc"),
-    limit(SCHEDULE_PAGE_SIZE + 1), ...(cursor ? [startAfter(cursor)] : []),
-  ), { maxPages: 1 });
+export function loadCustomerAppointments() {
+  return loadSharedRecords(COLLECTIONS.appointments);
 }
 
 export function loadCustomerNotifications(customer) {
@@ -351,23 +333,11 @@ function loadFilteredScheduleDocuments(cacheKeySuffix, firestoreQuery, { force =
 }
 
 export function loadPetRecordDocuments() {
-  return loadScheduleDocuments(COLLECTIONS.petRecords);
+  return loadSharedRecords(COLLECTIONS.petRecords);
 }
 
-export function loadCustomerPetRecords(customer) {
-  if (!canSyncScheduleData() || !customer?.uid) return Promise.resolve([]);
-  const cacheKey = `${customer.uid}:customer-pets`;
-  const cached = collectionCache.get(cacheKey);
-  if (cached && Date.now() - cached.fetchedAt < SCHEDULE_CACHE_TTL_MS) return Promise.resolve(cached.documents);
-  if (collectionLoadRequests.has(cacheKey)) return collectionLoadRequests.get(cacheKey);
-  const request = getDocs(query(collection(db, COLLECTIONS.petRecords), where("customerId", "==", customer.uid), limit(SCHEDULE_PAGE_SIZE)))
-    .then((snapshot) => {
-      const documents = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
-      collectionCache.set(cacheKey, { fetchedAt: Date.now(), documents });
-      return documents;
-    });
-  collectionLoadRequests.set(cacheKey, request);
-  return request.finally(() => collectionLoadRequests.delete(cacheKey));
+export function loadCustomerPetRecords() {
+  return loadSharedRecords(COLLECTIONS.petRecords);
 }
 
 function subscribeScheduleDocuments(collectionName, onChange, onError = () => {}) {
@@ -386,33 +356,60 @@ function subscribeScheduleDocuments(collectionName, onChange, onError = () => {}
   return () => { disposed = true; window.removeEventListener("focus", handleFocus); };
 }
 
-export function subscribeAppointments(onChange, onError, { customerId = "" } = {}) {
-  if (!canSyncScheduleData()) return () => {};
-  const uid = auth.currentUser.uid;
-  const cacheKey = customerId
-    ? `${uid}:customer-appointments:${customerId}`
-    : `${uid}:appointments:recent`;
-  const appointmentsQuery = customerId
-    ? query(
-      collection(db, COLLECTIONS.appointments),
-      where("customerId", "==", customerId),
-      orderBy("__name__", "desc"),
-      limit(SCHEDULE_PAGE_SIZE),
-    )
-    : query(
-      collection(db, COLLECTIONS.appointments),
-      orderBy("__name__", "desc"),
-      limit(SCHEDULE_PAGE_SIZE),
-    );
-  return onSnapshot(appointmentsQuery, (snapshot) => {
-    const documents = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
-    collectionCache.set(cacheKey, { fetchedAt: Date.now(), documents });
-    if (!customerId) collectionCache.set(`${uid}:appointments`, { fetchedAt: Date.now(), documents });
-    onChange(documents);
-  }, (error) => {
-    logSyncError("appointments listener", error);
-    onError?.(error);
-  });
+function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { customerId = "", expectedUid = "" } = {}) {
+  let disposed = false;
+  let timer;
+  let unsubscribe = () => {};
+  let user;
+  let refreshing = false;
+  let refreshAgain = false;
+  const refresh = async () => {
+    if (disposed || !user || auth.currentUser !== user) return;
+    if (refreshing) { refreshAgain = true; return; }
+    refreshing = true;
+    clearTimeout(timer);
+    try {
+      const documents = await loadSharedRecords(collectionName);
+      if (!disposed && auth.currentUser === user) onChange(documents);
+    } catch (error) {
+      if (!disposed && auth.currentUser === user) onError(error);
+    } finally {
+      refreshing = false;
+      if (!disposed && auth.currentUser === user) {
+        if (refreshAgain) { refreshAgain = false; void refresh(); }
+        else timer = setTimeout(refresh, 10000);
+      }
+    }
+  };
+  const handleFocus = () => { if (document.visibilityState !== "hidden") void refresh(); };
+  const start = async () => {
+    user = await waitForFirebaseUserSession(expectedUid || customerId);
+    if (disposed) return;
+    if (!user) { onError(new Error("Sign in again to synchronize saved records.")); return; }
+    void refresh();
+    const constraints = customerId ? [where("customerId", "==", customerId)] : [];
+    // Firestore events trigger complete API reads, so a limited snapshot cannot
+    // remove older bookings from the calendar. Polling also covers denied rules.
+    unsubscribe = onSnapshot(query(collection(db, collectionName), ...constraints,
+      orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE)), () => { void refresh(); },
+      error => { logSyncError(collectionName + " live updates; using API refresh", error); });
+  };
+  void start().catch(error => { if (!disposed) onError(error); });
+  window.addEventListener("focus", handleFocus);
+  document.addEventListener("visibilitychange", handleFocus);
+  return () => {
+    disposed = true; clearTimeout(timer); unsubscribe();
+    window.removeEventListener("focus", handleFocus);
+    document.removeEventListener("visibilitychange", handleFocus);
+  };
+}
+
+export function subscribeAppointments(onChange, onError, options) {
+  return subscribeSharedRecords(COLLECTIONS.appointments, onChange, onError, options);
+}
+
+export function subscribePetRecords(onChange, onError, options) {
+  return subscribeSharedRecords(COLLECTIONS.petRecords, onChange, onError, options);
 }
 
 export function subscribeNotifications(onChange, onError) {

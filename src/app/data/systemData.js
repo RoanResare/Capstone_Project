@@ -19,7 +19,7 @@ export const serviceCatalog = [
   },
   {
     id: "consultation",
-    name: "Consultation",
+    name: "Veterinary Services",
     duration: "45 minutes",
     priceLabel: "PHP 300",
     category: "Clinic Visit",

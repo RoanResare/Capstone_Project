@@ -4,3 +4,12 @@
 [appointment-reminder] Check failed. {
   error: '14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.217.27.106:443. Resolution note: '
 }
+[registration] Pending account cleanup failed. {
+  error: '14 UNAVAILABLE: No connection established. Last error: Error: Client network socket disconnected before secure TLS connection was established. Resolution note: '
+}
+[registration] Pending account cleanup failed. {
+  error: '14 UNAVAILABLE: No connection established. Last error: Error: connect ENETUNREACH 172.217.27.74:443. Resolution note: '
+}
+[registration] Pending account cleanup failed. {
+  error: '14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 2404:6800:4017:806::200a:443. Resolution note: '
+}

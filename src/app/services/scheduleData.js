@@ -209,7 +209,7 @@ export async function loadPhotoModerationDocuments() {
 export function loadAppointmentDocuments({ force = false } = {}) {
   if (!canSyncScheduleData()) return Promise.resolve([]);
   const request = loadPagedFilteredScheduleDocuments("appointments:recent", (cursor) => query(
-    collection(db, COLLECTIONS.appointments), orderBy("createdAt", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
+    collection(db, COLLECTIONS.appointments), orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
     ...(cursor ? [startAfter(cursor)] : []),
   ), { maxPages: 1, force, cursorType: "snapshot" });
   return request.then((documents) => {
@@ -279,7 +279,7 @@ export function loadMoreAppointmentDocuments({ customer = null, force = false } 
     ));
   }
   return loadPages("appointments:recent", (cursor) => query(
-    collection(db, COLLECTIONS.appointments), orderBy("createdAt", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
+    collection(db, COLLECTIONS.appointments), orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE + 1),
     ...(cursor ? [startAfter(cursor)] : []),
   ), { cursorType: "snapshot" });
 }
@@ -401,7 +401,7 @@ export function subscribeAppointments(onChange, onError, { customerId = "" } = {
     )
     : query(
       collection(db, COLLECTIONS.appointments),
-      orderBy("createdAt", "desc"),
+      orderBy("__name__", "desc"),
       limit(SCHEDULE_PAGE_SIZE),
     );
   return onSnapshot(appointmentsQuery, (snapshot) => {
@@ -465,7 +465,9 @@ export function invalidateScheduleCache(collectionName) {
   const uid = auth?.currentUser?.uid;
   if (uid && collectionName) {
     for (const key of collectionCache.keys()) {
-      if (key.startsWith(`${uid}:`) && key.includes(collectionName)) collectionCache.delete(key);
+      const matchesCollection = key.includes(collectionName) ||
+        (collectionName === COLLECTIONS.petRecords && key === `${uid}:customer-pets`);
+      if (key.startsWith(`${uid}:`) && matchesCollection) collectionCache.delete(key);
     }
   } else if (uid) {
     for (const key of collectionCache.keys()) if (key.startsWith(`${uid}:`)) collectionCache.delete(key);

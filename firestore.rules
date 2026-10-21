@@ -3,11 +3,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function hasActiveSession() {
+      return request.auth != null &&
+        (!exists(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid)) ||
+          request.auth.token.iat > get(/databases/$(database)/documents/sessionSecurity/$(request.auth.uid)).data.get('revokedBefore', 0));
+    }
+
+    function canManageSchedules() {
+      return hasActiveSession() && request.auth.token.get('role', '') in ['admin', 'staff'];
+    }
+
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.admin == true);
+      allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.get('role', '') == 'admin');
       allow write: if request.auth != null && (
         request.auth.uid == userId ||
-        request.auth.token.admin == true ||
+        request.auth.token.get('role', '') == 'admin' ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fraudStatus', 'fraudReason', 'updatedAt', 'emailverified'])
       );
     }
@@ -23,58 +33,70 @@ service cloud.firestore {
 
     match /services/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if request.auth != null && request.auth.token.get('role', '') == 'admin';
     }
 
     match /appointments/{appointmentId} {
-      allow read, write: if request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.staff == true ||
-        resource.data.userId == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid
+      allow read: if hasActiveSession() && (
+        canManageSchedules() || resource.data.customerId == request.auth.uid
       );
+      // The API validates ownership, status changes, and slot capacity.
+      allow write: if false;
     }
 
     match /pets/{petId} {
-      allow read: if request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.staff == true ||
-        resource.data.ownerId == request.auth.uid
+      allow read: if request.auth != null && hasActiveSession() && (
+        canManageSchedules() || resource.data.customerId == request.auth.uid
       );
-      allow create, update: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      allow delete: if request.auth != null && (request.auth.token.admin == true || resource.data.ownerId == request.auth.uid);
+      // Pet validation and related booking deletion run in the API.
+      allow create, update: if false;
+      allow delete: if false;
     }
 
     match /notifications/{notificationId} {
       allow read, write: if request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.staff == true ||
-        resource.data.userId == request.auth.uid ||
-        request.resource.data.userId == request.auth.uid
+        request.auth.token.get('role', '') == 'admin' ||
+        request.auth.token.get('role', '') == 'staff' ||
+        resource.data.get('targetUserId', '') == request.auth.uid ||
+        request.resource.data.get('targetUserId', '') == request.auth.uid
       );
     }
 
     match /customers/{customerId} {
       allow read, write: if request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.staff == true ||
+        request.auth.token.get('role', '') == 'admin' ||
+        request.auth.token.get('role', '') == 'staff' ||
         customerId == request.auth.uid
       );
     }
 
+    match /availabilitySlots/{document=**} {
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
+    }
+
+    match /timeSlots/{document=**} {
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
+    }
+
+    match /slotManagement/{document=**} {
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
+    }
     match /schedules/{document=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && (request.auth.token.admin == true || request.auth.token.staff == true);
+      allow read: if hasActiveSession();
+      allow write: if canManageSchedules();
     }
 
     match /slot_management/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (request.auth.token.admin == true || request.auth.token.staff == true);
+      allow write: if request.auth != null && (request.auth.token.get('role', '') == 'admin' || request.auth.token.get('role', '') == 'staff');
     }
 
     match /lowCostKaponPromo/{promoId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if request.auth != null && request.auth.token.get('role', '') == 'admin';
     }
 
     match /revoked_tokens/{tokenId} {

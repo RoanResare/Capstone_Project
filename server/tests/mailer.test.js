@@ -10,7 +10,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
   let request;
   let failure;
   try {
-    Object.assign(env.mail, {apiKey: 're_test_only', fromEmail: 'notifications@verified.example', fromName: 'Clinic', replyTo: 'charmingfurfectionpetcare2@gmail.com'});
+    Object.assign(env.mail, {apiKey: 're_test_only', fromEmail: 'noreply@charmingfurfectionpetscareservices.online', fromName: 'Clinic', replyTo: 'charmingfurfectionpetcare2@gmail.com'});
     Object.assign(env.runtime, {mailDeliveryMode: 'resend', mailDeliveryReady: true});
     global.fetch = async (url, options) => {
       assert.equal(String(url), 'https://api.resend.com/emails');
@@ -18,6 +18,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
       assert.equal(headers.get('authorization'), 'Bearer re_test_only');
       assert.ok(options.signal);
       request = {payload: JSON.parse(options.body), headers};
+      assert.equal(request.payload.from, 'Clinic <noreply@charmingfurfectionpetscareservices.online>');
       return new Response(JSON.stringify(failure || {id: 'resend-email-id'}), {
         status: failure?.statusCode || 200, headers: {'Content-Type': 'application/json'},
       });
@@ -27,7 +28,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
       const result = await sendOtpEmail({to: 'test@example.com', fullName: 'Test', otpCode: '123456', role, expiresInMinutes: 5});
       assert.equal(result.messageId, 'resend-email-id');
       assert.equal(result.deliveryMode, 'resend');
-      assert.equal(request.payload.from, 'Clinic <notifications@verified.example>');
+      assert.equal(request.payload.from, 'Clinic <noreply@charmingfurfectionpetscareservices.online>');
       assert.deepEqual(request.payload.to, ['test@example.com']);
       assert.equal(request.payload.reply_to, 'charmingfurfectionpetcare2@gmail.com');
       assert.match(request.payload.html, new RegExp(role));
@@ -45,6 +46,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
     const id = request.headers.get('idempotency-key');
     assert.ok(id);
     assert.equal(id, request.payload.headers['Message-ID']);
+    assert.match(id, /@charmingfurfectionpetscareservices\.online>$/);
     await sendAppointmentReminder(appointment, 'appointment-1');
     assert.equal(request.headers.get('idempotency-key'), id);
     for (const [name, statusCode, expected] of [
@@ -71,6 +73,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
       return true;
     });
     failure = {};
+    await assert.rejects(mailer.sendMail({fromEmail: 'onboarding@resend.dev', to: 'test@example.com'}), /test sender is disabled/);
     await assert.rejects(mailer.sendMail({to: 'test@example.com'}), /delivery ID/);
     global.fetch = async () => {throw new Error('fetch failed');};
     await assert.rejects(sendPasswordResetEmail({to: 'test@example.com', resetLink: 'https://example.com'}), /Resend/);
@@ -104,9 +107,9 @@ test('Resend env ignores legacy SMTP credentials and mode, but honors explicit d
   assert.equal(configured.env.mail.smtp, undefined);
   assert.equal(load({EMAIL_USER: 'old@gmail.com', EMAIL_PASS: 'old'}).env.runtime.mailDeliveryReady, false);
   assert.equal(load({RESEND_API_KEY: 're_test'}).env.runtime.mailDeliveryReady, true);
-  assert.equal(load({RESEND_API_KEY: 're_test'}).env.mail.fromEmail, 'onboarding@resend.dev');
-  assert.equal(load({RESEND_FROM_EMAIL: '   ', EMAIL_FROM: 'old@gmail.com'}).env.mail.fromEmail, 'onboarding@resend.dev');
-  assert.equal(load({EMAIL_FROM: 'old@gmail.com'}).env.mail.fromEmail, 'onboarding@resend.dev');
+  assert.equal(load({RESEND_API_KEY: 're_test'}).env.mail.fromEmail, 'noreply@charmingfurfectionpetscareservices.online');
+  assert.equal(load({RESEND_FROM_EMAIL: '   ', EMAIL_FROM: 'old@gmail.com'}).env.mail.fromEmail, 'noreply@charmingfurfectionpetscareservices.online');
+  assert.equal(load({EMAIL_FROM: 'old@gmail.com'}).env.mail.fromEmail, 'noreply@charmingfurfectionpetscareservices.online');
   assert.equal(load({RESEND_API_KEY: 're_test', EMAIL_FROM: 'mail@verified.example'}).env.runtime.mailDeliveryReady, true);
   assert.equal(load({RESEND_API_KEY: 're_test', EMAIL_FROM: 'mail@verified.example', MAIL_DELIVERY_MODE: 'disabled'}).env.runtime.mailDeliveryReady, false);
   assert.equal(configured.getStartupDiagnostics().mail.apiKeyConfigured, true);

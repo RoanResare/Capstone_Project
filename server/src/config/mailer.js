@@ -18,8 +18,13 @@ async function sendMail({ fromName, fromEmail, to, subject, html, text, messageI
     const { Resend } = require("resend");
     resendClient = new Resend(env.mail.apiKey);
   }
-  const senderName = String(fromName || "").replace(/[\r\n"<>]/g, "");
+  const senderName = String(fromName || env.mail.fromName || "").replace(/[\r\n"<>]/g, "");
   const address = fromEmail || env.mail.fromEmail;
+  if (!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(address) || /@resend\.dev$/i.test(address)) {
+    throw Object.assign(new Error("Set RESEND_FROM_EMAIL to an address on your verified custom domain; the Resend test sender is disabled."), {
+      code: "invalid_from_address",
+    });
+  }
   const { data, error } = await resendClient.emails.send({
     from: senderName ? `${senderName} <${address}>` : address,
     to: Array.isArray(to) ? to : [to],

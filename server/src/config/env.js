@@ -212,7 +212,8 @@ const env = {
     provider: "resend",
     apiKey: readOptional("RESEND_API_KEY"),
     fromName: readOptional("EMAIL_FROM_NAME", "Charming Fur-fection Pet Care"),
-    fromEmail: readOptional("RESEND_FROM_EMAIL", "onboarding@resend.dev").toLowerCase(),
+    emailFrom: readOptional("EMAIL_FROM", "support@charmingfurfectionpetscareservices.online").toLowerCase(),
+    fromEmail: readOptional("RESEND_FROM_EMAIL", "noreply@charmingfurfectionpetscareservices.online").toLowerCase(),
     replyTo: readOptional("EMAIL_REPLY_TO"),
   },
 };

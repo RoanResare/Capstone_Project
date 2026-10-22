@@ -7,13 +7,14 @@ Set these backend variables in Render, then redeploy:
 ```dotenv
 MAIL_DELIVERY_MODE=resend
 RESEND_API_KEY=your_resend_api_key
-RESEND_FROM_EMAIL=notifications@your-verified-domain.com
+RESEND_FROM_EMAIL=noreply@charmingfurfectionpetscareservices.online
+EMAIL_FROM=support@charmingfurfectionpetscareservices.online
 EMAIL_FROM_NAME=Charming Fur-fection Pet Care
 ```
 
-The sender reads process.env.RESEND_FROM_EMAIL and defaults to onboarding@resend.dev when unset or blank. EMAIL_FROM does not override this fallback. A custom sender must belong to a domain verified in your Resend account. The onboarding@resend.dev sender is limited to testing with the email address associated with your Resend account; it cannot deliver registration emails to arbitrary customers. See https://resend.com/docs/knowledge-base/403-error-resend-dev-domain.
+The sender reads process.env.RESEND_FROM_EMAIL and defaults to noreply@charmingfurfectionpetscareservices.online when unset or blank. EMAIL_FROM does not override this fallback. All four email flows share this sender. The transport rejects resend.dev test senders and malformed addresses before sending. Any overridden sender must belong to a domain verified in the Resend account associated with the API key.
 
-The supplied key is stored only in ignored server/.env. Local configuration uses onboarding@resend.dev for testing as requested. Set RESEND_FROM_EMAIL to an address on your verified domain and restart to switch senders without editing code. The local file does not update Render environment variables. Never prefix RESEND_API_KEY with VITE_ or expose it to the browser.
+Local configuration uses the custom-domain sender. The local file does not update Render environment variables: replace any existing test sender in Render with the values above and restart/redeploy. Use a Resend API key with sending permission for the verified domain. Never prefix RESEND_API_KEY with VITE_ or expose it to the browser.
 
 A stale MAIL_DELIVERY_MODE=smtp still selects Resend when the Resend variables are configured. Explicit disabled/none/off/false modes disable delivery. Legacy EMAIL_USER, EMAIL_PASS, SMTP and OAuth variables cannot select another transport. Variables supplied by the launching process or deployment host take precedence over local env files.
 
@@ -27,4 +28,6 @@ Run focused checks:
 node --test server/tests/mailer.test.js server/tests/registrationProfile.test.js server/tests/appointmentReminder.test.js tests/firebaseRegistration.test.mjs
 ```
 
-For a manual live test, set EMAIL_TEST_TO and run node server/scripts/testEmailDelivery.js. This sends four marked messages (OTP, activation, password reset, reminder) using nonfunctional example links. With onboarding@resend.dev, EMAIL_TEST_TO must be your Resend account address.
+For a manual live test, set EMAIL_TEST_TO and run node server/scripts/testEmailDelivery.js. This sends four marked messages (OTP, activation, password reset, reminder) using nonfunctional example links.
+
+Reminders run in the backend process every minute for opted-in appointments with approved/accepted/confirmed status, starting one hour before the appointment (Asia/Manila). Keep the backend running continuously for timely reminders; a sleeping instance cannot run its timer. Failed sends retry with a stable idempotency key.

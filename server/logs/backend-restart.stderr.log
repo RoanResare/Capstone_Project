@@ -13,3 +13,13 @@
 [registration] Pending account cleanup failed. {
   error: '14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 2404:6800:4017:806::200a:443. Resolution note: '
 }
+[registration-security] Disposable list refresh failed; retaining the last known list. { error: 'fetch failed' }
+[registration-security] Disposable list refresh failed; retaining the last known list. { error: 'fetch failed' }
+[registration] Pending account cleanup failed. {
+  error: '14 UNAVAILABLE: Name resolution failed for target dns:firestore.googleapis.com:443'
+}
+[registration] Pending account cleanup failed. {
+  error: '14 UNAVAILABLE: Name resolution failed for target dns:firestore.googleapis.com:443'
+}
+[registration] Pending account cleanup failed. { error: '8 RESOURCE_EXHAUSTED: Quota exceeded.' }
+[registration] Pending account cleanup failed. { error: '8 RESOURCE_EXHAUSTED: Quota exceeded.' }

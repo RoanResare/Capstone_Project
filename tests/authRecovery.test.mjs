@@ -33,7 +33,7 @@ const mocks = {
     export async function updateFirebaseUserProfile() {}`,
   "customerAccount.js": `export function loadOrCreateCustomerProfile() { const s = globalThis.__authRecovery; s.profileCalls++; return s.profiles.shift().promise; }
     export async function signInCustomerWithEmailPassword() {}
-    export async function signUpCustomerWithEmailPassword() {}
+    export async function signUpCustomerWithEmailPassword() { throw new Error('Temporary or disposable email addresses are not allowed'); }
     export async function updateCustomerProfile() {}`,
   "authApi.js": ["completeBackendPasswordReset", "checkCustomerRegistrationAvailability", "loginUnifiedUser", "loginPortalUser",
     "requestBackendPasswordReset", "resendPortalOtp", "validateBackendPasswordResetCode", "verifyPortalOtp"]

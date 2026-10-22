@@ -55,9 +55,11 @@ app.use(helmet({
         "'self'",
         "https://identitytoolkit.googleapis.com",
         "https://securetoken.googleapis.com",
+        "https://firestore.googleapis.com",
         "https://api.charmingfurfectionpetscareservices.online",
         "https://capstone-project-bczf.onrender.com",
       ],
+      imgSrc: ["'self'", "data:", "https://www.google.com"],
     },
   },
 }));

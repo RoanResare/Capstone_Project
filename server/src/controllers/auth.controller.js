@@ -532,13 +532,14 @@ async function createOtpChallengeResponse(user, message, options = {}) {
       expiresInMinutes: env.otp.ttlMinutes,
     });
   } catch (error) {
-    console.error("[auth] OTP email delivery failed; login challenge remains active.", {
+    console.error("[auth] OTP email delivery failed.", {
       uid: user.uid,
       role: user.role,
       email: maskEmail(user.email),
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
       code: error?.code || "",
     });
+    throw error;
   }
 
   console.info("[auth] OTP challenge created.", {
@@ -830,6 +831,7 @@ async function forgotPassword(req, res) {
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
       code: error?.code || "",
     });
+    throw error;
   }
 
   console.info("[auth] Password reset link generated.", {

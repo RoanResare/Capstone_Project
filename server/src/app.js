@@ -46,7 +46,10 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  optionsSuccessStatus: 204,
+  preflightContinue: false,
 }));
 app.use(helmet({
   contentSecurityPolicy: {

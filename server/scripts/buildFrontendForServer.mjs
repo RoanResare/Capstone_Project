@@ -1,4 +1,4 @@
-import { cpSync, existsSync } from "node:fs";
+import { cpSync, existsSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -36,5 +36,10 @@ if (!existsSync(join(frontendDist, "index.html"))) {
   throw new Error(`Frontend build did not produce ${join(frontendDist, "index.html")}.`);
 }
 
+// Remove previous bundles so obsolete API URLs cannot remain in served assets.
+if (serverDist !== resolve(projectRoot, "server", "dist")) {
+  throw new Error("Refusing to replace an unexpected frontend output directory.");
+}
+rmSync(serverDist, { recursive: true, force: true });
 cpSync(frontendDist, serverDist, { recursive: true, force: true });
 console.info(`[build] Frontend bundle copied to ${serverDist}`);

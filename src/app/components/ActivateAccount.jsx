@@ -49,8 +49,8 @@ export function ActivateAccount() {
         window.setTimeout(() => navigate("/login?emailVerified=1", { replace: true }), 2200);
         return;
       }
-      setStatus("sent");
-      setMessage(result.message || "If an account is waiting for verification, a new activation link has been sent.");
+      setStatus(result.deliveryStatus === "sent" && result.messageId ? "sent" : "invalid");
+      setMessage(result.message || "No activation email was confirmed. Please try again or contact the clinic.");
     } catch (error) {
       setStatus("invalid");
       setMessage(error.message || "Unable to request a new link right now. Please try again shortly.");

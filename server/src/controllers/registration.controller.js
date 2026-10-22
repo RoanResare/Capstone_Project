@@ -176,15 +176,25 @@ async function activatePendingProfile(uid, confirmationEmail) {
 async function resendCustomerEmailVerification(req, res) {
   const email = normalizeEmail(req.body?.email || "");
   if (!email || email.length > 254) throw new ApiError(400, "Enter the email address used to register.");
-  const genericMessage = "If an account is waiting for email verification, a new activation link has been sent.";
-  const snapshot = await db.collection("users").where("email", "==", email).limit(1).get();
-  if (snapshot.empty) return res.status(200).json({ success: true, message: genericMessage });
-  const userDoc = snapshot.docs[0];
+  if (!auth || !db || !env.runtime.mailDeliveryReady) {
+    throw new ApiError(503, "Activation email delivery is not configured. Check RESEND_API_KEY and RESEND_FROM_EMAIL.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
+  }
+  // Resolve by Auth UID: legacy profile email casing must not hide a pending account.
+  let firebaseUser;
+  try { firebaseUser = await auth.getUserByEmail(email); }
+  catch (error) {
+    if (error?.code !== "auth/user-not-found") throw error;
+  }
+  const notSent = () => res.status(200).json({ success: true, deliveryStatus: "not_sent",
+    message: "No activation email was sent. If your account still needs activation, register again or contact the clinic for help." });
+  if (!firebaseUser) return notSent();
+  const profile = await db.collection("users").doc(firebaseUser.uid).get();
+  if (!profile.exists) return notSent();
+  const userDoc = { id: firebaseUser.uid, ref: profile.ref, data: () => profile.data() };
   const user = userDoc.data() || {};
   if (user.verificationStatus !== "pending" || user.accountStatus !== "inactive") {
-    return res.status(200).json({ success: true, message: genericMessage });
+    return notSent();
   }
-  const firebaseUser = await auth.getUser(userDoc.id).catch(() => null);
   if (firebaseUser?.emailVerified) {
     await activatePendingProfile(userDoc.id, email);
     return res.status(200).json({
@@ -195,18 +205,21 @@ async function resendCustomerEmailVerification(req, res) {
   }
   const lastSentAt = Date.parse(user.verificationSentAt || "");
   if (Number.isFinite(lastSentAt) && Date.now() - lastSentAt < VERIFICATION_RESEND_COOLDOWN_MS) {
-    return res.status(200).json({ success: true, message: genericMessage });
+    throw new ApiError(429, "An activation email was sent recently. Please wait one minute before requesting another.", { code: "ACTIVATION_RESEND_COOLDOWN" });
   }
   const providerLink = await generateEmailVerificationLink(email);
   const verificationLink = buildAppVerificationLink(providerLink, email);
-  await sendEmailVerificationLink({ to: email, fullName: user.fullName || "", verificationLink });
+  const delivery = await sendEmailVerificationLink({ to: email, fullName: user.fullName || "", verificationLink });
   const sentAt = new Date().toISOString();
   await userDoc.ref.update({
     verificationSentAt: sentAt,
     verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     updatedAt: sentAt,
+  }).catch((error) => {
+    console.error("[registration] Activation email accepted but timestamp update failed.", { uid: userDoc.id, code: error?.code || "" });
   });
-  return res.status(200).json({ success: true, message: genericMessage });
+  return res.status(200).json({ success: true, deliveryStatus: "sent", messageId: delivery.messageId,
+    message: "A new activation link has been sent. Check your inbox and spam folder." });
 }
 
 module.exports = { activateCustomerEmail, createCustomerProfile, resendCustomerEmailVerification };

@@ -3,7 +3,10 @@ import { getSecurityEpoch, isCurrentSecurityResponse } from "../utils/securitySe
 import { resolveApiBaseUrl } from "../utils/apiBaseUrl.js";
 
 export const apiClient = axios.create({
-  baseURL: resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL, import.meta.env.PROD),
+  baseURL: resolveApiBaseUrl(
+    import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL,
+    import.meta.env.PROD,
+  ),
   headers: {
     "Content-Type": "application/json",
   },

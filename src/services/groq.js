@@ -1,14 +1,10 @@
 import { chatbotSuggestionChips } from "../app/data/systemData.js";
+import { resolveApiBaseUrl } from "../app/utils/apiBaseUrl.js";
 
-function getDefaultApiBaseUrl() {
-  if (typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
-    return "http://localhost:5000/api";
-  }
-
-  return "https://capstone-project-bczf.onrender.com/api";
-}
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl()).replace(
+const API_BASE_URL = resolveApiBaseUrl(
+  import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL,
+  import.meta.env.PROD,
+).replace(
   /\/+$/,
   "",
 );

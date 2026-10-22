@@ -10,4 +10,8 @@ test("production signup requests use the hosted API instead of the visitor's loc
   assert.equal(resolveApiBaseUrl(undefined, false), "http://localhost:5000/api");
   assert.equal(resolveApiBaseUrl(" https://api.example/api ", true), "https://api.example/api");
   assert.equal(resolveApiBaseUrl("https://api.example/api", false), "https://api.example/api");
+  assert.equal(resolveApiBaseUrl("https://capstone-project-bczf.onrender.com/", true),
+    "https://capstone-project-bczf.onrender.com/api");
+  assert.equal(resolveApiBaseUrl("https://capstone-project-bczf.onrender.com/api/", true),
+    "https://capstone-project-bczf.onrender.com/api");
 });

@@ -31,6 +31,8 @@ const resetPasswordIndexPath =
 const allowedOrigins = [
   'https://www.charmingfurfectionpetscareservices.online',
   'https://api.charmingfurfectionpetscareservices.online',
+  'https://charmingfurfectionpetscareservices.online',
+  'https://capstone-project-1-yqto.onrender.com',
   'http://localhost:5173',
   'http://localhost:3000'
 ];
@@ -54,6 +56,7 @@ app.use(helmet({
         "https://identitytoolkit.googleapis.com",
         "https://securetoken.googleapis.com",
         "https://api.charmingfurfectionpetscareservices.online",
+        "https://capstone-project-bczf.onrender.com",
       ],
     },
   },

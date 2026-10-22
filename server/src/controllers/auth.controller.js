@@ -1,4 +1,5 @@
 const { auth } = require("../config/firebaseAdmin");
+const { getAllowedClientOrigins } = require("../config/clientOrigins");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
 const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES } = require("../constants/auth");
@@ -114,13 +115,6 @@ function normalizeOriginCandidate(value = "") {
   } catch {
     return "";
   }
-}
-
-function getAllowedClientOrigins() {
-  return env.clientUrl
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
 }
 
 function isAllowedClientOrigin(origin = "") {

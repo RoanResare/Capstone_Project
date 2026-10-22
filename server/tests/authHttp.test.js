@@ -28,6 +28,12 @@ test("auth endpoints allow frontend preflights and reject malformed JSON consist
       assert.equal((await response.json()).success, false);
     }
     }
+    for (const route of ["/reset-password?oobCode=example-code", "/activate-account?oobCode=example-code"]) {
+      const landing = await fetch(`${base}${route}`);
+      assert.equal(landing.status, 200);
+      assert.match(landing.headers.get("content-type"), /text\/html/);
+      assert.match(await landing.text(), /id="root"/);
+    }
     const page = await fetch(`${base}/verify-otp`);
     const csp = page.headers.get("content-security-policy");
     assert.match(csp, /connect-src[^;]*https:\/\/firestore.googleapis.com/);

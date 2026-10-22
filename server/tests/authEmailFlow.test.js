@@ -29,7 +29,7 @@ function loadController(send) {
       return localRequire(id);
     },
   };
-  vm.runInNewContext(fs.readFileSync(filename, "utf8") + "\nmodule.exports.challenge = createOtpChallengeResponse;", context, { filename });
+  vm.runInNewContext(fs.readFileSync(filename, "utf8") + "\nmodule.exports.challenge = createOtpChallengeResponse; module.exports.resetLink = buildAppPasswordResetLink;", context, { filename });
   return { controller: context.module.exports, user };
 }
 
@@ -51,4 +51,16 @@ test("password reset surfaces mail failures instead of claiming a link was sent"
   const { controller } = loadController(async () => { throw failure; });
   const req = { body: { identifier: "customer@example.com" }, headers: { origin: "http://localhost:5173" } };
   await assert.rejects(controller.forgotPassword(req, { status() { assert.fail("Must not return success"); } }), error => error === failure);
+});
+
+test("reset links return to either supported frontend and preserve the provider code", () => {
+  const { controller } = loadController(async () => {});
+  for (const origin of ["https://capstone-project-1-yqto.onrender.com",
+    "https://www.charmingfurfectionpetscareservices.online"]) {
+    const link = new URL(controller.resetLink({ headers: { origin } },
+      "https://example.com/action?mode=resetPassword&oobCode=example-code&lang=en"));
+    assert.equal(link.origin, origin);
+    assert.equal(link.pathname, "/reset-password");
+    assert.equal(link.searchParams.get("oobCode"), "example-code");
+  }
 });

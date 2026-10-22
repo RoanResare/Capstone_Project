@@ -3,6 +3,7 @@ import { getSecurityEpoch, isCurrentSecurityResponse } from "../utils/securitySe
 import { resolveApiBaseUrl } from "../utils/apiBaseUrl.js";
 
 export const apiClient = axios.create({
+  timeout: 60000,
   baseURL: resolveApiBaseUrl(
     import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL,
     import.meta.env.PROD,
@@ -27,7 +28,14 @@ export function reportSessionSecurityViolation(error) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof response.data === "string" && /text\/html/i.test(response.headers["content-type"] || "")) {
+      const error = new Error("The API returned a web page instead of JSON. Check the API URL and domain routing.");
+      error.response = response;
+      return Promise.reject(error);
+    }
+    return response;
+  },
   (error) => {
     reportSessionSecurityViolation(error);
     return Promise.reject(error);
@@ -48,7 +56,11 @@ export function extractApiError(error, fallbackMessage) {
   }
 
   if (error?.code === "ERR_NETWORK" || error?.message === "Network Error") {
-    return "Cannot reach the backend API. Check your connection and the configured API URL, then try again.";
+    return "Cannot reach the backend API. The API domain may be blocking requests or unavailable. Please try again shortly.";
+  }
+
+  if (["ECONNABORTED", "ETIMEDOUT"].includes(error?.code)) {
+    return "The backend took too long to respond. Please wait a moment and try again.";
   }
 
   if (error instanceof Error && error.message) {

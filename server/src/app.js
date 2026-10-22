@@ -12,6 +12,7 @@ const groqRoutes = require("./routes/groq.routes");
 const staffRoutes = require("./routes/staff.routes");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { getTrustedProxies } = require("./utils/proxyTrust");
+const { getAllowedClientOrigins } = require("./config/clientOrigins");
 
 const app = express();
 app.set("trust proxy", getTrustedProxies(env.security.trustedProxyCidrs));
@@ -28,14 +29,7 @@ const frontendIndexPath =
 const frontendDistPath = path.dirname(frontendIndexPath);
 const resetPasswordIndexPath =
   frontendIndexCandidates.find((candidate) => fs.existsSync(candidate)) || frontendIndexPath;
-const allowedOrigins = [
-  'https://www.charmingfurfectionpetscareservices.online',
-  'https://api.charmingfurfectionpetscareservices.online',
-  'https://charmingfurfectionpetscareservices.online',
-  'https://capstone-project-1-yqto.onrender.com',
-  'http://localhost:5173',
-  'http://localhost:3000'
-];
+const allowedOrigins = getAllowedClientOrigins();
 
 app.use(cors({
   origin: function (origin, callback) {

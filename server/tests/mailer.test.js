@@ -45,6 +45,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
     assert.match(request.payload.text, /09:00 AM/);
     const id = request.headers.get('idempotency-key');
     assert.ok(id);
+    assert.ok(id.length <= 256);
     assert.equal(id, request.payload.headers['Message-ID']);
     assert.match(id, /@charmingfurfectionpetscareservices\.online>$/);
     await sendAppointmentReminder(appointment, 'appointment-1');

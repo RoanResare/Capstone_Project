@@ -56,3 +56,36 @@ test("persists delivery, retries failure, and leaves appointment status untouche
   assert.equal(appointment.status, "Approved");
   assert.ok([...records.values()][0].sentAt);
 });
+
+test("queries clinic date, isolates claim failures, and never marks missing delivery IDs sent", async () => {
+  const now = Date.parse("2026-10-20T00:00:00Z");
+  const records = new Map();
+  const entries = ["broken", "missing-id", "healthy"].map(id => ({ id, ref: { id }, data: () => appointment }));
+  const db = {
+    collection(name) { return {
+      where(field, op, value) {
+        assert.equal(name, "appointments"); assert.equal(field, "scheduleDate");
+        assert.equal(op, "=="); assert.equal(value, "2026-10-20");
+        return { get: async () => ({ docs: entries }) };
+      }, doc: id => ({ id }),
+    }; },
+    runTransaction: async fn => fn({
+      get: async ref => {
+        if (ref === entries[0].ref) throw new Error("claim failed");
+        return { exists: true, data: () => entries.some(entry => entry.ref === ref) ? appointment : records.get(ref.id) };
+      },
+      set: (ref, value) => records.set(ref.id, { ...records.get(ref.id), ...value }),
+    }),
+  };
+  const sent = [];
+  const worker = createReminderWorker({ db, clock: () => now, sendReminder: async (_, id) => {
+    sent.push(id); return id.startsWith("missing-id") ? {} : { messageId: "provider-id" };
+  } });
+  await worker.run();
+  assert.equal(sent.length, 2);
+  const missing = records.get("missing-id-2026-10-20-0900");
+  assert.equal(missing.sentAt, undefined);
+  assert.equal(missing.lastErrorCode, "MISSING_DELIVERY_ID");
+  assert.equal(missing.retryAt, now + 60000);
+  assert.equal(records.get("healthy-2026-10-20-0900").messageId, "provider-id");
+});

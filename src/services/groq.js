@@ -144,6 +144,7 @@ function isSupportedModel(model = "") {
 }
 
 function getConfiguredProxyUrl() {
+  if (import.meta.env.PROD) return "";
   return normalizeValue(import.meta.env.VITE_GROQ_PROXY_URL);
 }
 

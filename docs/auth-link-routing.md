@@ -2,7 +2,7 @@
 
 Password reset emails link to `/reset-password?oobCode=...` on the requesting allowed frontend (or PASSWORD_RESET_URL). Activation emails link to EMAIL_VERIFICATION_URL (defaults to FRONTEND_URL + `/activate-account`). Express serves the SPA for both routes; React reads the code and POSTs JSON to `/api/auth/validate-reset-code` or `/api/auth/register/activate`. Reset submission POSTs to `/api/auth/reset-password`.
 
-The shared frontend API client and chatbot select VITE_API_URL, then VITE_API_BASE_URL. Production configuration uses:
+Production API and chatbot traffic is pinned in `src/app/utils/apiBaseUrl.js` to the direct Render backend, regardless of stale VITE_API_URL, VITE_API_BASE_URL, or VITE_GROQ_PROXY_URL overrides. Development continues to support these overrides. The matching production environment setting is:
 
 ```dotenv
 VITE_API_URL=https://capstone-project-bczf.onrender.com/api

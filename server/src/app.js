@@ -46,7 +46,18 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      connectSrc: [
+        "'self'",
+        "https://identitytoolkit.googleapis.com",
+        "https://securetoken.googleapis.com",
+        "https://api.charmingfurfectionpetscareservices.online",
+      ],
+    },
+  },
+}));
 app.use(express.json({ limit: "8mb" }));
 
 function sendFrontendIndex(req, res, next) {

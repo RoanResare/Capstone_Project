@@ -12,7 +12,7 @@ async function saveKaponPromo(req, res) {
   if (!["activate", "edit", "deactivate"].includes(action) || !Number.isInteger(expectedRevision) || expectedRevision < 0) {
     throw new ApiError(400, "A valid promo action and revision are required.");
   }
-  const { normalizePromoInput } = await import("../../../shared/lowCostKaponPromo.mjs");
+  const { normalizePromoInput, validatePromoStart } = await import("../../../shared/lowCostKaponPromo.mjs");
   let configuration;
   if (action !== "deactivate") {
     try { configuration = normalizePromoInput(req.body); }
@@ -35,6 +35,10 @@ async function saveKaponPromo(req, res) {
     const now = new Date().toISOString();
     if (configuration?.endsAt && configuration.endsAt <= now) {
       throw new ApiError(400, "End time must be in the future.");
+    }
+    if (configuration) {
+      try { validatePromoStart(configuration.startsAt, { previousStartsAt: action === "edit" ? current.startsAt : null }); }
+      catch (error) { throw new ApiError(400, error.message); }
     }
     const actor = { uid: user.uid, name: user.name || user.fullName || "", role: user.role };
     const next = action === "deactivate"

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isGoogleFormLink, normalizePromoInput, isKaponPromoAvailable, isLowCostKaponAppointment } from "../shared/lowCostKaponPromo.mjs";
+import { isGoogleFormLink, normalizePromoInput, isKaponPromoAvailable, isLowCostKaponAppointment, validatePromoStart } from "../shared/lowCostKaponPromo.mjs";
 
 const formLink = "https://forms.gle/example123";
 test("only HTTPS Google Form links can activate the promotion", () => {
@@ -29,4 +29,13 @@ test("service detection catches IDs and name variants without affecting other se
     assert.ok(isLowCostKaponAppointment(appointment));
   }
   assert.equal(isLowCostKaponAppointment({ serviceId: "vaccination", service: "Vaccination" }), false);
+});
+
+test("promo starts allow the current minute and future times, reject past changes, and preserve an existing start", () => {
+  const now = Date.parse("2030-01-01T12:00:45Z");
+  assert.doesNotThrow(() => validatePromoStart("2030-01-01T12:00:00Z", { now }));
+  assert.doesNotThrow(() => validatePromoStart("2030-01-01T12:01:00Z", { now }));
+  assert.throws(() => validatePromoStart("2030-01-01T11:59:00Z", { now }), /current time or later/);
+  assert.doesNotThrow(() => validatePromoStart(null, { now }));
+  assert.doesNotThrow(() => validatePromoStart("2029-01-01T12:00:00Z", { now, previousStartsAt: "2029-01-01T12:00:00Z" }));
 });

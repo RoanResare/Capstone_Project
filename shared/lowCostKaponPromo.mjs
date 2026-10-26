@@ -50,3 +50,11 @@ export function isLowCostKaponAppointment(appointment) {
 }
 import { assertAppropriateText, PROMO_TEXT_FIELDS } from "./textModeration.mjs";
 
+
+// Schedule inputs have minute precision; allow the current minute.
+export function validatePromoStart(startsAt, { now = Date.now(), previousStartsAt = null } = {}) {
+  if (!startsAt || (previousStartsAt && Date.parse(startsAt) === Date.parse(previousStartsAt))) return;
+  if (Date.parse(startsAt) < Math.floor(now / 60000) * 60000) {
+    throw new Error("Start time must be the current time or later.");
+  }
+}

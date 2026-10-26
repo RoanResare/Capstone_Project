@@ -79,7 +79,7 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
         </div>
       </div>
       <FullCalendar ref={calendarRef} plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth" headerToolbar={false} height={520} events={events} editable={false}
+        initialView="dayGridMonth" headerToolbar={false} height={view === "dayGridMonth" ? "auto" : 640} events={events} editable={false}
         dayMaxEvents={3} eventMaxStack={3} moreLinkClick="popover" eventDisplay="block" displayEventEnd={false}
         slotEventOverlap={false}
         eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short", omitZeroMinute: true }}

@@ -411,7 +411,7 @@ export function CustomerProfile() {
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [pendingProfilePayload, setPendingProfilePayload] = useState(null);
-  const [preselectedServiceId, setPreselectedServiceId] = useState("");
+  const [preselectedServiceId, setPreselectedServiceId] = useState(() => searchParams.get("service") || "");
   const [bookingScrollRequest, setBookingScrollRequest] = useState(0);
   const bookingSectionRef = useRef(null);
   const petSectionRef = useRef(null);
@@ -883,6 +883,10 @@ export function CustomerProfile() {
       setPendingBookingServiceId(serviceId);
       openTab("overview");
       setFeedback({ type: "info", message: "Create a pet profile first, then continue booking." });
+      return;
+    }
+    if (searchParams.has("rebook")) {
+      navigate('/customer/dashboard?tab=services&service=' + encodeURIComponent(serviceId));
       return;
     }
     // Keep the mounted form when choosing another card within this tab.
@@ -1359,7 +1363,7 @@ export function CustomerProfile() {
                 </div>
                 {preselectedServiceId && (
                   <div ref={bookingSectionRef} className="mt-5 scroll-mt-24">
-                    <AppointmentBooking embedded initialServiceId={preselectedServiceId} serviceSelectionRequest={bookingScrollRequest} />
+                    <AppointmentBooking embedded initialServiceId={preselectedServiceId} serviceSelectionRequest={bookingScrollRequest} rebookAppointment={(state.appointments || []).find((appointment) => appointment.id === searchParams.get("rebook") && (appointment.customerId === customer?.uid || appointment.customerEmail === customer?.email))} />
                   </div>
                 )}
               </section>
@@ -1438,6 +1442,11 @@ export function CustomerProfile() {
                           {selectedAppointment.petName}
                         </h3>
                         <StatusChip label={appointmentStatusLabel(selectedAppointment.status)} />
+                        {["Rejected", "Cancelled", "Completed"].includes(selectedAppointment.status) && (
+                          <button type="button" onClick={() => {
+                            navigate('/customer/dashboard?tab=services&service=' + encodeURIComponent(selectedAppointment.serviceId || selectedAppointment.serviceIds?.[0] || '') + '&rebook=' + encodeURIComponent(selectedAppointment.id));
+                          }} className="ml-auto rounded-lg bg-[#173E44] px-4 py-2 text-sm font-semibold text-white">Book Again</button>
+                        )}
                       </div>
                       <p className="mt-3 text-sm text-[#607277]">{selectedAppointment.service}</p>
                       <BookingAdditions appointment={selectedAppointment}/>

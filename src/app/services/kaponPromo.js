@@ -1,6 +1,6 @@
 import { doc, getDoc, runTransaction } from "firebase/firestore";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
-import { normalizePromoInput } from "../../../shared/lowCostKaponPromo.mjs";
+import { normalizePromoInput, validatePromoStart } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
 
 const KAPON_PROMO_CACHE_KEY = "furfection-cache:lowCostKaponPromo";
@@ -64,6 +64,7 @@ export async function saveKaponPromo(payload) {
     if (action !== "activate" && current.isActive !== true) throw new Error("This promotion is no longer active.");
     if (action === "activate" && current.isActive === true) throw new Error("This promotion is already active. Use Edit Promo to change it.");
     if (configuration?.endsAt && configuration.endsAt <= new Date().toISOString()) throw new Error("End time must be in the future.");
+    if (configuration) validatePromoStart(configuration.startsAt, { previousStartsAt: action === "edit" ? current.startsAt : null });
     const next = action === "deactivate"
       ? { isActive: false, revision: expectedRevision + 1 }
       : { ...configuration, isActive: true, revision: expectedRevision + 1 };

@@ -256,7 +256,7 @@ export function PortalLayout() {
           </button>
         </aside>
 
-        <section className="min-w-0 space-y-4 xl:flex xl:min-h-0 xl:flex-col">
+        <section className="min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:px-1 xl:pb-4 [scrollbar-gutter:stable]">
           <header className="flex flex-col gap-4 rounded-[24px] bg-white px-6 py-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] md:flex-row md:items-center md:justify-between">
             <div>
               <Link
@@ -314,7 +314,7 @@ export function PortalLayout() {
             </div>
           </header>
 
-          <div className="min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1">
+          <div className="min-w-0 px-1 pb-2">
             <Outlet />
           </div>
         </section>

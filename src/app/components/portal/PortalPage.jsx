@@ -1,3 +1,4 @@
+import { getPasswordPolicyError } from "../../utils/passwordPolicy.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
 import { AppointmentApprovalDialog } from "./AppointmentApprovalDialog.jsx";
@@ -1955,6 +1956,12 @@ function ManageUsersWorkspace({
       return;
     }
 
+    const passwordError = fullPayload.password ? getPasswordPolicyError(fullPayload.password) : "";
+    if (passwordError) {
+      setFeedback({ type: "error", message: passwordError });
+      toast.error(passwordError);
+      return;
+    }
     const payload = isCreatingNew ? fullPayload : buildChangedPortalUserPayload(fullPayload, originalForm);
 
     if (!isCreatingNew && Object.keys(payload).length === 0) {
@@ -2154,7 +2161,7 @@ function ManageUsersWorkspace({
                     tabIndex={0}
                     onClick={() => openUser(user.id, selectedNotificationId)}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
                         event.preventDefault();
                         openUser(user.id, selectedNotificationId);
                       }
@@ -2278,9 +2285,7 @@ function ManageUsersWorkspace({
                   </select>
                 </div>
 
-              </div>
-
-              <div>
+              <div className="md:col-start-2">
                 <label className="mb-2 block text-sm font-medium text-[#425A60]">
                   {isCreatingNew ? "Password" : "New password"}
                 </label>
@@ -2307,6 +2312,8 @@ function ManageUsersWorkspace({
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+              </div>
+
               </div>
 
               {!isCreatingNew && selectedUser && (

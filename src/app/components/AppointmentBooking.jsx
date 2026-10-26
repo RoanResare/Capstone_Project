@@ -1,7 +1,7 @@
 import {CLINICAL_SERVICES,clinicalOptions,buildClinicalSelections} from "../../../shared/clinicalServices.mjs";
 import {REQUIRED_VACCINATION_FEE,dewormingForPet,dewormingDescription} from "../../../shared/bookingAdditions.mjs";
 import { PricelistImage } from "./PricelistImage.jsx";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
@@ -132,7 +132,7 @@ function mergeSlotsById(baseSlots = [], overrideSlots = []) {
   return Array.from(slotsById.values());
 }
 
-export function AppointmentBooking({ embedded = false, initialServiceId = "", serviceSelectionRequest = 0 }) {
+export function AppointmentBooking({ embedded = false, initialServiceId = "", serviceSelectionRequest = 0, rebookAppointment = null }) {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -151,6 +151,23 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (rebookAppointment) {
+      const serviceIds = rebookAppointment.serviceIds?.length ? rebookAppointment.serviceIds : [rebookAppointment.serviceId];
+      setPetSelections([{
+        ...createPetSelection(serviceIds[0] || initialServiceId),
+        petRecordId: rebookAppointment.petRecordId || rebookAppointment.petRecordIds?.[0] || "",
+        additionalServiceId: serviceIds[1] || null,
+        groomingServiceIds: rebookAppointment.grooming?.serviceIds || [],
+        notes: rebookAppointment.notes || "",
+        clinicalChoices: Object.fromEntries((rebookAppointment.clinicalSelections || []).filter(choice => !choice.required).map(choice => [choice.category, choice.serviceId])),
+      }]);
+      setReminderEnabled(rebookAppointment.reminderEnabled !== false);
+      setSelectedDate("");
+      setSelectedSlotId("");
+      setErrors({});
+      setFeedback({ type: "info", message: "Your previous pet and service details are filled in. Choose an available date and time for your new appointment." });
+      return;
+    }
     if (!initialServiceId) return;
     setPetSelections((current) => current.map((selection, index) => index === 0
       ? { ...selection, serviceId: initialServiceId, additionalServiceId: null, groomingServiceIds: [], clinicalChoices: {} }
@@ -159,7 +176,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
     setSelectedSlotId("");
     setErrors({});
     setFeedback({ type: "", message: "" });
-  }, [initialServiceId, serviceSelectionRequest]);
+  }, [initialServiceId, serviceSelectionRequest, rebookAppointment?.id]);
 
 
   const customerPetRecords = useMemo(
@@ -234,6 +251,22 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   );
   const selectedDateSlots = selectedDate ? availableSlotsByDate[selectedDate] || [] : [];
   const selectedSlot = availableSlots.find((slot) => slot.id === selectedSlotId) || null;
+  const restoredSchedule = useRef("");
+  useEffect(() => {
+    if (!rebookAppointment || !availabilityReady) return;
+    const request = rebookAppointment.id + ':' + serviceSelectionRequest;
+    if (restoredSchedule.current === request) return;
+    restoredSchedule.current = request;
+    const previousSlot = availableSlots.find(slot =>
+      slot.date === rebookAppointment.scheduleDate &&
+      slot.time.slice(0, 5) === String(rebookAppointment.scheduleTime || "").slice(0, 5));
+    if (previousSlot) {
+      setSelectedDate(previousSlot.date);
+      setSelectedSlotId(previousSlot.id);
+      const date = parseLocalDate(previousSlot.date);
+      setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+    }
+  }, [rebookAppointment?.id, serviceSelectionRequest, availabilityReady, availableSlots]);
 
   const updateSelection = (id, updates) => {
     setPetSelections((current) =>
@@ -353,7 +386,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
           petType: pet.petType,
           weightKg: pet.weightKg || "",
           breed: pet.breed,
-          notes: pet.notes || "",
+          notes: selection.notes ?? pet.notes ?? "",
         };
 
         await createAppointment(
@@ -387,7 +420,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
             scheduleTime: selectedSlot.time,
             status: "Pending",
             reminderEnabled,
-            notes: pet.notes || "",
+            notes: selection.notes ?? pet.notes ?? "",
             updatedAt: now,
           },
           customer.fullName || customer.name || "Customer",
@@ -486,6 +519,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                             onChange={(event) =>
                               updateSelection(selection.id, {
                                 petRecordId: event.target.value,
+                                notes: undefined,
                                 serviceId: selection.serviceId,
                                 groomingServiceIds: [], clinicalChoices: {},
                               })

@@ -50,7 +50,7 @@ const PortalPage = lazy(async () => {
 
 function RouteRenderBoundary({ Component }) {
   const location = useLocation();
-  const boundaryKey = location.pathname === "/portal/appointments" ? location.pathname : `${location.pathname}${location.search}${location.hash}`;
+  const boundaryKey = location.pathname.startsWith("/portal/") ? location.pathname : `${location.pathname}${location.search}${location.hash}`;
 
   return (
     <AppErrorBoundary key={boundaryKey}>

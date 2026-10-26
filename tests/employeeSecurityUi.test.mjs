@@ -64,6 +64,13 @@ test("admin and staff appointment History renders lifecycle records and omits ac
     const historyStart = html.indexOf(">History</h3>");
     assert.ok(historyStart >= 0);
     const history = html.slice(historyStart);
+    const cardText = history.replace(/<!--.*?-->/g, "");
+    assert.ok(cardText.includes("Milo | Grooming"));
+    assert.ok(!cardText.includes("Milo ? Grooming"));
+    for (const status of ["Rejected", "Cancelled", "No Show"]) {
+      assert.ok(cardText.includes(`Pet ${status} | Vaccination`));
+      assert.ok(!cardText.includes(`Pet ${status} ? Vaccination`));
+    }
     assert.match(history, /Milo/);
     assert.match(history, /Staff A/);
     for (const status of ["Rejected", "Cancelled", "No Show"]) assert.ok(history.includes(`Pet ${status}`));

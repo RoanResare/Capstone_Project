@@ -51,13 +51,24 @@ test("every employee mutation prompts for the holder's password; new password fo
 });
 
 test("admin and staff appointment History renders lifecycle records and omits account creation logs", () => {
+  const state = globalThis.__employeeSecurityUi.state;
+  state.appointments = [state.appointments[0],
+    ...["Rejected", "Cancelled", "No Show", "Pending", "Confirmed"].map(status => ({
+      id: status, petName: `Pet ${status}`, service: "Vaccination", status,
+      updatedAt: "2030-01-02T12:00:00Z",
+    })),
+  ];
   for (const role of ["admin", "staff"]) {
     globalThis.__employeeSecurityUi.currentUser.role = role;
     const html = renderToString(createElement(MemoryRouter, { initialEntries: ["/portal/appointments"] }, createElement(PortalPage)));
-    const history = html.slice(html.indexOf(">History</h3>"));
-    assert.ok(history.length > 0);
+    const historyStart = html.indexOf(">History</h3>");
+    assert.ok(historyStart >= 0);
+    const history = html.slice(historyStart);
     assert.match(history, /Milo/);
     assert.match(history, /Staff A/);
+    for (const status of ["Rejected", "Cancelled", "No Show"]) assert.ok(history.includes(`Pet ${status}`));
+    assert.ok(!history.includes("Pet Pending"));
+    assert.ok(!history.includes("Pet Confirmed"));
     assert.ok(!history.includes("Admin account created"));
     assert.ok(!history.includes("Account creation log"));
   }

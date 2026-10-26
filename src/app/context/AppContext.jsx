@@ -2162,6 +2162,7 @@ export function AppProvider({ children }) {
 
       try {
         const response = await userApi.createUser(accessToken, {
+          currentPassword: payload.currentPassword,
           fullName: name,
           email,
           username,
@@ -2268,6 +2269,7 @@ export function AppProvider({ children }) {
 
       try {
         const response = await userApi.updateUser(accessToken, id, {
+          currentPassword: updates.currentPassword,
           fullName: nextName,
           email: normalizedEmail,
           username: normalizedUsername,
@@ -2313,7 +2315,7 @@ export function AppProvider({ children }) {
         };
       }
     },
-    async deleteUser(id) {
+    async deleteUser(id, currentPassword) {
       if (currentUser?.role !== "admin") {
         return { ok: false, error: "Only administrators can delete employee accounts." };
       }
@@ -2332,7 +2334,7 @@ export function AppProvider({ children }) {
       }
 
       try {
-        await userApi.deleteUser(accessToken, id);
+        await userApi.deleteUser(accessToken, id, currentPassword);
         dispatch({
           type: "DELETE_USER",
           payload: { id },

@@ -1,3 +1,4 @@
+import { useAttemptLock } from "../utils/useAttemptLock.js";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
@@ -41,6 +42,7 @@ export function OtpVerification() {
   } = useAuth();
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const [otpCode, setOtpCode] = useState("");
+  const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("otp", pendingOtp?.email || "");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -85,7 +87,7 @@ export function OtpVerification() {
   const handleVerify = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting || isOtpExpired) {
+    if (isSubmitting || lockSeconds > 0 || isOtpExpired) {
       return;
     }
 
@@ -96,6 +98,7 @@ export function OtpVerification() {
       const result = await verifyPendingOtp(otpCode);
 
       if (!result.ok) {
+        applyLock(result);
         setFeedback({ type: "error", message: result.error });
         showErrorToast(result.error);
         return;
@@ -111,7 +114,7 @@ export function OtpVerification() {
   };
 
   const handleResend = async () => {
-    if (isResending || resendInSeconds > 0) {
+    if (isResending || lockSeconds > 0 || resendInSeconds > 0) {
       return;
     }
 
@@ -120,6 +123,7 @@ export function OtpVerification() {
 
     try {
       const result = await resendOtp();
+      applyLock(result);
       setFeedback({
         type: result.ok ? "success" : "error",
         message: result.ok ? result.message : result.error,
@@ -214,6 +218,7 @@ export function OtpVerification() {
           className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
         >
           <form onSubmit={handleVerify} className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Verification and resend are blocked for {formatCountdown(lockSeconds)}.</p>}
             <div className="rounded-[24px] bg-[#F5FAFA] px-5 py-5">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#EEF6F6] text-[#2D6B73]">
@@ -256,7 +261,7 @@ export function OtpVerification() {
                 onChange={(event) =>
                   setOtpCode(event.target.value.replace(/\D+/g, "").slice(0, 6))
                 }
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter the 6-digit code"
               />
@@ -275,7 +280,7 @@ export function OtpVerification() {
               <button
                 type="button"
                 onClick={handleResend}
-                disabled={isResending || resendInSeconds > 0}
+                disabled={isResending || lockSeconds > 0 || resendInSeconds > 0}
                 className="font-semibold text-[#2D6B73] underline underline-offset-4 disabled:cursor-not-allowed disabled:no-underline disabled:opacity-60"
               >
                 {isResending

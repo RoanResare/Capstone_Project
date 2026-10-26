@@ -1,3 +1,4 @@
+import { useAttemptLock } from "../utils/useAttemptLock.js";
 import { useState } from "react";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
 import { motion } from "motion/react";
@@ -30,6 +31,7 @@ export function CustomerLogin() {
   const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
   const requestedPath =
     typeof location.state?.from === "string" ? location.state.from.trim() : "";
@@ -62,7 +64,7 @@ export function CustomerLogin() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (isSubmitting) {
+    if (isSubmitting || lockSeconds > 0) {
       return;
     }
 
@@ -78,6 +80,7 @@ export function CustomerLogin() {
       });
 
       if (!result.ok) {
+        applyLock(result);
         setFeedback({ type: "error", message: result.error });
         showErrorToast(result.error);
         return;
@@ -145,6 +148,7 @@ export function CustomerLogin() {
           className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
         >
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
             {firebaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
                 Firebase client setup is incomplete. Fill the `VITE_FIREBASE_*` values in the
@@ -166,7 +170,7 @@ export function CustomerLogin() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, identifier: event.target.value }))
                 }
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your email or username"
               />
@@ -182,7 +186,7 @@ export function CustomerLogin() {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || lockSeconds > 0}
                   className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Enter your password"
                 />
@@ -199,7 +203,7 @@ export function CustomerLogin() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || lockSeconds > 0}
               className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
             >
               Sign in as customer
@@ -220,7 +224,7 @@ export function CustomerLogin() {
                   }
                   setForm((current) => ({ ...current, rememberDevice: checked }));
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className="mt-1 h-4 w-4 accent-[#2D9B9B]"
               />
             </label>

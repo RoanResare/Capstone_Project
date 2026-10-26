@@ -1,3 +1,4 @@
+const { assertAttemptsAllowed, recordFailedAttempt, resetAttempts } = require("../services/authAttempts.service");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES } = require("../constants/auth");
 const { env } = require("../config/env");
 const {
@@ -68,8 +69,22 @@ async function listUsers(req, res) {
   });
 }
 
+async function confirmAccountHolderPassword(req) {
+  const uid = req.auth.user.uid;
+  const currentPassword = typeof req.body?.currentPassword === "string" ? req.body.currentPassword : "";
+  if (!currentPassword) throw new ApiError(400, "Enter your current password to confirm this employee account change.");
+  await assertAttemptsAllowed("account-confirmation", uid);
+  const actor = await getUserByUid(uid);
+  if (!actor || !verifyPasswordHash(currentPassword, actor.passwordHash)) {
+    await recordFailedAttempt("account-confirmation", uid);
+    throw new ApiError(403, "Your current password is incorrect. No employee changes were saved.");
+  }
+  await resetAttempts("account-confirmation", uid);
+}
+
 async function createUser(req, res) {
   assertAuthSetupReady();
+  await confirmAccountHolderPassword(req);
   const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
   const password = typeof req.body?.password === "string" ? req.body.password.trim() : "";
@@ -103,6 +118,7 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   assertAuthSetupReady();
+  await confirmAccountHolderPassword(req);
   const targetUid = req.params.uid;
   const nextRole = req.body?.role ? normalizePortalRole(req.body.role) : "";
   const nextAccountStatus =
@@ -156,6 +172,7 @@ async function updateUser(req, res) {
 
 async function removeUser(req, res) {
   assertAuthSetupReady();
+  await confirmAccountHolderPassword(req);
   const targetUid = req.params.uid;
   logAdminUserRequest(req, "delete", { targetUid });
   await ensureAdminCanMutateTarget(req.auth.user, targetUid, "", "", true);

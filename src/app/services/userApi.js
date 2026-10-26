@@ -67,9 +67,10 @@ export async function updateUser(accessToken, uid, payload) {
   }
 }
 
-export async function deleteUser(accessToken, uid) {
+export async function deleteUser(accessToken, uid, currentPassword) {
   try {
     const response = await apiClient.delete(`/admin/users/${encodeURIComponent(uid)}`, {
+      data: { currentPassword },
       headers: buildAuthHeaders(accessToken),
     });
     return response.data;

@@ -748,6 +748,7 @@ export function AuthProvider({ children }) {
         return {
           ok: false,
           error: error instanceof Error ? error.message : "Unable to sign in right now.",
+          details: error?.details || null,
         };
       }
     }
@@ -817,6 +818,7 @@ export function AuthProvider({ children }) {
       return {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to sign in right now.",
+        details: error?.details || null,
       };
     }
   }
@@ -947,6 +949,7 @@ export function AuthProvider({ children }) {
       return {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to sign in right now.",
+        details: error?.details || null,
       };
     }
   }
@@ -1329,6 +1332,7 @@ export function AuthProvider({ children }) {
           error instanceof Error
             ? error.message
             : "Unable to send a new verification code right now.",
+        details: error?.details || null,
       };
     }
   }
@@ -1381,7 +1385,8 @@ export function AuthProvider({ children }) {
       });
       return {
         ok: false,
-        error: safeMessage,
+        error: isExpectedOtpFailure && rawMessage ? rawMessage : safeMessage,
+        details: error?.details || null,
       };
     }
   }

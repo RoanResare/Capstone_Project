@@ -1,3 +1,4 @@
+import { useAttemptLock } from "../utils/useAttemptLock.js";
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -48,6 +49,7 @@ export function RoleLoginPage({
   const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
   const links = supportLinks(role);
   const expectedRole = normalizeRole(role);
@@ -81,7 +83,7 @@ export function RoleLoginPage({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting) {
+    if (isSubmitting || lockSeconds > 0) {
       return;
     }
 
@@ -98,6 +100,7 @@ export function RoleLoginPage({
       });
 
       if (!result.ok) {
+        applyLock(result);
         setFeedback({ type: "error", message: result.error });
         showErrorToast(result.error);
         return;
@@ -180,6 +183,7 @@ export function RoleLoginPage({
           className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
         >
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
             {firebaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
                 Firebase client setup is incomplete. The public site will still load, but complete
@@ -221,7 +225,7 @@ export function RoleLoginPage({
                 onChange={(event) =>
                   setForm((current) => ({ ...current, identifier: event.target.value }))
                 }
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your username or email"
               />
@@ -237,7 +241,7 @@ export function RoleLoginPage({
                   onChange={(event) =>
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || lockSeconds > 0}
                   className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Enter your password"
                 />
@@ -254,7 +258,7 @@ export function RoleLoginPage({
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || lockSeconds > 0}
               className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F4E55]"
             >
               {submitLabel}
@@ -271,7 +275,7 @@ export function RoleLoginPage({
                   if (!checked) clearRememberedPortalLogin(expectedRole);
                   setForm((current) => ({ ...current, rememberDevice: checked }));
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className="mt-1 h-4 w-4 accent-[#2D9B9B]"
               />
             </label>

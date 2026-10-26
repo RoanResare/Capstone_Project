@@ -1,3 +1,4 @@
+const { assertAttemptsAllowed, recordFailedAttempt, resetAttempts, MAX_FAILED_ATTEMPTS } = require("../services/authAttempts.service");
 const { auth } = require("../config/firebaseAdmin");
 const { getAllowedClientOrigins } = require("../config/clientOrigins");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
@@ -550,10 +551,40 @@ async function createOtpChallengeResponse(user, message, options = {}) {
     message,
     otpTicket: signOtpTicket(user, otp.otpId),
     otpExpiresAt: otp.expiresAt.toISOString(),
-    otpMaxAttempts: env.otp.maxAttempts,
+    otpMaxAttempts: MAX_FAILED_ATTEMPTS,
     otpResendAvailableAt: otp.resendAvailableAt.toISOString(),
     user: toPublicUser(user),
   };
+}
+
+async function verifyLoginCredentials(identifier, password) {
+  await assertAttemptsAllowed("login", identifier);
+  let email;
+  try {
+    email = await resolveEmailFromIdentifier(identifier);
+  } catch (error) {
+    if (error.statusCode === 401) await recordFailedAttempt("login", identifier);
+    throw error;
+  }
+  await assertAttemptsAllowed("login", email);
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    assertActiveAccount(existingUser);
+    await assertAttemptsAllowed("otp", existingUser.uid);
+  }
+  let signInPayload;
+  try {
+    signInPayload = await signInWithEmailAndPassword(email, password);
+  } catch (error) {
+    if (["INVALID_PASSWORD", "INVALID_LOGIN_CREDENTIALS", "EMAIL_NOT_FOUND"].includes(error.details?.firebaseCode)) {
+      const remaining = await recordFailedAttempt("login", email);
+      error.message += ' ' + remaining + ' attempt' + (remaining === 1 ? '' : 's') + ' remaining.';
+    }
+    throw error;
+  }
+  await resetAttempts("login", email);
+  if (identifier.toLowerCase() !== email.toLowerCase()) await resetAttempts("login", identifier);
+  return { email, signInPayload };
 }
 
 function createRoleBoundLoginHandler(expectedRole) {
@@ -565,14 +596,7 @@ function createRoleBoundLoginHandler(expectedRole) {
     });
     await validateAccessSecurity(req);
     const { identifier, password } = validateLoginPayload(req.body);
-    const email = await resolveEmailFromIdentifier(identifier);
-    const existingUser = await getUserByEmail(email);
-
-    if (existingUser && existingUser.accountStatus !== USER_STATUSES.ACTIVE) {
-      assertActiveAccount(existingUser);
-    }
-
-    const signInPayload = await signInWithEmailAndPassword(email, password);
+    const { email, signInPayload } = await verifyLoginCredentials(identifier, password);
     const user = await resolveAuthenticatedFirestoreUser({
       identifier,
       email,
@@ -662,7 +686,7 @@ function createRoleBoundVerifyOtpHandler(expectedRole) {
   return async function roleBoundVerifyOtp(req, res) {
     assertAuthSetupReady({ requireOtp: true });
     const otpTicket = typeof req.body?.otpTicket === "string" ? req.body.otpTicket.trim() : "";
-    const otpCode = validateOtpCode(req.body?.otpCode);
+    const otpCode = typeof req.body?.otpCode === "string" ? req.body.otpCode.trim() : "";
     const rememberDevice = req.body?.rememberDevice === true;
 
     if (!otpTicket) {
@@ -705,14 +729,7 @@ async function loginUnified(req, res) {
   assertAuthSetupReady({ requireOtp: true });
   await validateAccessSecurity(req);
   const { identifier, password } = validateLoginPayload(req.body);
-  const email = await resolveEmailFromIdentifier(identifier);
-  const existingUser = await getUserByEmail(email);
-
-  if (existingUser && existingUser.accountStatus !== USER_STATUSES.ACTIVE) {
-    assertActiveAccount(existingUser);
-  }
-
-  const signInPayload = await signInWithEmailAndPassword(email, password);
+  const { email, signInPayload } = await verifyLoginCredentials(identifier, password);
   const user = await resolveAuthenticatedFirestoreUser({
     identifier,
     email,

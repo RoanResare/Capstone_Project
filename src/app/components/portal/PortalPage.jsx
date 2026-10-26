@@ -1,3 +1,5 @@
+import { EmployeeSaveConfirmation } from "./EmployeeSaveConfirmation.jsx";
+import { buildAppointmentHistory } from "../../../../shared/appointmentHistory.mjs";
 import { getPasswordPolicyError } from "../../utils/passwordPolicy.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
@@ -785,71 +787,28 @@ function NotificationContextPanel({ notification, relatedAppointment, openAppoin
   );
 }
 
-function RecentNotificationList({ currentUser, notifications, openAppointment, onLoadMore, isLoadingMore, hasMore }) {
-  return (
-    <PanelCard
-      title="History"
-      description="Customer account and appointment events visible to your role."
-    >
-      {notifications.length === 0 ? (
-        <EmptyState
-          title="No recent events"
-          message="Customer registrations and booking activity will appear here automatically."
-        />
-      ) : (
-        <div className="portal-scroll-panel max-h-[420px] space-y-3 overflow-y-auto overscroll-contain pr-1">
-          {notifications.slice(0, 12).map((notification) => {
-            const isUnread = !notification.readBy.includes(currentUser.id);
-
-            return (
-              <button
-                key={notification.id}
-                type="button"
-                onClick={() =>
-                  openAppointment(notification.relatedAppointmentId || "", notification.id)
-                }
-                className={`h-[132px] w-full overflow-hidden rounded-[22px] border px-4 py-4 text-left transition ${
-                  isUnread
-                    ? "border-[#D7ECEC] bg-[#F8FCFC] hover:border-[#BFE1E1]"
-                    : "border-[#EDF2F2] bg-white hover:border-[#D7E8E8]"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-[#20343B]">{notification.title}</p>
-                    <p className="mt-1 line-clamp-2 text-sm text-[#607277]">{notification.message}</p>
-                  </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
-                      isUnread ? "bg-[#173E44] text-white" : "bg-[#EEF3F5] text-[#4C6368]"
-                    }`}
-                  >
-                    {isUnread ? "Unread" : "Read"}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#607277]">
-                  <span className="rounded-full bg-[#F2F6F6] px-3 py-1 font-semibold text-[#365057]">
-                    {notification.actorName} | {notification.actorRole}
-                  </span>
-                  <span className={`rounded-full px-3 py-1 font-semibold ${notificationTone(notification.level)}`}>
-                    {notification.actionLabel}
-                  </span>
-                </div>
-
-                <p className="mt-3 text-sm text-[#4E686E]">{describeNotification(notification)}</p>
-              </button>
-            );
-          })}
-          {hasMore && (
-            <button type="button" disabled={isLoadingMore} onClick={onLoadMore} className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">
-              {isLoadingMore ? "Loading older events..." : "Load older events"}
-            </button>
-          )}
-        </div>
-      )}
-    </PanelCard>
-  );
+function AppointmentHistory({ currentUser, appointments, openAppointment, onLoadMore, isLoadingMore }) {
+  const events = buildAppointmentHistory(appointments, currentUser.role);
+  return <PanelCard title="History" description="Completed, rejected, cancelled, and no-show appointment events visible to your role.">
+    {events.length === 0 ? <EmptyState title="No appointment history" message="Completed, rejected, cancelled, and no-show appointments will appear here." /> : (
+      <div className="portal-scroll-panel max-h-[420px] space-y-3 overflow-y-auto overscroll-contain pr-2">
+        {events.map(event => <button key={event.id} type="button" onClick={() => openAppointment(event.appointmentId)}
+          className="w-full rounded-[22px] border border-[#D7ECEC] bg-[#F8FCFC] px-4 py-4 text-left transition hover:border-[#BFE1E1]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold text-[#20343B]">{event.petName} ? {event.service}</p>
+            <StatusBadge status={event.status} />
+          </div>
+          <p className="mt-2 text-sm text-[#607277]">{event.customerName} {event.scheduleDate} {event.scheduleTime}</p>
+          {event.actorName && <p className="mt-2 text-xs text-[#607277]">{event.actorName} | {event.actorRole}</p>}
+          {event.reason && <p className="mt-2 text-sm text-[#607277]">Reason: {event.reason}</p>}
+          <p className="mt-2 text-xs text-[#7A9297]">{formatDateTime(event.createdAt)}</p>
+        </button>)}
+      </div>
+    )}
+    <button type="button" disabled={isLoadingMore} onClick={onLoadMore} className="mt-3 w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">
+      {isLoadingMore ? "Loading older appointments..." : "Load older appointments"}
+    </button>
+  </PanelCard>;
 }
 
 function AppointmentsWorkspace({
@@ -858,13 +817,11 @@ function AppointmentsWorkspace({
   visibleNotifications,
   updateAppointment,
   loadMoreAppointments,
-  loadMoreNotifications,
-  hasMoreNotifications,
   refreshScheduleData,
 }) {
   const toast = useToast();
   const [isLoadingAllAppointments, setIsLoadingAllAppointments] = useState(false);
-  const [isLoadingOlderNotifications, setIsLoadingOlderNotifications] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const savedStatus = searchParams.get("status") || "All";
   const requestedStatus = ["Confirmed", "Accepted"].includes(savedStatus) ? "Approved" : savedStatus;
@@ -1129,13 +1086,12 @@ function AppointmentsWorkspace({
           onBack={clearSelectedAppointment}
         />}
 
-      <RecentNotificationList
+      <AppointmentHistory
         currentUser={currentUser}
-        notifications={visibleNotifications}
+        appointments={appointments}
         openAppointment={openAppointment}
-        hasMore={hasMoreNotifications}
-        onLoadMore={async () => { setIsLoadingOlderNotifications(true); try { await loadMoreNotifications(); } finally { setIsLoadingOlderNotifications(false); } }}
-        isLoadingMore={isLoadingOlderNotifications}
+        onLoadMore={async () => { setIsLoadingHistory(true); try { await loadMoreAppointments(); } catch (error) { toast.error(error.message || "Unable to load appointment history."); } finally { setIsLoadingHistory(false); } }}
+        isLoadingMore={isLoadingHistory}
       />
     </div>
   );
@@ -1713,73 +1669,6 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   );
 }
 
-function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onConfirm }) {
-  const dialogRef = useRef(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    const previousOverflow = document.body.style.overflow;
-    dialog.showModal();
-    document.body.style.overflow = "hidden";
-    return () => {
-      dialog.close();
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
-  return createPortal(
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="save-employee-title"
-      aria-describedby="save-employee-description"
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!isSaving) onCancel();
-      }}
-      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-lg border border-[#BFE1E1] bg-[#F8FCFC] p-5 shadow-xl backdrop:bg-black/40 sm:p-5"
-    >
-      <h4 id="save-employee-title" className="text-xl font-semibold text-[#20343B]">
-        Confirm employee changes
-      </h4>
-      <p id="save-employee-description" className="mt-2 text-sm text-[#607277]">
-        Review this {pendingSave.mode === "create" ? "new account" : "account update"} before saving.
-      </p>
-      <dl className="mt-4 grid gap-3 text-sm">
-        {[
-          ["Name", pendingSave.fullPayload.name],
-          ["Email", pendingSave.fullPayload.email],
-          ["Username", pendingSave.fullPayload.username],
-          ["Role", formatRoleLabel(pendingSave.fullPayload.role)],
-        ].map(([label, value]) => (
-          <div key={label} className="grid grid-cols-[80px_minmax(0,1fr)] gap-4">
-            <dt className="font-semibold text-[#607277]">{label}</dt>
-            <dd className="break-words text-right font-semibold text-[#20343B]">{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          autoFocus
-          onClick={onCancel}
-          disabled={isSaving}
-          className="rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A] disabled:opacity-60"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={isSaving}
-          className="rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-        >
-          {isSaving ? "Saving..." : "Save changes"}
-        </button>
-      </div>
-    </dialog>,
-    document.body,
-  );
-}
 
 function ManageUsersWorkspace({
   currentUser,
@@ -1835,7 +1724,7 @@ function ManageUsersWorkspace({
     setFeedback({ type: "", message: "" });
   };
 
-  const confirmUserStatusChange = async () => {
+  const confirmUserStatusChange = async (currentPassword) => {
     if (!pendingUserStatus || isSaving) {
       return;
     }
@@ -1845,7 +1734,7 @@ function ManageUsersWorkspace({
     setFeedback({ type: "", message: "" });
 
     try {
-      const result = await updateUser(user.id, { status });
+      const result = await updateUser(user.id, { status, currentPassword });
       if (!result?.ok) {
         setFeedback({
           type: "error",
@@ -1981,18 +1870,23 @@ function ManageUsersWorkspace({
     setFeedback({ type: "", message: "" });
   };
 
-  const confirmSaveUser = async () => {
+  const confirmSaveUser = async (currentPassword) => {
     if (!pendingUserSave || isSaving) {
       return;
     }
 
+    const passwordError = pendingUserSave.fullPayload.password
+      ? getPasswordPolicyError(pendingUserSave.fullPayload.password.trim())
+      : pendingUserSave.mode === "create" ? "A password is required for a new employee account." : "";
+    if (passwordError) { setFeedback({ type: "error", message: passwordError }); return; }
+    if (!currentPassword) { setFeedback({ type: "error", message: "Enter your current password." }); return; }
     setIsSaving(true);
     setFeedback({ type: "", message: "" });
 
     try {
       const result = pendingUserSave.mode === "create"
-        ? await createStaff(pendingUserSave.payload)
-        : await updateUser(pendingUserSave.userId, pendingUserSave.payload);
+        ? await createStaff({ ...pendingUserSave.payload, currentPassword })
+        : await updateUser(pendingUserSave.userId, { ...pendingUserSave.payload, currentPassword });
 
       if (!result?.ok) {
         setFeedback({
@@ -2034,20 +1928,17 @@ function ManageUsersWorkspace({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (currentPassword) => {
     if (!selectedUser?.id) {
       return;
     }
 
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
+    if (isSaving || !currentPassword) return;
 
     setIsSaving(true);
 
     try {
-      const result = await deleteUser(selectedUser.id);
+      const result = await deleteUser(selectedUser.id, currentPassword);
       if (!result?.ok) {
         setFeedback({
           type: "error",
@@ -2362,7 +2253,7 @@ function ManageUsersWorkspace({
                 {!isCreatingNew && selectedUser && (
                   <button
                     type="button"
-                  onClick={handleDelete}
+                  onClick={() => { setFeedback({ type: "", message: "" }); setConfirmDelete(true); }}
                   disabled={isSaving}
                     className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold ${
                       confirmDelete
@@ -2380,83 +2271,32 @@ function ManageUsersWorkspace({
                 )}
               </div>
 
-              {confirmDelete && selectedUser && (
-                <div
-                  role="alertdialog"
-                  aria-modal="true"
-                  aria-labelledby="delete-employee-title"
-                  className="rounded-[22px] border border-[#F4B7BE] bg-[#FFF6F7] px-4 py-4"
-                >
-                  <h4 id="delete-employee-title" className="font-semibold text-[#8A3240]">
-                    Are you sure you want to permanently delete this employee account?
-                  </h4>
-                  <p className="mt-2 text-sm text-[#8A5660]">
-                    {selectedUser.name} will lose portal access and their username index will be removed.
-                  </p>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(false)}
-                      disabled={isSaving}
-                      className="rounded-2xl border border-[#E8C3C8] bg-white px-4 py-2.5 text-sm font-semibold text-[#8A3240]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={isSaving}
-                      className="rounded-2xl bg-[#B23949] px-4 py-2.5 text-sm font-semibold text-white"
-                    >
-                      {isSaving ? "Deleting..." : "Delete account"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {pendingUserStatus && (
-                <div
-                  role="alertdialog"
-                  aria-modal="true"
-                  aria-labelledby="status-employee-title"
-                  className="rounded-[22px] border border-[#BFE1E1] bg-[#F8FCFC] px-4 py-4"
-                >
-                  <h4 id="status-employee-title" className="font-semibold text-[#20343B]">
-                    Confirm status change
-                  </h4>
-                  <p className="mt-2 text-sm text-[#607277]">
-                    Save {pendingUserStatus.user.name} as{" "}
-                    <span className="font-semibold text-[#20343B]">
-                      {formatUserStatusLabel(pendingUserStatus.status)}
-                    </span>
-                    ?
-                  </p>
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setPendingUserStatus(null)}
-                      disabled={isSaving}
-                      className="rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmUserStatusChange}
-                      disabled={isSaving}
-                      className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                    >
-                      {isSaving ? "Saving..." : "Save status"}
-                    </button>
-                  </div>
-                </div>
-              )}
+              {confirmDelete && selectedUser && <EmployeeSaveConfirmation
+                pendingSave={{ mode: "delete", fullPayload: selectedUser }} isSaving={isSaving}
+                error={feedback.type === "error" ? feedback.message : ""}
+                onCancel={() => { setConfirmDelete(false); setFeedback({ type: "", message: "" }); }} onConfirm={handleDelete} />}
+              {pendingUserStatus && <EmployeeSaveConfirmation
+                pendingSave={{ mode: "status", fullPayload: pendingUserStatus.user, status: pendingUserStatus.status }} isSaving={isSaving}
+                error={feedback.type === "error" ? feedback.message : ""}
+                onCancel={() => { setPendingUserStatus(null); setFeedback({ type: "", message: "" }); }} onConfirm={confirmUserStatusChange} />}
 
               {pendingUserSave && (
                 <EmployeeSaveConfirmation
                   pendingSave={pendingUserSave}
                   isSaving={isSaving}
                   onCancel={() => setPendingUserSave(null)}
+                  error={feedback.type === "error" ? feedback.message : ""}
+                  onNewPasswordChange={password => {
+                    setForm(current => ({ ...current, password }));
+                    setPendingUserSave(current => {
+                      const payload = { ...current.payload };
+                      if (password) payload.password = password.trim();
+                      else if (current.mode === "create") payload.password = "";
+                      else delete payload.password;
+                      return { ...current, fullPayload: { ...current.fullPayload, password }, payload };
+                    });
+                    setFeedback({ type: "", message: "" });
+                  }}
                   onConfirm={confirmSaveUser}
                 />
               )}
@@ -2494,8 +2334,6 @@ export function PortalPage() {
     visibleNotifications,
     updateAppointment,
     loadMoreAppointments,
-    loadMoreNotifications,
-    hasMoreNotifications,
     refreshScheduleData,
     saveAvailabilitySlot,
     savePetRecord,
@@ -2552,7 +2390,6 @@ export function PortalPage() {
       visibleNotifications={visibleNotifications}
       updateAppointment={updateAppointment}
       loadMoreAppointments={loadMoreAppointments}
-      loadMoreNotifications={loadMoreNotifications}
       refreshScheduleData={refreshScheduleData}
     />
   );

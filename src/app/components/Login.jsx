@@ -1,3 +1,4 @@
+import { useAttemptLock } from "../utils/useAttemptLock.js";
 import { useEffect, useState } from "react";
 import { readSessionStorageItem, removeSessionStorageItem } from "../utils/browserState.js";
 import { motion } from "motion/react";
@@ -39,6 +40,7 @@ export function Login() {
       : { type: message ? "error" : "", message };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
@@ -80,7 +82,7 @@ export function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting || !validateForm()) {
+    if (isSubmitting || lockSeconds > 0 || !validateForm()) {
       return;
     }
 
@@ -96,6 +98,7 @@ export function Login() {
       });
 
       if (!result.ok) {
+        applyLock(result);
         setFeedback({ type: "error", message: result.error });
         showErrorToast(result.error);
         return;
@@ -144,6 +147,7 @@ export function Login() {
           </div>
 
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
             {firebaseConfigError && (
               <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-2.5 text-sm text-[#8A6410]">
                 Firebase setup is incomplete. Fill the required environment values to enable login.
@@ -163,7 +167,7 @@ export function Login() {
                 value={form.identifier}
                 autoComplete="off"
                 onChange={updateField("identifier")}
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className={`w-full rounded-lg border px-4 py-2.5 outline-none transition focus:border-[#2D9B9B] ${
                   fieldErrors.identifier ? "border-[#D95A6A]" : "border-[#D9E7E7]"
                 }`}
@@ -182,7 +186,7 @@ export function Login() {
                   value={form.password}
                   autoComplete="new-password"
                   onChange={updateField("password")}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || lockSeconds > 0}
                   className={`w-full rounded-lg border px-4 py-2.5 pr-11 outline-none transition focus:border-[#2D9B9B] ${
                     fieldErrors.password ? "border-[#D95A6A]" : "border-[#D9E7E7]"
                   }`}
@@ -228,7 +232,7 @@ export function Login() {
                   }
                   setForm((current) => ({ ...current, rememberDevice: checked }));
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || lockSeconds > 0}
                 className="h-4 w-4 accent-[#2D9B9B]"
               />
             </label>
@@ -239,7 +243,7 @@ export function Login() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || lockSeconds > 0}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#078F89] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#087C79] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? "Logging in..." : "Log In"}

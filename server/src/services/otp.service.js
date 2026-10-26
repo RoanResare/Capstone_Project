@@ -1,3 +1,4 @@
+const { attemptReference, lockError, failedAttempt, assertAttemptsAllowed, MAX_FAILED_ATTEMPTS } = require("./authAttempts.service");
 const { admin, db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { OTP_COLLECTION } = require("../constants/auth");
@@ -138,6 +139,7 @@ async function invalidateOpenOtpsForUser(userId) {
 }
 
 async function createOtpVerification(user, options = {}) {
+  await assertAttemptsAllowed("otp", user.uid);
   if (options.enforceCooldown) {
     await assertOtpResendAllowed(user.uid);
   }
@@ -183,9 +185,14 @@ async function createOtpVerification(user, options = {}) {
 
 async function verifyOtpCode({ otpId, otpCode, user }) {
   const docRef = db.collection(OTP_COLLECTION).doc(otpId);
+  const attemptsRef = attemptReference("otp", user.uid);
   const now = admin.firestore.Timestamp.now();
   const outcome = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(docRef);
+    const attemptSnapshot = await transaction.get(attemptsRef);
+    const attemptState = attemptSnapshot.data() || {};
+    const blocked = lockError(attemptState);
+    if (blocked) return { status: "account-locked", error: blocked };
 
     if (!snapshot.exists) {
       return {
@@ -220,7 +227,9 @@ async function verifyOtpCode({ otpId, otpCode, user }) {
     const nextAttemptCount = Number(record.attemptCount || 0) + 1;
 
     if (hashOtpCode(otpCode) !== record.otpCode) {
-      const attemptsRemaining = Math.max(0, env.otp.maxAttempts - nextAttemptCount);
+      const nextAttemptState = failedAttempt(attemptState);
+      transaction.set(attemptsRef, nextAttemptState);
+      const attemptsRemaining = Math.max(0, MAX_FAILED_ATTEMPTS - nextAttemptState.failures);
 
       if (attemptsRemaining === 0) {
         transaction.update(docRef, {
@@ -232,7 +241,8 @@ async function verifyOtpCode({ otpId, otpCode, user }) {
         });
 
         return {
-          status: "locked",
+          status: "account-locked",
+          error: lockError(nextAttemptState),
           attemptsRemaining,
         };
       }
@@ -248,6 +258,7 @@ async function verifyOtpCode({ otpId, otpCode, user }) {
       };
     }
 
+    transaction.set(attemptsRef, { failures: 0, lockedUntil: 0, updatedAt: Date.now() });
     transaction.update(docRef, {
       attemptCount: nextAttemptCount,
       isUsed: true,
@@ -261,6 +272,8 @@ async function verifyOtpCode({ otpId, otpCode, user }) {
       status: "verified",
     };
   });
+
+  if (outcome.status === "account-locked") throw outcome.error;
 
   if (outcome.status === "verified") {
     console.info("[otp] OTP verified successfully.", {
@@ -296,21 +309,6 @@ async function verifyOtpCode({ otpId, otpCode, user }) {
       role: user.role,
     });
     throw new ApiError(400, "This one-time password has expired. Please request a new code.");
-  }
-
-  if (outcome.status === "locked") {
-    console.warn("[otp] OTP verification locked after too many invalid attempts.", {
-      otpId,
-      uid: user.uid,
-      role: user.role,
-    });
-    throw new ApiError(
-      429,
-      "Too many invalid one-time password attempts. Request a new code to continue.",
-      {
-        attemptsRemaining: 0,
-      },
-    );
   }
 
   if (outcome.status === "invalid") {

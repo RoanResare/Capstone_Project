@@ -163,6 +163,10 @@ test("staff sessions start once on the clinic date and end with persisted durati
   assert.ok(ended.sessionDurationSeconds >= 0);
   assert.ok(ended.sessionEndedAt);
   assert.equal(ended.sessionAction, undefined);
+  assert.equal(ended.lifecycleEvents.length, 1);
+  assert.equal(ended.lifecycleEvents[0].status, "Completed");
+  assert.equal(ended.lifecycleEvents[0].actorRole, "staff");
+  assert.equal(ended.lifecycleEvents[0].createdAt, ended.updatedAt);
   const future = fixture({ "appointments/booking": { ...booking, scheduleDate: "2030-01-05" } });
   await assert.rejects(future.book({ ...booking, scheduleDate: "2030-01-05", sessionAction: "start" }, "staff"), /appointment date/);
 });
@@ -295,4 +299,20 @@ test("only approved appointments can be marked completed through the API", async
       assert.equal(app.writes.length, 0);
     }
   }
+});
+
+
+test("appointment lifecycle history is server-owned, persists cancellation, and is not duplicated by later edits", async () => {
+  const previous = { id: "booking", customerId: "customer", status: "Pending", serviceId: "consultation", petRecordId: "pet", scheduleDate: "2030-01-05", scheduleTime: "09:00", lifecycleEvents: [] };
+  const app = fixture({ "appointments/booking": previous });
+  await app.book({ ...previous, status: "Cancelled", lifecycleEvents: [{ status: "Completed", actorName: "Forged" }] });
+  const saved = app.records.get("appointments/booking");
+  assert.equal(saved.lifecycleEvents.length, 1);
+  assert.equal(saved.lifecycleEvents[0].status, "Cancelled");
+  assert.equal(saved.lifecycleEvents[0].actorId, "customer");
+  assert.equal(saved.lifecycleEvents[0].actorRole, "customer");
+  await app.book({ ...saved, notes: "Edited", lifecycleEvents: [] });
+  const updated = app.records.get("appointments/booking");
+  assert.equal(updated.lifecycleEvents.length, 1);
+  assert.equal(updated.lifecycleEvents[0].createdAt, saved.lifecycleEvents[0].createdAt);
 });

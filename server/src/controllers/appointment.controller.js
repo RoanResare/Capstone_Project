@@ -286,6 +286,17 @@ async function saveAppointment(req, res) {
     const { sessionAction, ...payload } = appointment;
     savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields, updatedAt: new Date().toISOString() };
     if(savedAppointment.status==="Expired")savedAppointment.status="No Show";
+    const lifecycleStatus = normalizeAppointmentStatus(savedAppointment.status);
+    const lifecycleEvents = Array.isArray(previous.lifecycleEvents) ? previous.lifecycleEvents : [];
+    savedAppointment.lifecycleEvents = lifecycleEvents;
+    if (["Completed", "Rejected", "Cancelled", "No Show"].includes(lifecycleStatus) &&
+        normalizeAppointmentStatus(previous.status) !== lifecycleStatus) {
+      savedAppointment.lifecycleEvents = [...lifecycleEvents, {
+        status: lifecycleStatus, createdAt: savedAppointment.updatedAt,
+        actorId: user.uid, actorName: user.fullName || user.name || "Clinic team", actorRole: user.role,
+        reason: savedAppointment.rejectionReason || savedAppointment.cancellationReason || "",
+      }];
+    }
     transaction.set(reference, savedAppointment, { merge: true });
     if(staffDecision || staffCancellation){
       const notificationId=`appointment-${id}-${nextStatus.toLowerCase()}`;

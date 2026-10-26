@@ -1,3 +1,4 @@
+import { formatAppointmentService } from "../../../shared/bookingAdditions.mjs";
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState } from "react";
 import { assertAppropriatePetText } from "../../../shared/petTextValidation.mjs";
 import {
@@ -464,6 +465,7 @@ function normalizeAppointment(appointment) {
 
   return {
     ...current,
+    service: formatAppointmentService(current.service),
     scheduleDate: scheduleFromParts
       ? rawScheduleDate
       : resolvedSchedule

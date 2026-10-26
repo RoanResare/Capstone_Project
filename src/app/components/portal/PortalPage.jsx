@@ -795,7 +795,7 @@ function AppointmentHistory({ currentUser, appointments, openAppointment, onLoad
         {events.map(event => <button key={event.id} type="button" onClick={() => openAppointment(event.appointmentId)}
           className="w-full rounded-[22px] border border-[#D7ECEC] bg-[#F8FCFC] px-4 py-4 text-left transition hover:border-[#BFE1E1]">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-semibold text-[#20343B]">{event.petName} ? {event.service}</p>
+            <p className="font-semibold text-[#20343B]">{event.petName} | {event.service}</p>
             <StatusBadge status={event.status} />
           </div>
           <p className="mt-2 text-sm text-[#607277]">{event.customerName} {event.scheduleDate} {event.scheduleTime}</p>

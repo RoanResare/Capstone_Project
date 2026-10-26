@@ -1,3 +1,5 @@
+import { formatAppointmentService } from "./bookingAdditions.mjs";
+
 export function historyStatus(value = "") {
   const status = String(value).toLowerCase().replace(/[\s_-]+/g, " ").trim();
   return ({ completed: "Completed", rejected: "Rejected", cancelled: "Cancelled", canceled: "Cancelled",
@@ -17,7 +19,7 @@ export function buildAppointmentHistory(appointments = [], role) {
       : recorded;
     return events.map((event, index) => ({ ...event, status: historyStatus(event.status),
       id: `${appointment.id}:${index}`, appointmentId: appointment.id,
-      petName: appointment.petName || "Pet", service: appointment.service || "Appointment",
+      petName: appointment.petName || "Pet", service: formatAppointmentService(appointment.service) || "Appointment",
       customerName: appointment.customerName || appointment.ownerName || "",
       scheduleDate: appointment.scheduleDate, scheduleTime: appointment.scheduleTime,
     }));

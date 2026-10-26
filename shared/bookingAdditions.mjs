@@ -6,5 +6,9 @@ export function dewormingForPet(pet){
  return {weightKg,weightBracket};
 }
 export function dewormingDescription(details){
- return details?`Deworming (${details.weightKg===null?details.weightBracket:`${details.weightKg} kg · ${details.weightBracket}`})`:"Deworming (Weight not saved)";
+ return details?`Deworming (${details.weightKg===null?details.weightBracket:`${details.weightKg} kg | ${details.weightBracket}`})`:"Deworming (Weight not saved)";
+}
+
+export function formatAppointmentService(value = "") {
+ return typeof value === "string" ? value.replace(/\s+[?·]\s+/g, " | ") : "";
 }

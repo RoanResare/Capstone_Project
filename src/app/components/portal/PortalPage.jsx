@@ -12,8 +12,6 @@ import { AppointmentCalendar } from "./AppointmentCalendar.jsx";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
-  Eye,
-  EyeOff,
   ArrowLeft,
   Clock3,
   Mail,
@@ -1691,7 +1689,6 @@ function ManageUsersWorkspace({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pendingUserStatus, setPendingUserStatus] = useState(null);
   const [pendingUserSave, setPendingUserSave] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState(() => buildPortalUserForm());
   const [originalForm, setOriginalForm] = useState(() => buildPortalUserForm());
 
@@ -1841,29 +1838,7 @@ function ManageUsersWorkspace({
       return;
     }
 
-    if (isCreatingNew && !fullPayload.password) {
-      setFeedback({
-        type: "error",
-        message: "A password is required when creating a new employee account.",
-      });
-      return;
-    }
-
-    const passwordError = fullPayload.password ? getPasswordPolicyError(fullPayload.password) : "";
-    if (passwordError) {
-      setFeedback({ type: "error", message: passwordError });
-      toast.error(passwordError);
-      return;
-    }
     const payload = isCreatingNew ? fullPayload : buildChangedPortalUserPayload(fullPayload, originalForm);
-
-    if (!isCreatingNew && Object.keys(payload).length === 0) {
-      setFeedback({
-        type: "success",
-        message: "No employee changes to save.",
-      });
-      return;
-    }
 
     setPendingUserSave({
       fullPayload,
@@ -1874,7 +1849,7 @@ function ManageUsersWorkspace({
     setFeedback({ type: "", message: "" });
   };
 
-  const confirmSaveUser = async (currentPassword) => {
+  const confirmSaveUser = async () => {
     if (!pendingUserSave || isSaving) {
       return;
     }
@@ -1883,14 +1858,13 @@ function ManageUsersWorkspace({
       ? getPasswordPolicyError(pendingUserSave.fullPayload.password.trim())
       : pendingUserSave.mode === "create" ? "A password is required for a new employee account." : "";
     if (passwordError) { setFeedback({ type: "error", message: passwordError }); return; }
-    if (!currentPassword) { setFeedback({ type: "error", message: "Enter your current password." }); return; }
     setIsSaving(true);
     setFeedback({ type: "", message: "" });
 
     try {
       const result = pendingUserSave.mode === "create"
-        ? await createStaff({ ...pendingUserSave.payload, currentPassword })
-        : await updateUser(pendingUserSave.userId, { ...pendingUserSave.payload, currentPassword });
+        ? await createStaff(pendingUserSave.payload)
+        : await updateUser(pendingUserSave.userId, pendingUserSave.payload);
 
       if (!result?.ok) {
         setFeedback({
@@ -2180,34 +2154,7 @@ function ManageUsersWorkspace({
                   </select>
                 </div>
 
-              <div className="md:col-start-2">
-                <label className="mb-2 block text-sm font-medium text-[#425A60]">
-                  {isCreatingNew ? "Password" : "New password"}
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    autoComplete="new-password"
-                    onChange={updateField("password")}
-                    disabled={isSaving}
-                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 pr-11 text-sm outline-none transition focus:border-[#2D9B9B]"
-                    placeholder={
-                      isCreatingNew
-                        ? "Set an employee password"
-                        : "Leave blank to keep the current password"
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((visible) => !visible)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
+
 
               </div>
 

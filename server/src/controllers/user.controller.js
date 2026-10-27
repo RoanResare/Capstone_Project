@@ -84,7 +84,6 @@ async function confirmAccountHolderPassword(req) {
 
 async function createUser(req, res) {
   assertAuthSetupReady();
-  await confirmAccountHolderPassword(req);
   const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim() : "";
   const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
   const password = typeof req.body?.password === "string" ? req.body.password.trim() : "";
@@ -118,7 +117,7 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   assertAuthSetupReady();
-  await confirmAccountHolderPassword(req);
+  if (req.body?.accountStatus || req.body?.status) await confirmAccountHolderPassword(req);
   const targetUid = req.params.uid;
   const nextRole = req.body?.role ? normalizePortalRole(req.body.role) : "";
   const nextAccountStatus =

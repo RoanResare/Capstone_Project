@@ -34,18 +34,21 @@ const { EmployeeSaveConfirmation } = await server.ssrLoadModule("/src/app/compon
 const { PortalPage } = await server.ssrLoadModule("/src/app/components/portal/PortalPage.jsx");
 globalThis.document = { body: {} };
 
-test("every employee mutation prompts for the holder's password; new password follows Role in the modal", () => {
+test("employee saves request only a new password; status and deletion retain holder confirmation", () => {
   for (const mode of ["create", "update", "delete", "status"]) {
     const html = renderToString(createElement(EmployeeSaveConfirmation, { pendingSave: { mode,
       fullPayload: { name: "Target", email: "target@example.com", username: "target", role: "staff", password: "Target!Password" } },
       isSaving: false, error: "Current password is incorrect", onConfirm() {}, onCancel() {}, onNewPasswordChange() {} }));
-    assert.match(html, /Your current password/);
-    assert.match(html, /required=""[^>]*type="password"[^>]*autoComplete="current-password"/);
     assert.match(html, /role="alert"/);
-    assert.match(html, /type="submit" disabled=""/);
-    if (mode === "update") {
+    if (["create", "update"].includes(mode)) {
+      assert.doesNotMatch(html, /Your current password|autoComplete="current-password"/);
       assert.ok(html.indexOf("Role") < html.indexOf("New password"));
-      assert.ok(html.indexOf("New password") < html.indexOf("Your current password"));
+      assert.doesNotMatch(html, /type="submit" disabled=""/);
+      assert.match(html, /autoComplete="new-password"/);
+    } else {
+      assert.match(html, /Your current password/);
+      assert.match(html, /required=""[^>]*type="password"[^>]*autoComplete="current-password"/);
+      assert.match(html, /type="submit" disabled=""/);
     }
   }
 });

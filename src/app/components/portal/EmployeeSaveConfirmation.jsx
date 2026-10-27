@@ -7,6 +7,7 @@ export function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onCo
   const [currentPassword, setCurrentPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const mode = pendingSave.mode;
+  const requiresCurrentPassword = ["delete", "status"].includes(mode);
   useEffect(() => {
     const dialog = dialogRef.current;
     const previousOverflow = document.body.style.overflow;
@@ -22,8 +23,8 @@ export function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onCo
       <h4 id="save-employee-title" className="text-xl font-semibold text-[#20343B]">
         {mode === "delete" ? "Confirm permanent deletion" : mode === "status" ? "Confirm status change" : "Confirm employee changes"}
       </h4>
-      <p className="mt-2 text-sm text-[#607277]">Enter your own current password to authorize this employee account {mode === "delete" ? "deletion" : "change"}.</p>
-      <form onSubmit={event => { event.preventDefault(); if (!isSaving && currentPassword) onConfirm(currentPassword); }} className="mt-4 space-y-4">
+      <p className="mt-2 text-sm text-[#607277]">{requiresCurrentPassword ? `Enter your own current password to authorize this employee account ${mode === "delete" ? "deletion" : "change"}.` : "Review the employee details and confirm your changes."}</p>
+      <form onSubmit={event => { event.preventDefault(); if (!isSaving && (!requiresCurrentPassword || currentPassword)) onConfirm(requiresCurrentPassword ? currentPassword : undefined); }} className="mt-4 space-y-4">
         <dl className="grid gap-3 text-sm">
           {[["Name", account.name], ["Email", account.email], ["Username", account.username],
             ["Role", account.role === "admin" ? "Admin" : "Staff"],
@@ -33,13 +34,13 @@ export function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onCo
               </div>))}
         </dl>
         {["create", "update"].includes(mode) && <label className="block text-sm font-medium text-[#425A60]">
-          {mode === "create" ? "Password" : "New password"}
-          <input type="password" autoComplete="new-password" value={account.password || ""}
+          New password
+          <input autoFocus required={mode === "create"} type="password" autoComplete="new-password" value={account.password || ""}
             onChange={event => onNewPasswordChange(event.target.value)} disabled={isSaving}
             placeholder={mode === "create" ? "Set an employee password" : "Leave blank to keep the current password"}
             className="mt-2 w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm" />
         </label>}
-        <label className="block text-sm font-medium text-[#425A60]">Your current password
+        {requiresCurrentPassword && <label className="block text-sm font-medium text-[#425A60]">Your current password
           <div className="relative mt-2">
             <input autoFocus required type={showCurrentPassword ? "text" : "password"} autoComplete="current-password" value={currentPassword}
               onChange={event => setCurrentPassword(event.target.value)} disabled={isSaving}
@@ -49,11 +50,11 @@ export function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onCo
               {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-        </label>
+        </label>}
         {error && <p role="alert" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">{error}</p>}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={onCancel} disabled={isSaving} className="rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A]">Cancel</button>
-          <button type="submit" disabled={isSaving || !currentPassword} className="rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+          <button type="submit" disabled={isSaving || (requiresCurrentPassword && !currentPassword)} className="rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
             {isSaving ? "Saving..." : mode === "delete" ? "Delete account" : "Save changes"}
           </button>
         </div>

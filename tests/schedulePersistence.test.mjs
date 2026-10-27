@@ -43,6 +43,8 @@ function fixture() {
     } },
     buildAuthHeaders: () => ({}), assertAppropriatePetText: () => {},
     extractApiError: (_error, fallback) => fallback,
+    removeJsonCache: () => {},
+    readJsonCache: () => null, writeJsonCache: () => {},
     window: { addEventListener: (event, handler) => events.set(event, handler), removeEventListener() {} },
     document: { visibilityState: "visible", addEventListener() {}, removeEventListener() {} },
     setTimeout: handler => { const id = timers.size + 1; timers.set(id, handler); return id; },
@@ -57,10 +59,78 @@ function fixture() {
   };
   const service = new Function(...Object.keys(ports), `${source}\nreturn {
     loadCustomerPetRecords, savePetRecordDocument, deletePetRecordDocument,
-    loadAppointmentDocuments, subscribeAppointments
+    loadAppointmentDocuments, subscribeAppointments, invalidateScheduleCache, clearScheduleCache,
+    subscribeAvailabilitySlots
   };`)(...Object.values(ports));
   return { service, records, queries, ports, timers, events, failListener: () => failListener };
 }
+
+test("overlapping complete API loads share every page, but later loads remain fresh", async () => {
+  const { service, records, ports } = fixture();
+  for (let i = 0; i < 550; i++) records.set(String(i), { id: String(i), collection: "appointments" });
+  let requests = 0;
+  const get = ports.apiClient.get;
+  ports.apiClient.get = async (...args) => { requests++; return get(...args); };
+  const [first, second] = await Promise.all([service.loadAppointmentDocuments(), service.loadAppointmentDocuments()]);
+  assert.equal(requests, 2);
+  assert.equal(first.length, 550);
+  assert.deepEqual(second, first);
+  records.set("new", { id: "new", collection: "appointments" });
+  assert.equal((await service.loadAppointmentDocuments()).length, 551);
+  assert.equal(requests, 4);
+});
+
+test("invalidation, logout and account changes never reuse an earlier pending load", async () => {
+  for (const change of ["write", "logout", "account"]) {
+    const { service, ports } = fixture();
+    const resolvers = [];
+    ports.apiClient.get = () => new Promise(resolve => resolvers.push(resolve));
+    const first = service.loadAppointmentDocuments();
+    await new Promise(resolve => setImmediate(resolve));
+    if (change === "write") service.invalidateScheduleCache("appointments");
+    if (change === "logout") service.clearScheduleCache();
+    if (change === "account") ports.auth.currentUser = { uid: "other", getIdToken: async () => "other-token" };
+    const firstResult = first.catch(error => error);
+    const second = service.loadAppointmentDocuments();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(resolvers.length, 2);
+    resolvers[0]({ data: { records: [{ id: "old" }] } });
+    await firstResult;
+    // Completion of the old request must not remove the new pending entry.
+    const third = service.loadAppointmentDocuments();
+    resolvers[1]({ data: { records: [{ id: "fresh" }] } });
+    assert.deepEqual(await second, [{ id: "fresh" }]);
+    assert.deepEqual(await third, [{ id: "fresh" }]);
+    assert.equal(resolvers.length, 2);
+  }
+});
+
+test("failed shared reads are evicted and can be retried", async () => {
+  const { service, ports } = fixture();
+  ports.apiClient.get = async () => { throw new Error("offline"); };
+  await assert.rejects(service.loadAppointmentDocuments(), /offline/);
+  ports.apiClient.get = async () => ({ data: { records: [{ id: "recovered" }] } });
+  assert.deepEqual(await service.loadAppointmentDocuments(), [{ id: "recovered" }]);
+});
+
+test("overlapping availability focus events keep one request and one polling timer", async () => {
+  const { service, ports, timers, events } = fixture();
+  let requests = 0;
+  let resolve;
+  ports.apiClient.get = () => { requests++; return new Promise(done => { resolve = done; }); };
+  const updates = [];
+  const stop = service.subscribeAvailabilitySlots(slots => updates.push(slots));
+  await new Promise(done => setImmediate(done));
+  events.get("focus")();
+  events.get("focus")();
+  assert.equal(requests, 1);
+  resolve({ data: { slots: [{ id: "slot" }] } });
+  await new Promise(done => setImmediate(done));
+  assert.equal(timers.size, 1);
+  assert.deepEqual(updates, [[{ id: "slot" }]]);
+  stop();
+  assert.equal(timers.size, 0);
+});
 
 test("saved customer profiles remain visible when reloaded inside the cache lifetime", async () => {
   const { service } = fixture();

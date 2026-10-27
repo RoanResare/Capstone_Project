@@ -35,6 +35,8 @@ const SCHEDULE_PAGE_SIZE = 200;
 const MAX_PORTAL_APPOINTMENT_PAGES = 10;
 const collectionLoadRequests = new Map();
 const collectionCache = new Map();
+// Only share pending reads; completed API results are never reused.
+const sharedRecordRequests = new Map();
 let availabilitySlotsLoadRequest = null;
 
 function normalizeString(value = "") {
@@ -137,9 +139,21 @@ function logSyncError(action, error) {
   console.error(`[schedule-data] ${action} failed.`, error);
 }
 
-async function loadSharedRecords(collectionName) {
+function loadSharedRecords(collectionName) {
   const user = auth?.currentUser;
-  if (!user) throw new Error("Sign in to load your saved records.");
+  if (!user) return Promise.reject(new Error("Sign in to load your saved records."));
+  const pending = sharedRecordRequests.get(collectionName);
+  if (pending?.user === user) return pending.request;
+  const request = fetchSharedRecords(collectionName, user).finally(() => {
+    if (sharedRecordRequests.get(collectionName)?.request === request) {
+      sharedRecordRequests.delete(collectionName);
+    }
+  });
+  sharedRecordRequests.set(collectionName, { user, request });
+  return request;
+}
+
+async function fetchSharedRecords(collectionName, user) {
   const token = await user.getIdToken();
   const documents = [];
   let cursor = "";
@@ -459,6 +473,9 @@ export async function loadAvailabilitySlotDocuments(options = {}) {
 }
 
 export function invalidateScheduleCache(collectionName) {
+  // A post-write refresh must not join a read started before the write.
+  if (collectionName) sharedRecordRequests.delete(collectionName);
+  else sharedRecordRequests.clear();
   const uid = auth?.currentUser?.uid;
   if (uid && collectionName) {
     for (const key of collectionCache.keys()) {
@@ -472,6 +489,7 @@ export function invalidateScheduleCache(collectionName) {
 }
 
 export function clearScheduleCache() {
+  sharedRecordRequests.clear();
   collectionCache.clear();
   collectionLoadRequests.clear();
   availabilitySlotsLoadRequest = null;
@@ -518,6 +536,7 @@ export function subscribeAvailabilitySlots(onChange, onError = () => {}) {
   const user = auth.currentUser;
   let disposed = false;
   let pollingTimer;
+  let refreshing = false;
   const fail = (error) => {
     if (disposed) return;
     logSyncError("Availability subscription", error);
@@ -525,10 +544,14 @@ export function subscribeAvailabilitySlots(onChange, onError = () => {}) {
   };
   const refresh = async () => {
     if (disposed || auth.currentUser !== user || document.visibilityState === "hidden") return;
+    if (refreshing) return;
+    refreshing = true;
+    clearTimeout(pollingTimer);
     try {
       const slots = await loadAvailabilitySlotDocuments({ force: true });
       if (!disposed && auth.currentUser === user) onChange(slots);
     } catch (error) { fail(error); }
+    finally { refreshing = false; }
     if (!disposed && auth.currentUser === user) pollingTimer = setTimeout(refresh, 60_000);
   };
   const cachedSlots = readJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, AVAILABILITY_SLOTS_CACHE_TTL_MS);

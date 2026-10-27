@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { EmployeePasswordInput } from "./EmployeePasswordInput.jsx";
 
 export function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onConfirm, error, onNewPasswordChange }) {
   const dialogRef = useRef(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
   const mode = pendingSave.mode;
   const requiresCurrentPassword = ["delete", "status"].includes(mode);
   useEffect(() => {
@@ -34,22 +34,9 @@ export function EmployeeSaveConfirmation({ pendingSave, isSaving, onCancel, onCo
                 <dt className="font-semibold text-[#607277]">{label}</dt><dd className="break-words text-right font-semibold text-[#20343B]">{value}</dd>
               </div>))}
         </dl>
-        {["create", "update"].includes(mode) && <div className="w-full min-w-0">
-          <label htmlFor="employee-new-password" className="block text-sm font-medium text-[#425A60]">New password</label>
-          <div className="relative mt-2 w-full">
-            <input id="employee-new-password" autoFocus required={mode === "create"} type={showNewPassword ? "text" : "password"}
-              autoComplete="new-password" value={account.password || ""}
-              onChange={event => onNewPasswordChange(event.target.value)} disabled={isSaving}
-              placeholder={mode === "create" ? "Set an employee password" : "Leave blank to keep the current password"}
-              className="block w-full min-w-0 rounded-lg border border-[#D9E7E7] bg-white py-2.5 pl-4 pr-12 text-sm" />
-            <button type="button" aria-label={showNewPassword ? "Hide new password" : "Show new password"}
-              aria-controls="employee-new-password" aria-pressed={showNewPassword} disabled={isSaving}
-              onClick={() => setShowNewPassword(value => !value)}
-              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-[#607277] focus-visible:outline-2 focus-visible:outline-[#2D9B9B] disabled:opacity-60">
-              {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-        </div>}
+        {["create", "update"].includes(mode) && <EmployeePasswordInput id="employee-new-password"
+          autoFocus required={mode === "create"} value={account.password || ""}
+          onChange={onNewPasswordChange} disabled={isSaving} />}
         {requiresCurrentPassword && <label className="block text-sm font-medium text-[#425A60]">Your current password
           <div className="relative mt-2">
             <input autoFocus required type={showCurrentPassword ? "text" : "password"} autoComplete="current-password" value={currentPassword}

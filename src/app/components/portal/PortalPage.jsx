@@ -1,4 +1,5 @@
 import { EmployeeSaveConfirmation } from "./EmployeeSaveConfirmation.jsx";
+import { EmployeePasswordInput } from "./EmployeePasswordInput.jsx";
 import { buildAppointmentHistory } from "../../../../shared/appointmentHistory.mjs";
 import { getPasswordPolicyError } from "../../utils/passwordPolicy.js";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -2153,9 +2154,12 @@ function ManageUsersWorkspace({
                     ))}
                   </select>
                 </div>
-
-
-
+                {!isCreatingNew && (
+                  <div className="min-w-0 md:col-span-2">
+                    <EmployeePasswordInput id="employee-edit-password" value={form.password} disabled={isSaving}
+                      onChange={password => setForm(current => ({ ...current, password }))} />
+                  </div>
+                )}
               </div>
 
               {!isCreatingNew && selectedUser && (

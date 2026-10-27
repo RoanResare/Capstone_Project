@@ -22,6 +22,8 @@ const server = await createServer({ configFile: false, server: { middlewareMode:
       if (source.endsWith("context/ToastContext.jsx")) return "\0security-toast";
     },
     transform(code, id) {
+      if (id.endsWith("PortalPage.jsx")) return `${code}\nexport { ManageUsersWorkspace };`;
+      if (id.endsWith("EmployeePasswordInput.jsx")) return code.replace('from "react"', 'from "/__employee_hooks.js"');
       if (id.endsWith("EmployeeSaveConfirmation.jsx")) return code.replace('from "react-dom"', 'from "/__security_portal.js"')
         .replace('from "react"', 'from "/__employee_hooks.js"');
     },
@@ -39,7 +41,8 @@ const server = await createServer({ configFile: false, server: { middlewareMode:
 });
 after(async () => { await server.close(); globalThis.document = previousDocument; delete globalThis.__employeeSecurityUi; });
 const { EmployeeSaveConfirmation } = await server.ssrLoadModule("/src/app/components/portal/EmployeeSaveConfirmation.jsx");
-const { PortalPage } = await server.ssrLoadModule("/src/app/components/portal/PortalPage.jsx");
+const { EmployeePasswordInput } = await server.ssrLoadModule("/src/app/components/portal/EmployeePasswordInput.jsx");
+const { PortalPage, ManageUsersWorkspace } = await server.ssrLoadModule("/src/app/components/portal/PortalPage.jsx");
 globalThis.document = { body: {} };
 
 test("employee saves request only a new password; status and deletion retain holder confirmation", () => {
@@ -71,9 +74,9 @@ test("new password visibility toggles both ways and typing updates the pending e
     if (!(index in values)) values[index] = initial;
     return [values[index], next => { values[index] = typeof next === "function" ? next(values[index]) : next; }];
   } };
-  const props = { pendingSave: { mode: "update", fullPayload: { password: "Original!" } },
-    isSaving: false, onNewPasswordChange: password => { props.pendingSave.fullPayload.password = password; } };
-  const render = () => { cursor = 0; return EmployeeSaveConfirmation(props); };
+  const props = { id: "employee-new-password", value: "Original!", disabled: false,
+    onChange: password => { props.value = password; } };
+  const render = () => { cursor = 0; return EmployeePasswordInput(props); };
   const find = (node, predicate) => {
     if (!node || typeof node !== "object") return null;
     if (predicate(node)) return node;
@@ -97,9 +100,46 @@ test("new password visibility toggles both ways and typing updates the pending e
     toggle().props.onClick(); tree = render();
     assert.equal(input().props.type, "password");
     assert.equal(input().props.value, "Replacement!");
-    props.isSaving = true; tree = render();
+    props.disabled = true; tree = render();
     assert.equal(toggle().props.disabled, true);
   } finally { delete globalThis.__employeeHooks; }
+});
+
+test("create form omits password while edit form spans both columns with one working password control", () => {
+  const employee = { id: "employee", name: "Employee", email: "employee@example.com", username: "employee", role: "staff", status: "active" };
+  const props = { currentUser: { id: "admin", role: "admin" }, state: { users: [employee] }, visibleNotifications: [] };
+  for (const [id, creating] of [["__new-portal-user__", true], ["employee", false]]) {
+    const html = renderToString(createElement(MemoryRouter, { initialEntries: [`/portal/manage-users?user=${id}`] },
+      createElement(ManageUsersWorkspace, props)));
+    if (creating) {
+      assert.match(html, /Create employee account/);
+      assert.doesNotMatch(html, /autoComplete="new-password"|employee-edit-password|>Password<|>New password</);
+    } else {
+      assert.match(html, /Employee account details/);
+      assert.match(html, /class="min-w-0 md:col-span-2"/);
+      assert.match(html, /id="employee-edit-password"[^>]*class="block w-full/);
+      assert.match(html, /aria-controls="employee-edit-password"/);
+      assert.equal((html.match(/autoComplete="new-password"/g) || []).length, 1);
+    }
+  }
+});
+
+test("create action opens confirmation without a password and without creating the account", async () => {
+  const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  const saveUser = async (event) => {");
+  const handler = source.slice(start, source.indexOf("  const confirmSaveUser =", start));
+  let pending;
+  const ports = {
+    isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [],
+    form: { name: "Employee", email: "employee@example.com", username: "employee", role: "staff", password: "" },
+    isValidEmail: () => true, isCreatingNew: true, selectedUser: null,
+    setPendingUserSave: value => { pending = value; }, setFeedback() {},
+    createStaff: () => assert.fail("Must wait for modal confirmation"),
+  };
+  const save = new Function(...Object.keys(ports), `${handler}\nreturn saveUser;`)(...Object.values(ports));
+  await save({ preventDefault() {} });
+  assert.equal(pending.mode, "create");
+  assert.equal(pending.fullPayload.password, "");
 });
 
 test("confirmation validates password before invoking employee create or update", async () => {

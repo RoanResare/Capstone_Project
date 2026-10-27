@@ -58,3 +58,33 @@ test("new employee password validation and separate destructive confirmations re
   await assert.rejects(controller.removeUser(req, res), /current password/);
   assert.equal(writes.length, 0);
 });
+
+test("ordinary frontend employee edits reach the backend without a status-confirmation password", async () => {
+  const { controller, req, res, writes } = fixture();
+  const source = readFileSync(require.resolve("../../src/app/context/AppContext.jsx"), "utf8");
+  const method = source.slice(source.indexOf("    async updateUser(id, updates) {"), source.indexOf("    async deleteUser(id, currentPassword) {"));
+  const employee = { id: "employee", name: "Employee", email: "employee@example.com", username: "employee", role: "staff", status: "active" };
+  const context = {
+    Error,
+    currentUser: { id: "admin", role: "admin" }, accessToken: "authenticated-token",
+    state: { users: [employee] }, normalizeEmail: value => value.toLowerCase(),
+    normalizeUsername: value => value, normalizePortalRole: value => value,
+    normalizePortalStatus: value => value, isValidUsername: () => true,
+    isStrongPassword: () => true, dispatch() {}, invalidatePortalUsersCache() {},
+    userApi: { updateUser: async (_token, id, payload) => {
+      req.params.uid = id;
+      req.body = JSON.parse(JSON.stringify(payload));
+      return controller.updateUser(req, res);
+    } },
+  };
+  vm.createContext(context);
+  vm.runInContext(`globalThis.save = ({${method}}).updateUser;`, context);
+  assert.equal((await context.save("employee", { password: "Updated123!" })).ok, true);
+  assert.equal(writes[0].password, "Updated123!");
+  assert.equal(req.body.status, undefined);
+  assert.equal(writes[0].accountStatus, undefined);
+  const statusChange = await context.save("employee", { status: "inactive" });
+  assert.equal(statusChange.ok, false);
+  assert.match(statusChange.error, /current password/);
+  assert.equal(writes.length, 1);
+});

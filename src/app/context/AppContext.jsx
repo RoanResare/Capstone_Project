@@ -2282,7 +2282,7 @@ export function AppProvider({ children }) {
                 ? targetUser.phone
                 : "",
           role: normalizedRole,
-          status: normalizedStatus,
+          status: updates.status ? normalizedStatus : undefined,
           fraudStatus: normalizedFraudStatus,
           fraudReason: typeof updates.fraudReason === "string" ? updates.fraudReason.trim() : targetUser.fraudReason || "",
           password: nextPassword || undefined,

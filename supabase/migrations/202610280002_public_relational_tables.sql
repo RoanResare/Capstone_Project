@@ -83,6 +83,10 @@ CREATE INDEX IF NOT EXISTS pets_owner_id_idx ON public.pets(owner_id);
 CREATE INDEX IF NOT EXISTS appointments_user_date_idx ON public.appointments(user_id,appointment_date);
 CREATE INDEX IF NOT EXISTS appointments_pet_id_idx ON public.appointments(pet_id);
 CREATE INDEX IF NOT EXISTS appointments_slot_status_idx ON public.appointments(slot_id,status);
+-- The adapter filters compatibility-view payloads by these fields for the
+-- minute-level reminder and no-show workers.
+CREATE INDEX IF NOT EXISTS appointments_legacy_schedule_date_idx ON public.appointments ((legacy_data #> '{scheduleDate}'), id);
+CREATE INDEX IF NOT EXISTS appointment_reminders_lease_idx ON app_private.appointment_reminders ((data #> '{leaseUntil}'), id);
 
 CREATE OR REPLACE FUNCTION app_private.relational_key(t text,r jsonb) RETURNS text
 LANGUAGE sql IMMUTABLE SET search_path='' AS $$

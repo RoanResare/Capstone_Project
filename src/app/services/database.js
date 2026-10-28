@@ -1,10 +1,9 @@
-import * as firestore from "firebase/firestore";
 import * as postgres from "./postgresBrowser.js";
 
-const provider = import.meta.env.VITE_DATABASE_PROVIDER || "firestore";
-if (!["firestore", "postgres"].includes(provider)) throw new Error("Invalid VITE_DATABASE_PROVIDER.");
-const database = provider === "postgres" ? postgres : firestore;
-export const isPostgresEnabled = provider === "postgres";
+const provider = (import.meta.env.VITE_DATABASE_PROVIDER || "postgres").trim().toLowerCase();
+if (provider !== "postgres") throw new Error("Only the Supabase PostgreSQL database provider is supported.");
+const database = postgres;
+export const isPostgresEnabled = true;
 export const collection = (...args) => database.collection(...args);
 export const doc = (...args) => database.doc(...args);
 export const query = (...args) => database.query(...args);

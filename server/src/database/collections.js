@@ -1,4 +1,4 @@
-// Verified runtime collections plus collection names in firestore.rules.
+// Runtime business collections mapped to PostgreSQL tables.
 const COLLECTION_TABLES = Object.freeze({
   users: "users", usernames: "usernames", appointments: "appointments", pets: "pets",
   deletedPets: "deleted_pets", availabilitySlots: "availability_slots",
@@ -7,6 +7,7 @@ const COLLECTION_TABLES = Object.freeze({
   servicePricelists: "service_pricelists", sessionSecurity: "session_security",
   sessionConnections: "session_connections", authenticationAttempts: "authentication_attempts",
   phoneAccountLimits: "phone_account_limits", admin_staff_otp: "admin_staff_otp",
+  appointmentReminders: "appointment_reminders",
   customers: "customers", chatbot_faqs: "chatbot_faqs", services: "services",
   timeSlots: "time_slots", slotManagement: "slot_management_camel", schedules: "schedules",
   slot_management: "slot_management", revoked_tokens: "revoked_tokens",

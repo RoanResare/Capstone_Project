@@ -1,5 +1,6 @@
 const { attemptReference, lockError, failedAttempt, assertAttemptsAllowed, MAX_FAILED_ATTEMPTS } = require("./authAttempts.service");
-const { admin, db } = require("../config/firebaseAdmin");
+const { db } = require("../config/firebaseAdmin");
+const { Timestamp } = require("../database/values");
 const { env } = require("../config/env");
 const { OTP_COLLECTION } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
@@ -22,70 +23,23 @@ function getResendAvailableAt(createdAt) {
   return new Date(createdAt.getTime() + env.otp.resendCooldownSeconds * 1000);
 }
 
-function isFirestoreIndexError(error) {
-  const code = String(error?.code || "");
-  const message = String(error?.message || "");
-
-  return code === "9" || code === "failed-precondition" || message.includes("FAILED_PRECONDITION");
-}
-
 async function getLatestOtpRecordForUser(userId) {
-  try {
-    const snapshot = await db
-      .collection(OTP_COLLECTION)
-      .where("userId", "==", userId)
-      .orderBy("createdAt", "desc")
-      .limit(1)
-      .get();
-
-    return snapshot.empty ? null : snapshot.docs[0].data();
-  } catch (error) {
-    if (!isFirestoreIndexError(error)) {
-      throw error;
-    }
-
-    console.warn("[otp] Firestore OTP index missing; falling back to in-memory cooldown sort.", {
-      userId,
-      code: error?.code || "",
-      message: error instanceof Error ? error.message : String(error || "Unknown error"),
-    });
-
-    const snapshot = await db.collection(OTP_COLLECTION).where("userId", "==", userId).get();
-    const records = snapshot.docs
-      .map((doc) => doc.data())
-      .sort((left, right) => {
-        const leftCreatedAt = toDate(left.createdAt)?.getTime() || 0;
-        const rightCreatedAt = toDate(right.createdAt)?.getTime() || 0;
-        return rightCreatedAt - leftCreatedAt;
-      });
-
-    return records[0] || null;
-  }
+  const snapshot = await db
+    .collection(OTP_COLLECTION)
+    .where("userId", "==", userId)
+    .orderBy("createdAt", "desc")
+    .limit(1)
+    .get();
+  return snapshot.empty ? null : snapshot.docs[0].data();
 }
 
 async function getOpenOtpDocumentsForUser(userId) {
-  try {
-    const snapshot = await db
-      .collection(OTP_COLLECTION)
-      .where("userId", "==", userId)
-      .where("isUsed", "==", false)
-      .get();
-
-    return snapshot.docs;
-  } catch (error) {
-    if (!isFirestoreIndexError(error)) {
-      throw error;
-    }
-
-    console.warn("[otp] Firestore OTP index missing; falling back to in-memory open-code filter.", {
-      userId,
-      code: error?.code || "",
-      message: error instanceof Error ? error.message : String(error || "Unknown error"),
-    });
-
-    const snapshot = await db.collection(OTP_COLLECTION).where("userId", "==", userId).get();
-    return snapshot.docs.filter((doc) => doc.data()?.isUsed === false);
-  }
+  const snapshot = await db
+    .collection(OTP_COLLECTION)
+    .where("userId", "==", userId)
+    .where("isUsed", "==", false)
+    .get();
+  return snapshot.docs;
 }
 
 async function assertOtpResendAllowed(userId) {
@@ -131,7 +85,7 @@ async function invalidateOpenOtpsForUser(userId) {
   openOtpDocuments.forEach((doc) => {
     batch.update(doc.ref, {
       isUsed: true,
-      invalidatedAt: admin.firestore.Timestamp.now(),
+      invalidatedAt: Timestamp.now(),
       invalidatedReason: "superseded",
     });
   });
@@ -147,9 +101,9 @@ async function createOtpVerification(user, options = {}) {
   await invalidateOpenOtpsForUser(user.uid);
 
   const otpCode = generateOtpCode();
-  const now = admin.firestore.Timestamp.now();
+  const now = Timestamp.now();
   const createdAt = now.toDate();
-  const expiresAt = admin.firestore.Timestamp.fromDate(
+  const expiresAt = Timestamp.fromDate(
     new Date(Date.now() + env.otp.ttlMinutes * 60 * 1000),
   );
   const docRef = db.collection(OTP_COLLECTION).doc();
@@ -186,7 +140,7 @@ async function createOtpVerification(user, options = {}) {
 async function verifyOtpCode({ otpId, otpCode, user }) {
   const docRef = db.collection(OTP_COLLECTION).doc(otpId);
   const attemptsRef = attemptReference("otp", user.uid);
-  const now = admin.firestore.Timestamp.now();
+  const now = Timestamp.now();
   const outcome = await db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(docRef);
     const attemptSnapshot = await transaction.get(attemptsRef);

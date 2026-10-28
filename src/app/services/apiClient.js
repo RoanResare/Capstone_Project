@@ -18,7 +18,7 @@ export const SESSION_SECURITY_EVENT = "furfection:session-security-violation";
 apiClient.interceptors.request.use((config) => {
   config.securityEpoch = getSecurityEpoch();
   // Refuse mixed-provider operation during a staged cutover.
-  config.headers["X-Database-Provider"] = import.meta.env.VITE_DATABASE_PROVIDER || "firestore";
+  config.headers["X-Database-Provider"] = import.meta.env.VITE_DATABASE_PROVIDER || "postgres";
   return config;
 });
 

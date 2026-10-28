@@ -60,7 +60,6 @@ app.use(helmet({
         "'self'",
         "https://identitytoolkit.googleapis.com",
         "https://securetoken.googleapis.com",
-        "https://firestore.googleapis.com",
         "https://api.charmingfurfectionpetscareservices.online",
         "https://capstone-project-bczf.onrender.com",
         ...databaseConnectOrigins,
@@ -72,7 +71,7 @@ app.use(helmet({
 app.use(express.json({ limit: "8mb" }));
 app.use("/api", (req, res, next) => {
   const requestedProvider = req.get("X-Database-Provider");
-  if (requestedProvider && requestedProvider !== (process.env.DATABASE_PROVIDER || "firestore")) {
+  if (requestedProvider && requestedProvider !== (process.env.DATABASE_PROVIDER || "postgres")) {
     return res.status(409).json({ success: false, message: "The client and server database providers do not match. Reload after the staging configuration is synchronized.", details: { code: "DATABASE_PROVIDER_MISMATCH" } });
   }
   next();

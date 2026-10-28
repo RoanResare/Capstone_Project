@@ -1,13 +1,6 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/analytics";
 import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
-import {
-  getFirestore,
-  initializeFirestore,
-  memoryLocalCache,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 function normalizeEnvValue(value) {
@@ -20,32 +13,6 @@ function normalizeStorageBucket(value) {
 
 function isUsableValue(value) {
   return Boolean(normalizeEnvValue(value)) && !normalizeEnvValue(value).startsWith("your_");
-}
-
-function canUsePersistentFirestoreCache() {
-  return typeof window !== "undefined" && typeof indexedDB !== "undefined";
-}
-
-function createFirestore(app, hasExistingApp) {
-  if (hasExistingApp) {
-    return getFirestore(app);
-  }
-
-  if (canUsePersistentFirestoreCache()) {
-    try {
-      return initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-        }),
-      });
-    } catch (error) {
-      console.warn("Falling back to in-memory Firestore cache.", error);
-    }
-  }
-
-  return initializeFirestore(app, {
-    localCache: memoryLocalCache(),
-  });
 }
 
 const viteEnv = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
@@ -100,7 +67,11 @@ if (missingFirebaseKeys.length > 0) {
         console.warn("Unable to configure Firebase Authentication persistence.", error);
       });
     }
-    db = viteEnv.VITE_DATABASE_PROVIDER === "postgres" ? { provider: "postgres" } : createFirestore(app, hasExistingApp);
+    const databaseProvider = normalizeEnvValue(viteEnv.VITE_DATABASE_PROVIDER || "postgres").toLowerCase();
+    if (databaseProvider !== "postgres") {
+      throw new Error("Only the Supabase PostgreSQL database provider is supported.");
+    }
+    db = { provider: "postgres" };
     storage = getStorage(app);
 
     const canUseAnalytics =

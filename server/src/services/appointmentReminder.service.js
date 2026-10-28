@@ -23,7 +23,7 @@ function isDue(appointment, now) {
 function createReminderWorker({ db, sendReminder, clock = Date.now }) {
   async function run() {
     const today = new Date(clock() + 8 * HOUR).toISOString().slice(0, 10);
-    // A single-field query needs no composite Firestore index.
+    // The PostgreSQL adapter compiles this bounded query against the appointments table.
     const snapshot = await db.collection("appointments").where("scheduleDate", "==", today).get();
     for (const entry of snapshot.docs) {
       try {
@@ -32,7 +32,7 @@ function createReminderWorker({ db, sendReminder, clock = Date.now }) {
       const deliveryRef = db.collection("appointmentReminders").doc(`${entry.id}-${schedule.key}`);
       const token = randomUUID();
       let appointment;
-      // Claim in Firestore so overlapping checks and server replicas share one lease.
+      // Claim in a PostgreSQL transaction so overlapping checks and replicas share one lease.
       await db.runTransaction(async (tx) => {
         appointment = null;
         const current = await tx.get(entry.ref);
@@ -76,6 +76,9 @@ function createReminderWorker({ db, sendReminder, clock = Date.now }) {
 
 function startAppointmentReminders() {
   const { db } = require("../config/firebaseAdmin");
+  if (!db || db.provider !== "postgres") {
+    throw new Error("Appointment reminders require the PostgreSQL database adapter.");
+  }
   const { sendAppointmentReminder } = require("./reminderMail.service");
   const worker = createReminderWorker({ db, sendReminder: sendAppointmentReminder });
   let running = false;

@@ -1,5 +1,12 @@
-const { Timestamp, GeoPoint } = require("firebase-admin/firestore");
 const TYPE = "__furfection_type__";
+class Timestamp {
+  constructor(seconds, nanoseconds = 0) { this.seconds = Number(seconds); this.nanoseconds = Number(nanoseconds); }
+  static fromDate(value) { const millis = value.getTime(); return new Timestamp(Math.floor(millis / 1000), (millis % 1000) * 1e6); }
+  static now() { return Timestamp.fromDate(new Date()); }
+  toDate() { return new Date(this.seconds * 1000 + this.nanoseconds / 1e6); }
+  toMillis() { return this.seconds * 1000 + this.nanoseconds / 1e6; }
+}
+class GeoPoint { constructor(latitude, longitude) { this.latitude = Number(latitude); this.longitude = Number(longitude); } }
 function encode(value) {
   if (value === undefined) throw new TypeError("Undefined database values are not supported.");
   if (value === null || typeof value === "string" || typeof value === "boolean") return value;
@@ -10,7 +17,7 @@ function encode(value) {
   }
   if (Buffer.isBuffer(value) || value instanceof Uint8Array) return { [TYPE]: "bytes", value: Buffer.from(value).toString("base64") };
   if (value instanceof GeoPoint) return { [TYPE]: "geopoint", latitude: value.latitude, longitude: value.longitude };
-  if (typeof value?.path === "string" && value.firestore) return { [TYPE]: "reference", value: value.path };
+  if (typeof value?.path === "string" && value._postgresDatabase) return { [TYPE]: "reference", value: value.path };
   if (Array.isArray(value)) return value.map(encode);
   if (typeof value !== "object") throw new TypeError("Unsupported database value.");
   const entries = Object.entries(value).map(([key, item]) => [key, encode(item)]);
@@ -42,4 +49,4 @@ function deepMerge(previous, patch) {
   }
   return result;
 }
-module.exports = { TYPE, encode, decode, deepMerge };
+module.exports = { TYPE, Timestamp, GeoPoint, encode, decode, deepMerge };

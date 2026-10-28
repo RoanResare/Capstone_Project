@@ -10,7 +10,7 @@ BEGIN
     'users','usernames','appointments','pets','deleted_pets','availability_slots',
     'notifications','photo_moderation','low_cost_kapon_promo','promotion_details',
     'service_pricelists','session_security','session_connections',
-    'authentication_attempts','phone_account_limits','admin_staff_otp','customers',
+    'authentication_attempts','phone_account_limits','admin_staff_otp','appointment_reminders','customers',
     'chatbot_faqs','services','time_slots','slot_management_camel','schedules',
     'slot_management','revoked_tokens'
   ] LOOP
@@ -43,7 +43,8 @@ BEGIN
     ['appointments','ownerId'],['appointments','customerEmail'],['appointments','petRecordId'],
     ['appointments','slotId'],['appointments','status'],['appointments','scheduleDate'],
     ['appointments','assignedStaff'],['notifications','targetUserId'],['notifications','createdAt'],
-    ['admin_staff_otp','userId'],['admin_staff_otp','isUsed'],['admin_staff_otp','createdAt']
+    ['admin_staff_otp','userId'],['admin_staff_otp','isUsed'],['admin_staff_otp','createdAt'],
+    ['appointment_reminders','leaseUntil'],['appointment_reminders','retryAt'],['appointment_reminders','sentAt']
   ] LOOP
     col := spec[1]; field := spec[2];
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON app_private.%I ((data #> %L), id)', col || '_' || lower(field) || '_idx', col, '{' || field || '}');

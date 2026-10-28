@@ -5,6 +5,7 @@ const { getMailTransportSettings } = require("./config/mailer");
 const { startDisposableEmailUpdates } = require("./services/disposableEmailDomains.service");
 const { startPendingRegistrationCleanup } = require("./services/pendingRegistrationCleanup.service");
 const { startAppointmentReminders } = require("./services/appointmentReminder.service");
+const { startAppointmentNoShowUpdates } = require("./services/appointmentNoShow.service");
 
 logEnvLoadSummary();
 
@@ -20,6 +21,7 @@ try {
 startDisposableEmailUpdates();
 startPendingRegistrationCleanup();
 startAppointmentReminders();
+startAppointmentNoShowUpdates();
 
 app.listen(env.port, () => {
   console.info("[startup] Server ready.", {

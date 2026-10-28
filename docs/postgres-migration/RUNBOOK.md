@@ -30,7 +30,8 @@ Storage and current Firestore records intact.
    root `.env`; inherited host settings override both. Vite `.env.production`
    overrides root public values during a production build. Check the effective
    settings privately without printing secrets.
-6. Keep provider switches at `firestore` while preparing the staging database.
+6. Keep provider switches at `postgres` for runtime app data. The backend still
+   requires Firebase credentials for authentication until a separate Auth migration.
    Set `MIGRATION_TARGET=staging` for the migration CLI. Runtime adapters do not
    apply schema or migrate data on startup.
 

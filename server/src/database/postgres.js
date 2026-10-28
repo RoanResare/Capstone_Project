@@ -45,7 +45,7 @@ function createPostgresDatabase(pool) {
       get: field => row ? field.split(".").reduce((value, key) => value?.[key], decode(row.data, database)) : undefined };
   }
   class Reference {
-    constructor(collection, id) { this.collectionName = collection; this.id = validId(id); this.path = `${collection}/${id}`; Object.defineProperty(this, "firestore", { value: database }); }
+    constructor(collection, id) { this.collectionName = collection; this.id = validId(id); this.path = `${collection}/${id}`; Object.defineProperty(this, "_postgresDatabase", { value: database }); }
     async get() { return read(this, pool); }
     async set(data, options) { return database.runTransaction(tx => { tx.set(this, data, options); }); }
     async update(data) { return database.runTransaction(tx => { tx.update(this, data); }); }

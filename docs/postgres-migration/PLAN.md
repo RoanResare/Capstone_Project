@@ -1,7 +1,8 @@
 # Firestore to Supabase PostgreSQL preparation
 
-This branch is staging preparation. Firestore remains the default. Production
-export/import, deployment and provider cutover require separate approval.
+Runtime business database access now requires the PostgreSQL adapter. The legacy
+Firestore export/import scripts remain migration tooling. Hosted production
+cutover and data transfer still require a separately approved rehearsal.
 
 ## Verified source inventory and design
 
@@ -34,16 +35,17 @@ Firestore timestamps, references, bytes and geography need lossless type tags.
 The Node API is the data authorization boundary. Private document tables have RLS
 and no browser grants. The only browser-readable realtime table contains minimal
 invalidation events. Its RLS must recheck current account status and revocation.
-The backend exchanges an existing verified Firebase token for a short-lived
-Supabase-compatible token; no change to Firebase app role claims is required.
+Authentication remains on Firebase today. The backend exchanges a verified
+Firebase token for a short-lived Supabase-compatible token; this is not a
+Supabase Auth migration. Firebase Auth/Storage removal requires a separate
+identity and file migration.
 Business payloads are fetched through authorized endpoints, not event payloads.
 
-Frontend Firestore calls are in scheduleData, kaponPromo, customerAccount and
-firebaseAuth. A provider facade retains the Firestore path by default and uses
-authorized HTTP operations plus Supabase `postgres_changes` when opted into
-PostgreSQL. Subscription bootstrap must subscribe before fetching, recover on
+Frontend database calls in scheduleData, kaponPromo, customerAccount and
+firebaseAuth route through the PostgreSQL facade and authorized HTTP operations
+plus Supabase `postgres_changes`. Subscription bootstrap must subscribe before fetching, recover on
 reconnect and clean up; changes should fetch affected documents where possible.
-Firebase Authentication, Analytics and Storage stay in place.
+Firebase Authentication, Analytics and Storage stay in place for now.
 
 No implemented product inventory, order, payment, POS or sales database flows were
 found in this checkout. Do not invent tables/workflows or claim tests for them.

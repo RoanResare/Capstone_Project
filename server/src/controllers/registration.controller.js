@@ -1,225 +1,154 @@
-const { auth, db } = require("../config/firebaseAdmin");
+const { db } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 const { validateRegistrationSecurity } = require("../services/registrationSecurity.service");
 const { validateAccessSecurity } = require("../services/sessionSecurity.service");
-const { applyEmailVerificationCode, generateEmailVerificationLink } = require("../services/firebaseAuth.service");
+const { generateSupabaseEmailLink, deleteSupabaseUser, verifySupabaseEmailToken, findSupabaseUserByEmail } = require("../services/supabaseAuth.service");
 const { sendEmailVerificationLink } = require("../services/mail.service");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
+const { hashPassword, assertStrongPassword } = require("../utils/password");
+const { assertValidUsername, getUserByEmail, getUsernameOwner } = require("../services/user.service");
 
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const MAX_CODE_LENGTH = 4096;
+const normalizeEmail = (value = "") => String(value || "").trim().toLowerCase();
+const pendingVerificationMessage = (email) => `Verification link sent! Check ${email} for the activation link. It expires automatically.`;
 
-function buildAppVerificationLink(providerLink, email) {
-  let providerUrl;
-  try { providerUrl = new URL(providerLink); }
-  catch { throw new ApiError(500, "The generated verification link is invalid."); }
-  const oobCode = providerUrl.searchParams.get("oobCode");
-  if (!oobCode) throw new ApiError(500, "The generated verification link is missing its activation token.");
-  const appLink = new URL(env.auth.emailVerificationUrl);
-  appLink.searchParams.set("oobCode", oobCode);
-  if (email) appLink.searchParams.set("email", email);
-  return appLink.toString();
-}
-
-function normalizeEmail(value = "") {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-function pendingVerificationMessage(email) {
-  return `Verification link sent! Check ${email} for the activation link. It expires automatically.`;
-}
-
-async function runRegistrationStage(stage, message, action) {
-  try { return await action(); }
-  catch (error) {
-    if (error instanceof ApiError) {
-      error.details = { ...error.details, stage: error.details?.stage || stage };
-      throw error;
-    }
-    console.error("[registration] Stage failed.", { stage, code: error?.code || "" });
-    throw new ApiError(503, message, { code: "REGISTRATION_DEPENDENCY_FAILED", stage, dependencyCode: String(error?.code || "") });
-  }
+function buildAppVerificationLink(tokenHash, email) {
+  if (!tokenHash) throw new ApiError(500, "The generated verification link is missing its activation token.");
+  const link = new URL(env.auth.emailVerificationUrl);
+  link.searchParams.set("token_hash", tokenHash);
+  link.searchParams.set("type", "signup");
+  if (email) link.searchParams.set("email", email);
+  return link.toString();
 }
 
 async function createCustomerProfile(req, res) {
-  if (!auth || !db) throw new ApiError(503, "Firebase Admin is not configured for registration.", { stage: "firebase-auth" });
-  const token = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization || ""))?.[1];
-  if (!token) throw new ApiError(401, "A valid Firebase session is required.", { stage: "firebase-auth" });
-  let claims;
-  try { claims = await auth.verifyIdToken(token, true); }
-  catch (error) {
-    const invalidSession = ["auth/argument-error", "auth/invalid-id-token", "auth/id-token-expired", "auth/id-token-revoked", "auth/user-disabled", "auth/user-not-found"].includes(error?.code);
-    throw new ApiError(invalidSession ? 401 : 503,
-      invalidSession ? "A valid Firebase session is required." : "Firebase could not verify your registration session right now. Please try again.",
-      { stage: "firebase-auth", code: invalidSession ? "INVALID_FIREBASE_SESSION" : "FIREBASE_AUTH_UNAVAILABLE" });
-  }
+  if (!env.runtime.supabaseAdminReady || !db) throw new ApiError(503, "Supabase Auth is not configured for registration.");
   const payload = req.body || {};
-  const phone = String(payload.phone || "").trim();
-  const username = String(payload.username || "").trim().toLowerCase();
+  const email = normalizeEmail(payload.email);
   const fullName = String(payload.fullName || "").trim();
-  const email = normalizeEmail(claims.email || "");
-  if (!/^[a-z0-9._-]{3,24}$/.test(username)) throw new ApiError(400, "Enter a valid username.");
+  const username = assertValidUsername(String(payload.username || "").trim().toLowerCase());
+  const password = typeof payload.password === "string" ? payload.password : "";
+  const phone = normalizePhilippineMobileNumber(String(payload.phone || "").trim());
+  if (!email || !email.includes("@")) throw new ApiError(400, "Enter a valid email address.");
   if (!fullName) throw new ApiError(400, "Full name is required.");
-  if (!email) throw new ApiError(400, "An email account is required.");
-  const normalizedPhone = normalizePhilippineMobileNumber(phone);
-  if (phone && !normalizedPhone) throw new ApiError(400, PH_MOBILE_ERROR);
+  if (!password) throw new ApiError(400, "Password is required.");
+  assertStrongPassword(password);
+  if (payload.phone && !phone) throw new ApiError(400, PH_MOBILE_ERROR);
   const { assertAppropriateText, ACCOUNT_TEXT_FIELDS } = await import("../../../shared/textModeration.mjs");
   try { assertAppropriateText({ fullName, username, email }, ACCOUNT_TEXT_FIELDS); }
   catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
+  if (!env.runtime.mailDeliveryReady) throw new ApiError(503, "Activation email delivery is not configured.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
+  const existingUser = await findSupabaseUserByEmail(email);
+  if (existingUser || await getUserByEmail(email)) throw new ApiError(409, "Email is already associated with another account.");
+  const owner = await getUsernameOwner(username);
+  if (owner) throw new ApiError(409, "That username is already in use.");
+  if (phone && (await findPhoneAccounts(phone)).length >= PHONE_ACCOUNT_LIMIT) throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
+
   const registrationSecurity = await validateRegistrationSecurity(req, email);
   await validateAccessSecurity(req);
-  const profileRef = db.collection("users").doc(claims.uid);
+  const challenge = await generateSupabaseEmailLink({ email, type: "signup", password, userMetadata: { full_name: fullName, username } });
+  const identity = challenge.user;
+  const uid = identity?.id;
+  if (!uid) throw new ApiError(503, "Supabase Auth did not create the customer identity.");
+  const now = new Date().toISOString();
+  const profileRef = db.collection("users").doc(uid);
   const usernameRef = db.collection("usernames").doc(username);
-  await runRegistrationStage("profile-save", "Unable to save your registration profile right now. Please try again.", () => db.runTransaction(async (transaction) => {
-    const profile = await transaction.get(profileRef);
-    const usernameDoc = await transaction.get(usernameRef);
-    if (profile.exists) throw new ApiError(409, "This account already has a profile.");
-    if (usernameDoc.exists && usernameDoc.data().uid !== claims.uid) throw new ApiError(409, "That username is already in use.");
-    if (normalizedPhone) {
-      const phoneRef = db.collection("phoneAccountLimits").doc(normalizedPhone.replace(/\D/g, ""));
-      const lock = await transaction.get(phoneRef);
-      const accountIds = [...new Set([...(lock.data()?.accountIds || []), ...await findPhoneAccounts(normalizedPhone, transaction)])];
-      if (accountIds.length >= PHONE_ACCOUNT_LIMIT) throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
-    }
-    const now = new Date().toISOString();
-    transaction.set(profileRef, {
-      uid: claims.uid, email, fullName, username, phone: normalizedPhone, role: "customer",
-      accountStatus: "inactive", status: "inactive", emailVerified: false,
-      verificationStatus: "pending", registrationIp: registrationSecurity.registrationIp || "",
-      verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      createdAt: now, updatedAt: now,
-    });
-    transaction.set(usernameRef, { uid: claims.uid, email, username, createdAt: now, updatedAt: now, verificationStatus: "pending" });
-  }));
-
   try {
-    const providerLink = await runRegistrationStage("verification-link", "Unable to generate your activation link right now. Please try again.", () => generateEmailVerificationLink(email));
-    const verificationLink = buildAppVerificationLink(providerLink, email);
-    await runRegistrationStage("email-verification", "Unable to send your activation email right now. Please try again.", () => sendEmailVerificationLink({ to: email, fullName, verificationLink }));
-  } catch (error) {
-    try { await db.runTransaction(async (transaction) => {
+    await db.runTransaction(async (transaction) => {
       const profile = await transaction.get(profileRef);
       const usernameDoc = await transaction.get(usernameRef);
+      if (profile.exists) throw new ApiError(409, "This account already has a profile.");
+      if (usernameDoc.exists) throw new ApiError(409, "That username is already in use.");
+      let phoneRef = null;
+      let phoneAccountIds = [];
+      if (phone) {
+        phoneRef = db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, ""));
+        const lock = await transaction.get(phoneRef);
+        phoneAccountIds = [...new Set([...(lock.data()?.accountIds || []), ...await findPhoneAccounts(phone, transaction)])];
+        if (phoneAccountIds.length >= PHONE_ACCOUNT_LIMIT) throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
+      }
+      transaction.set(profileRef, {
+        uid, authUserId: uid, email, fullName, username, phone: phone || "", role: "customer",
+        accountStatus: "inactive", status: "inactive", emailVerified: false,
+        verificationStatus: "pending", passwordHash: hashPassword(password),
+        registrationIp: registrationSecurity.registrationIp || "",
+        verificationSentAt: now, verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), createdAt: now, updatedAt: now,
+      });
+      transaction.set(usernameRef, { uid, email, username, createdAt: now, updatedAt: now, verificationStatus: "pending" });
+      if (phoneRef) transaction.set(phoneRef, { accountIds: [...phoneAccountIds, uid], updatedAt: now });
+    });
+    await sendEmailVerificationLink({ to: email, fullName, verificationLink: buildAppVerificationLink(challenge.tokenHash, email) });
+  } catch (error) {
+    await db.runTransaction(async (transaction) => {
+      const profile = await transaction.get(profileRef);
+      const usernameDoc = await transaction.get(usernameRef);
+      const phoneRef = phone ? db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, "")) : null;
+      const lock = phoneRef ? await transaction.get(phoneRef) : null;
       if (profile.exists && profile.data().verificationStatus === "pending") transaction.delete(profileRef);
-      if (usernameDoc.exists && usernameDoc.data().uid === claims.uid) transaction.delete(usernameRef);
-    }); } catch (cleanupError) {
-      console.error("[registration] Pending profile rollback failed.", { stage: "profile-rollback", code: cleanupError?.code || "" });
-    }
+      if (usernameDoc.exists && usernameDoc.data().uid === uid) transaction.delete(usernameRef);
+      if (lock?.exists) transaction.set(phoneRef, { accountIds: (lock.data()?.accountIds || []).filter((accountId) => accountId !== uid), updatedAt: new Date().toISOString() });
+    }).catch(() => {});
+    await deleteSupabaseUser(uid).catch(() => {});
     throw error;
   }
-
-  // The email provider accepted the activation email. A timestamp write failure
-  // must not delete the profile or make the frontend delete the Auth account.
-  const sentAt = new Date().toISOString();
-  try { await profileRef.update({ verificationSentAt: sentAt, updatedAt: sentAt }); }
-  catch (error) {
-    console.warn("[registration] Activation email sent; delivery timestamp update failed.", { stage: "verification-metadata", code: error?.code || "" });
-  }
-
-  return res.status(202).json({
-    success: true,
-    message: pendingVerificationMessage(email),
-    profile: {
-      uid: claims.uid, email, fullName, username, phone: normalizedPhone, role: "customer",
-      accountStatus: "inactive", status: "inactive", emailVerified: false, verificationStatus: "pending",
-      registrationIp: registrationSecurity.registrationIp || "",
-    },
-  });
+  return res.status(202).json({ success: true, message: pendingVerificationMessage(email), profile: {
+    uid, email, fullName, username, phone: phone || "", role: "customer", accountStatus: "inactive",
+    status: "inactive", emailVerified: false, verificationStatus: "pending",
+  } });
 }
 
 async function activateCustomerEmail(req, res) {
-  const oobCode = typeof req.body?.oobCode === "string" ? req.body.oobCode.trim() : "";
-  if (!oobCode || oobCode.length > 4096) throw new ApiError(400, "This verification link is invalid or incomplete.");
-  const confirmation = await applyEmailVerificationCode(oobCode);
-  await activatePendingProfile(confirmation.uid, confirmation.email);
-  return res.status(200).json({ success: true, message: "Email verified. Your account is active; you can now sign in.", email: normalizeEmail(confirmation.email) });
+  const tokenHash = String(req.body?.token_hash || req.body?.tokenHash || req.body?.oobCode || "").trim();
+  if (!tokenHash || tokenHash.length > MAX_CODE_LENGTH) throw new ApiError(400, "This verification link is invalid or incomplete.");
+  let verified;
+  try { verified = await verifySupabaseEmailToken(tokenHash, "signup"); }
+  catch (_error) { throw new ApiError(400, "This verification link is invalid, expired, or already used."); }
+  const identity = verified?.user;
+  const email = normalizeEmail(identity?.email);
+  if (!identity?.id || !email) throw new ApiError(400, "The verification link does not match an account.");
+  await activatePendingProfile(identity.id, email);
+  return res.status(200).json({ success: true, message: "Email verified. Your account is active; you can now sign in.", email });
 }
 
 async function activatePendingProfile(uid, confirmationEmail) {
   const profileRef = db.collection("users").doc(uid);
-  const profileSnapshot = await profileRef.get();
-  if (!profileSnapshot.exists) throw new ApiError(400, "This activation link does not match a pending registration.");
-  const email = normalizeEmail(confirmationEmail);
-  if (normalizeEmail(profileSnapshot.data().email) !== email) throw new ApiError(400, "The activation link does not match this account.");
-  const username = profileSnapshot.data().username;
-  const phone = profileSnapshot.data().phone || "";
-  const now = new Date().toISOString();
   await db.runTransaction(async (transaction) => {
     const profile = await transaction.get(profileRef);
-    if (!profile.exists || profile.data().verificationStatus !== "pending") {
-      throw new ApiError(400, "This account is already activated or no longer awaiting verification.");
-    }
-    if (normalizeEmail(profile.data().email) !== email) throw new ApiError(400, "The activation link does not match this account.");
-    const usernameRef = db.collection("usernames").doc(username);
-    const usernameDoc = await transaction.get(usernameRef);
-    if (!usernameDoc.exists || usernameDoc.data().uid !== uid) {
-      throw new ApiError(409, "The reserved username is no longer available. Contact the clinic for help.");
-    }
+    if (!profile.exists) throw new ApiError(400, "This activation link does not match a pending registration.");
+    const data = profile.data() || {};
+    if (normalizeEmail(data.email) !== normalizeEmail(confirmationEmail)) throw new ApiError(400, "The activation link does not match this account.");
+    if (data.verificationStatus !== "pending" || data.accountStatus !== "inactive") throw new ApiError(400, "This account is already activated or no longer awaiting verification.");
+    if (Date.parse(data.verificationExpiresAt || "") <= Date.now()) throw new ApiError(400, "This activation link has expired. Request a new one.");
+    const phone = profile.data()?.phone || "";
     if (phone) {
       const phoneRef = db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, ""));
       const lock = await transaction.get(phoneRef);
-      const accountIds = [...new Set([...(lock.data()?.accountIds || []), ...await findPhoneAccounts(phone, transaction)])]
-        .filter((accountId) => accountId !== uid);
+      const accountIds = [...new Set([...(lock.data()?.accountIds || []), ...await findPhoneAccounts(phone, transaction)])].filter((accountId) => accountId !== uid);
       if (accountIds.length >= PHONE_ACCOUNT_LIMIT) throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
-      transaction.set(phoneRef, { accountIds: [...accountIds, uid], updatedAt: now });
+      transaction.set(phoneRef, { accountIds: [...accountIds, uid], updatedAt: new Date().toISOString() });
     }
-    transaction.update(profileRef, {
-      accountStatus: "active", status: "active", emailVerified: true,
-      verificationStatus: "verified", emailVerifiedAt: now, updatedAt: now,
-    });
-    transaction.set(usernameRef, { uid, email, username, verificationStatus: "verified", updatedAt: now }, { merge: true });
+    transaction.update(profileRef, { accountStatus: "active", status: "active", emailVerified: true,
+      verificationStatus: "verified", emailVerifiedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   });
-  await auth.updateUser(uid, { emailVerified: true });
 }
 
 async function resendCustomerEmailVerification(req, res) {
   const email = normalizeEmail(req.body?.email || "");
   if (!email || email.length > 254) throw new ApiError(400, "Enter the email address used to register.");
-  if (!auth || !db || !env.runtime.mailDeliveryReady) {
-    throw new ApiError(503, "Activation email delivery is not configured. Check RESEND_API_KEY and RESEND_FROM_EMAIL.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
-  }
-  // Resolve by Auth UID: legacy profile email casing must not hide a pending account.
-  let firebaseUser;
-  try { firebaseUser = await auth.getUserByEmail(email); }
-  catch (error) {
-    if (error?.code !== "auth/user-not-found") throw error;
-  }
-  const notSent = () => res.status(200).json({ success: true, deliveryStatus: "not_sent",
-    message: "No activation email was sent. If your account still needs activation, register again or contact the clinic for help." });
-  if (!firebaseUser) return notSent();
-  const profile = await db.collection("users").doc(firebaseUser.uid).get();
-  if (!profile.exists) return notSent();
-  const userDoc = { id: firebaseUser.uid, ref: profile.ref, data: () => profile.data() };
-  const user = userDoc.data() || {};
-  if (user.verificationStatus !== "pending" || user.accountStatus !== "inactive") {
-    return notSent();
-  }
-  if (firebaseUser?.emailVerified) {
-    await activatePendingProfile(userDoc.id, email);
-    return res.status(200).json({
-      success: true,
-      activated: true,
-      message: "Your email is verified and your account is active. You can now sign in.",
-    });
-  }
-  const lastSentAt = Date.parse(user.verificationSentAt || "");
-  if (Number.isFinite(lastSentAt) && Date.now() - lastSentAt < VERIFICATION_RESEND_COOLDOWN_MS) {
-    throw new ApiError(429, "An activation email was sent recently. Please wait one minute before requesting another.", { code: "ACTIVATION_RESEND_COOLDOWN" });
-  }
-  const providerLink = await generateEmailVerificationLink(email);
-  const verificationLink = buildAppVerificationLink(providerLink, email);
-  const delivery = await sendEmailVerificationLink({ to: email, fullName: user.fullName || "", verificationLink });
-  const sentAt = new Date().toISOString();
-  await userDoc.ref.update({
-    verificationSentAt: sentAt,
-    verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    updatedAt: sentAt,
-  }).catch((error) => {
-    console.error("[registration] Activation email accepted but timestamp update failed.", { uid: userDoc.id, code: error?.code || "" });
-  });
-  return res.status(200).json({ success: true, deliveryStatus: "sent", messageId: delivery.messageId,
-    message: "A new activation link has been sent. Check your inbox and spam folder." });
+  if (!env.runtime.mailDeliveryReady || !env.runtime.supabaseAdminReady) throw new ApiError(503, "Activation email delivery is not configured.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
+  const profile = await getUserByEmail(email);
+  const notSent = () => res.status(200).json({ success: true, deliveryStatus: "not_sent", message: "No activation email was sent. If your account still needs activation, contact the clinic for help." });
+  if (!profile || profile.verificationStatus !== "pending" || profile.accountStatus !== "inactive") return notSent();
+  const sentAt = Date.parse(profile.verificationSentAt || "");
+  if (Number.isFinite(sentAt) && Date.now() - sentAt < VERIFICATION_RESEND_COOLDOWN_MS) throw new ApiError(429, "An activation email was sent recently. Please wait one minute before requesting another.", { code: "ACTIVATION_RESEND_COOLDOWN" });
+  const challenge = await generateSupabaseEmailLink({ email, type: "signup", userMetadata: { full_name: profile.fullName, username: profile.username } });
+  const delivery = await sendEmailVerificationLink({ to: email, fullName: profile.fullName || "", verificationLink: buildAppVerificationLink(challenge.tokenHash, email) });
+  const now = new Date().toISOString();
+  await db.collection("users").doc(profile.profileDocId || profile.uid).update({ verificationSentAt: now, verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), updatedAt: now });
+  return res.status(200).json({ success: true, deliveryStatus: "sent", messageId: delivery.messageId, message: "A new activation link has been sent. Check your inbox and spam folder." });
 }
 
 module.exports = { activateCustomerEmail, createCustomerProfile, resendCustomerEmailVerification };

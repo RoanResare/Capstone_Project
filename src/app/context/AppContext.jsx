@@ -2133,7 +2133,7 @@ export function AppProvider({ children }) {
       return {
         ok: false,
         error:
-          "Password resets should be handled through Firebase Authentication or an admin workflow.",
+          "Password resets should be handled through Supabase Auth or an admin workflow.",
       };
     },
     async createStaff(payload) {

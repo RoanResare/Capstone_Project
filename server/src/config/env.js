@@ -156,6 +156,11 @@ const env = {
   nodeEnv,
   port: readNumber("PORT", 5000),
   clientUrl: readOptional("CLIENT_URL", "http://localhost:5173"),
+  supabase: {
+    url: readOptional("SUPABASE_URL", readOptional("VITE_SUPABASE_URL")).replace(/\/+$/, ""),
+    anonKey: readOptional("SUPABASE_ANON_KEY", readOptional("VITE_SUPABASE_ANON_KEY")),
+    serviceRoleKey: readOptional("SUPABASE_SERVICE_ROLE_KEY"),
+  },
   firebase: {
     projectId: readRequired(
       "FIREBASE_PROJECT_ID",
@@ -170,7 +175,7 @@ const env = {
       "FIREBASE_STORAGE_BUCKET",
       readOptional("VITE_FIREBASE_STORAGE_BUCKET"),
     ),
-    webApiKey: readRequired("FIREBASE_WEB_API_KEY", readOptional("VITE_FIREBASE_API_KEY")),
+    webApiKey: readOptional("FIREBASE_WEB_API_KEY", readOptional("VITE_FIREBASE_API_KEY")),
     serviceAccountPath: serviceAccount?.path || "",
   },
   auth: {
@@ -236,7 +241,8 @@ env.runtime = {
   firebaseAdminReady: Boolean(
     env.firebase.projectId && env.firebase.clientEmail && env.firebase.privateKey,
   ),
-  firebaseWebReady: Boolean(env.firebase.webApiKey),
+  supabaseAuthReady: Boolean(env.supabase.url && env.supabase.anonKey),
+  supabaseAdminReady: Boolean(env.supabase.url && env.supabase.serviceRoleKey),
   jwtReady: Boolean(
     env.auth.jwtSecret &&
       env.auth.otpTicketSecret &&
@@ -250,8 +256,8 @@ env.mail.provider = env.runtime.mailDeliveryMode;
 env.runtime.mailDeliveryReady = env.runtime.mailDeliveryMode === "resend";
 
 env.runtime.authReady = Boolean(
-  env.runtime.firebaseAdminReady &&
-    env.runtime.firebaseWebReady &&
+  env.runtime.supabaseAuthReady &&
+    env.runtime.supabaseAdminReady &&
     env.runtime.jwtReady &&
     env.runtime.mailDeliveryReady,
 );
@@ -259,14 +265,9 @@ env.runtime.authReady = Boolean(
 function collectStartupChecks() {
   return [
     {
-      label: "Firebase Admin",
-      required: ["FIREBASE_PROJECT_ID", "FIREBASE_CLIENT_EMAIL", "FIREBASE_PRIVATE_KEY"],
-      ready: env.runtime.firebaseAdminReady,
-    },
-    {
-      label: "Firebase Web API",
-      required: ["FIREBASE_WEB_API_KEY"],
-      ready: env.runtime.firebaseWebReady,
+      label: "Supabase Auth",
+      required: ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
+      ready: env.runtime.supabaseAuthReady && env.runtime.supabaseAdminReady,
     },
     {
       label: "JWT/Auth Secrets",

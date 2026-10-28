@@ -66,8 +66,8 @@ function DashboardShell({ role }) {
                   : "Track today's protected staff workload at a glance."}
               </h1>
               <p className="mt-4 max-w-3xl text-base leading-7 text-white/78 md:text-lg">
-                Signed in as {currentUser?.fullName || currentUser?.name || currentUser?.email}. Your account passed Firebase credential
-                verification, matched the saved Firestore role, and completed the required email
+                Signed in as {currentUser?.fullName || currentUser?.name || currentUser?.email}. Your account passed Supabase credential
+                verification, matched the saved PostgreSQL role, and completed the required email
                 OTP challenge for this workspace.
               </p>
               <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold">

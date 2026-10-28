@@ -82,17 +82,23 @@ export function hasPortalSessionExpired(session) {
   return Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now();
 }
 
-export function persistPortalSession(session) {
+export function persistPortalSession(session, { persistent = true } = {}) {
   if (!session || typeof session !== "object") {
     clearPortalSession();
     return false;
   }
 
-  return writeStorageItem(PORTAL_SESSION_STORAGE_KEY, JSON.stringify(session));
+  const serialized = JSON.stringify(session);
+  if (persistent) {
+    removeSessionStorageItem(PORTAL_SESSION_STORAGE_KEY);
+    return writeStorageItem(PORTAL_SESSION_STORAGE_KEY, serialized);
+  }
+  removeStorageItem(PORTAL_SESSION_STORAGE_KEY);
+  return writeSessionStorageItem(PORTAL_SESSION_STORAGE_KEY, serialized);
 }
 
 export function readPortalSession() {
-  const parsed = parseJson(readStorageItem(PORTAL_SESSION_STORAGE_KEY));
+  const parsed = parseJson(readStorageItem(PORTAL_SESSION_STORAGE_KEY) || readSessionStorageItem(PORTAL_SESSION_STORAGE_KEY));
 
   if (!parsed || typeof parsed !== "object") {
     return null;

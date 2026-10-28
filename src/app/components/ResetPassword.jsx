@@ -130,7 +130,7 @@ export function ResetPassword() {
             Choose a new password for your account.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Open the reset link from your email. If the Firebase verification code is still valid,
+            Open the reset link from your email. If the password reset code is still valid,
             you can set a new password here and then sign in again normally.
           </p>
 

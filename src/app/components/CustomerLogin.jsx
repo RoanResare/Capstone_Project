@@ -22,7 +22,7 @@ export function CustomerLogin() {
   const {
     beginUnifiedLogin,
     currentUser,
-    firebaseConfigError,
+    supabaseConfigError,
     isAuthenticated,
     isLoading,
     isOnline,
@@ -108,7 +108,7 @@ export function CustomerLogin() {
           className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_55%,#82C8C0_100%)] p-6 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-8"
         >
           <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
-            Firebase Sign In
+            Sign In
           </p>
           <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[3.5rem]">
             Sign in with your customer email and password.
@@ -124,7 +124,7 @@ export function CustomerLogin() {
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
               <p>1. Enter the email address or username linked to your customer account.</p>
-              <p>2. The account lookup resolves the identifier to Firebase Authentication.</p>
+              <p>2. The account lookup resolves the identifier to Supabase Auth.</p>
               <p>3. Remembered devices must be private, trusted browsers for your own account.</p>
             </div>
           </div>
@@ -149,15 +149,15 @@ export function CustomerLogin() {
         >
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
-            {firebaseConfigError && (
+            {supabaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
-                Firebase client setup is incomplete. Fill the `VITE_FIREBASE_*` values in the
+                Supabase client setup is incomplete. Fill the `VITE_SUPABASE_*` values in the
                 root `.env` to finish the customer auth setup.
               </div>
             )}
             {!isOnline && (
               <div className="rounded-[22px] border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-4 text-sm text-[#48656A]">
-                You are offline. Reconnect before signing in so Firebase can validate your
+                You are offline. Reconnect before signing in so Supabase Auth can validate your
                 password and load your profile.
               </div>
             )}

@@ -171,7 +171,7 @@ async function lookupIpSecurity(ip) {
   }
 }
 
-async function revokeUserSession(uid, details = {}, claims = {}) {
+async function revokeUserSession(uid, details = {}, claims = {}, provider = "firebase-id-token") {
   const now = Date.now();
   const reference = db.collection(SECURITY_COLLECTION).doc(uid);
   const cutoff = Math.max(Math.floor(now / 1000), getTokenIssuedAt(claims));
@@ -189,7 +189,7 @@ async function revokeUserSession(uid, details = {}, claims = {}) {
   });
   if (!started) return;
   try {
-    await auth.revokeRefreshTokens(uid);
+    if (provider !== "supabase-auth") await auth.revokeRefreshTokens(uid);
     await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (snapshot.data()?.revocationPending && Number(snapshot.data()?.revokedBefore || 0) === cutoff) {
@@ -200,7 +200,7 @@ async function revokeUserSession(uid, details = {}, claims = {}) {
       }
     });
   } catch (error) {
-    console.warn("[session-security] Firebase token revocation failed.", {
+    console.warn("[session-security] Provider token revocation failed.", {
       uid,
       error: error instanceof Error ? error.message : String(error || "Unknown error"),
     });
@@ -235,9 +235,11 @@ async function validateAccessSecurity(req, options = {}) {
     region: result.location?.region || "" };
 }
 
-async function createFreshSessionBinding(user, req) {
+async function createFreshSessionBinding(user, req, existingSessionId = "") {
   const security = await validateAccessSecurity(req, { message: VPN_BLOCK_MESSAGE });
-  const sessionId = crypto.randomUUID();
+  const sessionId = typeof existingSessionId === "string" && existingSessionId.trim()
+    ? existingSessionId.trim()
+    : crypto.randomUUID();
   await db.collection(SESSION_CONNECTIONS_COLLECTION).doc(sessionId).set({
     uid: user.uid,
     ip: security.ip,
@@ -261,12 +263,13 @@ async function validateSessionSecurity(req) {
     security = await validateAccessSecurity(req, { message: SESSION_TERMINATED_MESSAGE });
   } catch (error) {
     if (error instanceof ApiError && error.details?.code === "SESSION_SECURITY_VIOLATION") {
-      await revokeUserSession(user.uid, { ip: error.details.ip || getClientIp(req), reason: "blocked-network" }, claims);
+      await revokeUserSession(user.uid, { ip: error.details.ip || getClientIp(req), reason: "blocked-network" }, claims, req.auth?.provider);
     }
     throw error;
   }
   await assertTokenNotRevoked(user.uid, claims);
-  const sessionId = typeof claims.sessionId === "string" ? claims.sessionId : "";
+  const sessionId = typeof claims.sessionId === "string" ? claims.sessionId
+    : typeof claims.session_id === "string" ? claims.session_id : "";
 
   if (!sessionId) return;
 
@@ -274,7 +277,7 @@ async function validateSessionSecurity(req) {
   const snapshot = await reference.get();
   const connection = snapshot.data() || {};
   if (connection.uid && connection.uid !== user.uid) {
-    await revokeUserSession(user.uid, { ip: security.ip, reason: "session-owner-mismatch" }, claims);
+    await revokeUserSession(user.uid, { ip: security.ip, reason: "session-owner-mismatch" }, claims, req.auth?.provider);
     throw new ApiError(401, SESSION_TERMINATED_MESSAGE, { code: "SESSION_SECURITY_VIOLATION" });
   }
 

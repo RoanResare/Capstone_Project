@@ -40,7 +40,7 @@ export function RoleLoginPage({
   const {
     beginLogin,
     currentUser,
-    firebaseConfigError,
+    supabaseConfigError,
     isAuthenticated,
     isLoading,
     isOnline,
@@ -146,7 +146,7 @@ export function RoleLoginPage({
               Terms and Conditions
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
-              <p>1. Credentials are validated against Firebase Authentication on the server.</p>
+              <p>1. Credentials are validated against Supabase Auth on the server.</p>
               <p>
                 2. Admin and staff accounts must complete an emailed OTP unless this trusted device
                 was remembered within the last two weeks.
@@ -184,15 +184,15 @@ export function RoleLoginPage({
         >
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
-            {firebaseConfigError && (
+            {supabaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
-                Firebase client setup is incomplete. The public site will still load, but complete
-                the `VITE_FIREBASE_*` values in the root `.env` for full login token sync.
+                Supabase client setup is incomplete. The public site will still load, but complete
+                the `VITE_SUPABASE_*` values in the root `.env` for full login token sync.
               </div>
             )}
             {!isOnline && (
               <div className="rounded-[22px] border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-4 text-sm text-[#48656A]">
-                You are offline. Reconnect before signing in so Firebase can validate your
+                You are offline. Reconnect before signing in so Supabase Auth can validate your
                 password and restore the correct role-based dashboard.
               </div>
             )}
@@ -208,7 +208,7 @@ export function RoleLoginPage({
                   </p>
                   <p className="mt-2 text-sm leading-5 text-[#607277]">
                     Use the username or email registered to your portal account. The server checks
-                    the saved Firestore role first, then sends a one-time password before the
+                    the saved PostgreSQL role first, then sends a one-time password before the
                     protected dashboard opens.
                   </p>
                 </div>

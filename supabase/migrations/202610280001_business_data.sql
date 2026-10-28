@@ -85,7 +85,7 @@ BEGIN
     OR lower(btrim(coalesce(profile->>'fraudStatus', 'normal'))) IN ('suspended','banned') THEN RETURN false; END IF;
   SELECT coalesce((s.data->>'revokedBefore')::bigint, 0) INTO cutoff
     FROM app_private.session_security s WHERE s.id = claims->>'sub';
-  IF coalesce(cutoff, 0) > 0 AND coalesce((claims->>'firebase_iat')::bigint, 0) <= cutoff THEN RETURN false; END IF;
+  IF coalesce(cutoff, 0) > 0 AND coalesce((claims->>'auth_iat')::bigint, (claims->>'firebase_iat')::bigint, 0) <= cutoff THEN RETURN false; END IF;
   IF collection_name IN ('availabilitySlots','lowCostKaponPromo','services','chatbot_faqs') THEN RETURN true; END IF;
   IF collection_name IN ('appointments','pets','notifications','photoModeration','servicePricelists')
     AND lower(btrim(profile->>'role')) IN ('admin','staff') THEN RETURN true; END IF;

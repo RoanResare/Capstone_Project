@@ -6,7 +6,7 @@ import { activateCustomerEmail, resendCustomerEmailVerification } from "../servi
 export function ActivateAccount() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const code = searchParams.get("oobCode") || "";
+  const code = searchParams.get("token_hash") || searchParams.get("oobCode") || "";
   const [status, setStatus] = useState(code ? "checking" : "invalid");
   const [message, setMessage] = useState(code ? "Checking your secure activation link..." : "This activation link is missing or incomplete.");
   const [email, setEmail] = useState(searchParams.get("email") || "");

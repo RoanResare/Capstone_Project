@@ -67,7 +67,7 @@ export function ForgotPassword() {
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
             Enter the email address used for sign-in. The backend resolves the account and
-            delivers a direct Firebase reset link to this app.
+            delivers a Supabase Auth reset link through the configured email provider.
           </p>
 
           <div className="mt-6 rounded-[24px] border border-white/12 bg-white/8 p-5">
@@ -75,9 +75,9 @@ export function ForgotPassword() {
               Reset rules
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
-              <p>1. The server generates a Firebase password reset code.</p>
+              <p>1. The server generates a Supabase password reset code.</p>
               <p>2. The email links directly to the React reset screen.</p>
-              <p>3. Expired or reused reset codes are rejected automatically by Firebase.</p>
+              <p>3. Expired or reused reset codes are rejected by Supabase Auth.</p>
             </div>
           </div>
         </motion.section>
@@ -100,7 +100,7 @@ export function ForgotPassword() {
                   </p>
                   <p className="mt-2 text-sm leading-5 text-[#607277]">
                     Use the same email address you registered with. A valid email is matched to
-                    its Firebase account before the reset link is sent.
+                    its Supabase Auth account before the reset link is sent.
                   </p>
                 </div>
               </div>

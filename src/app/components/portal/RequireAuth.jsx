@@ -29,12 +29,12 @@ function RecoveryScreen({ message, isOnline }) {
           Session Recovery
         </p>
         <h1 className="mt-3 text-2xl font-semibold">
-          Your Firebase session exists, but the profile could not be restored yet.
+          Your Supabase session exists, but the profile could not be restored yet.
         </h1>
         <p className="mt-4 text-base leading-7 text-[#607277]">
           {isOnline
-            ? "Retry after the connection stabilizes or after Firestore rules finish deploying."
-            : "Reconnect to the internet, then reload the page so Firestore can restore your role and profile."}
+            ? "Retry after the connection stabilizes or after the account profile becomes available."
+            : "Reconnect to the internet, then reload the page so Supabase can restore your role and profile."}
         </p>
         <div className="mt-6 rounded-[24px] bg-[#F8FBFB] px-5 py-4 text-sm text-[#4C6368]">
           {message}
@@ -55,7 +55,7 @@ export function RequireAuth({ children, allowedRoles = [] }) {
   const {
     authHydrationError,
     currentUser,
-    hasFirebaseSession,
+    hasSupabaseSession,
     isAuthenticated,
     isLoading,
     isOnline,
@@ -80,7 +80,7 @@ export function RequireAuth({ children, allowedRoles = [] }) {
     return <LoadingScreen />;
   }
 
-  if (!isAuthenticated && hasFirebaseSession && authHydrationError) {
+  if (!isAuthenticated && hasSupabaseSession && authHydrationError) {
     return <RecoveryScreen message={authHydrationError} isOnline={isOnline} />;
   }
 

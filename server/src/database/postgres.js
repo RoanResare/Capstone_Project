@@ -160,27 +160,50 @@ function createPostgresDatabase(pool) {
 function getPostgresDatabase() {
   const { Pool } = require("pg");
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required for the PostgreSQL provider.");
-  const connectionString = getConnectionString(process.env.DATABASE_URL);
-  const pool = new Pool({ connectionString, max: Number(process.env.DATABASE_POOL_MAX || 5),
+  const connectionOptions = getConnectionConfig(process.env.DATABASE_URL);
+  const pool = new Pool({ ...connectionOptions, max: Number(process.env.DATABASE_POOL_MAX || 5),
     connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000, statement_timeout: 15000, query_timeout: 20000 });
   pool.on("error", () => console.error("[postgres] An idle database connection failed."));
   return createPostgresDatabase(pool);
 }
 function getConnectionString(value) {
+  return getConnectionConfig(value).connectionString;
+}
+function getConnectionConfig(value) {
   let parsed;
   try { parsed = new URL(value); }
   catch { throw new Error("DATABASE_URL must be a valid PostgreSQL connection URL."); }
   if (!["postgres:", "postgresql:"].includes(parsed.protocol)) throw new Error("DATABASE_URL must use the PostgreSQL protocol.");
   const host = parsed.hostname.toLowerCase();
+  let isSupabase = false;
   if (host.endsWith(".supabase.co") || host.endsWith(".supabase.com")) {
     if (!host.endsWith(".pooler.supabase.com") || parsed.port !== "6543") {
       throw new Error("Supabase DATABASE_URL must use the shared IPv4 transaction pooler host on port 6543. Copy the Transaction pooler URL from Supabase Connect.");
     }
     if (!parsed.username.includes(".")) throw new Error("Supabase shared pooler URLs require the project-qualified database username from Supabase Connect.");
-    if (!["require", "verify-ca", "verify-full"].includes(parsed.searchParams.get("sslmode"))) {
-      throw new Error("Supabase DATABASE_URL must enable TLS with sslmode=require or stronger.");
-    }
+    isSupabase = true;
   }
-  return value;
+
+  const sslmode = parsed.searchParams.get("sslmode")?.toLowerCase() || "";
+  if (isSupabase && !["require", "verify-ca", "verify-full"].includes(sslmode)) {
+    throw new Error("Supabase DATABASE_URL must enable TLS with sslmode=require or stronger.");
+  }
+
+  // node-postgres parses libpq sslmode values from connectionString itself.
+  // Removing the parameter lets the explicit TLS options passed to Pool take effect and
+  // avoids driver-version-specific SSL mode parsing behavior.
+  if (sslmode) parsed.searchParams.delete("sslmode");
+  let ssl;
+  if (["allow", "prefer", "require"].includes(sslmode)) {
+    ssl = { rejectUnauthorized: false };
+  } else if (["verify-ca", "verify-full"].includes(sslmode)) {
+    ssl = { rejectUnauthorized: true };
+  } else if (sslmode === "disable") {
+    ssl = false;
+  } else if (sslmode) {
+    throw new Error(`Unsupported DATABASE_URL sslmode: ${sslmode}.`);
+  }
+
+  return { connectionString: parsed.toString(), ...(ssl !== undefined ? { ssl } : {}) };
 }
-module.exports = { createPostgresDatabase, getPostgresDatabase, getConnectionString, WRITE_LOCK };
+module.exports = { createPostgresDatabase, getPostgresDatabase, getConnectionString, getConnectionConfig, WRITE_LOCK };

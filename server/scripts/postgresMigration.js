@@ -165,7 +165,8 @@ async function main() {
   if (process.env.MIGRATION_TARGET !== "staging") throw new Error("MIGRATION_TARGET=staging is required. Production migration is not enabled by this tool.");
   if (!process.env.DATABASE_URL) throw new Error("Set the staging DATABASE_URL privately.");
   const { Pool } = require("pg");
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2, connectionTimeoutMillis: 10000 });
+  const { getConnectionString } = require("../src/database/postgres");
+  const pool = new Pool({ connectionString: getConnectionString(process.env.DATABASE_URL), max: 2, connectionTimeoutMillis: 10000 });
   try {
     if (command === "schema") {
       for (const name of ["202610280001_business_data.sql", "202610280002_public_relational_tables.sql"]) {

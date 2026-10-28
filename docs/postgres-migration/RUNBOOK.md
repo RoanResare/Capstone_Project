@@ -7,7 +7,8 @@ Storage and current Firestore records intact.
 ## Private staging configuration
 
 1. Create a separate Supabase staging project. Use Supabase **Connect** to copy
-   its PostgreSQL **session pooler** connection string. Store it as `DATABASE_URL`
+   its PostgreSQL **Transaction pooler** connection string (shared IPv4 pooler,
+   port 6543). Store it as `DATABASE_URL`
    in ignored `server/.env` or private deployment settings. Preserve certificate
    verification; use the TLS configuration supplied by Supabase. Do not use a
    database connection URL or privileged key in any `VITE_` variable.

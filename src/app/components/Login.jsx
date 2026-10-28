@@ -23,7 +23,7 @@ export function Login() {
   const {
     beginUnifiedLogin,
     currentUser,
-    firebaseConfigError,
+    supabaseConfigError,
     homePath,
     isAuthenticated,
     isLoading,
@@ -148,9 +148,9 @@ export function Login() {
 
           <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
             {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
-            {firebaseConfigError && (
+            {supabaseConfigError && (
               <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-2.5 text-sm text-[#8A6410]">
-                Firebase setup is incomplete. Fill the required environment values to enable login.
+                Supabase setup is incomplete. Fill the required environment values to enable login.
               </div>
             )}
             {!isOnline && (

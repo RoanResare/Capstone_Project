@@ -5,16 +5,17 @@ const { ApiError } = require("../utils/ApiError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { verifyToken } = require("../middlewares/authenticate");
 const { validateSessionSecurity } = require("../services/sessionSecurity.service");
-const { getUserByUid } = require("../services/user.service");
+const { getUserByAuthId, getUserByUid } = require("../services/user.service");
 const { listRecords } = require("../services/scheduleRecords.service");
 const { assertRead, assertWrite } = require("../database/browserAccess");
 const { encode, decode, deepMerge } = require("../database/values");
+const { isSupabaseAccessToken, verifySupabaseAccessToken } = require("../services/supabaseAuth.service");
 const router = express.Router();
 router.use((_req, _res, next) => db?.provider === "postgres" ? next() : next(new ApiError(404, "PostgreSQL API is disabled.")));
 router.get("/token", verifyToken, asyncHandler(async (req, res) => {
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret || secret.length < 32) throw new ApiError(503, "Configure the staging Supabase JWT signing secret on the backend.");
-  const token = jwt.sign({ role: "authenticated", firebase_iat: Number(req.auth.claims.iat || req.auth.claims.auth_time || 0) }, secret,
+  const token = jwt.sign({ role: "authenticated", auth_iat: Number(req.auth.claims.iat || req.auth.claims.auth_time || 0) }, secret,
     { algorithm: "HS256", issuer: "furfection-database", audience: "authenticated", subject: req.auth.user.uid, expiresIn: 300 });
   res.set("Cache-Control", "no-store");
   res.json({ token, expiresIn: 300 });
@@ -24,15 +25,21 @@ router.use(asyncHandler(async (req, _res, next) => {
   const token = req.headers.authorization?.replace(/^Bearer /, "");
   if (!token) { req.databaseIdentity = { uid: "", claims: {} }; return next(); }
   let claims;
-  try { claims = await auth.verifyIdToken(token, true); }
-  catch (_error) { throw new ApiError(401, "A valid Firebase session is required."); }
+  let provider = "firebase-id-token";
+  if (isSupabaseAccessToken(token)) {
+    claims = await verifySupabaseAccessToken(token);
+    provider = "supabase-auth";
+  } else {
+    try { claims = await auth.verifyIdToken(token, true); }
+    catch (_error) { throw new ApiError(401, "A valid Supabase or Firebase session is required."); }
+  }
   const uid = claims.uid || claims.sub;
-  const user = await getUserByUid(uid);
+  const user = provider === "supabase-auth" ? await getUserByAuthId(uid) : await getUserByUid(uid);
   const ownProfileRead = req.path === "/read" && req.body?.collection === "users" && req.body?.id === uid;
   if (!ownProfileRead && user && (user.accountStatus !== "active" || ["suspended", "banned"].includes(user.fraudStatus))) throw new ApiError(403, "This account is restricted.");
   // Profile bootstrap can precede creation of the database profile. Revocation
   // and network/session checks still apply to every authenticated request.
-  req.auth = { user: user || { uid }, claims, token, provider: "firebase-id-token" };
+  req.auth = { user: user || { uid }, claims, token, provider };
   await validateSessionSecurity(req);
   req.databaseIdentity = { uid, user, claims };
   next();

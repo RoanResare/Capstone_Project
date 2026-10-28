@@ -1,6 +1,7 @@
 import { doc, getDoc, runTransaction, onSnapshot, isPostgresEnabled } from "./database.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
-import { auth, db, isFirebaseConfigured } from "../../firebase.js";
+import { db, isSupabaseConfigured } from "../../firebase.js";
+import { auth, getSupabaseAccessToken } from "./supabaseSession.js";
 import { normalizePromoInput, validatePromoStart } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
 
@@ -8,7 +9,7 @@ const KAPON_PROMO_CACHE_KEY = "furfection-cache:lowCostKaponPromo";
 const KAPON_PROMO_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function subscribeKaponPromo(onChange, onError) {
-  if (!isFirebaseConfigured || !auth?.currentUser || !db) {
+  if (!isSupabaseConfigured || !auth?.currentUser || !db) {
     onError(new Error("Sign in to load promotion availability."));
     return () => {};
   }
@@ -42,7 +43,7 @@ export function subscribeKaponPromo(onChange, onError) {
       }
     } catch (error) {
       if (!disposed) onError(new Error(error.code === "permission-denied"
-        ? "Promotion access was denied. Please publish the updated Firestore rules and sign in again."
+        ? "Promotion access was denied. Please sign in again or contact an administrator."
         : "Unable to load promotion availability. Please try again later."));
     }
   };
@@ -58,13 +59,13 @@ export async function saveKaponPromo(payload) {
   if (!user) throw new Error("Sign in to manage promotions.");
   if (isPostgresEnabled) {
     try {
-      const token = await user.getIdToken();
+      const token = await getSupabaseAccessToken();
       const response = await apiClient.put("/auth/promotions/low-cost-kapon", payload, { headers: buildAuthHeaders(token) });
       writeJsonCache(KAPON_PROMO_CACHE_KEY, response.data.promo);
       return response.data.promo;
     } catch (error) { throw new Error(extractApiError(error, "Unable to save the promotion.")); }
   }
-  if (!isFirebaseConfigured || !db) throw new Error("Firebase is unavailable. Please try again later.");
+  if (!isSupabaseConfigured || !db) throw new Error("Supabase is unavailable. Please try again later.");
   const { action, expectedRevision } = payload || {};
   if (!["activate", "edit", "deactivate"].includes(action) || !Number.isInteger(expectedRevision) || expectedRevision < 0) {
     throw new Error("A valid promo action and revision are required.");
@@ -72,7 +73,7 @@ export async function saveKaponPromo(payload) {
   const configuration = action === "deactivate" ? null : normalizePromoInput(payload);
   const reference = doc(db, "lowCostKaponPromo", "low-cost-kapon");
   const promo = await runTransaction(db, async (transaction) => {
-    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
+    if (auth.currentUser?.id !== user?.id) throw new Error("Your account changed. Please try again.");
     const snapshot = await transaction.get(reference);
     const current = snapshot.data() || {};
     if ((current.revision || 0) !== expectedRevision) {

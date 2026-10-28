@@ -6,7 +6,7 @@ export function AdminLogin() {
       role="admin"
       eyebrow="Administrator Access"
       title="Admin sign-in requires your portal credentials and a one-time password."
-      description="Administrator accounts validate their Firebase credentials on the server first, then complete an emailed OTP before the admin dashboard and protected operations unlock."
+      description="Administrator accounts validate their Supabase credentials on the server first, then complete an emailed OTP before the admin dashboard and protected operations unlock."
       submitLabel="Sign in as admin"
       loginPath="/admin/login"
     />

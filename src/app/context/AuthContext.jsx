@@ -2,28 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
 import { setSecuritySession } from "../utils/securitySession.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
-import {
-  browserLocalPersistence,
-  browserSessionPersistence,
-  onAuthStateChanged,
-  signInWithCustomToken,
-  signOut as signOutFromFirebase,
-  setPersistence,
-} from "firebase/auth";
-import { auth, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
-import {
-  formatFirebaseAuthError,
-  isFirebaseConnectionIssue,
-  loadExistingUserProfile,
-  signInWithEmailPassword,
-  updateFirebaseUserProfile,
-} from "../services/firebaseAuth.js";
-import {
-  loadOrCreateCustomerProfile,
-  signInCustomerWithEmailPassword,
-  signUpCustomerWithEmailPassword,
-  updateCustomerProfile,
-} from "../services/customerAccount.js";
+import { isSupabaseConfigured } from "../../firebase.js";
+import { auth, installSupabaseSession, loadSupabaseProfile, signOutSupabase, subscribeSupabaseAuth, getSupabaseSession, setSupabaseSessionPersistence, supabase } from "../services/supabaseSession.js";
+import { signUpCustomerWithEmailPassword, updateCustomerProfile } from "../services/customerAccount.js";
+import { updateMyProfile } from "../services/userApi.js";
 import {
   completeBackendPasswordReset,
   loginCustomerUser,
@@ -49,15 +31,10 @@ import {
 import {
   clearPendingOtpSession,
   clearPortalSession,
-  createPortalSessionRecord,
   decodeJwtPayload,
-  hasPortalSessionExpired,
   persistPendingOtpSession,
-  persistPortalSession,
   readPendingOtpSession,
-  readPortalSession,
 } from "../utils/portalSession.js";
-import { waitForFirebaseUserSession } from "../services/firebaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } from "../utils/phoneNumber.js";
 import { waitForCustomerRegistration } from "../utils/customerRegistration.js";
@@ -72,6 +49,14 @@ import {
   persistRememberedPortalLogin,
   readRememberedPortalLogin,
 } from "../utils/portalRememberMe.js";
+
+function formatAuthError(error, fallback) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function isAuthConnectionIssue(error) {
+  return error?.code === "ERR_NETWORK" || error?.name === "TypeError" || error?.statusCode >= 500;
+}
 
 const AuthContext = createContext(null);
 function readRememberDeviceToken(role = "") {
@@ -155,43 +140,20 @@ function maskEmail(value = "") {
   return `${localPart.slice(0, 2)}***@${domain}`;
 }
 
-async function hydrateAuthenticatedUser(firebaseUser) {
-  if (!firebaseUser) {
+async function hydrateAuthenticatedUser(supabaseUser, activeSession = null) {
+  if (!supabaseUser) {
     return {
       accessToken: "",
       user: null,
     };
   }
 
-  const authenticatedUser = await waitForFirebaseUserSession(firebaseUser.uid, {
-      forceRefresh: false,
-      settleMs: 150,
-      timeoutMs: 7000,
-    });
-  if (!authenticatedUser) {
-    throw Object.assign(new Error("Firebase Authentication is not ready to load this profile."), {
-      code: "customer/auth-not-ready",
-    });
+  const session = activeSession || await getSupabaseSession();
+  if (!session?.user || session.user.id !== (supabaseUser.id || supabaseUser.uid)) {
+    throw Object.assign(new Error("Supabase Auth is not ready to load this profile."), { code: "auth/session-not-ready" });
   }
-  const accessToken = await authenticatedUser.getIdToken();
-  const tokenResult = await authenticatedUser.getIdTokenResult();
-  const tokenRole = normalizeRole(tokenResult?.claims?.role);
-  const storedPortalSession = readPortalSession();
-  const shouldUsePortalProfile =
-    isPortalRole(tokenRole) ||
-    (storedPortalSession &&
-      storedPortalSession.uid === authenticatedUser.uid &&
-      isPortalRole(storedPortalSession.role));
-  const user = shouldUsePortalProfile
-    ? await loadExistingUserProfile(authenticatedUser, {
-        email: authenticatedUser.email,
-        accountStatus: "active",
-        roleHint: tokenRole || storedPortalSession?.role || "",
-      })
-    : await loadOrCreateCustomerProfile(authenticatedUser, {
-        email: authenticatedUser.email,
-        accountStatus: "active",
-      });
+  const accessToken = session.access_token;
+  const user = await loadSupabaseProfile(accessToken);
 
   return {
     accessToken,
@@ -203,47 +165,12 @@ function buildConfigErrorResult() {
   return {
     ok: false,
     error:
-      firebaseConfigError ||
-      "Firebase Authentication is not configured. Fill the VITE_FIREBASE_* values first.",
+      "Supabase Auth is not configured. Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY first.",
   };
 }
 
 async function configureCustomerAuthPersistence(rememberDevice = false) {
-  if (!auth || !isFirebaseConfigured) {
-    return;
-  }
-
-  await setPersistence(
-    auth,
-    rememberDevice ? browserLocalPersistence : browserSessionPersistence,
-  );
-}
-
-async function configurePortalAuthPersistence(rememberDevice = false) {
-  if (!auth || !isFirebaseConfigured) {
-    return;
-  }
-
-  await setPersistence(auth, rememberDevice ? browserLocalPersistence : browserSessionPersistence);
-}
-
-function restorePortalAccessToken(user) {
-  const storedSession = readPortalSession();
-
-  if (!storedSession) {
-    return "";
-  }
-
-  if (
-    hasPortalSessionExpired(storedSession) ||
-    storedSession.uid !== user.uid ||
-    storedSession.role !== user.role
-  ) {
-    clearPortalSession();
-    return "";
-  }
-
-  return storedSession.accessToken;
+  setSupabaseSessionPersistence(rememberDevice);
 }
 
 export function AuthProvider({ children }) {
@@ -252,7 +179,7 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [accessToken, setAccessToken] = useState("");
   const [authHydrationError, setAuthHydrationError] = useState("");
-  const [hasFirebaseSession, setHasFirebaseSession] = useState(false);
+  const [hasSupabaseSession, setHasSupabaseSession] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine !== false,
@@ -296,12 +223,12 @@ export function AuthProvider({ children }) {
       // Commit the server-issued ticket before any asynchronous sign-out or navigation.
       const persisted = persistPendingOtpSession(session);
       setPendingOtp(session);
-      if (auth?.currentUser) await signOutFromFirebase(auth);
+      if (auth?.currentUser) await signOutSupabase();
       clearPortalSession();
       setSecuritySession();
       setCurrentUser(null);
       setAccessToken("");
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
       setAuthHydrationError("");
       return persisted;
     } finally {
@@ -328,34 +255,36 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!auth || !isFirebaseConfigured) {
+    if (!auth || !isSupabaseConfigured) {
       setCurrentUser(null);
       setAccessToken("");
       setAuthHydrationError("");
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
       setIsLoading(false);
       return undefined;
     }
 
     let active = true;
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = subscribeSupabaseAuth(async (_event, activeSession) => {
+      const supabaseUser = activeSession?.user || null;
       const generation = ++authGenerationRef.current;
       if (loginHandoffRef.current) return;
       const isCurrent = () => active && generation === authGenerationRef.current
-        && !loginHandoffRef.current && auth.currentUser === firebaseUser;
+        && !loginHandoffRef.current
+        && (auth.currentUser?.id || "") === (supabaseUser?.id || "");
       try {
         await waitForCustomerRegistration();
         if (!isCurrent()) return;
         const restoredPendingOtp = normalizePendingOtpRecord(pendingOtpRef.current)
           || normalizePendingOtpRecord(readPendingOtpSession());
-        // A pending challenge takes precedence over a persisted Firebase identity,
+        // A pending challenge takes precedence over a persisted Supabase identity,
         // including after a reload or an auth event from another tab.
-        if (firebaseUser && restoredPendingOtp) {
+        if (supabaseUser && restoredPendingOtp) {
           await installPendingOtpSession(restoredPendingOtp);
           return;
         }
-        if (!firebaseUser) {
+        if (!supabaseUser) {
 
           if (active) {
             clearPortalSession();
@@ -363,48 +292,29 @@ export function AuthProvider({ children }) {
             setCurrentUser(null);
             setAccessToken("");
             setAuthHydrationError("");
-            setHasFirebaseSession(false);
+            setHasSupabaseSession(false);
             setIsLoading(false);
           }
           return;
         }
 
         if (active) {
-          setHasFirebaseSession(true);
+          setHasSupabaseSession(true);
         }
 
-        const session = await hydrateAuthenticatedUser(firebaseUser);
+        const session = await hydrateAuthenticatedUser(supabaseUser, activeSession);
         if (!isCurrent()) {
           return;
         }
 
-        if (isPortalRole(session.user?.role)) {
-          const portalAccessToken = restorePortalAccessToken(session.user);
-
-          if (!portalAccessToken) {
-            console.warn(
-              "Portal session token is missing or expired. Signing out before restoring a protected portal account.",
-            );
-            await signOutFromFirebase(auth);
-            return;
-          }
-
-          clearPendingOtpSession();
-          setPendingOtp(null);
-          setCurrentUser(session.user);
-          setAccessToken(portalAccessToken);
-          setAuthHydrationError("");
-          return;
-        }
-
-        clearPortalSession();
         clearPendingOtpSession();
+        clearPortalSession();
         setPendingOtp(null);
         setCurrentUser(session.user);
         setAccessToken(session.accessToken);
         setAuthHydrationError("");
       } catch (error) {
-        console.error("Unable to restore the Firebase auth session.", error);
+        console.error("Unable to restore the Supabase Auth session.", error);
         if (!isCurrent()) {
           return;
         }
@@ -416,16 +326,16 @@ export function AuthProvider({ children }) {
             : null;
 
         setAuthHydrationError(
-          formatFirebaseAuthError(error, "Unable to restore the Firebase user session right now."),
+          formatAuthError(error, "Unable to restore the Supabase user session right now."),
         );
 
-        if (isFirebaseConnectionIssue(error)) {
+        if (isAuthConnectionIssue(error)) {
           return;
         }
 
         try {
           if (auth?.currentUser) {
-            await signOutFromFirebase(auth);
+            await signOutSupabase();
           }
         } catch (_signOutError) {
           // Ignore secondary cleanup failures and clear local state below.
@@ -439,7 +349,7 @@ export function AuthProvider({ children }) {
         clearPortalSession();
         if (preservedPendingOtp) {
           persistPendingOtpSession(preservedPendingOtp);
-          console.warn("[portal-auth] Preserving pending OTP session after Firestore profile denial.", {
+          console.warn("[portal-auth] Preserving pending OTP session after profile access denial.", {
             role: preservedPendingOtp.role,
             email: maskEmail(preservedPendingOtp.email),
           });
@@ -450,7 +360,7 @@ export function AuthProvider({ children }) {
         }
         setCurrentUser(null);
         setAccessToken("");
-        setHasFirebaseSession(false);
+        setHasSupabaseSession(false);
       } finally {
         if (isCurrent()) {
           setIsLoading(false);
@@ -465,87 +375,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function signIn({ identifier, email, password, roleHint = "", rememberDevice = false }) {
-    if (!isFirebaseConfigured || !auth) {
-      return buildConfigErrorResult();
-    }
-
-    setAuthHydrationError("");
-
-    try {
-      const normalizedRoleHint = normalizeRole(roleHint);
-      const loginIdentifier =
-        typeof identifier === "string" && identifier.trim()
-          ? identifier.trim()
-          : typeof email === "string"
-            ? email.trim()
-            : "";
-      const isCustomerLogin = !normalizedRoleHint || isCustomerRole(normalizedRoleHint);
-      if (loginIdentifier.includes("@") && !isValidEmail(loginIdentifier)) {
-        return { ok: false, error: ILLEGITIMATE_EMAIL_ERROR };
-      }
-      if (isCustomerLogin) {
-        await configureCustomerAuthPersistence(rememberDevice);
-      } else {
-        await configurePortalAuthPersistence(rememberDevice);
-      }
-
-      const signInResult = isCustomerLogin
-        ? await signInCustomerWithEmailPassword({
-            email: loginIdentifier,
-            password,
-          })
-        : await signInWithEmailPassword({
-            identifier: loginIdentifier,
-            password,
-            roleHint: normalizedRoleHint,
-          });
-      const { firebaseUser, profile } = signInResult;
-      const token = await firebaseUser.getIdToken();
-
-      if (isCustomerRole(profile.role)) {
-        if (rememberDevice) rememberCustomerLogin(loginIdentifier, password);
-        else clearRememberedCustomerLogin();
-      }
-      clearPortalSession();
-      clearPendingOtpSession();
-      setPendingOtp(null);
-      setCurrentUser(profile);
-      setAccessToken(token);
-      setAuthHydrationError("");
-      setHasFirebaseSession(true);
-
-      return {
-        ok: true,
-        user: profile,
-        homePath: resolveHomePath(profile.role),
-      };
-    } catch (error) {
-      try {
-        if (auth?.currentUser) {
-          await signOutFromFirebase(auth);
-        }
-      } catch (_signOutError) {
-        // Ignore cleanup failures; the UI still shows the original sign-in error.
-      }
-
-      resetTransientAuthStorage();
-      clearPortalSession();
-      clearPendingOtpSession();
-      setPendingOtp(null);
-      setHasFirebaseSession(false);
-      setCurrentUser(null);
-      setAccessToken("");
-      return {
-        ok: false,
-        error: formatFirebaseAuthError(error, "Unable to sign in right now."),
-      };
-    }
+    const loginIdentifier = typeof identifier === "string" && identifier.trim()
+      ? identifier.trim() : typeof email === "string" ? email.trim() : "";
+    void roleHint;
+    if (loginIdentifier.includes("@") && !isValidEmail(loginIdentifier)) return { ok: false, error: ILLEGITIMATE_EMAIL_ERROR };
+    return beginUnifiedLogin({ identifier: loginIdentifier, password, rememberDevice });
   }
 
   async function signUp({ fullName, email, password, confirmPassword, phone = "", username = "" }) {
     const textErrors = getTextValidationErrors({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
     if (Object.keys(textErrors).length) return { ok: false, error: Object.values(textErrors)[0] };
-    if (!isFirebaseConfigured || !auth) {
+    if (!isSupabaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
 
@@ -602,7 +442,7 @@ export function AuthProvider({ children }) {
       };
     }
 
-    const previousSignupUid = auth.currentUser?.uid || "";
+    const previousSignupUid = auth.currentUser?.id || "";
     try {
       const { profile } = await signUpCustomerWithEmailPassword({
         fullName,
@@ -618,7 +458,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       setAccessToken("");
       setAuthHydrationError("");
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
 
       return {
         ok: true,
@@ -627,15 +467,15 @@ export function AuthProvider({ children }) {
         message: "Verification link sent! Please check your email inbox to activate your account.",
       };
     } catch (error) {
-      if ((auth.currentUser?.uid || "") === previousSignupUid) {
+      if ((auth.currentUser?.id || "") === previousSignupUid) {
         return {
           ok: false,
-          error: formatFirebaseAuthError(error, "Unable to create your account right now."),
+          error: formatAuthError(error, "Unable to create your account right now."),
         };
       }
       try {
         if (auth?.currentUser) {
-          await signOutFromFirebase(auth);
+          await signOutSupabase();
         }
       } catch (_signOutError) {
         // Ignore cleanup failures; the UI still shows the original sign-up error.
@@ -645,12 +485,12 @@ export function AuthProvider({ children }) {
       clearPortalSession();
       clearPendingOtpSession();
       setPendingOtp(null);
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
       setCurrentUser(null);
       setAccessToken("");
       return {
         ok: false,
-        error: formatFirebaseAuthError(error, "Unable to create your account right now."),
+        error: formatAuthError(error, "Unable to create your account right now."),
       };
     }
   }
@@ -665,7 +505,7 @@ export function AuthProvider({ children }) {
     const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
 
     if (normalizedRole === "admin" || normalizedRole === "staff") {
-      if (!isFirebaseConfigured || !auth) {
+      if (!isSupabaseConfigured || !auth) {
         return buildConfigErrorResult();
       }
 
@@ -753,7 +593,7 @@ export function AuthProvider({ children }) {
       }
     }
 
-    if (!isFirebaseConfigured || !auth) {
+    if (!isSupabaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
 
@@ -778,7 +618,7 @@ export function AuthProvider({ children }) {
         password,
         rememberDevice,
       });
-      const hydratedSession = await installFreshFirebaseSession(response.firebaseCustomToken, rememberDevice);
+      const hydratedSession = await installFreshSupabaseSession(response.supabaseSession, rememberDevice);
       if (!isCustomerRole(hydratedSession.user?.role)) {
         return {
           ok: false,
@@ -791,7 +631,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(hydratedSession.user);
       setAccessToken(hydratedSession.accessToken);
       setAuthHydrationError("");
-      setHasFirebaseSession(true);
+      setHasSupabaseSession(true);
 
       return {
         ok: true,
@@ -801,7 +641,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       try {
         if (auth?.currentUser) {
-          await signOutFromFirebase(auth);
+          await signOutSupabase();
         }
       } catch (_signOutError) {
         // Ignore cleanup failures; the UI still shows the original sign-in error.
@@ -811,7 +651,7 @@ export function AuthProvider({ children }) {
       clearPortalSession();
       clearPendingOtpSession();
       setPendingOtp(null);
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
       setCurrentUser(null);
       setAccessToken("");
 
@@ -829,7 +669,7 @@ export function AuthProvider({ children }) {
     requestedPath = "",
     rememberDevice = false,
   }) {
-    if (!isFirebaseConfigured || !auth) {
+    if (!isSupabaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
 
@@ -898,7 +738,7 @@ export function AuthProvider({ children }) {
         };
       }
 
-      if (!response.firebaseCustomToken || !response.accessToken) {
+      if (!response.supabaseSession?.access_token) {
         return {
           ok: false,
           error: "The server did not return a complete login session.",
@@ -909,10 +749,7 @@ export function AuthProvider({ children }) {
         return await finalizePortalLogin(response, { requestedPath, rememberDevice, identifier: identifier.trim() });
       }
 
-      const hydratedSession = await installFreshFirebaseSession(response.firebaseCustomToken, rememberDevice);
-      const sessionToken = isPortalRole(hydratedSession.user?.role)
-        ? response.accessToken
-        : hydratedSession.accessToken;
+      const hydratedSession = await installFreshSupabaseSession(response.supabaseSession, rememberDevice);
 
       if (isCustomerRole(hydratedSession.user?.role)) {
         if (rememberDevice) rememberCustomerLogin(identifier.trim(), password);
@@ -920,9 +757,9 @@ export function AuthProvider({ children }) {
       }
       setPendingOtp(null);
       setCurrentUser(hydratedSession.user);
-      setAccessToken(sessionToken);
+      setAccessToken(hydratedSession.accessToken);
       setAuthHydrationError("");
-      setHasFirebaseSession(true);
+      setHasSupabaseSession(true);
 
       return {
         ok: true,
@@ -932,7 +769,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       try {
         if (auth?.currentUser) {
-          await signOutFromFirebase(auth);
+          await signOutSupabase();
         }
       } catch (_signOutError) {
         // Ignore cleanup failures; the UI still shows the original sign-in error.
@@ -942,7 +779,7 @@ export function AuthProvider({ children }) {
       clearPortalSession();
       clearPendingOtpSession();
       setPendingOtp(null);
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
       setCurrentUser(null);
       setAccessToken("");
 
@@ -962,32 +799,17 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const session = await hydrateAuthenticatedUser(auth.currentUser);
-      if (isPortalRole(session.user?.role)) {
-        const portalToken = restorePortalAccessToken(session.user);
-
-        if (!portalToken) {
-          await signOutFromFirebase(auth);
-          clearPortalSession();
-          setCurrentUser(null);
-          setAccessToken("");
-          setHasFirebaseSession(false);
-          return null;
-        }
-
-        setCurrentUser(session.user);
-        setAccessToken(portalToken);
-      } else {
-        setCurrentUser(session.user);
-        setAccessToken(session.accessToken);
-      }
+      const supabaseSession = await getSupabaseSession();
+      const session = await hydrateAuthenticatedUser(auth.currentUser, supabaseSession);
+      setCurrentUser(session.user);
+      setAccessToken(session.accessToken);
       setAuthHydrationError("");
-      setHasFirebaseSession(true);
+      setHasSupabaseSession(true);
       return session.user;
     } catch (error) {
-      console.error("Unable to refresh the Firebase user profile.", error);
+      console.error("Unable to refresh the Supabase user profile.", error);
       setAuthHydrationError(
-        formatFirebaseAuthError(error, "Unable to refresh the Firebase user profile right now."),
+        formatAuthError(error, "Unable to refresh the Supabase user profile right now."),
       );
       return null;
     }
@@ -1004,7 +826,7 @@ export function AuthProvider({ children }) {
     try {
       const user = isCustomerRole(currentUser.role)
         ? await updateCustomerProfile(currentUser, payload)
-        : await updateFirebaseUserProfile(currentUser, payload);
+        : await updateMyProfile(accessToken, currentUser.role, payload);
       setCurrentUser(user);
 
       return {
@@ -1014,7 +836,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       return {
         ok: false,
-        error: formatFirebaseAuthError(error, "Unable to update the profile right now."),
+        error: formatAuthError(error, "Unable to update the profile right now."),
       };
     }
   }
@@ -1027,13 +849,13 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
     setAccessToken("");
     setAuthHydrationError("");
-    setHasFirebaseSession(false);
+    setHasSupabaseSession(false);
     try {
       if (auth) {
-        await signOutFromFirebase(auth);
+        await signOutSupabase();
       }
     } catch (_error) {
-      // Firebase persistence can already be cleared in some flows.
+      // Supabase session storage can already be cleared in some flows.
     } finally {
       resetTransientAuthStorage();
       clearPortalSession();
@@ -1042,7 +864,7 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
       setAccessToken("");
       setAuthHydrationError("");
-      setHasFirebaseSession(false);
+      setHasSupabaseSession(false);
     }
   }
 
@@ -1052,19 +874,13 @@ export function AuthProvider({ children }) {
     removeStorageItem("furfection-security-warning");
   }
 
-  async function installFreshFirebaseSession(customToken, rememberDevice, portalSession = null) {
+  async function installFreshSupabaseSession(supabaseSession, rememberDevice) {
     loginHandoffRef.current = true;
     try {
       await prepareFreshLogin();
-      if (portalSession) {
-        await configurePortalAuthPersistence(rememberDevice);
-        persistPortalSession(portalSession);
-      } else {
-        await configureCustomerAuthPersistence(rememberDevice);
-      }
-      const credentials = await signInWithCustomToken(auth, customToken);
-      await credentials.user.getIdToken(true);
-      return await hydrateAuthenticatedUser(credentials.user);
+      await configureCustomerAuthPersistence(rememberDevice);
+      const session = await installSupabaseSession(supabaseSession);
+      return await hydrateAuthenticatedUser(session.user, session);
     } finally {
       loginHandoffRef.current = false;
     }
@@ -1220,41 +1036,20 @@ export function AuthProvider({ children }) {
   }
 
   async function finalizePortalLogin(response, pendingSession = pendingOtp) {
-    if (!isFirebaseConfigured || !auth) {
+    if (!isSupabaseConfigured || !auth) {
       return buildConfigErrorResult();
     }
 
-    const firebaseCustomToken =
-      typeof response?.firebaseCustomToken === "string" ? response.firebaseCustomToken.trim() : "";
-    const nextAccessToken =
-      typeof response?.accessToken === "string" ? response.accessToken.trim() : "";
-
-    if (!firebaseCustomToken || !nextAccessToken) {
+    const supabaseSession = response?.supabaseSession;
+    if (!supabaseSession?.access_token) {
       return {
         ok: false,
         error: "The server did not return a complete portal session.",
       };
     }
 
-    const portalSession = createPortalSessionRecord(nextAccessToken);
-
-    if (
-      !portalSession.accessToken ||
-      hasPortalSessionExpired(portalSession)
-    ) {
-      throw new Error("The portal session token could not be validated.");
-    }
-
-    const hydratedSession = await installFreshFirebaseSession(firebaseCustomToken,
-      pendingSession?.rememberDevice === true, portalSession);
-
-    if (
-      portalSession.uid !== hydratedSession.user?.uid ||
-      portalSession.role !== hydratedSession.user?.role
-    ) {
-      clearPortalSession();
-      throw new Error("The portal session token could not be matched to the signed-in user.");
-    }
+    const hydratedSession = await installFreshSupabaseSession(supabaseSession,
+      pendingSession?.rememberDevice === true);
 
     persistRememberDeviceToken(
       hydratedSession.user.role,
@@ -1264,9 +1059,9 @@ export function AuthProvider({ children }) {
     clearPendingOtpSession();
     setPendingOtp(null);
     setCurrentUser(hydratedSession.user);
-    setAccessToken(nextAccessToken);
+    setAccessToken(hydratedSession.accessToken);
     setAuthHydrationError("");
-    setHasFirebaseSession(true);
+    setHasSupabaseSession(true);
 
     return {
       ok: true,
@@ -1404,11 +1199,11 @@ export function AuthProvider({ children }) {
     clearPendingOtp,
     completePasswordReset,
     currentUser,
-    firebaseConfigError,
-    hasFirebaseSession,
+    supabaseConfigError: isSupabaseConfigured ? "" : "Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable sign-in.",
+    hasSupabaseSession,
     homePath: resolveHomePath(currentUser?.role),
     isAuthenticated: Boolean(currentUser),
-    isFirebaseConfigured,
+    isSupabaseConfigured,
     isCustomerUser: isCustomerRole(currentUser?.role),
     isLoading,
     isOnline,

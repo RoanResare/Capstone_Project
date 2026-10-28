@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   checkCustomerRegistrationAvailability,
+  changePassword,
   forgotPassword,
   loginUnified,
   logout,
@@ -34,6 +35,7 @@ router.post("/register/activate", authRateLimiter, asyncHandler(activateCustomer
 router.post("/register/resend-verification", authRateLimiter, asyncHandler(resendCustomerEmailVerification));
 
 router.post("/forgot-password", authRateLimiter, asyncHandler(forgotPassword));
+router.post("/change-password", verifyToken, authRateLimiter, asyncHandler(changePassword));
 router.post("/register/check", authRateLimiter, asyncHandler(checkCustomerRegistrationAvailability));
 router.post("/login", authRateLimiter, asyncHandler(loginUnified));
 router.post("/validate-reset-code", authRateLimiter, asyncHandler(validateResetCode));

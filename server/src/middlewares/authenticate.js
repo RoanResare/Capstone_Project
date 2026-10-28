@@ -2,9 +2,10 @@ const { auth: firebaseAdminAuth } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { verifyAccessToken } = require("../services/token.service");
 const { validateSessionSecurity } = require("../services/sessionSecurity.service");
-const { getUserByUid, toPublicUser } = require("../services/user.service");
+const { getUserByAuthId, getUserByUid, toPublicUser } = require("../services/user.service");
 const { FRAUD_STATUSES, USER_STATUSES } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
+const { isSupabaseAccessToken, verifySupabaseAccessToken } = require("../services/supabaseAuth.service");
 
 function buildFirebaseSetupError() {
   const missingVariables = [];
@@ -75,7 +76,9 @@ function extractBearerToken(req) {
 
 async function attachAuthenticatedUser(req, token, claims, provider) {
   const userId = claims?.sub || claims?.uid || "";
-  const user = await getUserByUid(userId);
+  const user = provider === "supabase-auth"
+    ? await getUserByAuthId(userId)
+    : await getUserByUid(userId);
 
   if (!user) {
     throw new ApiError(401, "The authenticated user no longer exists.");
@@ -101,7 +104,7 @@ async function attachAuthenticatedUser(req, token, claims, provider) {
     typeof claims?.email === "string" &&
     claims.email.trim().toLowerCase() !== user.email
   ) {
-    throw new ApiError(401, "The Firebase session no longer matches the stored account email.");
+    throw new ApiError(401, "The authenticated session no longer matches the stored account email.");
   }
 
   req.auth = {
@@ -123,8 +126,11 @@ async function verifyToken(req, _res, next) {
       return next();
     }
 
-    const firebasePayload = await verifyFirebaseIdToken(token);
-    await attachAuthenticatedUser(req, token, firebasePayload, "firebase-id-token");
+    const usesSupabase = isSupabaseAccessToken(token);
+    const claims = usesSupabase
+      ? await verifySupabaseAccessToken(token)
+      : await verifyFirebaseIdToken(token);
+    await attachAuthenticatedUser(req, token, claims, usesSupabase ? "supabase-auth" : "firebase-id-token");
     await validateSessionSecurity(req);
     return next();
   } catch (error) {
@@ -133,15 +139,7 @@ async function verifyToken(req, _res, next) {
 }
 
 async function verifySessionToken(req, _res, next) {
-  try {
-    const token = extractBearerToken(req);
-    const legacyPayload = verifyAccessToken(token);
-    await attachAuthenticatedUser(req, token, legacyPayload, "server-jwt");
-    await validateSessionSecurity(req);
-    return next();
-  } catch (error) {
-    return next(error);
-  }
+  return verifyToken(req, _res, next);
 }
 
 module.exports = {

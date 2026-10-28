@@ -14,11 +14,11 @@ import {
   where,
   isPostgresEnabled,
 } from "./database.js";
-import { auth, db, isFirebaseConfigured } from "../../firebase.js";
+import { db, isSupabaseConfigured } from "../../firebase.js";
+import { auth, getSupabaseAccessToken, waitForSupabaseUserSession } from "./supabaseSession.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
 import { assertAppropriatePetText } from "../../../shared/petTextValidation.mjs";
-import { waitForFirebaseUserSession } from "./firebaseSession.js";
 
 const COLLECTIONS = {
   appointments: "appointments",
@@ -76,7 +76,7 @@ function normalizeString(value = "") {
 }
 
 function canSyncScheduleData() {
-  return Boolean(isFirebaseConfigured && auth?.currentUser && db);
+  return Boolean(isSupabaseConfigured && auth?.currentUser && db);
 }
 
 function removeUndefinedFields(value) {
@@ -132,7 +132,7 @@ export async function loadScheduleDocuments(collectionName, options = {}) {
     return [];
   }
 
-  const cacheKey = `${auth.currentUser.uid}:${collectionName}`;
+  const cacheKey = `${auth.currentUser.id}:${collectionName}`;
   const cached = collectionCache.get(cacheKey);
   if (!options.force && cached && Date.now() - cached.fetchedAt < SCHEDULE_CACHE_TTL_MS) return cached.documents;
   if (!options.force && collectionLoadRequests.has(cacheKey)) {
@@ -186,14 +186,14 @@ function loadSharedRecords(collectionName) {
 }
 
 async function fetchSharedRecords(collectionName, user) {
-  const token = await user.getIdToken();
+  const token = await getSupabaseAccessToken();
   const documents = [];
   let cursor = "";
   do {
     const response = await apiClient.get(`/auth/${collectionName}`, {
       headers: buildAuthHeaders(token), params: { cursor, limit: 500 },
     });
-    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
+    if (auth.currentUser?.id !== user?.id) throw new Error("Your account changed. Please try again.");
     documents.push(...response.data.records);
     const nextCursor = response.data.nextCursor || "";
     if (nextCursor && nextCursor === cursor) throw new Error("Unable to finish loading saved records.");
@@ -210,7 +210,7 @@ export function saveAppointmentDocument(appointment) {
 
     const id = normalizeString(appointment?.id);
     if (!id) throw new Error("An appointment ID is required.");
-    const token = await auth.currentUser.getIdToken();
+    const token = await getSupabaseAccessToken();
     try {
       const response = await apiClient.put(`/auth/appointments/${encodeURIComponent(id)}`, removeUndefinedFields(appointment), {
         headers: buildAuthHeaders(token),
@@ -238,7 +238,7 @@ export async function savePetRecordDocument(record) {
   const petData = { ...record };
   delete petData.photoURL;
   delete petData.photoModerationId;
-  const token = await auth.currentUser.getIdToken();
+  const token = await getSupabaseAccessToken();
   try {
     await apiClient.put(`/auth/pets/${encodeURIComponent(record.id)}`, removeUndefinedFields(petData), { headers: buildAuthHeaders(token) });
     invalidateScheduleCache(COLLECTIONS.petRecords);
@@ -251,7 +251,7 @@ export async function savePetRecordDocument(record) {
 export async function deletePetRecordDocument(id) {
   if (!canSyncScheduleData()) throw new Error("Sign in to delete a pet profile.");
   try {
-    const token = await auth.currentUser.getIdToken();
+    const token = await getSupabaseAccessToken();
     const response = await apiClient.delete(`/auth/pets/${encodeURIComponent(id)}`, { headers: buildAuthHeaders(token) });
     invalidateScheduleCache(COLLECTIONS.petRecords);
     invalidateScheduleCache(COLLECTIONS.appointments);
@@ -283,7 +283,7 @@ export function loadRecentNotifications({ force = false } = {}) {
 
 export function loadMoreRecentNotifications() {
   if (!canSyncScheduleData()) return Promise.resolve([]);
-  const uid = auth.currentUser.uid;
+  const uid = auth.currentUser.id;
   const cached = collectionCache.get(`${uid}:notifications:recent`);
   if (!cached?.hasMore) return Promise.resolve(cached?.documents || []);
   const last = cached.documents.at(-1);
@@ -307,7 +307,7 @@ export function loadMoreRecentNotifications() {
 }
 
 export function hasMoreRecentNotifications() {
-  const uid = auth?.currentUser?.uid;
+  const uid = auth?.currentUser?.id;
   const cached = uid ? collectionCache.get(`${uid}:notifications:recent`) : null;
   return Boolean(cached?.hasMore);
 }
@@ -326,7 +326,7 @@ export function loadCustomerNotifications(customer) {
 }
 
 function loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPages = 1, force = false, cursorType = "id" } = {}) {
-  const uid = auth.currentUser.uid;
+  const uid = auth.currentUser.id;
   const cacheKey = `${uid}:${cacheKeySuffix}`;
   const cached = collectionCache.get(cacheKey);
   if (!force && cached && Date.now() - cached.fetchedAt < SCHEDULE_CACHE_TTL_MS) return Promise.resolve(cached.documents);
@@ -358,7 +358,7 @@ function loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPag
 }
 
 function loadFilteredScheduleDocuments(cacheKeySuffix, firestoreQuery, { force = false } = {}) {
-  const uid = auth.currentUser.uid;
+  const uid = auth.currentUser.id;
   const cacheKey = `${uid}:${cacheKeySuffix}`;
   const cached = collectionCache.get(cacheKey);
   if (!force && cached && Date.now() - cached.fetchedAt < SCHEDULE_CACHE_TTL_MS) return Promise.resolve(cached.documents);
@@ -411,18 +411,18 @@ function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { 
   let refreshAgain = false;
   let live = false;
   const refresh = async () => {
-    if (disposed || live || !user || auth.currentUser !== user) return;
+    if (disposed || live || !user || auth.currentUser?.id !== user?.id) return;
     if (refreshing) { refreshAgain = true; return; }
     refreshing = true;
     clearTimeout(timer);
     try {
       const documents = await loadSharedRecords(collectionName);
-      if (!disposed && !live && auth.currentUser === user) onChange(documents);
+      if (!disposed && !live && auth.currentUser?.id === user?.id) onChange(documents);
     } catch (error) {
-      if (!disposed && !live && auth.currentUser === user) onError(error);
+      if (!disposed && !live && auth.currentUser?.id === user?.id) onError(error);
     } finally {
       refreshing = false;
-      if (!disposed && !live && auth.currentUser === user) {
+      if (!disposed && !live && auth.currentUser?.id === user?.id) {
         if (refreshAgain) { refreshAgain = false; void refresh(); }
         else timer = setTimeout(refresh, 10000);
       }
@@ -430,21 +430,21 @@ function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { 
   };
   const handleFocus = () => { if (document.visibilityState !== "hidden") void refresh(); };
   const start = async () => {
-    user = await waitForFirebaseUserSession(expectedUid || customerId);
+    user = await waitForSupabaseUserSession(expectedUid || customerId);
     if (disposed) return;
     if (!user) { onError(new Error("Sign in again to synchronize saved records.")); return; }
     if (completeSnapshot && !customerId) {
       // Staff calendars consume all records. A complete server snapshot is the
       // same dataset as the API, including old records and records without dates.
       unsubscribe = onSnapshot(collection(db, collectionName), { includeMetadataChanges: true }, (snapshot) => {
-        if (disposed || auth.currentUser !== user) return;
+        if (disposed || auth.currentUser?.id !== user?.id) return;
         live = !snapshot.metadata?.fromCache;
         if (!live) { void refresh(); return; }
         clearTimeout(timer);
         refreshAgain = false;
         onChange(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id })));
       }, (error) => {
-        if (disposed || auth.currentUser !== user) return;
+        if (disposed || auth.currentUser?.id !== user?.id) return;
         live = false;
         logSyncError(collectionName + " live updates; using API refresh", error);
         void refresh();
@@ -453,8 +453,8 @@ function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { 
     }
     void refresh();
     const constraints = customerId ? [where("customerId", "==", customerId)] : [];
-    // Firestore events trigger complete API reads, so a limited snapshot cannot
-    // remove older bookings from the calendar. Polling also covers denied rules.
+    // Realtime events trigger complete API reads, so a limited snapshot cannot
+    // remove older bookings from the calendar. Polling also covers denied access.
     unsubscribe = onSnapshot(query(collection(db, collectionName), ...constraints,
       orderBy("__name__", "desc"), limit(SCHEDULE_PAGE_SIZE)), () => { void refresh(); },
       error => { logSyncError(collectionName + " live updates; using API refresh", error); });
@@ -524,12 +524,12 @@ export async function loadAvailabilitySlotDocuments(options = {}) {
       }
     }
 
-    if (generation === availabilityGeneration && auth?.currentUser === user) {
+    if (generation === availabilityGeneration && auth?.currentUser?.id === user?.id) {
       writeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, slots);
     }
     return slots;
   })().catch((error) => {
-    if (generation === availabilityGeneration && auth?.currentUser === user) removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
+    if (generation === availabilityGeneration && auth?.currentUser?.id === user?.id) removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
     throw error;
   });
 
@@ -546,7 +546,7 @@ export function invalidateScheduleCache(collectionName) {
   // A post-write refresh must not join a read started before the write.
   if (collectionName) sharedRecordRequests.delete(collectionName);
   else sharedRecordRequests.clear();
-  const uid = auth?.currentUser?.uid;
+  const uid = auth?.currentUser?.id;
   if (uid && collectionName) {
     for (const key of collectionCache.keys()) {
       const matchesCollection = key.includes(collectionName) ||
@@ -569,10 +569,10 @@ export function clearScheduleCache() {
 
 async function requestAvailabilitySlots(method, id = "", payload, params = {}) {
   const user = auth?.currentUser;
-  if (!isFirebaseConfigured || !user) throw new Error("You must be signed in to access appointment slots.");
+  if (!isSupabaseConfigured || !user) throw new Error("You must be signed in to access appointment slots.");
   try {
-    const token = await user.getIdToken();
-    if (auth.currentUser !== user) throw new Error("Your account changed. Please try again.");
+    const token = await getSupabaseAccessToken();
+    if (auth.currentUser?.id !== user?.id) throw new Error("Your account changed. Please try again.");
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "") {
@@ -597,7 +597,7 @@ function isPermissionDenied(error) {
 
 function schedulePermissionError(error) {
   if (!isPermissionDenied(error)) return error;
-  const result = new Error("Schedule access was denied. Please sign in again. If the problem continues, the administrator must publish the updated Firestore rules.");
+  const result = new Error("Schedule access was denied. Please sign in again. If the problem continues, contact an administrator.");
   result.code = error.code;
   return result;
 }
@@ -619,23 +619,23 @@ function startAvailabilitySubscription(onChange, onError) {
     onError(schedulePermissionError(error));
   };
   const refresh = async () => {
-    if (disposed || live || auth.currentUser !== user || document.visibilityState === "hidden") return;
+    if (disposed || live || auth.currentUser?.id !== user?.id || document.visibilityState === "hidden") return;
     if (refreshing) return;
     refreshing = true;
     clearTimeout(pollingTimer);
     try {
       const slots = await loadAvailabilitySlotDocuments({ force: true });
-      if (!disposed && !live && auth.currentUser === user) onChange(slots);
+      if (!disposed && !live && auth.currentUser?.id === user?.id) onChange(slots);
     } catch (error) { if (!live) fail(error); }
     finally { refreshing = false; }
-    if (!disposed && !live && auth.currentUser === user) pollingTimer = setTimeout(refresh, 60_000);
+    if (!disposed && !live && auth.currentUser?.id === user?.id) pollingTimer = setTimeout(refresh, 60_000);
   };
   const cachedSlots = readJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, AVAILABILITY_SLOTS_CACHE_TTL_MS);
   if (Array.isArray(cachedSlots)) onChange(cachedSlots);
-  // This complete query covers legacy slot IDs and tombstones too. Firestore
+  // This complete query covers legacy slot IDs and tombstones too. Realtime
   // sends changed documents after the initial snapshot, without API full reloads.
   const unsubscribe = onSnapshot(collection(db, COLLECTIONS.availabilitySlots), { includeMetadataChanges: true }, (snapshot) => {
-    if (disposed || auth.currentUser !== user) return;
+    if (disposed || auth.currentUser?.id !== user?.id) return;
     // Keep the API fallback available until the server confirms the snapshot.
     live = !snapshot.metadata?.fromCache;
     if (live) clearTimeout(pollingTimer);
@@ -645,7 +645,7 @@ function startAvailabilitySubscription(onChange, onError) {
     writeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, slots);
     onChange(slots);
   }, () => {
-    if (disposed || auth.currentUser !== user) return;
+    if (disposed || auth.currentUser?.id !== user?.id) return;
     live = false;
     void refresh();
   });

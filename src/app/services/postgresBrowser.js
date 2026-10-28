@@ -1,9 +1,12 @@
-import { auth } from "../../firebase.js";
 import { apiClient, buildAuthHeaders } from "./apiClient.js";
+import { getApplicationAccessToken, getApplicationIdentity } from "./databaseToken.js";
 
 const TYPE = "__furfection_type__";
-const caches = new WeakMap();
-function cacheFor(user) { if (!caches.has(user)) caches.set(user, new Map()); return caches.get(user); }
+const documentCaches = new Map();
+function cacheFor(identity) {
+  if (!documentCaches.has(identity)) documentCaches.set(identity, new Map());
+  return documentCaches.get(identity);
+}
 function encode(value) {
   if (value instanceof Date) return { [TYPE]: "timestamp", seconds: Math.floor(value.getTime() / 1000), nanoseconds: (value.getTime() % 1000) * 1e6 };
   if (value?.toDate && Number.isInteger(value.seconds)) return { [TYPE]: "timestamp", seconds: value.seconds, nanoseconds: value.nanoseconds };
@@ -22,11 +25,11 @@ function decode(value) {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, decode(item)]));
 }
 async function request(endpoint, body) {
-  const user = auth?.currentUser;
-  const token = user ? await user.getIdToken() : "";
+  const identity = await getApplicationIdentity();
+  const token = await getApplicationAccessToken();
   try {
     const response = await apiClient.post(`/database/${endpoint}`, body, { headers: token ? buildAuthHeaders(token) : {} });
-    if (auth?.currentUser !== user) throw new Error("Your account changed.");
+    if (identity !== await getApplicationIdentity()) throw new Error("Your account changed.");
     return response.data;
   } catch (error) {
     if (error.response?.status === 403) error.code = "permission-denied";
@@ -49,15 +52,15 @@ function snapshot(reference, payload) {
     get: field => field.split(".").reduce((value, key) => value?.[key], data) };
 }
 export async function getDoc(reference) {
-  const user = auth?.currentUser;
   const payload = await request("read", { collection: reference.collectionName, id: reference.id });
   const result = snapshot(reference, payload);
-  if (user && auth.currentUser === user) cacheFor(user).set(reference.path, result);
+  const identity = await getApplicationIdentity();
+  if (identity) cacheFor(identity).set(reference.path, result);
   return result;
 }
 export async function getDocFromCache(reference) {
-  const user = auth?.currentUser;
-  const cached = user && cacheFor(user).get(reference.path);
+  const identity = await getApplicationIdentity();
+  const cached = identity && cacheFor(identity).get(reference.path);
   if (!cached) throw Object.assign(new Error("No cached document."), { code: "unavailable" });
   return cached;
 }
@@ -90,7 +93,12 @@ export function writeBatch() {
     set(reference, data, options = {}) { writes.push({ collection: reference.collectionName, id: reference.id, operation: "set", data: encode(data), merge: Boolean(options.merge) }); return batch; },
     update(reference, data) { writes.push({ collection: reference.collectionName, id: reference.id, operation: "update", data: encode(data) }); return batch; },
     delete(reference) { writes.push({ collection: reference.collectionName, id: reference.id, operation: "delete" }); return batch; },
-    async commit() { const result = await request("write", { writes }); const user = auth?.currentUser; if (user) for (const write of writes) cacheFor(user).delete(`${write.collection}/${write.id}`); return result; },
+    async commit() {
+      const result = await request("write", { writes });
+      const identity = await getApplicationIdentity();
+      if (identity) for (const write of writes) cacheFor(identity).delete(`${write.collection}/${write.id}`);
+      return result;
+    },
   };
   return batch;
 }

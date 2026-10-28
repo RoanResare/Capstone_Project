@@ -5,10 +5,8 @@ function collectMissingVariables(options = {}) {
   const requireOtp = Boolean(options.requireOtp);
   const requirePasswordReset = Boolean(options.requirePasswordReset);
   const required = [
-    { name: "FIREBASE_PROJECT_ID", ready: Boolean(env.firebase.projectId) },
-    { name: "FIREBASE_CLIENT_EMAIL", ready: Boolean(env.firebase.clientEmail) },
-    { name: "FIREBASE_PRIVATE_KEY", ready: Boolean(env.firebase.privateKey) },
-    { name: "FIREBASE_WEB_API_KEY", ready: Boolean(env.firebase.webApiKey) },
+    { name: "SUPABASE_URL and SUPABASE_ANON_KEY", ready: Boolean(env.runtime.supabaseAuthReady) },
+    { name: "SUPABASE_SERVICE_ROLE_KEY", ready: Boolean(env.runtime.supabaseAdminReady) },
     { name: "JWT_SECRET", ready: Boolean(env.auth.jwtSecret) },
     { name: "PASSWORD_HASH_PEPPER", ready: Boolean(env.auth.passwordHashPepper) },
   ];

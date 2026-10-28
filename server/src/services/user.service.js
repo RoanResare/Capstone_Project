@@ -1,4 +1,5 @@
-const { auth, db } = require("../config/firebaseAdmin");
+const { db } = require("../config/firebaseAdmin");
+const { createSupabaseUser, deleteSupabaseUser, findSupabaseUserByEmail, getSupabaseUserById, updateSupabaseUser } = require("./supabaseAuth.service");
 const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
@@ -163,6 +164,24 @@ async function getUserByUid(uid) {
   return normalizeUserPayload(snapshot.data(), snapshot.id);
 }
 
+async function getUserByAuthId(authUserId) {
+  const normalizedId = normalizeString(authUserId);
+  if (!normalizedId) return null;
+  const snapshot = await db.collection(USERS_COLLECTION).where("authUserId", "==", normalizedId).limit(1).get();
+  return snapshot.empty ? null : normalizeUserPayload(snapshot.docs[0].data(), snapshot.docs[0].id);
+}
+
+async function linkSupabaseAuthUser(profile, authUserId) {
+  const normalizedId = normalizeString(authUserId);
+  if (!profile || !normalizedId) throw new ApiError(400, "A PostgreSQL profile and Supabase Auth identity are required.");
+  const existing = await getUserByAuthId(normalizedId);
+  if (existing && existing.uid !== profile.uid) throw new ApiError(409, "This Supabase identity is already linked to another profile.");
+  if (profile.authUserId && profile.authUserId !== normalizedId) throw new ApiError(409, "This profile is already linked to another Supabase identity.");
+  const reference = db.collection(USERS_COLLECTION).doc(profile.profileDocId || profile.uid);
+  await reference.set({ authUserId: normalizedId, updatedAt: new Date().toISOString() }, { merge: true });
+  return normalizeUserPayload({ ...profile, authUserId: normalizedId });
+}
+
 async function getUsernameOwner(username) {
   const snapshot = await db.collection(USERNAMES_COLLECTION).doc(normalizeUsername(username)).get();
 
@@ -182,11 +201,11 @@ async function assertUsernameAvailable(username, uid = "") {
   }
 }
 
-async function getFirebaseUserByUid(uid) {
+async function getSupabaseUserByUid(uid) {
   try {
-    return await auth.getUser(uid);
+    return await getSupabaseUserById(uid);
   } catch (error) {
-    if (error?.code === "auth/user-not-found") {
+    if (error?.statusCode === 404) {
       return null;
     }
 
@@ -194,7 +213,7 @@ async function getFirebaseUserByUid(uid) {
   }
 }
 
-async function getFirebaseUserByEmail(email) {
+async function getSupabaseUserByEmail(email) {
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
   if (!normalizedEmail) {
@@ -202,24 +221,21 @@ async function getFirebaseUserByEmail(email) {
   }
 
   try {
-    return await auth.getUserByEmail(normalizedEmail);
+    return await findSupabaseUserByEmail(normalizedEmail);
   } catch (error) {
-    if (error?.code === "auth/user-not-found") {
-      return null;
-    }
-
     throw error;
   }
 }
 
 async function assertEmailAvailable(email, uid = "") {
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const [firebaseUser, storedUser] = await Promise.all([
-    getFirebaseUserByEmail(normalizedEmail),
+  const [supabaseUser, storedUser] = await Promise.all([
+    getSupabaseUserByEmail(normalizedEmail),
     getUserByEmail(normalizedEmail),
   ]);
 
-  if ((firebaseUser && firebaseUser.uid !== uid) || (storedUser && storedUser.uid !== uid)) {
+  const linkedProfile = supabaseUser?.id ? await getUserByAuthId(supabaseUser.id) : null;
+  if ((supabaseUser && (supabaseUser.id !== uid && linkedProfile?.uid !== uid)) || (storedUser && storedUser.uid !== uid)) {
     throw new ApiError(409, "An account with this email already exists.");
   }
 }
@@ -372,62 +388,6 @@ async function getUserByUsername(username) {
   return document ? normalizeUserPayload(document.data(), document.id) : null;
 }
 
-async function relinkUserProfileToUid(user, nextUid) {
-  const normalizedUid = normalizeString(nextUid);
-  const existingUser = normalizeUserPayload(user);
-
-  if (!normalizedUid || existingUser.uid === normalizedUid) {
-    return existingUser;
-  }
-
-  const timestamp = new Date().toISOString();
-  const nextUser = normalizeUserPayload({
-    ...existingUser,
-    uid: normalizedUid,
-    id: normalizedUid,
-    updatedAt: timestamp,
-  });
-  const batch = db.batch();
-  const nextReference = db.collection(USERS_COLLECTION).doc(normalizedUid);
-
-  batch.set(
-    nextReference,
-    {
-      ...nextUser,
-      uid: normalizedUid,
-      updatedAt: timestamp,
-    },
-    { merge: true },
-  );
-
-  if (existingUser.profileDocId && existingUser.profileDocId !== normalizedUid) {
-    batch.delete(db.collection(USERS_COLLECTION).doc(existingUser.profileDocId));
-  }
-
-  if (isValidUsername(nextUser.username)) {
-    batch.set(
-      db.collection(USERNAMES_COLLECTION).doc(nextUser.username),
-      {
-        uid: normalizedUid,
-        email: nextUser.email,
-        username: nextUser.username,
-        updatedAt: timestamp,
-      },
-      { merge: true },
-    );
-  }
-
-  await batch.commit();
-  logPortalUserOperation("Firestore profile relinked to Firebase Authentication UID", {
-    fromUid: existingUser.uid,
-    toUid: normalizedUid,
-    email: nextUser.email,
-    username: nextUser.username,
-  });
-
-  return normalizeUserPayload(nextUser, normalizedUid);
-}
-
 async function pickAvailableUsername(baseUsername, uid) {
   const base = isValidUsername(baseUsername) ? normalizeUsername(baseUsername) : "user";
 
@@ -533,49 +493,9 @@ async function repairPortalUserConsistency({ document, rawUser, user }) {
     });
   }
 
-  const firebaseUser = await getFirebaseUserByUid(user.uid);
-  if (!firebaseUser) {
-    logPortalUserOperation(
-      "profile has no matching Firebase Authentication user",
-      {
-        uid: user.uid,
-        email: user.email,
-      },
-      "warn",
-    );
-    return normalizeUserPayload({ ...user, username: nextUsername });
-  }
-
-  const authUpdates = {};
-  if (firebaseUser.disabled !== (user.accountStatus !== USER_STATUSES.ACTIVE)) {
-    authUpdates.disabled = user.accountStatus !== USER_STATUSES.ACTIVE;
-  }
-
-  if (normalizeString(firebaseUser.displayName) !== user.fullName) {
-    authUpdates.displayName = user.fullName;
-  }
-
-  if (Object.keys(authUpdates).length > 0) {
-    await auth.updateUser(user.uid, authUpdates);
-    logPortalUserOperation("Firebase Authentication profile repaired", {
-      uid: user.uid,
-      email: user.email,
-      fields: Object.keys(authUpdates),
-    });
-  }
-
-  const claims = firebaseUser.customClaims || {};
-  if (
-    claims.role !== user.role ||
-    claims.accountStatus !== user.accountStatus ||
-    claims.status !== user.accountStatus
-  ) {
-    await setCustomClaims(user);
-    logPortalUserOperation("custom claims synchronized", {
-      uid: user.uid,
-      role: user.role,
-      accountStatus: user.accountStatus,
-    });
+  const authId = user.authUserId || user.uid;
+  if (user.authUserId) {
+    await updateSupabaseUser(authId, { user_metadata: { full_name: user.fullName, role: user.role } });
   }
 
   return normalizeUserPayload({ ...user, username: nextUsername });
@@ -622,12 +542,8 @@ async function listPortalUsers(options = {}) {
 }
 
 async function setCustomClaims(user) {
-  await auth.setCustomUserClaims(user.uid, {
-    role: user.role,
-    status: user.accountStatus,
-    accountStatus: user.accountStatus,
-    fraudStatus: user.fraudStatus,
-  });
+  // Authorization is read from PostgreSQL on each backend request.
+  return user;
 }
 
 async function touchLastLogin(uid) {
@@ -681,31 +597,13 @@ async function createPortalUser(payload) {
     assertUsernameAvailable(username),
   ]);
 
-  let firebaseUser = null;
-
-  try {
-    logPortalUserOperation("Firebase Authentication create started", { email, role });
-    firebaseUser = await auth.createUser({
-      email,
-      password,
-      displayName: fullName,
-      disabled: accountStatus !== USER_STATUSES.ACTIVE,
-    });
-    logPortalUserOperation("Firebase Authentication create succeeded", {
-      uid: firebaseUser.uid,
-      email,
-    });
-  } catch (error) {
-    if (error?.code === "auth/email-already-exists") {
-      throw new ApiError(409, "An account with this email already exists.");
-    }
-
-    throw error;
-  }
+  const authUser = await createSupabaseUser({ email, password, emailConfirmed: true, userMetadata: { full_name: fullName, role } });
+  if (!authUser?.id) throw new ApiError(503, "Supabase Auth did not create the employee identity.");
 
   const timestamp = new Date().toISOString();
   const documentPayload = {
-    uid: firebaseUser.uid,
+    uid: authUser.id,
+    authUserId: authUser.id,
     fullName,
     email,
     username,
@@ -725,20 +623,20 @@ async function createPortalUser(payload) {
 
   try {
     logPortalUserOperation("Firestore profile create started", {
-      uid: firebaseUser.uid,
+      uid: authUser.id,
       username,
     });
     await db.runTransaction(async (transaction) => {
       const usernameReference = db.collection(USERNAMES_COLLECTION).doc(username);
       const usernameSnapshot = await transaction.get(usernameReference);
 
-      if (usernameSnapshot.exists && usernameSnapshot.data()?.uid !== firebaseUser.uid) {
+      if (usernameSnapshot.exists && usernameSnapshot.data()?.uid !== authUser.id) {
         throw new ApiError(409, "This username is already in use.");
       }
 
-      transaction.set(db.collection(USERS_COLLECTION).doc(firebaseUser.uid), documentPayload);
+      transaction.set(db.collection(USERS_COLLECTION).doc(authUser.id), documentPayload);
       transaction.set(usernameReference, {
-        uid: firebaseUser.uid,
+        uid: authUser.id,
         email,
         username,
         createdAt: timestamp,
@@ -746,25 +644,20 @@ async function createPortalUser(payload) {
       });
     });
     logPortalUserOperation("Firestore profile create succeeded", {
-      uid: firebaseUser.uid,
+      uid: authUser.id,
       username,
     });
     await setCustomClaims(documentPayload);
-    logPortalUserOperation("role claims synchronized", {
-      uid: firebaseUser.uid,
-      role,
-      accountStatus,
-    });
   } catch (error) {
     await Promise.allSettled([
-      auth.deleteUser(firebaseUser.uid),
-      db.collection(USERS_COLLECTION).doc(firebaseUser.uid).delete(),
-      deleteUsernameIndex(username, firebaseUser.uid),
+      deleteSupabaseUser(authUser.id),
+      db.collection(USERS_COLLECTION).doc(authUser.id).delete(),
+      deleteUsernameIndex(username, authUser.id),
     ]);
     logPortalUserOperation(
       "create failed; partial account cleanup attempted",
       {
-        uid: firebaseUser.uid,
+        uid: authUser.id,
         email,
         username,
         error: error instanceof Error ? error.message : String(error || "Unknown error"),
@@ -835,36 +728,29 @@ async function updatePortalUser(uid, updates) {
   await assertEmailAvailable(nextUser.email, uid);
   await assertUsernameAvailable(nextUser.username, uid);
 
-  const authUpdate = {
-    email: nextUser.email,
-    displayName: nextUser.fullName,
-    disabled: nextUser.accountStatus !== USER_STATUSES.ACTIVE,
-  };
+  const authId = existingUser.authUserId || uid;
+  nextUser.authUserId = authId;
+  const authUpdate = { email: nextUser.email, email_confirm: true, user_metadata: { full_name: nextUser.fullName, role: nextUser.role } };
 
   if (typeof updates.password === "string" && updates.password.trim()) {
     authUpdate.password = updates.password.trim();
   }
 
-  const previousFirebaseUser = await getFirebaseUserByUid(uid);
-  if (!previousFirebaseUser) {
-    throw new ApiError(
-      404,
-      "The Firebase Authentication account for this employee was not found. Delete the stale profile or recreate the employee account.",
-    );
-  }
+  const previousAuthUser = await getSupabaseUserByUid(authId);
+  if (!previousAuthUser) throw new ApiError(404, "The Supabase Auth account for this employee was not found. Recreate the employee account.");
 
   try {
-    logPortalUserOperation("Firebase Authentication update started", {
+    logPortalUserOperation("Supabase Auth update started", {
       uid,
       email: nextUser.email,
       role: nextUser.role,
       accountStatus: nextUser.accountStatus,
       passwordChanged: Boolean(authUpdate.password),
     });
-    await auth.updateUser(uid, authUpdate);
-    logPortalUserOperation("Firebase Authentication update succeeded", { uid });
+    await updateSupabaseUser(authId, authUpdate);
+    logPortalUserOperation("Supabase Auth update succeeded", { uid });
   } catch (error) {
-    if (error?.code === "auth/email-already-exists") {
+    if (error?.details?.code === "email_exists" || error?.statusCode === 409) {
       throw new ApiError(409, "An account with this email already exists.");
     }
 
@@ -889,6 +775,7 @@ async function updatePortalUser(uid, updates) {
         userReference,
         {
           uid,
+          authUserId: authId,
           fullName: nextUser.fullName,
           email: nextUser.email,
           username: nextUser.username,
@@ -928,13 +815,13 @@ async function updatePortalUser(uid, updates) {
       accountStatus: nextUser.accountStatus,
     });
   } catch (error) {
-    await auth.updateUser(uid, {
-      email: previousFirebaseUser.email,
-      displayName: previousFirebaseUser.displayName || undefined,
-      disabled: previousFirebaseUser.disabled,
+    await updateSupabaseUser(authId, {
+      email: previousAuthUser.email,
+      user_metadata: previousAuthUser.user_metadata || {},
+      ...(typeof updates.password === "string" && updates.password.trim() ? { password: previousAuthUser.password || undefined } : {}),
     }).catch((rollbackError) => {
       logPortalUserOperation(
-        "Firebase Authentication rollback failed after profile update error",
+        "Supabase Auth rollback failed after profile update error",
         {
           uid,
           error:
@@ -946,7 +833,7 @@ async function updatePortalUser(uid, updates) {
       );
     });
     logPortalUserOperation(
-      "update failed after Firebase Authentication update; rollback attempted",
+      "update failed after Supabase Auth update; rollback attempted",
       {
         uid,
         error: error instanceof Error ? error.message : String(error || "Unknown error"),
@@ -1033,13 +920,17 @@ async function updateOwnUser(uid, updates) {
   if (nextEmail !== existingUser.email) {
     await assertEmailIsDeliverable(nextEmail);
   }
-  await auth.updateUser(uid, {
+  const authId = existingUser.authUserId || uid;
+  nextUser.authUserId = authId;
+  await updateSupabaseUser(authId, {
     email: nextUser.email,
-    displayName: nextUser.fullName,
+    email_confirm: true,
+    user_metadata: { full_name: nextUser.fullName },
   });
   await db.collection(USERS_COLLECTION).doc(uid).set(
     {
       uid,
+      authUserId: authId,
       fullName: nextUser.fullName,
       email: nextUser.email,
       username: nextUser.username,
@@ -1063,18 +954,18 @@ async function ensureAdminCanMutateTarget(
   const normalizedTargetUid = normalizeString(targetUid);
   const targetUser = await getUserByUid(normalizedTargetUid);
 
-  let targetFirebaseUser = null;
+  let targetAuthUser = null;
 
   if (!targetUser && deleting) {
-    targetFirebaseUser = await getFirebaseUserByUid(normalizedTargetUid);
+    targetAuthUser = await getSupabaseUserByUid(normalizedTargetUid);
   }
 
-  if (!targetUser && !targetFirebaseUser) {
+  if (!targetUser && !targetAuthUser) {
     throw new ApiError(404, "The selected employee account was not found.");
   }
 
   const targetRole =
-    targetUser?.role || normalizeRole(targetFirebaseUser?.customClaims?.role || "");
+    targetUser?.role || normalizeRole(targetAuthUser?.user_metadata?.role || "");
 
   if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(targetRole)) {
     throw new ApiError(400, "Only admin and staff accounts can be managed here.");
@@ -1112,13 +1003,11 @@ async function ensureAdminCanMutateTarget(
 
   return targetUser || normalizeUserPayload({
     uid: normalizedTargetUid,
-    email: targetFirebaseUser.email || "",
-    fullName: targetFirebaseUser.displayName || "",
-    username: deriveUsernameFromEmail(targetFirebaseUser.email || normalizedTargetUid),
+    email: targetAuthUser.email || "",
+    fullName: targetAuthUser.user_metadata?.full_name || "",
+    username: deriveUsernameFromEmail(targetAuthUser.email || normalizedTargetUid),
     role: targetRole,
-    accountStatus: targetFirebaseUser.disabled
-      ? USER_STATUSES.INACTIVE
-      : USER_STATUSES.ACTIVE,
+    accountStatus: USER_STATUSES.ACTIVE,
   });
 }
 
@@ -1131,15 +1020,15 @@ async function deletePortalUser(uid) {
     : null;
 
   try {
-    logPortalUserOperation("Firebase Authentication delete started", { uid: normalizedUid });
-    await auth.deleteUser(normalizedUid);
-    logPortalUserOperation("Firebase Authentication delete succeeded", { uid: normalizedUid });
+    logPortalUserOperation("Supabase Auth delete started", { uid: normalizedUid });
+    await deleteSupabaseUser(existingUser?.authUserId || normalizedUid);
+    logPortalUserOperation("Supabase Auth delete succeeded", { uid: normalizedUid });
   } catch (error) {
-    if (error?.code !== "auth/user-not-found") {
+    if (error?.statusCode !== 404) {
       throw error;
     }
     logPortalUserOperation(
-      "Firebase Authentication user was already missing during delete",
+      "Supabase Auth user was already missing during delete",
       { uid: normalizedUid },
       "warn",
     );
@@ -1178,11 +1067,12 @@ module.exports = {
   getUserByUsername,
   getUsernameOwner,
   getUserByUid,
+  getUserByAuthId,
+  linkSupabaseAuthUser,
   listPortalUsers,
   normalizeRole,
   normalizeUserPayload,
   normalizeUserStatus,
-  relinkUserProfileToUid,
   purgeExpiredInactivePortalUsers,
   toPublicUser,
   touchLastLogin,

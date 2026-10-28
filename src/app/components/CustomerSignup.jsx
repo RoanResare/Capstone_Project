@@ -30,7 +30,7 @@ export function CustomerSignup() {
   const navigate = useNavigate();
   const {
     currentUser,
-    firebaseConfigError,
+    supabaseConfigError,
     homePath,
     isAuthenticated,
     isLoading,
@@ -156,9 +156,9 @@ export function CustomerSignup() {
             <p className="mt-2 text-sm text-[#607277]">Join us to manage your pet care and appointments.</p>
           </div>
           <form noValidate onSubmit={handleSubmit} className="space-y-4">
-            {firebaseConfigError && (
+            {supabaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
-                Firebase client setup is incomplete. Fill the `VITE_FIREBASE_*` values in the
+                Supabase client setup is incomplete. Fill the `VITE_SUPABASE_*` values in the
                 root `.env` to finish the sign-up flow.
               </div>
             )}

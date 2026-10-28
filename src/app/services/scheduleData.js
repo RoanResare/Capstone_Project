@@ -12,7 +12,8 @@ import {
   setDoc,
   updateDoc,
   where,
-} from "firebase/firestore";
+  isPostgresEnabled,
+} from "./database.js";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
@@ -37,7 +38,38 @@ const collectionLoadRequests = new Map();
 const collectionCache = new Map();
 // Only share pending reads; completed API results are never reused.
 const sharedRecordRequests = new Map();
+const sharedSubscriptions = new Map();
 let availabilitySlotsLoadRequest = null;
+let availabilityGeneration = 0;
+
+function shareSubscription(key, start, onChange, onError) {
+  const user = auth?.currentUser;
+  let entry = sharedSubscriptions.get(key);
+  if (entry?.user !== user) entry = null;
+  if (!entry) {
+    entry = { user, subscribers: new Set(), hasValue: false };
+    sharedSubscriptions.set(key, entry);
+  }
+  const subscriber = { onChange, onError };
+  entry.subscribers.add(subscriber);
+  if (entry.hasValue) onChange(entry.value);
+  if (!entry.stop) {
+    entry.stop = start((value) => {
+      entry.value = value;
+      entry.hasValue = true;
+      for (const listener of entry.subscribers) listener.onChange(value);
+    }, (error) => {
+      for (const listener of entry.subscribers) listener.onError?.(error);
+    });
+  }
+  return () => {
+    entry.subscribers.delete(subscriber);
+    if (!entry.subscribers.size) {
+      entry.stop();
+      if (sharedSubscriptions.get(key) === entry) sharedSubscriptions.delete(key);
+    }
+  };
+}
 
 function normalizeString(value = "") {
   return typeof value === "string" ? value.trim() : "";
@@ -370,26 +402,27 @@ function subscribeScheduleDocuments(collectionName, onChange, onError = () => {}
   return () => { disposed = true; window.removeEventListener("focus", handleFocus); };
 }
 
-function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { customerId = "", expectedUid = "" } = {}) {
+function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { customerId = "", expectedUid = "", completeSnapshot = false } = {}) {
   let disposed = false;
   let timer;
   let unsubscribe = () => {};
   let user;
   let refreshing = false;
   let refreshAgain = false;
+  let live = false;
   const refresh = async () => {
-    if (disposed || !user || auth.currentUser !== user) return;
+    if (disposed || live || !user || auth.currentUser !== user) return;
     if (refreshing) { refreshAgain = true; return; }
     refreshing = true;
     clearTimeout(timer);
     try {
       const documents = await loadSharedRecords(collectionName);
-      if (!disposed && auth.currentUser === user) onChange(documents);
+      if (!disposed && !live && auth.currentUser === user) onChange(documents);
     } catch (error) {
-      if (!disposed && auth.currentUser === user) onError(error);
+      if (!disposed && !live && auth.currentUser === user) onError(error);
     } finally {
       refreshing = false;
-      if (!disposed && auth.currentUser === user) {
+      if (!disposed && !live && auth.currentUser === user) {
         if (refreshAgain) { refreshAgain = false; void refresh(); }
         else timer = setTimeout(refresh, 10000);
       }
@@ -400,6 +433,24 @@ function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { 
     user = await waitForFirebaseUserSession(expectedUid || customerId);
     if (disposed) return;
     if (!user) { onError(new Error("Sign in again to synchronize saved records.")); return; }
+    if (completeSnapshot && !customerId) {
+      // Staff calendars consume all records. A complete server snapshot is the
+      // same dataset as the API, including old records and records without dates.
+      unsubscribe = onSnapshot(collection(db, collectionName), { includeMetadataChanges: true }, (snapshot) => {
+        if (disposed || auth.currentUser !== user) return;
+        live = !snapshot.metadata?.fromCache;
+        if (!live) { void refresh(); return; }
+        clearTimeout(timer);
+        refreshAgain = false;
+        onChange(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id })));
+      }, (error) => {
+        if (disposed || auth.currentUser !== user) return;
+        live = false;
+        logSyncError(collectionName + " live updates; using API refresh", error);
+        void refresh();
+      });
+      return;
+    }
     void refresh();
     const constraints = customerId ? [where("customerId", "==", customerId)] : [];
     // Firestore events trigger complete API reads, so a limited snapshot cannot
@@ -419,14 +470,29 @@ function subscribeSharedRecords(collectionName, onChange, onError = () => {}, { 
 }
 
 export function subscribeAppointments(onChange, onError, options) {
-  return subscribeSharedRecords(COLLECTIONS.appointments, onChange, onError, options);
+  return subscribeRecords(COLLECTIONS.appointments, onChange, onError, options);
 }
 
 export function subscribePetRecords(onChange, onError, options) {
-  return subscribeSharedRecords(COLLECTIONS.petRecords, onChange, onError, options);
+  return subscribeRecords(COLLECTIONS.petRecords, onChange, onError, options);
+}
+
+function subscribeRecords(collectionName, onChange, onError, options = {}) {
+  if (typeof isPostgresEnabled !== "undefined" && isPostgresEnabled) {
+    // The PostgreSQL API enforces canonical and legacy ownership server-side.
+    options = { ...options, customerId: "", completeSnapshot: true };
+  }
+  const key = JSON.stringify([collectionName, options.expectedUid || "", options.customerId || "", Boolean(options.completeSnapshot)]);
+  return shareSubscription(key, (next, fail) => subscribeSharedRecords(collectionName, next, fail, options), onChange, onError);
 }
 
 export function subscribeNotifications(onChange, onError) {
+  if (typeof isPostgresEnabled !== "undefined" && isPostgresEnabled) {
+    return shareSubscription("notifications:live", (next, fail) => onSnapshot(
+      query(collection(db, COLLECTIONS.notifications), orderBy("createdAt", "desc"), limit(51)),
+      snapshot => next(snapshot.docs.slice(0, 50).map(entry => ({ ...entry.data(), id: entry.id }))), fail,
+    ), onChange, onError);
+  }
   return subscribeScheduleDocuments(COLLECTIONS.notifications, onChange, onError);
 }
 
@@ -439,6 +505,8 @@ export async function loadAvailabilitySlotDocuments(options = {}) {
     return availabilitySlotsLoadRequest;
   }
 
+  const generation = availabilityGeneration;
+  const user = auth?.currentUser;
   const request = (async () => {
     const slots = [];
     let cursor = "";
@@ -456,10 +524,12 @@ export async function loadAvailabilitySlotDocuments(options = {}) {
       }
     }
 
-    writeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, slots);
+    if (generation === availabilityGeneration && auth?.currentUser === user) {
+      writeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, slots);
+    }
     return slots;
   })().catch((error) => {
-    removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
+    if (generation === availabilityGeneration && auth?.currentUser === user) removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
     throw error;
   });
 
@@ -489,6 +559,7 @@ export function invalidateScheduleCache(collectionName) {
 }
 
 export function clearScheduleCache() {
+  availabilityGeneration++;
   sharedRecordRequests.clear();
   collectionCache.clear();
   collectionLoadRequests.clear();
@@ -533,8 +604,13 @@ function schedulePermissionError(error) {
 
 export function subscribeAvailabilitySlots(onChange, onError = () => {}) {
   if (!canSyncScheduleData()) return () => {};
+  return shareSubscription("availabilitySlots", startAvailabilitySubscription, onChange, onError);
+}
+
+function startAvailabilitySubscription(onChange, onError) {
   const user = auth.currentUser;
   let disposed = false;
+  let live = false;
   let pollingTimer;
   let refreshing = false;
   const fail = (error) => {
@@ -543,21 +619,38 @@ export function subscribeAvailabilitySlots(onChange, onError = () => {}) {
     onError(schedulePermissionError(error));
   };
   const refresh = async () => {
-    if (disposed || auth.currentUser !== user || document.visibilityState === "hidden") return;
+    if (disposed || live || auth.currentUser !== user || document.visibilityState === "hidden") return;
     if (refreshing) return;
     refreshing = true;
     clearTimeout(pollingTimer);
     try {
       const slots = await loadAvailabilitySlotDocuments({ force: true });
-      if (!disposed && auth.currentUser === user) onChange(slots);
-    } catch (error) { fail(error); }
+      if (!disposed && !live && auth.currentUser === user) onChange(slots);
+    } catch (error) { if (!live) fail(error); }
     finally { refreshing = false; }
-    if (!disposed && auth.currentUser === user) pollingTimer = setTimeout(refresh, 60_000);
+    if (!disposed && !live && auth.currentUser === user) pollingTimer = setTimeout(refresh, 60_000);
   };
   const cachedSlots = readJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, AVAILABILITY_SLOTS_CACHE_TTL_MS);
   if (Array.isArray(cachedSlots)) onChange(cachedSlots);
-  void refresh();
+  // This complete query covers legacy slot IDs and tombstones too. Firestore
+  // sends changed documents after the initial snapshot, without API full reloads.
+  const unsubscribe = onSnapshot(collection(db, COLLECTIONS.availabilitySlots), { includeMetadataChanges: true }, (snapshot) => {
+    if (disposed || auth.currentUser !== user) return;
+    // Keep the API fallback available until the server confirms the snapshot.
+    live = !snapshot.metadata?.fromCache;
+    if (live) clearTimeout(pollingTimer);
+    if (!live) { void refresh(); return; }
+    const slots = snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }));
+    availabilityGeneration++;
+    writeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY, slots);
+    onChange(slots);
+  }, () => {
+    if (disposed || auth.currentUser !== user) return;
+    live = false;
+    void refresh();
+  });
   const handleFocus = () => {
+    if (live) return;
     clearTimeout(pollingTimer);
     removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
     invalidateScheduleCache(COLLECTIONS.appointments);
@@ -565,7 +658,7 @@ export function subscribeAvailabilitySlots(onChange, onError = () => {}) {
   };
   window.addEventListener("focus", handleFocus);
   document.addEventListener("visibilitychange", handleFocus);
-  return () => { disposed = true; clearTimeout(pollingTimer); window.removeEventListener("focus", handleFocus); document.removeEventListener("visibilitychange", handleFocus); };
+  return () => { disposed = true; clearTimeout(pollingTimer); unsubscribe(); window.removeEventListener("focus", handleFocus); document.removeEventListener("visibilitychange", handleFocus); };
 }
 
 export async function markNotificationReadDocument(notificationId, userId) {
@@ -596,6 +689,8 @@ export async function saveAvailabilitySlotDocument(slot) {
   const id = normalizeString(slot?.id);
   if (!id) throw new Error("A slot ID is required.");
   const result = await requestAvailabilitySlots("put", id, slot);
+  availabilityGeneration++;
+  availabilitySlotsLoadRequest = null;
   removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
   invalidateScheduleCache(COLLECTIONS.availabilitySlots);
   return result;
@@ -605,6 +700,8 @@ export async function deleteAvailabilitySlotDocument(id) {
   const slotId = normalizeString(id);
   if (!slotId) throw new Error("A slot ID is required.");
   await requestAvailabilitySlots("delete", slotId);
+  availabilityGeneration++;
+  availabilitySlotsLoadRequest = null;
   removeJsonCache(AVAILABILITY_SLOTS_CACHE_KEY);
   invalidateScheduleCache(COLLECTIONS.availabilitySlots);
   return true;

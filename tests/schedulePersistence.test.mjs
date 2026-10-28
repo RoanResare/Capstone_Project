@@ -51,17 +51,19 @@ function fixture() {
     clearTimeout: id => timers.delete(id),
     waitForFirebaseUserSession: async () => ports.auth.currentUser,
   };
-  ports.onSnapshot = (query, onChange, onError) => {
+  ports.onSnapshot = (query, options, next, error) => {
+    const onChange = typeof options === "function" ? options : next;
+    const onError = typeof options === "function" ? next : error;
     failListener = onError;
     queries.push(query);
-    onChange({ docs: [] });
+    onChange({ docs: [], metadata: { fromCache: query.collection === "availabilitySlots" } });
     return () => {};
   };
   const service = new Function(...Object.keys(ports), `${source}\nreturn {
     loadCustomerPetRecords, savePetRecordDocument, deletePetRecordDocument,
     loadAppointmentDocuments, subscribeAppointments, invalidateScheduleCache, clearScheduleCache,
     subscribeAvailabilitySlots
-  };`)(...Object.values(ports));
+  };`)(...Object.entries(ports).map(([name, value]) => name === "onSnapshot" ? (...args) => ports.onSnapshot(...args) : value));
   return { service, records, queries, ports, timers, events, failListener: () => failListener };
 }
 
@@ -130,6 +132,103 @@ test("overlapping availability focus events keep one request and one polling tim
   assert.deepEqual(updates, [[{ id: "slot" }]]);
   stop();
   assert.equal(timers.size, 0);
+});
+
+test("availability shares one live listener, streams edits and deletions, and releases the last subscriber", async () => {
+  const { service, ports, timers, events } = fixture();
+  let next, fail, stopped = 0, requests = 0;
+  ports.onSnapshot = (_query, options, onChange, onError) => {
+    assert.equal(options.includeMetadataChanges, true);
+    next = onChange; fail = onError;
+    return () => { stopped++; };
+  };
+  ports.apiClient.get = async () => { requests++; return { data: { slots: [{ id: "fallback" }] } }; };
+  const first = [], second = [];
+  const stopFirst = service.subscribeAvailabilitySlots(value => first.push(value));
+  const stopSecond = service.subscribeAvailabilitySlots(value => second.push(value));
+  const emit = docs => next({ metadata: { fromCache: false }, docs: docs.map(data => ({ id: data.id, data: () => data })) });
+  emit([{ id: "slot", isOpen: true }]);
+  emit([{ id: "slot", isOpen: false }]);
+  emit([]);
+  events.get("focus")();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 0);
+  assert.equal(timers.size, 0);
+  assert.deepEqual(first, second);
+  assert.deepEqual(first.at(-1), []);
+  stopFirst();
+  assert.equal(stopped, 0);
+  fail({ code: "permission-denied" });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 1);
+  assert.equal(timers.size, 1);
+  assert.deepEqual(second.at(-1), [{ id: "fallback" }]);
+  assert.equal(first.length, 3);
+  stopSecond();
+  assert.equal(stopped, 1);
+  assert.equal(timers.size, 0);
+  emit([{ id: "late" }]);
+  assert.equal(second.length, 4);
+});
+
+test("appointment consumers share a listener and retain it until the last cleanup", async () => {
+  const { service, ports } = fixture();
+  let listeners = 0, stopped = 0;
+  const subscribe = ports.onSnapshot;
+  ports.onSnapshot = (...args) => { listeners++; subscribe(...args); return () => { stopped++; }; };
+  const options = { expectedUid: "customer", customerId: "customer" };
+  const stopFirst = service.subscribeAppointments(() => {}, assert.fail, options);
+  const stopSecond = service.subscribeAppointments(() => {}, assert.fail, options);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(listeners, 1);
+  stopFirst(); assert.equal(stopped, 0);
+  stopSecond(); assert.equal(stopped, 1);
+});
+
+test("complete staff snapshots replace polling and include old records; denied listeners retain API fallback", async () => {
+  const { service, ports, timers } = fixture();
+  let next, fail, requests = 0;
+  ports.onSnapshot = (_query, _options, onChange, onError) => {
+    next = onChange; fail = onError;
+    return () => {};
+  };
+  ports.apiClient.get = async () => { requests++; return { data: { records: [{ id: "api-fallback" }] } }; };
+  const updates = [];
+  const stop = service.subscribeAppointments(value => updates.push(value), assert.fail,
+    { expectedUid: "customer", completeSnapshot: true });
+  await new Promise(resolve => setImmediate(resolve));
+  const records = Array.from({ length: 550 }, (_, id) => ({ id: String(id), data: () => ({ status: "Pending" }) }));
+  next({ metadata: { fromCache: false }, docs: records });
+  assert.equal(updates.at(-1).length, 550);
+  assert.equal(requests, 0);
+  assert.equal(timers.size, 0);
+  fail({ code: "permission-denied" });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 1);
+  assert.deepEqual(updates.at(-1), [{ id: "api-fallback" }]);
+  assert.equal(timers.size, 1);
+  stop();
+  assert.equal(timers.size, 0);
+});
+
+test("a slow fallback cannot overwrite a newer authoritative availability snapshot", async () => {
+  const { service, ports, timers } = fixture();
+  let next, resolve;
+  ports.onSnapshot = (_query, _options, onChange) => { next = onChange; return () => {}; };
+  ports.apiClient.get = () => new Promise(done => { resolve = done; });
+  const updates = [];
+  const stop = service.subscribeAvailabilitySlots(value => updates.push(value));
+  next({ metadata: { fromCache: true }, docs: [] });
+  await new Promise(done => setImmediate(done));
+  next({ metadata: { fromCache: false }, docs: [{ id: "new", data: () => ({ isOpen: false }) }] });
+  resolve({ data: { slots: [{ id: "old", isOpen: true }] } });
+  await new Promise(done => setImmediate(done));
+  assert.deepEqual(updates, [[{ id: "new", isOpen: false }]]);
+  assert.equal(timers.size, 0);
+  ports.auth.currentUser = { uid: "other" };
+  next({ metadata: { fromCache: false }, docs: [] });
+  assert.equal(updates.length, 1);
+  stop();
 });
 
 test("saved customer profiles remain visible when reloaded inside the cache lifetime", async () => {

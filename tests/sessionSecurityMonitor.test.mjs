@@ -3,6 +3,22 @@ import { test } from "node:test";
 import { monitorSessionSecurity } from "../src/app/services/sessionSecurityMonitor.js";
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+test("timer ticks do not queue redundant verifications behind a slow request", async () => {
+  const env = environment();
+  let finish;
+  let checks = 0;
+  const cleanup = monitorSessionSecurity({ ...env, verify: async () => {
+    checks++;
+    if (checks === 1) await new Promise(resolve => { finish = resolve; });
+  }, onViolation: assert.fail });
+  env.window.poll(); env.window.poll();
+  finish(); await flush();
+  assert.equal(checks, 1);
+  env.window.poll(); await flush();
+  assert.equal(checks, 2);
+  cleanup();
+});
 function events() {
   const callbacks = new Map();
   return { callbacks, addEventListener: (name, callback) => callbacks.set(name, callback),

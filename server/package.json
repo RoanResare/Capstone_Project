@@ -10,7 +10,11 @@
     "repair:profiles": "node scripts/repairUserProfiles.js",
     "repair:usernames": "node scripts/backfillUsernames.js",
     "update:disposable-domains": "node scripts/updateDisposableEmailDomains.js",
-    "test": "echo \"No backend tests configured yet\""
+    "test": "echo \"No backend tests configured yet\"",
+    "db:schema:staging": "node scripts/postgresMigration.js schema",
+    "db:export": "node scripts/postgresMigration.js export",
+    "db:import:staging": "node scripts/postgresMigration.js import",
+    "db:validate:staging": "node scripts/postgresMigration.js validate"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +30,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "nodemon": "^3.1.14",
+    "pg": "^8.23.1",
     "resend": "^6.34.1"
   },
   "overrides": {

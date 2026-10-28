@@ -41,7 +41,9 @@ export function monitorSessionSecurity({ verify, router, window, document, conne
   };
   const activityEvents = ["pointerdown", "keydown", "change"];
   activityEvents.forEach((event) => document.addEventListener(event, checkActivity, { passive: true }));
-  const timer = window.setInterval(check, intervalMs);
+  // A pending verification already covers a timer tick. Network and browser
+  // events still queue a fresh check, since the connection may have changed.
+  const timer = window.setInterval(() => { if (!checking) void check(); }, intervalMs);
   window.addEventListener("pageshow", check);
   window.addEventListener("focus", check);
   window.addEventListener("online", check);

@@ -30,6 +30,14 @@ const frontendDistPath = path.dirname(frontendIndexPath);
 const resetPasswordIndexPath =
   frontendIndexCandidates.find((candidate) => fs.existsSync(candidate)) || frontendIndexPath;
 const allowedOrigins = getAllowedClientOrigins();
+const databaseConnectOrigins = [];
+if (process.env.DATABASE_PROVIDER === "postgres") {
+  try {
+    const supabaseOrigin = new URL(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
+    if (supabaseOrigin.protocol !== "https:") throw new Error("Use an HTTPS Supabase URL.");
+    databaseConnectOrigins.push(supabaseOrigin.origin, `wss://${supabaseOrigin.host}`);
+  } catch (_error) { throw new Error("Configure a valid HTTPS Supabase project URL before enabling PostgreSQL."); }
+}
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -55,12 +63,20 @@ app.use(helmet({
         "https://firestore.googleapis.com",
         "https://api.charmingfurfectionpetscareservices.online",
         "https://capstone-project-bczf.onrender.com",
+        ...databaseConnectOrigins,
       ],
       imgSrc: ["'self'", "data:", "https://www.google.com"],
     },
   },
 }));
 app.use(express.json({ limit: "8mb" }));
+app.use("/api", (req, res, next) => {
+  const requestedProvider = req.get("X-Database-Provider");
+  if (requestedProvider && requestedProvider !== (process.env.DATABASE_PROVIDER || "firestore")) {
+    return res.status(409).json({ success: false, message: "The client and server database providers do not match. Reload after the staging configuration is synchronized.", details: { code: "DATABASE_PROVIDER_MISMATCH" } });
+  }
+  next();
+});
 
 function sendFrontendIndex(req, res, next) {
   const indexPath = req.path.startsWith("/reset-password")
@@ -129,6 +145,7 @@ app.get("/activate-account", sendFrontendIndex);
 app.get(/^\/reset-password\/.+$/, sendFrontendIndex);
 
 app.use("/api/auth", authRoutes);
+app.use("/api/database", require("./routes/database.routes"));
 app.use("/api/customer", customerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", groqRoutes);

@@ -6,3 +6,6 @@ server/config.bak
 server/.env
 node_modules
 server/dist/
+/.migration-data/
+**/*.firestore-backup.ndjson
+**/*.firestore-backup.ndjson.manifest.json

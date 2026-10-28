@@ -26,6 +26,7 @@ import {
   loadRecentNotifications,
   subscribeAppointments,
   subscribePetRecords,
+  subscribeNotifications,
   loadMoreRecentNotifications,
   hasMoreRecentNotifications,
   loadMoreAppointmentDocuments,
@@ -38,6 +39,7 @@ import {
   saveNotificationDocument,
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
+import { isPostgresEnabled } from "../services/database.js";
 import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy.js";
 import { appointmentStatusLabel } from "../utils/appointmentPresentation.js";
 import { subscribeKaponPromo, saveKaponPromo } from "../services/kaponPromo.js";
@@ -1837,6 +1839,7 @@ export function AppProvider({ children }) {
     }, (error) => console.error("Unable to synchronize pet profiles.", error), {
       expectedUid: currentUser.uid,
       customerId: currentUser.role === "customer" ? currentUser.uid : "",
+      completeSnapshot: ["admin", "staff"].includes(currentUser.role),
     });
     (currentUser.role === "admin" ? loadPhotoModerationDocuments() : Promise.resolve([])).then(
       (photoRecords) => {
@@ -1865,6 +1868,11 @@ export function AppProvider({ children }) {
     if (!currentUser) return undefined;
     let disposed = false;
     const isCustomer = currentUser.role === "customer";
+    if (isPostgresEnabled) {
+      return subscribeNotifications(notifications => {
+        if (!disposed) dispatch({ type: "HYDRATE_NOTIFICATIONS", payload: notifications });
+      }, error => console.error("Unable to synchronize notifications.", error));
+    }
     const loadNotifications = ({ force = false } = {}) => isCustomer ? loadCustomerNotifications(currentUser) : loadRecentNotifications({ force });
     const refresh = () => {
       void loadNotifications({ force: true }).then((notifications) => {
@@ -1888,7 +1896,8 @@ export function AppProvider({ children }) {
       dispatch({ type: "HYDRATE_SCHEDULE_DATA", payload: { appointments } });
     }, (error) => {
       console.error("Unable to keep appointments current.", error);
-    }, { expectedUid: currentUser.uid, customerId: currentUser.role === "customer" ? currentUser.uid : "" });
+    }, { expectedUid: currentUser.uid, customerId: currentUser.role === "customer" ? currentUser.uid : "",
+      completeSnapshot: ["admin", "staff"].includes(currentUser.role) });
   }, [currentUser?.role, currentUser?.uid]);
 
   const loadMoreAppointments = useCallback(async () => {

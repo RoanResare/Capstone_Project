@@ -17,7 +17,9 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
-} from "firebase/firestore";
+  isPostgresEnabled,
+} from "./database.js";
+import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { auth, db, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
 import { buildRoleMismatchMessage, formatRoleLabel } from "../utils/roleUtils.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";
@@ -480,6 +482,18 @@ async function createCustomerUserProfile(firebaseUser, profile = {}) {
   const normalizedUsername = assertValidUsername(
     profile.username || deriveDefaultUsername(normalizedEmail),
   );
+
+  if (isPostgresEnabled) {
+    try {
+      const token = await authenticatedUser.getIdToken();
+      const response = await apiClient.post("/auth/register/profile", {
+        email: normalizedEmail, username: normalizedUsername,
+        fullName: normalizeString(profile.fullName) || normalizeString(authenticatedUser.displayName),
+        phone: normalizeString(profile.phone),
+      }, { headers: buildAuthHeaders(token) });
+      return buildFirebaseUserProfile(authenticatedUser, response.data.profile, authenticatedUser.uid);
+    } catch (error) { throw new Error(extractApiError(error, "Unable to create your account profile.")); }
+  }
 
   const userReference = doc(db, USERS_COLLECTION, authenticatedUser.uid);
   const usernameReference = doc(db, USERNAMES_COLLECTION, normalizedUsername);

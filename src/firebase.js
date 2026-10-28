@@ -100,7 +100,7 @@ if (missingFirebaseKeys.length > 0) {
         console.warn("Unable to configure Firebase Authentication persistence.", error);
       });
     }
-    db = createFirestore(app, hasExistingApp);
+    db = viteEnv.VITE_DATABASE_PROVIDER === "postgres" ? { provider: "postgres" } : createFirestore(app, hasExistingApp);
     storage = getStorage(app);
 
     const canUseAnalytics =

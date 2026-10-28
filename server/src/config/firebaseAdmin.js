@@ -23,7 +23,9 @@ if (env.runtime.firebaseAdminReady && !hasInitializedFirebaseApp()) {
 }
 
 if (env.runtime.firebaseAdminReady) {
-  db = getFirestore();
+  const provider = process.env.DATABASE_PROVIDER || "firestore";
+  if (!["firestore", "postgres"].includes(provider)) throw new Error("Invalid DATABASE_PROVIDER.");
+  db = provider === "postgres" ? require("../database/postgres").getPostgresDatabase() : getFirestore();
   auth = getAuth();
 }
 

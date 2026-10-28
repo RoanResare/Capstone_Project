@@ -1,4 +1,5 @@
-import { doc, getDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, runTransaction, onSnapshot, isPostgresEnabled } from "./database.js";
+import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { auth, db, isFirebaseConfigured } from "../../firebase.js";
 import { normalizePromoInput, validatePromoStart } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
@@ -10,6 +11,14 @@ export function subscribeKaponPromo(onChange, onError) {
   if (!isFirebaseConfigured || !auth?.currentUser || !db) {
     onError(new Error("Sign in to load promotion availability."));
     return () => {};
+  }
+  if (isPostgresEnabled) {
+    return onSnapshot(doc(db, "lowCostKaponPromo", "low-cost-kapon"), snapshot => {
+      const promo = snapshot.exists() ? snapshot.data() : null;
+      if (promo) writeJsonCache(KAPON_PROMO_CACHE_KEY, promo);
+      else removeJsonCache(KAPON_PROMO_CACHE_KEY);
+      onChange(promo);
+    }, onError);
   }
   const cachedPromo = readJsonCache(KAPON_PROMO_CACHE_KEY, KAPON_PROMO_CACHE_TTL_MS);
   if (cachedPromo) onChange(cachedPromo);
@@ -47,6 +56,14 @@ export function subscribeKaponPromo(onChange, onError) {
 export async function saveKaponPromo(payload) {
   const user = auth?.currentUser;
   if (!user) throw new Error("Sign in to manage promotions.");
+  if (isPostgresEnabled) {
+    try {
+      const token = await user.getIdToken();
+      const response = await apiClient.put("/auth/promotions/low-cost-kapon", payload, { headers: buildAuthHeaders(token) });
+      writeJsonCache(KAPON_PROMO_CACHE_KEY, response.data.promo);
+      return response.data.promo;
+    } catch (error) { throw new Error(extractApiError(error, "Unable to save the promotion.")); }
+  }
   if (!isFirebaseConfigured || !db) throw new Error("Firebase is unavailable. Please try again later.");
   const { action, expectedRevision } = payload || {};
   if (!["activate", "edit", "deactivate"].includes(action) || !Number.isInteger(expectedRevision) || expectedRevision < 0) {

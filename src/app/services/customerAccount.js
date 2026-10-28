@@ -20,7 +20,7 @@ import {
   serverTimestamp,
   setDoc,
   writeBatch,
-} from "firebase/firestore";
+} from "./database.js";
 import { auth, authPersistenceReadyPromise, db, firebaseConfigError, isFirebaseConfigured } from "../../firebase.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { waitForFirebaseUserSession } from "./firebaseSession.js";

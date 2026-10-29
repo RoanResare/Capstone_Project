@@ -1072,6 +1072,7 @@ async function deletePortalUser(uid) {
 }
 
 module.exports = {
+  assertValidUsername,
   createPortalUser,
   deletePortalUser,
   ensureAdminCanMutateTarget,

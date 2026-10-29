@@ -157,25 +157,19 @@ const env = {
   port: readNumber("PORT", 5000),
   clientUrl: readOptional("CLIENT_URL", `${defaultFrontendUrl},https://www.charmingfurfectionpetscareservices.online,https://charmingfurfectionpetservices.online,https://www.charmingfurfectionpetservices.online,http://localhost:5173`),
   supabase: {
-    url: readOptional("SUPABASE_URL", readOptional("VITE_SUPABASE_URL")).replace(/\/+$/, ""),
-    anonKey: readOptional("SUPABASE_ANON_KEY", readOptional("VITE_SUPABASE_ANON_KEY")),
+    url: readOptional("SUPABASE_URL").replace(/\/+$/, ""),
+    anonKey: readOptional("SUPABASE_ANON_KEY"),
     serviceRoleKey: readOptional("SUPABASE_SERVICE_ROLE_KEY"),
   },
   firebase: {
-    projectId: readOptional(
-      "FIREBASE_PROJECT_ID",
-      readOptional("VITE_FIREBASE_PROJECT_ID", serviceAccount?.projectId || ""),
-    ),
+    projectId: readOptional("FIREBASE_PROJECT_ID", serviceAccount?.projectId || ""),
     clientEmail: readOptional("FIREBASE_CLIENT_EMAIL", serviceAccount?.clientEmail || ""),
     privateKey: readOptional("FIREBASE_PRIVATE_KEY", serviceAccount?.privateKey || "").replace(
       /\\n/g,
       "\n",
     ),
-    storageBucket: readOptional(
-      "FIREBASE_STORAGE_BUCKET",
-      readOptional("VITE_FIREBASE_STORAGE_BUCKET"),
-    ),
-    webApiKey: readOptional("FIREBASE_WEB_API_KEY", readOptional("VITE_FIREBASE_API_KEY")),
+    storageBucket: readOptional("FIREBASE_STORAGE_BUCKET"),
+    webApiKey: readOptional("FIREBASE_WEB_API_KEY"),
     serviceAccountPath: serviceAccount?.path || "",
   },
   auth: {

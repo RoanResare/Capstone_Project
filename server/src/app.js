@@ -49,7 +49,7 @@ const allowedOrigins = getAllowedClientOrigins();
 const databaseConnectOrigins = [];
 if (process.env.DATABASE_PROVIDER === "postgres") {
   try {
-    const supabaseOrigin = new URL(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL);
+    const supabaseOrigin = new URL(process.env.SUPABASE_URL);
     if (supabaseOrigin.protocol !== "https:") throw new Error("Use an HTTPS Supabase URL.");
     databaseConnectOrigins.push(supabaseOrigin.origin, `wss://${supabaseOrigin.host}`);
   } catch (_error) { throw new Error("Configure a valid HTTPS Supabase project URL before enabling PostgreSQL."); }

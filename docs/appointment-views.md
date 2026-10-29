@@ -29,7 +29,7 @@ Mark appointment completed is disabled for Pending and terminal statuses. Only A
 - `src/app/routes.jsx`: preserve the appointment workspace when its selection query changes, preventing calendar resets.
 - `server/src/controllers/appointment.controller.js`: enforce Approved-only completion.
 - `package.json`, `package-lock.json`: FullCalendar 6 React/day-grid/time-grid/interaction dependencies.
-- `server/scripts/buildFrontendForServer.mjs`: install missing calendar packages before server-side frontend builds when an older dependency cache exists.
+- `package.json` and `server/package.json`: separate Static Site builds from backend-only builds so API deployment does not require browser `VITE_` variables.
 - `tests/appointmentPresentation.test.mjs`, `tests/appointmentActions.test.mjs`, `tests/appointmentWorkspace.test.mjs`, `server/tests/kaponPromo.test.js`: presentation and action regressions.
 - `tests/appointmentViews.browser.mjs`: customer pagination/search, Pending order, calendar views, popup actions, completion restrictions and desktop/mobile layout checks.
 - `dist/`: refreshed production output.

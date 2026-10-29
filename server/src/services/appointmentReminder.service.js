@@ -4,10 +4,28 @@ const SLOT_LABELS = { "09:00": "09:00 AM", "11:00": "11:00 AM", "14:00": "02:00 
 const ACTIVE = ["approved", "accepted", "confirmed"];
 const HOUR = 60 * 60 * 1000;
 
+function normalizeScheduleTime(value) {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (!match) return "";
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (match[3]) hours = (hours % 12) + (match[3].toUpperCase() === "PM" ? 12 : 0);
+  if (hours > 23 || minutes > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function formatScheduleTime(value) {
+  const normalized = normalizeScheduleTime(value);
+  if (!normalized) return "the scheduled time";
+  const [hours, minutes] = normalized.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
 function reminderSchedule(appointment) {
   const date = appointment.scheduleDate;
-  const time = appointment.scheduleTime;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "") || !SLOT_LABELS[time]) return null;
+  const time = normalizeScheduleTime(appointment.scheduleTime);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "") || !time) return null;
   const startsAt = Date.parse(`${date}T${time}:00+08:00`);
   if (!Number.isFinite(startsAt) || new Date(startsAt + 8 * HOUR).toISOString().slice(0, 10) !== date) return null;
   return { startsAt, dueAt: startsAt - HOUR, key: `${date}-${time.replace(":", "")}` };
@@ -117,4 +135,4 @@ function startAppointmentReminders() {
   return { stop: () => clearTimeout(timer) };
 }
 
-module.exports = { SLOT_LABELS, reminderSchedule, isDue, createReminderWorker, startAppointmentReminders };
+module.exports = { SLOT_LABELS, normalizeScheduleTime, formatScheduleTime, reminderSchedule, isDue, createReminderWorker, startAppointmentReminders };

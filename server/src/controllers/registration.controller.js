@@ -92,6 +92,11 @@ async function createCustomerProfile(req, res) {
       if (lock?.exists) transaction.set(phoneRef, { accountIds: (lock.data()?.accountIds || []).filter((accountId) => accountId !== uid), updatedAt: new Date().toISOString() });
     }).catch(() => {});
     await deleteSupabaseUser(uid).catch(() => {});
+    if (error?.code === "23505") {
+      throw new ApiError(409, "An account with this email or username already exists.", {
+        code: "REGISTRATION_IDENTITY_CONFLICT",
+      });
+    }
     throw error;
   }
   return res.status(202).json({ success: true, message: pendingVerificationMessage(email), profile: {

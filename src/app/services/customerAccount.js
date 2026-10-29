@@ -1,4 +1,4 @@
-import { checkCustomerRegistrationAvailability, loginCustomerUser } from "./authApi.js";
+import { loginCustomerUser } from "./authApi.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { getSupabaseAccessToken, installSupabaseSession, loadSupabaseProfile, setSupabaseSessionPersistence, signOutSupabase } from "./supabaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
@@ -21,7 +21,8 @@ export async function changeCustomerPassword(currentPassword, newPassword, confi
 
 export async function signUpCustomerWithEmailPassword({ fullName, email, password, phone = "", username = "" }) {
   assertAppropriateText({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
-  await checkCustomerRegistrationAvailability({ email: normalizeEmail(email), phone });
+  // The registration endpoint owns validation and uniqueness. A separate
+  // availability request can go stale and must not gate account creation.
   try {
     const response = await apiClient.post("/auth/register/profile", {
       fullName: String(fullName || "").trim(), email: normalizeEmail(email), password, phone, username,

@@ -53,7 +53,6 @@ const {
   assertEmailIsDeliverable,
   validateRegistrationSecurity,
 } = require("../services/registrationSecurity.service");
-const { purgeExpiredPendingRegistrations } = require("../services/pendingRegistrationCleanup.service");
 
 function normalizeEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -181,9 +180,6 @@ async function resolveEmailFromIdentifier(identifier = "") {
 }
 
 async function checkCustomerRegistrationAvailability(req, res) {
-  await purgeExpiredPendingRegistrations().catch((error) => {
-    console.warn("[registration] Skipping expired-account cleanup during availability check.", { error: error.message });
-  });
   assertAuthSetupReady();
   const { assertAppropriateText, ACCOUNT_TEXT_FIELDS } = await import("../../../shared/textModeration.mjs");
   try { assertAppropriateText(req.body, ACCOUNT_TEXT_FIELDS); }
@@ -209,17 +205,13 @@ async function checkCustomerRegistrationAvailability(req, res) {
   }
 
   const storedEmailUser = await findUserByEmailCaseInsensitive(email);
-  if (storedEmailUser) {
-    throw new ApiError(409, "Email is already associated with another account.");
+  if (storedEmailUser && normalizeEmail(storedEmailUser.email) === email) {
+    throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
   }
 
-  try {
-    if (await findSupabaseUserByEmail(email)) {
-      throw new ApiError(409, "Email is already associated with another account.");
-    }
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw error;
+  const authUser = await findSupabaseUserByEmail(email);
+  if (authUser?.id && normalizeEmail(authUser.email) === email) {
+    throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
   }
 
   if (phone && (await findPhoneAccounts(phone)).length >= PHONE_ACCOUNT_LIMIT) {

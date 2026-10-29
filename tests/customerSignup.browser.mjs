@@ -51,22 +51,27 @@ try {
   page.setDefaultTimeout(10000);
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1"
     ? route.continue() : route.abort());
-  const errors = [], submissions = [];
+  const errors = [], submissions = [], checks = [];
   page.on("pageerror", error => { errors.push(error.message); console.error(error.message); });
   await page.route("**/api/auth/register/**", async route => {
     const request = route.request();
     if (new URL(request.url()).pathname.endsWith("/profile")) {
       submissions.push(request.postDataJSON());
       await route.fulfill({ status: 202, json: { profile: { uid: "new-customer", email: "customer@gmail.com" } } });
-    } else await route.fulfill({ json: { success: true } });
+    } else {
+      checks.push(request.postDataJSON());
+      await route.fulfill({ status: 409, json: { message: "A stale pre-check must not block signup." } });
+    }
   });
-  await page.goto(`${server.resolvedUrls.local[0]}__signup_test`);
+  await page.goto(`${server.resolvedUrls.local[0]}__signup_test`, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.getByPlaceholder("Enter your full name").fill("Test Customer");
   await page.getByPlaceholder("Enter your email").fill("customer@gmail.com");
   await page.getByPlaceholder("Choose a profile username").fill("test_customer");
   await page.getByPlaceholder("9XXXXXXXXX", { exact: true }).fill("9940702702");
   await page.getByPlaceholder("Create a password").fill("Roanpogi03.");
   await page.getByPlaceholder("Repeat your password").fill("Different03.");
+  assert.equal(checks.length, 0, "Typing must not trigger duplicate checks");
+  assert.equal(submissions.length, 0, "Typing must not submit a registration");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByRole("dialog").locator("div.overflow-y-auto").evaluate(element => {
     element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
@@ -92,6 +97,7 @@ try {
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "Verification link sent!" }).waitFor({ timeout: 5000 });
   assert.equal(submissions.length, 1);
+  assert.equal(checks.length, 0, "Registration must not be gated by a separate availability request");
   assert.equal(submissions[0].password, "Roanpogi03.");
   assert.equal(submissions[0].email, "customer@gmail.com");
   assert.equal(submissions[0].username, "test_customer");

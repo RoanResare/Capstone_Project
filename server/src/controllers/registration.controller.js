@@ -42,11 +42,13 @@ async function createCustomerProfile(req, res) {
   try { assertAppropriateText({ fullName, username, email }, ACCOUNT_TEXT_FIELDS); }
   catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
   if (!env.runtime.mailDeliveryReady) throw new ApiError(503, "Activation email delivery is not configured.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
-  if (await findUserByEmailCaseInsensitive(email)) {
-    throw new ApiError(409, "Email is already associated with another account.");
+  const storedEmailUser = await findUserByEmailCaseInsensitive(email);
+  if (storedEmailUser && normalizeEmail(storedEmailUser.email) === email) {
+    throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
   }
-  if (await findSupabaseUserByEmail(email)) {
-    throw new ApiError(409, "Email is already associated with another account.");
+  const authUser = await findSupabaseUserByEmail(email);
+  if (authUser?.id && normalizeEmail(authUser.email) === email) {
+    throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
   }
   const owner = await getUsernameOwner(username);
   if (owner) throw new ApiError(409, "That username is already in use.");

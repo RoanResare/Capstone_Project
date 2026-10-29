@@ -119,7 +119,7 @@ test("conflicting, old or verified profiles are preserved when registration is r
 });
 
 test("existing Supabase emails and usernames are rejected before Auth provisioning", async () => {
-  for (const options of [{ authUser: { id: "existing" } }, { usernameOwner: { uid: "existing" } }]) {
+  for (const options of [{ authUser: { id: "existing", email: "CUSTOMER@example.com" } }, { usernameOwner: { uid: "existing" } }]) {
     const fixture = loadRegistration(options);
     await assert.rejects(fixture.run(), (error) => error.statusCode === 409);
     assert.equal(fixture.authCreated, 0);
@@ -127,10 +127,20 @@ test("existing Supabase emails and usernames are rejected before Auth provisioni
 });
 
 test("a PostgreSQL duplicate profile is rejected before provisioning another Auth identity", async () => {
-  const fixture = loadRegistration({ profile: { uid: "existing-profile" } });
+  const fixture = loadRegistration({ profile: { uid: "existing-profile", email: "customer@example.com" } });
   await assert.rejects(fixture.run(), (error) => error.statusCode === 409);
   assert.equal(fixture.authCreated, 0);
   assert.equal(fixture.records.size, 0);
+});
+
+test("unrelated profile and Auth lookup candidates cannot block a unique registration", async () => {
+  const fixture = loadRegistration({
+    profile: { uid: "unrelated-profile", email: "other@example.com" },
+    authUser: { id: "unrelated-auth", email: "prefix-customer@example.com" },
+  });
+  await fixture.run();
+  assert.equal(fixture.response.statusCode, 202);
+  assert.equal(fixture.authCreated, 1);
 });
 
 test("registration resolves the Auth UUID by email when the signup challenge omits its user object", async () => {

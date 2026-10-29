@@ -4,6 +4,8 @@ function getAllowedClientOrigins() {
   return [...new Set([
     "https://www.charmingfurfectionpetscareservices.online",
     "https://charmingfurfectionpetscareservices.online",
+    "https://www.charmingfurfectionpetservices.online",
+    "https://charmingfurfectionpetservices.online",
     "https://api.charmingfurfectionpetscareservices.online",
     "https://capstone-project-1-yqto.onrender.com",
     "http://localhost:5173",

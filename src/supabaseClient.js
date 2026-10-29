@@ -1,7 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+import { supabaseAnonKey, supabaseUrl } from "./app/services/supabaseConfig.js";
 const fallbackSupabaseUrl = "http://127.0.0.1:54321";
 const fallbackSupabaseAnonKey = "missing-supabase-anon-key";
 

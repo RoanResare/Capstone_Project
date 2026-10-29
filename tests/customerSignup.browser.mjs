@@ -99,13 +99,30 @@ try {
   assert.equal(submissions.length, 1);
   assert.equal(checks.length, 0, "Registration must not be gated by a separate availability request");
   assert.equal(submissions[0].password, "Roanpogi03.");
+  assert.equal(submissions[0].fullName, "Test Customer");
   assert.equal(submissions[0].email, "customer@gmail.com");
   assert.equal(submissions[0].username, "test_customer");
   assert.equal(submissions[0].phone, "+63 9940702702");
   assert.equal(await page.getByPlaceholder("Create a password").inputValue(), "");
   assert.equal(await page.getByPlaceholder("Repeat your password").inputValue(), "");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByPlaceholder("Enter your email").fill("customer@gmail.com");
+  await page.getByPlaceholder("Choose a profile username").fill("test_customer");
+  await page.getByPlaceholder("9XXXXXXXXX", { exact: true }).fill("9940702702");
+  await page.getByPlaceholder("Create a password").fill("Roanpogi03.");
+  await page.getByPlaceholder("Repeat your password").fill("Roanpogi03.");
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByRole("dialog").locator("div.overflow-y-auto").evaluate(element => {
+    element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
+  });
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Agree and continue" }).click();
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "Verification link sent!" }).waitFor();
+  assert.equal(submissions.length, 2);
+  assert.equal(submissions[1].fullName, "test_customer", "A missing full name must use the username");
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log("PASS: mismatches are blocked; matching autofilled passwords reach /api/auth/register/profile unchanged.");
+  console.log("PASS: signup submits the actual name or username fallback; matching passwords submit and genuine mismatches are blocked.");
 } finally {
   await browser?.close();
   await server.close();

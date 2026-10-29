@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
+import { resolveCustomerFullName } from "../../../shared/customerName.mjs";
 import { setSecuritySession } from "../utils/securitySession.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
 import { isSupabaseConfigured } from "../services/supabaseConfig.js";
@@ -383,6 +384,7 @@ export function AuthProvider({ children }) {
   }
 
   async function signUp({ fullName, email, password, confirmPassword, phone = "", username = "" }) {
+    fullName = resolveCustomerFullName({ fullName, username, email });
     const textErrors = getTextValidationErrors({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
     if (Object.keys(textErrors).length) return { ok: false, error: Object.values(textErrors)[0] };
     if (!isSupabaseConfigured || !auth) {

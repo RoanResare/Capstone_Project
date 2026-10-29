@@ -129,7 +129,8 @@ async function updateSupabaseUser(userId, updates = {}) {
 async function generateSupabaseEmailLink({ email, type, password, userMetadata = {} }) {
   const generated = await authRequest("/admin/generate_link", {
     method: "POST", admin: true,
-    body: { type, email, ...(password ? { password } : {}), options: { data: userMetadata } },
+    // This is the REST API, not the JS SDK: metadata belongs at top-level data.
+    body: { type, email, ...(password ? { password } : {}), data: userMetadata },
   });
   const tokenHash = generated?.hashed_token || generated?.properties?.hashed_token;
   if (!tokenHash) throw new ApiError(503, "Supabase Auth did not generate an email verification challenge.");

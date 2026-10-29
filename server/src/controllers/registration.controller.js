@@ -29,8 +29,9 @@ async function createCustomerProfile(req, res) {
   if (!env.runtime.supabaseAdminReady || !db) throw new ApiError(503, "Supabase Auth is not configured for registration.");
   const payload = req.body || {};
   const email = normalizeEmail(payload.email);
-  const fullName = String(payload.fullName || "").trim();
   const username = assertValidUsername(String(payload.username || "").trim().toLowerCase());
+  const { resolveCustomerFullName } = await import("../../../shared/customerName.mjs");
+  const fullName = resolveCustomerFullName({ ...payload, email, username });
   const password = typeof payload.password === "string" ? payload.password : "";
   const phone = normalizePhilippineMobileNumber(String(payload.phone || "").trim());
   assertValidEmail(email);
@@ -58,7 +59,7 @@ async function createCustomerProfile(req, res) {
   await validateAccessSecurity(req);
   const signupStartedAt = Date.now();
   const challenge = await generateSupabaseEmailLink({ email, type: "signup", password,
-    userMetadata: { full_name: fullName, username, phone: phone || "" } });
+    userMetadata: { full_name: fullName, username, phone: phone || "", role: "customer" } });
   let identity = challenge.user;
   if (!identity?.id) identity = await findSupabaseUserByEmail(email);
   const uid = identity?.id;
@@ -188,7 +189,10 @@ async function resendCustomerEmailVerification(req, res) {
   if (!profile || profile.verificationStatus !== "pending" || profile.accountStatus !== "inactive") return notSent();
   const sentAt = Date.parse(profile.verificationSentAt || "");
   if (Number.isFinite(sentAt) && Date.now() - sentAt < VERIFICATION_RESEND_COOLDOWN_MS) throw new ApiError(429, "An activation email was sent recently. Please wait one minute before requesting another.", { code: "ACTIVATION_RESEND_COOLDOWN" });
-  const challenge = await generateSupabaseEmailLink({ email, type: "signup", userMetadata: { full_name: profile.fullName, username: profile.username } });
+  const { resolveCustomerFullName } = await import("../../../shared/customerName.mjs");
+  const challenge = await generateSupabaseEmailLink({ email, type: "signup", userMetadata: {
+    full_name: resolveCustomerFullName(profile), username: profile.username, role: "customer",
+  } });
   const delivery = await sendEmailVerificationLink({ to: email, fullName: profile.fullName || "", verificationLink: buildAppVerificationLink(challenge.tokenHash, email) });
   const now = new Date().toISOString();
   await db.collection("users").doc(profile.profileDocId || profile.uid).update({ verificationSentAt: now, verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), updatedAt: now });

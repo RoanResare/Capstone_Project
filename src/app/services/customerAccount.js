@@ -3,6 +3,7 @@ import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { getSupabaseAccessToken, installSupabaseSession, loadSupabaseProfile, setSupabaseSessionPersistence, signOutSupabase } from "./supabaseSession.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { assertAppropriateText, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
+import { resolveCustomerFullName } from "../../../shared/customerName.mjs";
 
 function normalizeEmail(value = "") { return typeof value === "string" ? value.trim().toLowerCase() : ""; }
 
@@ -20,6 +21,7 @@ export async function changeCustomerPassword(currentPassword, newPassword, confi
 }
 
 export async function signUpCustomerWithEmailPassword({ fullName, email, password, phone = "", username = "" }) {
+  fullName = resolveCustomerFullName({ fullName, username, email });
   assertAppropriateText({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
   // The registration endpoint owns validation and uniqueness. A separate
   // availability request can go stale and must not gate account creation.

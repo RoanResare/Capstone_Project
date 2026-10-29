@@ -40,9 +40,13 @@ test("Supabase signup accepts the raw generate_link Auth user response", async (
     assert.equal(body.email, "customer@example.com");
     assert.equal(body.type, "signup");
     assert.equal(body.password, "Valid!Pass123");
+    assert.equal(body.data.full_name, "Roan Resare");
+    assert.equal(body.data.role, "customer");
+    assert.equal(body.options, undefined);
     return { ok: true, json: async () => ({ id: "new-uuid", email: body.email, hashed_token: "token" }) };
   });
-  const challenge = await service.generateSupabaseEmailLink({ email: "customer@example.com", type: "signup", password: "Valid!Pass123" });
+  const challenge = await service.generateSupabaseEmailLink({ email: "customer@example.com", type: "signup", password: "Valid!Pass123",
+    userMetadata: { full_name: "Roan Resare", role: "customer" } });
   assert.equal(challenge.user.id, "new-uuid");
   assert.equal(challenge.tokenHash, "token");
 });

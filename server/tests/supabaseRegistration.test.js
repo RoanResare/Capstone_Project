@@ -10,6 +10,7 @@ function loadRegistration(options = {}) {
   let authCreated = 0;
   let authLookups = 0;
   let authDeleted = 0;
+  let signupMetadata;
   const db = {
     collection(name) {
       return { doc(id) { return { id, key: `${name}/${id}` }; } };
@@ -45,7 +46,8 @@ function loadRegistration(options = {}) {
         authLookups += 1;
         return authLookups === 1 ? options.authUser || null : options.fallbackAuthUser || null;
       },
-      generateSupabaseEmailLink: async () => {
+      generateSupabaseEmailLink: async (payload) => {
+        signupMetadata = payload.userMetadata;
         authCreated += 1;
         if (options.triggerProfile) records.set("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620", {
           uid: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com",
@@ -71,9 +73,11 @@ function loadRegistration(options = {}) {
   const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
   return {
     records, response, get authCreated() { return authCreated; }, get authDeleted() { return authDeleted; },
+    get signupMetadata() { return signupMetadata; },
     run: () => controller.exports.createCustomerProfile({ body: {
       fullName: "Survey Customer", email: "customer@example.com", username: "survey_customer",
       phone: "+63 9940702702", password: "Valid!Pass123",
+      ...options.payload,
     }, ip: "127.0.0.1" }, response),
   };
 }
@@ -84,6 +88,9 @@ test("customer registration creates a Supabase identity and a complete PostgreSQ
   const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
   assert.equal(fixture.response.statusCode, 202);
   assert.equal(profile.email, "customer@example.com");
+  assert.equal(profile.fullName, "Survey Customer");
+  assert.equal(fixture.signupMetadata.full_name, "Survey Customer");
+  assert.equal(fixture.signupMetadata.role, "customer");
   assert.equal(profile.username, "survey_customer");
   assert.equal(profile.phone, "+63 9940702702");
   assert.equal(profile.authUserId, "7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
@@ -92,6 +99,21 @@ test("customer registration creates a Supabase identity and a complete PostgreSQ
   assert.equal(Object.hasOwn(profile, "passwordHash"), false);
   assert.equal(fixture.records.get("usernames/survey_customer").uid, profile.uid);
   assert.equal(fixture.authCreated, 1);
+});
+
+test("customer signup preserves the submitted name and uses safe fallbacks when absent", async () => {
+  for (const [payload, expected] of [
+    [{ fullName: "  Roan Resare  " }, "Roan Resare"],
+    [{ fullName: "", full_name: "Roan Resare" }, "Roan Resare"],
+    [{ fullName: "   " }, "survey_customer"],
+  ]) {
+    const fixture = loadRegistration({ payload, triggerProfile: { fullName: "Staff User" } });
+    await fixture.run();
+    const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+    assert.equal(profile.fullName, expected);
+    assert.equal(fixture.signupMetadata.full_name, expected);
+    assert.equal(fixture.signupMetadata.role, "customer");
+  }
 });
 
 test("registration completes the matching profile created by an Auth INSERT trigger", async () => {

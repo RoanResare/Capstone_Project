@@ -143,6 +143,7 @@ function loadServiceAccount() {
 const serviceAccount = loadServiceAccount();
 const nodeEnv = readOptional("NODE_ENV", "development");
 const defaultFrontendUrl = "https://charmingfurfectionpetscareservices.online";
+const frontendSiteUrl = readOptional("FRONTEND_SITE_URL", "https://capstone-project-1-yqto.onrender.com").replace(/\/+$/, "");
 const frontendUrl = readOptional("FRONTEND_URL", defaultFrontendUrl).replace(/\/+$/, "");
 const defaultPasswordResetUrl = frontendUrl.endsWith("/reset-password")
   ? frontendUrl
@@ -155,6 +156,7 @@ const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
 const env = {
   nodeEnv,
   port: readNumber("PORT", 5000),
+  frontendSiteUrl,
   clientUrl: readOptional("CLIENT_URL", `${defaultFrontendUrl},https://www.charmingfurfectionpetscareservices.online,https://charmingfurfectionpetservices.online,https://www.charmingfurfectionpetservices.online,http://localhost:5173`),
   supabase: {
     url: readOptional("SUPABASE_URL").replace(/\/+$/, ""),

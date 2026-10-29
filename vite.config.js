@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import Groq from "groq-sdk";
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-20b";
 const GROQ_MODELS = [GROQ_MODEL];
 const GROQ_SYSTEM_PROMPT = `
 You are Charming Fur-fection Assistant, an intelligent, helpful, and polite customer support AI for Charming Fur-fection Pet Care Services.
@@ -88,7 +88,7 @@ function normalizeValue(value = "") {
 
 function getEnvValue(env, ...names) {
   for (const name of names) {
-    const value = normalizeValue(env?.[name] || process.env?.[name]);
+    const value = normalizeValue(process.env?.[name] || env?.[name]);
     if (value) {
       return value;
     }
@@ -98,11 +98,11 @@ function getEnvValue(env, ...names) {
 }
 
 function getServerGroqApiKey(env) {
-  return getEnvValue(env, "GROQ_API_KEY", "VITE_GROQ_API_KEY");
+  return getEnvValue(env, "GROQ_API_KEY");
 }
 
 function getServerGroqModelCandidates(env, payload = {}) {
-  const configuredModel = getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL");
+  const configuredModel = getEnvValue(env, "GROQ_MODEL");
   const requestedModels = [
     normalizeValue(payload.model),
     ...(Array.isArray(payload.models) ? payload.models.map((model) => normalizeValue(model)) : []),
@@ -115,7 +115,7 @@ function getServerGroqModelCandidates(env, payload = {}) {
 }
 
 function getIgnoredGroqModel(env) {
-  const configuredModel = getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL");
+  const configuredModel = getEnvValue(env, "GROQ_MODEL");
   return configuredModel && !GROQ_MODELS.includes(configuredModel) ? configuredModel : "";
 }
 
@@ -131,7 +131,7 @@ function describeGroqStatus(env) {
       message: "Using the configured external Groq proxy.",
       hasServerKey: false,
       hasCustomProxy: true,
-      model: getEnvValue(env, "GROQ_MODEL", "VITE_GROQ_MODEL") || GROQ_MODEL,
+      model: getEnvValue(env, "GROQ_MODEL") || GROQ_MODEL,
     };
   }
 
@@ -290,7 +290,7 @@ function createGroqProxyPlugin(env) {
           stream: wantsStream,
           messages,
         }, {
-          signal: AbortSignal.timeout(9000),
+          signal: AbortSignal.timeout(20000),
         });
 
         if (wantsStream) {

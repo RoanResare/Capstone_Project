@@ -11,11 +11,10 @@ const API_BASE_URL = resolveApiBaseUrl(
 const DEFAULT_PROXY_URL = `${API_BASE_URL}/groq-chat`;
 const DEFAULT_STATUS_URL = `${API_BASE_URL}/groq-status`;
 const DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b";
-const DEPRECATED_GROQ_MODELS = new Set(["llama3-70b-8192", "llama3-8b-8192"]);
-export const GROQ_MODEL = normalizeValue(import.meta.env.VITE_GROQ_MODEL) || DEFAULT_GROQ_MODEL;
-export const GROQ_MODELS = [GROQ_MODEL];
+export const GROQ_MODEL = DEFAULT_GROQ_MODEL;
+export const GROQ_MODELS = [DEFAULT_GROQ_MODEL];
 const MAX_HISTORY_MESSAGES = 8;
-const GROQ_REQUEST_TIMEOUT_MS = 12000;
+const GROQ_REQUEST_TIMEOUT_MS = 30000;
 export const CHAT_TIMEOUT_ERROR_MESSAGE =
   "The request took too long or connection timed out. Please try sending your message again.";
 
@@ -139,10 +138,6 @@ function normalizeValue(value = "") {
   return String(value || "").trim();
 }
 
-function isSupportedModel(model = "") {
-  return Boolean(model) && !DEPRECATED_GROQ_MODELS.has(model);
-}
-
 function getConfiguredProxyUrl() {
   if (import.meta.env.PROD) return "";
   return normalizeValue(import.meta.env.VITE_GROQ_PROXY_URL);
@@ -172,6 +167,15 @@ async function parseJsonSafely(response) {
     return await response.json();
   } catch {
     return null;
+  }
+}
+
+function assertJsonResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new Error(
+      "The chat endpoint did not return JSON. Check that VITE_API_URL points to the backend service and includes /api.",
+    );
   }
 }
 
@@ -222,8 +226,6 @@ async function callGroqProxy(message, history) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: isSupportedModel(GROQ_MODEL) ? GROQ_MODEL : DEFAULT_GROQ_MODEL,
-        models: GROQ_MODELS.filter(isSupportedModel),
         message,
         history: buildRecentHistory(history),
         systemPrompt: GROQ_SYSTEM_PROMPT,
@@ -231,6 +233,7 @@ async function callGroqProxy(message, history) {
       }),
       signal: controller.signal,
     });
+    assertJsonResponse(response);
     const data = await parseJsonSafely(response);
 
     if (!response.ok) {
@@ -347,8 +350,6 @@ async function callGroqProxyStream(message, history, onToken) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: isSupportedModel(GROQ_MODEL) ? GROQ_MODEL : DEFAULT_GROQ_MODEL,
-        models: GROQ_MODELS.filter(isSupportedModel),
         message,
         history: buildRecentHistory(history),
         systemPrompt: GROQ_SYSTEM_PROMPT,
@@ -360,6 +361,15 @@ async function callGroqProxyStream(message, history, onToken) {
     if (!response.ok) {
       const data = await parseJsonSafely(response);
       throw new Error(data?.error || `Proxy request failed with status ${response.status}.`);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("text/event-stream")) {
+      const data = await parseJsonSafely(response);
+      throw new Error(
+        data?.error ||
+          "The chat endpoint did not start a stream. Check that VITE_API_URL points to the backend service and includes /api.",
+      );
     }
 
     const result = await parseGroqStream(response, onToken);
@@ -450,9 +460,9 @@ export async function askGroqAssistant({ message, history = [] }) {
     const result = await callGroqProxy(cleanMessage, history);
     return {
       answer: result.answer,
-      recognized: true,
+      recognized: result.provider !== "fallback",
       language: detectLanguage(cleanMessage),
-      topic: "dynamic",
+      topic: result.provider === "fallback" ? "error" : "dynamic",
       provider: result.provider || "groq",
       model: result.model || GROQ_MODEL,
       warning: result.warning || "",

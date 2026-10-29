@@ -99,10 +99,7 @@ function sendFrontendIndex(req, res, next) {
     : frontendIndexPath;
 
   if (!fs.existsSync(indexPath)) {
-    console.error("[frontend] SPA entry point was not found.", {
-      indexPath,
-    });
-    return next();
+    return redirectToFrontendSite(req, res);
   }
 
   res.set("Cache-Control", "no-store");
@@ -111,6 +108,21 @@ function sendFrontendIndex(req, res, next) {
       next(error);
     }
   });
+}
+
+function redirectToFrontendSite(req, res) {
+  const frontendUrl = new URL(env.frontendSiteUrl);
+  if (frontendUrl.host.toLowerCase() === String(req.get("host") || "").toLowerCase()) {
+    return res.status(503).type("html").send(
+      "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>Frontend unavailable</title>" +
+      "<main><h1>Frontend temporarily unavailable</h1><p>The frontend service has not published its app bundle yet.</p></main></html>",
+    );
+  }
+
+  const requestedUrl = new URL(req.originalUrl || "/", "http://backend.invalid");
+  frontendUrl.pathname = requestedUrl.pathname;
+  frontendUrl.search = requestedUrl.search;
+  return res.redirect(302, frontendUrl.toString());
 }
 
 function setStaticCacheHeaders(res, filePath) {
@@ -142,6 +154,10 @@ app.get("/", (_req, res, next) => {
     });
   }
 
+  return redirectToFrontendSite(_req, res);
+});
+
+app.get("/api/health", (_req, res) => {
   res.status(200).json({
     success: true,
     message: "Charming Fur-fection backend is running.",

@@ -16,6 +16,7 @@ const history = [
 test("frontend sends natural clinic questions and contextual follow-ups without block warnings", async (t) => {
   const source = readFileSync(new URL("../src/services/groq.js", import.meta.url), "utf8")
     .replace(/import \{ chatbotSuggestionChips \} from .*?;/, "const chatbotSuggestionChips = [];")
+    .replace(/import \{ resolveApiBaseUrl \} from .*?;/, "const resolveApiBaseUrl = (configured, production) => configured || (production ? '/api' : 'http://localhost:5000/api');")
     .replaceAll("import.meta.env", "({})");
   const { askGroqAssistant, askGroqAssistantStream } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
   let requests = 0;

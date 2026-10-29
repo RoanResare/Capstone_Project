@@ -374,6 +374,11 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss(), createGroqProxyPlugin(env)],
+    // Render Static Sites expose their configured variables to the build
+    // process. Explicitly keep Vite's env lookup rooted at the service root
+    // and permit only the intended public VITE_ variables in client code.
+    envDir: process.cwd(),
+    envPrefix: "VITE_",
     // Explicitly bind the public Supabase settings from Render's build
     // environment into the browser bundle. The build script also validates
     // these values before Vite runs, without logging either value.

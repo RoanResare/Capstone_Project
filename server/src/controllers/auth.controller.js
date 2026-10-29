@@ -156,7 +156,8 @@ async function resolveEmailFromIdentifier(identifier = "") {
   }
 
   if (isEmailLike(normalizedIdentifier)) {
-    await assertEmailIsDeliverable(normalizedIdentifier);
+    // Existing accounts authenticate against Auth, not signup DNS/domain policy.
+    assertValidEmail(normalizedIdentifier);
     return normalizedIdentifier;
   }
 
@@ -222,6 +223,9 @@ async function checkCustomerRegistrationAvailability(req, res) {
 }
 
 async function resolveAuthenticatedSupabaseUser({ identifier, email, supabaseUid, emailVerified }) {
+  if (emailVerified !== true) {
+    throw new ApiError(403, "Verify your email using the activation link before signing in.", { code: "EMAIL_VERIFICATION_REQUIRED" });
+  }
   const normalizedIdentifier = normalizeString(identifier).toLowerCase();
   const normalizedEmail = normalizeEmail(email);
   const normalizedUid = normalizeString(supabaseUid);
@@ -255,8 +259,12 @@ async function resolveAuthenticatedSupabaseUser({ identifier, email, supabaseUid
     throw new ApiError(403, "This profile is already linked to a different Supabase Auth identity.", { code: "AUTH_IDENTITY_MISMATCH" });
   }
 
-  if (!matchingUser.authUserId && emailVerified !== true) {
-    throw new ApiError(403, "Verify your email before linking this Supabase Auth identity to the account.", { code: "EMAIL_VERIFICATION_REQUIRED" });
+  if (normalizeEmail(matchingUser.email) !== normalizedEmail) {
+    throw new ApiError(403, "The authenticated email does not match the stored account.", { code: "AUTH_IDENTITY_MISMATCH" });
+  }
+
+  if (!matchingUser.authUserId && matchingUser.uid !== normalizedUid && matchingUser.role !== USER_ROLES.CUSTOMER) {
+    throw new ApiError(403, "This staff or admin profile must be linked to its Supabase identity by the clinic.", { code: "AUTH_IDENTITY_LINK_REQUIRED" });
   }
 
   return matchingUser.authUserId === normalizedUid
@@ -364,15 +372,13 @@ function assertRoleMatchesExpected(user, expectedRole) {
 }
 
 function assertActiveAccount(user) {
-  if (user.accountStatus === USER_STATUSES.ACTIVE) {
-    return;
-  }
-
-  if (user.verificationStatus === "pending") {
+  if (["pending", "expired"].includes(user.verificationStatus) || user.emailVerified === false) {
     throw new ApiError(403, "Verify your email using the activation link we sent before signing in. Request a new link if it has expired.", {
       code: "EMAIL_VERIFICATION_REQUIRED",
     });
   }
+
+  if (user.accountStatus === USER_STATUSES.ACTIVE) return;
 
   throw new ApiError(403, `This account is ${user.accountStatus}.`);
 }
@@ -451,20 +457,28 @@ function openResetChallenge(challenge) {
 }
 
 async function createSessionResponse(user, options = {}, req, supabaseSession = null) {
+  assertActiveAccount(user);
+  assertFraudAccess(user);
+  if (!Object.values(USER_ROLES).includes(user.role)) throw new ApiError(403, "This account does not have a supported role.");
+  if (!supabaseSession?.access_token || !supabaseSession?.refresh_token) {
+    throw new ApiError(503, "Supabase Auth did not return a complete session.");
+  }
+  if (!supabaseSession?.user?.email_confirmed_at
+    || normalizeEmail(supabaseSession.user.email) !== normalizeEmail(user.email)
+    || supabaseSession.user.id !== (user.authUserId || user.uid)) {
+    throw new ApiError(403, "The verified Supabase identity does not match this account.", { code: "AUTH_IDENTITY_MISMATCH" });
+  }
   await waitForFreshSession(user.uid);
   const supabaseClaims = decodeJwtPayload(supabaseSession?.access_token) || {};
   const connection = await createFreshSessionBinding(user, req, supabaseClaims.session_id || "");
   const safeUser = toPublicUser(user);
   const accessToken = signAccessToken(user, connection.ip, connection.sessionId);
-  if (!supabaseSession?.access_token || !supabaseSession?.refresh_token) {
-    throw new ApiError(503, "Supabase Auth did not return a complete session.");
-  }
-
   await touchLastLogin(user.uid);
 
   return {
     success: true,
     requiresTwoFactor: false,
+    homePath: { customer: "/customer/dashboard", staff: "/staff/dashboard", admin: "/admin/dashboard" }[user.role],
     accessToken,
     supabaseSession: {
       access_token: supabaseSession.access_token,
@@ -577,11 +591,6 @@ async function verifyLoginCredentials(identifier, password) {
     throw error;
   }
   await assertAttemptsAllowed("login", email);
-  const existingUser = await getUserByEmail(email);
-  if (existingUser) {
-    assertActiveAccount(existingUser);
-    await assertAttemptsAllowed("otp", existingUser.uid);
-  }
   let signInPayload;
   try {
     signInPayload = await signInWithSupabasePassword(email, password);
@@ -591,6 +600,12 @@ async function verifyLoginCredentials(identifier, password) {
       error.message += ' ' + remaining + ' attempt' + (remaining === 1 ? '' : 's') + ' remaining.';
     }
     throw error;
+  }
+  if (normalizeEmail(signInPayload.user?.email) !== email || !signInPayload.user?.id) {
+    throw new ApiError(403, "The authenticated identity does not match the requested account.", { code: "AUTH_IDENTITY_MISMATCH" });
+  }
+  if (!signInPayload.user.email_confirmed_at) {
+    throw new ApiError(403, "Verify your email using the activation link before signing in.", { code: "EMAIL_VERIFICATION_REQUIRED" });
   }
   await resetAttempts("login", email);
   if (identifier.toLowerCase() !== email.toLowerCase()) await resetAttempts("login", identifier);
@@ -611,7 +626,7 @@ function createRoleBoundLoginHandler(expectedRole) {
       identifier,
       email,
       supabaseUid: signInPayload.user.id,
-      emailVerified: Boolean(signInPayload.user.email_confirmed_at || signInPayload.user.confirmed_at),
+      emailVerified: Boolean(signInPayload.user.email_confirmed_at),
     });
 
     if (!user) {
@@ -621,10 +636,11 @@ function createRoleBoundLoginHandler(expectedRole) {
       );
     }
 
-    await synchronizePasswordHash(user, password);
     assertRoleMatchesExpected(user, routeRole);
     assertActiveAccount(user);
     assertFraudAccess(user);
+    await assertAttemptsAllowed("otp", user.uid);
+    await synchronizePasswordHash(user, password);
     const rememberDeviceRequest = readRememberDeviceRequest(req, user.role);
 
     if (routeRole === USER_ROLES.CUSTOMER) {
@@ -679,6 +695,7 @@ function createRoleBoundSendOtpHandler(expectedRole) {
 
     assertActiveAccount(user);
     assertOtpRouteMatchesRole(user, ticket, routeRole);
+    assertFraudAccess(user);
 
     return res.status(200).json(
       await createOtpChallengeResponse(
@@ -718,17 +735,20 @@ function createRoleBoundVerifyOtpHandler(expectedRole) {
 
     assertActiveAccount(user);
     assertOtpRouteMatchesRole(user, ticket, routeRole);
+    assertFraudAccess(user);
     await verifyOtpCode({
       otpId: ticket.otpId,
       otpCode,
       user,
     });
 
-    const supabaseSession = await createSupabaseSessionForUser(user.email);
+    const supabaseSession = await createSupabaseSessionForUser(user.email, user.authUserId || user.uid);
     const linkedUser = await resolveAuthenticatedSupabaseUser({ identifier: user.email, email: user.email,
-      supabaseUid: supabaseSession.user.id, emailVerified: true });
+      supabaseUid: supabaseSession.user.id, emailVerified: Boolean(supabaseSession.user.email_confirmed_at) });
     if (!linkedUser) throw new ApiError(403, "The Supabase Auth account has no matching user profile.");
     assertActiveAccount(linkedUser);
+    assertOtpRouteMatchesRole(linkedUser, ticket, routeRole);
+    assertFraudAccess(linkedUser);
     return res.status(200).json(await createSessionResponse(linkedUser, { rememberDevice }, req, supabaseSession));
   };
 }
@@ -742,7 +762,7 @@ const verifyAdminOtp = createRoleBoundVerifyOtpHandler(USER_ROLES.ADMIN);
 const verifyStaffOtp = createRoleBoundVerifyOtpHandler(USER_ROLES.STAFF);
 
 async function loginUnified(req, res) {
-  assertAuthSetupReady({ requireOtp: true });
+  assertAuthSetupReady();
   await validateAccessSecurity(req);
   const { identifier, password } = validateLoginPayload(req.body);
   const { email, signInPayload } = await verifyLoginCredentials(identifier, password);
@@ -750,7 +770,7 @@ async function loginUnified(req, res) {
     identifier,
     email,
     supabaseUid: signInPayload.user.id,
-    emailVerified: Boolean(signInPayload.user.email_confirmed_at || signInPayload.user.confirmed_at),
+    emailVerified: Boolean(signInPayload.user.email_confirmed_at),
   });
 
   if (!user) {
@@ -760,9 +780,11 @@ async function loginUnified(req, res) {
     );
   }
 
-  await synchronizePasswordHash(user, password);
   assertActiveAccount(user);
   assertFraudAccess(user);
+  if (!Object.values(USER_ROLES).includes(user.role)) throw new ApiError(403, "This account does not have a supported role.");
+  await assertAttemptsAllowed("otp", user.uid);
+  await synchronizePasswordHash(user, password);
   const rememberDeviceRequest = readRememberDeviceRequest(req, user.role);
 
   if (user.role === USER_ROLES.CUSTOMER) {
@@ -774,6 +796,7 @@ async function loginUnified(req, res) {
   }
 
   if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.STAFF) {
+    assertAuthSetupReady({ requireOtp: true });
     if (rememberDeviceRequest.rememberDevice && isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
       return res.status(200).json(
         await createSessionResponse(user, {

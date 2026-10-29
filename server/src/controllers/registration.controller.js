@@ -95,7 +95,9 @@ async function createCustomerProfile(req, res) {
         && [undefined, "active", "inactive", "pending"].includes(existing.accountStatus)
         && [undefined, "active", "inactive", "pending"].includes(existing.status)
         && Number.isFinite(createdAt) && createdAt >= signupStartedAt - 1000 && createdAt <= Date.now();
-      if (profile.exists && !triggerProfile) throw new ApiError(409, "This account already has a profile.");
+      if (profile.exists && !triggerProfile) throw new ApiError(409,
+        "An existing profile conflicts with this registration. Sign in or contact the clinic to verify the account link.",
+        { code: "REGISTRATION_PROFILE_CONFLICT" });
       if (usernameDoc.exists && !(triggerProfile && usernameDoc.data()?.uid === uid
         && normalizeEmail(usernameDoc.data()?.email) === email)) throw new ApiError(409, "That username is already in use.");
       let phoneRef = null;

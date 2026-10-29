@@ -111,7 +111,8 @@ function normalizeUserPayload(payload = {}, documentId = "") {
   const fullName = normalizeString(payload.fullName || payload.name);
   const normalizedEmail =
     typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
-  const accountStatus = normalizeUserStatus(payload.accountStatus || payload.account_status || payload.status);
+  const storedStatus = normalizeString(payload.accountStatus || payload.account_status || payload.status).toLowerCase();
+  const accountStatus = Object.values(USER_STATUSES).includes(storedStatus) ? storedStatus : USER_STATUSES.INACTIVE;
 
   return {
     ...payload,
@@ -122,7 +123,7 @@ function normalizeUserPayload(payload = {}, documentId = "") {
     name: fullName,
     email: normalizedEmail,
     username: resolveProfileUsername(payload.username, normalizedEmail, uid),
-    role: normalizeRole(payload.role),
+    role: Object.values(USER_ROLES).includes(normalizeString(payload.role).toLowerCase()) ? normalizeString(payload.role).toLowerCase() : "",
     accountStatus,
     authUserId: normalizeString(payload.authUserId || payload.auth_user_id),
     status: accountStatus,
@@ -173,7 +174,7 @@ async function getUserByAuthId(authUserId) {
   // New native profiles may use the Auth UUID as their public.users primary key
   // without carrying the legacy document ID in legacy_data.
   const direct = await getUserByUid(normalizedId);
-  return direct?.authUserId === normalizedId || direct?.uid === normalizedId ? direct : null;
+  return direct && (direct.authUserId ? direct.authUserId === normalizedId : direct.uid === normalizedId) ? direct : null;
 }
 
 async function linkSupabaseAuthUser(profile, authUserId) {

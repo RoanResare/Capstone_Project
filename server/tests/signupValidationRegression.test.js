@@ -51,6 +51,65 @@ test("Supabase signup accepts the raw generate_link Auth user response", async (
   assert.equal(challenge.tokenHash, "token");
 });
 
+test("password Auth maps provider errors to clear security responses without treating failures as successful login", async () => {
+  for (const [code, providerStatus, expectedStatus, expectedCode] of [
+    ["invalid_credentials", 400, 401, "INVALID_LOGIN_CREDENTIALS"],
+    ["email_not_confirmed", 400, 403, "EMAIL_VERIFICATION_REQUIRED"],
+    ["user_banned", 400, 403, "ACCOUNT_BLOCKED"],
+    ["not_found", 404, 503, "SUPABASE_AUTH_UNAVAILABLE"],
+  ]) {
+    const service = loadService("supabaseAuth.service.js", {
+      supabase: { url: "https://auth.example", anonKey: "test" },
+    }, async () => ({ ok: false, status: providerStatus, json: async () => ({ code, msg: "Provider failure" }) }),
+    { console: { error() {} } });
+    await assert.rejects(service.signInWithSupabasePassword("user@gmail.com", "password"),
+      error => error.statusCode === expectedStatus && error.details.code === expectedCode);
+  }
+});
+
+test("OTP session exchange never generates a magic link for an unverified or mismatched identity", async () => {
+  for (const identity of [
+    { id: "auth-id", email: "user@gmail.com", email_confirmed_at: null },
+    { id: "other-id", email: "user@gmail.com", email_confirmed_at: "2026-01-01" },
+  ]) {
+    let calls = 0;
+    const service = loadService("supabaseAuth.service.js", { supabase: { url: "https://auth.example", serviceRoleKey: "test" } },
+      async url => { calls++; assert.match(url, /\/admin\/users\/auth-id$/); return { ok: true, json: async () => identity }; });
+    await assert.rejects(service.createSupabaseSessionForUser("user@gmail.com", "auth-id"), error => error.statusCode === 403);
+    assert.equal(calls, 1);
+  }
+});
+
+test("OTP exchange returns only the same verified identity and rejects an identity switch", async () => {
+  for (const finalId of ["auth-id", "different-id"]) {
+    let calls = 0;
+    const service = loadService("supabaseAuth.service.js", {
+      supabase: { url: "https://auth.example", serviceRoleKey: "test", anonKey: "test" },
+    }, async url => {
+      calls++;
+      const payload = url.endsWith("/admin/users/auth-id")
+        ? { id: "auth-id", email: "user@gmail.com", email_confirmed_at: "2026-01-01" }
+        : url.endsWith("/admin/generate_link") ? { hashed_token: "challenge" }
+          : { access_token: "access", refresh_token: "refresh", user: { id: finalId } };
+      return { ok: true, json: async () => payload };
+    });
+    if (finalId === "auth-id") assert.equal((await service.createSupabaseSessionForUser("user@gmail.com", "auth-id")).user.id, "auth-id");
+    else await assert.rejects(service.createSupabaseSessionForUser("user@gmail.com", "auth-id"), error => error.statusCode === 403);
+    assert.equal(calls, 3);
+  }
+});
+
+test("protected Supabase session verification rejects unconfirmed emails", async () => {
+  for (const confirmed of [false, true]) {
+    const token = `header.${Buffer.from(JSON.stringify({ iss: "https://auth.example/auth/v1", sub: "auth-id" })).toString("base64url")}.signature`;
+    const service = loadService("supabaseAuth.service.js", {
+      runtime: { supabaseAuthReady: true }, supabase: { url: "https://auth.example", anonKey: "test" },
+    }, async () => ({ ok: true, json: async () => ({ id: "auth-id", email: "user@gmail.com", email_confirmed_at: confirmed ? "2026-01-01" : null }) }), { Buffer });
+    if (confirmed) assert.equal((await service.verifySupabaseAccessToken(token)).uid, "auth-id");
+    else await assert.rejects(service.verifySupabaseAccessToken(token), error => error.statusCode === 403);
+  }
+});
+
 test("IP provider failures log the network cause and pause repeated lookups, then recover", async () => {
   let calls = 0;
   let now = 100000;

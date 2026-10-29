@@ -62,9 +62,22 @@ async function signInWithSupabasePassword(email, password) {
     }
     return session;
   } catch (error) {
-    if (error.statusCode === 401) {
-      error.message = "Invalid email or password.";
-      error.details = { ...(error.details || {}), supabaseCode: "INVALID_LOGIN_CREDENTIALS" };
+    const code = String(error.details?.code || "").toLowerCase();
+    if (["invalid_credentials", "invalid_grant", "user_not_found"].includes(code)) {
+      throw new ApiError(401, "Invalid email, username, or password.", {
+        code: "INVALID_LOGIN_CREDENTIALS", supabaseCode: "INVALID_LOGIN_CREDENTIALS",
+      });
+    }
+    if (code === "email_not_confirmed") {
+      throw new ApiError(403, "Verify your email using the activation link before signing in.", { code: "EMAIL_VERIFICATION_REQUIRED" });
+    }
+    if (code === "user_banned") {
+      throw new ApiError(403, "This account is blocked from signing in.", { code: "ACCOUNT_BLOCKED" });
+    }
+    if ([401, 403, 404].includes(error.details?.providerStatus)) {
+      throw new ApiError(503, "Supabase password authentication is unavailable. Contact the clinic if this persists.", {
+        code: "SUPABASE_AUTH_UNAVAILABLE",
+      });
     }
     throw error;
   }
@@ -83,7 +96,15 @@ async function findSupabaseUserByEmail(email) {
   throw new ApiError(503, "Could not complete the Supabase duplicate-account check.", { code: "SUPABASE_USER_LOOKUP_INCOMPLETE" });
 }
 
-async function createSupabaseSessionForUser(email) {
+async function createSupabaseSessionForUser(email, expectedUserId) {
+  if (!expectedUserId) throw new ApiError(403, "A linked Supabase identity is required.", { code: "AUTH_IDENTITY_LINK_REQUIRED" });
+  const identity = await getSupabaseUserById(expectedUserId);
+  if (identity?.id !== expectedUserId || String(identity.email || "").trim().toLowerCase() !== String(email).trim().toLowerCase()) {
+    throw new ApiError(403, "The OTP account no longer matches its Supabase identity.", { code: "AUTH_IDENTITY_MISMATCH" });
+  }
+  if (!identity.email_confirmed_at) {
+    throw new ApiError(403, "Verify your email before completing sign-in.", { code: "EMAIL_VERIFICATION_REQUIRED" });
+  }
   const generated = await authRequest("/admin/generate_link", {
     method: "POST", admin: true, body: { type: "magiclink", email },
   });
@@ -95,6 +116,7 @@ async function createSupabaseSessionForUser(email) {
   if (!session?.access_token || !session?.user?.id) {
     throw new ApiError(503, "Supabase Auth did not return a complete session.");
   }
+  if (session.user.id !== expectedUserId) throw new ApiError(403, "The OTP session identity changed.", { code: "AUTH_IDENTITY_MISMATCH" });
   return session;
 }
 
@@ -184,6 +206,7 @@ async function verifySupabaseAccessToken(token) {
   if (!response.ok) throw new ApiError(503, "Supabase Auth could not verify this session right now.", { code: "SUPABASE_AUTH_UNAVAILABLE" });
   const user = await response.json().catch(() => null);
   if (!user?.id || user.id !== claims.sub) throw new ApiError(401, "The Supabase session does not match its user identity.");
+  if (!user.email_confirmed_at) throw new ApiError(403, "Verify your email before using this session.", { code: "EMAIL_VERIFICATION_REQUIRED" });
   return { ...claims, uid: user.id, sub: user.id, email: user.email || claims.email || "", supabaseUser: user };
 }
 

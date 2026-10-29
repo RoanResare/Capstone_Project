@@ -78,8 +78,6 @@ app.use(helmet({
     directives: {
       connectSrc: [
         "'self'",
-        "https://identitytoolkit.googleapis.com",
-        "https://securetoken.googleapis.com",
         "https://api.charmingfurfectionpetscareservices.online",
         "https://api.charmingfurfectionpetservices.online",
         "https://capstone-project-bczf.onrender.com",

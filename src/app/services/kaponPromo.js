@@ -1,6 +1,6 @@
 import { doc, getDoc, runTransaction, onSnapshot, isPostgresEnabled } from "./database.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
-import { db, isSupabaseConfigured } from "./postgresCompat.js";
+import { db, isSupabaseConfigured } from "./supabaseDatabase.js";
 import { auth, getSupabaseAccessToken } from "./supabaseSession.js";
 import { normalizePromoInput, validatePromoStart } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";

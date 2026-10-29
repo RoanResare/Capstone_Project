@@ -14,7 +14,7 @@ import {
   where,
   isPostgresEnabled,
 } from "./database.js";
-import { db, isSupabaseConfigured } from "./postgresCompat.js";
+import { db, isSupabaseConfigured } from "./supabaseDatabase.js";
 import { auth, getSupabaseAccessToken, waitForSupabaseUserSession } from "./supabaseSession.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
@@ -385,13 +385,13 @@ function loadPagedFilteredScheduleDocuments(cacheKeySuffix, buildQuery, { maxPag
   return request;
 }
 
-function loadFilteredScheduleDocuments(cacheKeySuffix, firestoreQuery, { force = false } = {}) {
+function loadFilteredScheduleDocuments(cacheKeySuffix, postgresQuery, { force = false } = {}) {
   const uid = auth.currentUser.id;
   const cacheKey = `${uid}:${cacheKeySuffix}`;
   const cached = collectionCache.get(cacheKey);
   if (!force && cached && Date.now() - cached.fetchedAt < SCHEDULE_CACHE_TTL_MS) return Promise.resolve(cached.documents);
   if (!force && collectionLoadRequests.has(cacheKey)) return collectionLoadRequests.get(cacheKey);
-  const request = getDocs(firestoreQuery).then((snapshot) => {
+  const request = getDocs(postgresQuery).then((snapshot) => {
   const documents = snapshot.docs.slice(0, cacheKeySuffix === "notifications:recent" ? 50 : undefined).map((entry) => ({ id: entry.id, ...entry.data() }));
     const hasMore = cacheKeySuffix === "notifications:recent" && snapshot.docs.length > 50;
     collectionCache.set(cacheKey, { fetchedAt: Date.now(), documents, hasMore });
@@ -620,7 +620,7 @@ async function requestAvailabilitySlots(method, id = "", payload, params = {}) {
 }
 
 function isPermissionDenied(error) {
-  return ["permission-denied", "firestore/permission-denied"].includes(error?.code);
+  return ["permission-denied"].includes(error?.code);
 }
 
 function schedulePermissionError(error) {

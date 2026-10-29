@@ -8,14 +8,15 @@ const source = readFileSync(new URL("../src/app/services/postgresBrowser.js", im
   .replace(/export /g, "");
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function fixture() {
-  const auth = { currentUser: { uid: "synthetic", getIdToken: async () => "firebase-token" } };
+  const auth = { currentUser: { id: "synthetic" } };
+  let accessToken = "supabase-token";
   const records = new Map([["a", { id: "a", value: 1 }]]);
   const calls = [];
   let event, status, unsubscribed = 0, queryGate;
   const channel = { on(_type, options, callback) { assert.equal(options.event, "INSERT"); event = callback; return channel; },
     subscribe(callback) { status = callback; return channel; }, async unsubscribe() { unsubscribed++; } };
   const apiClient = { async post(url, body, options) {
-    assert.equal(options.headers.Authorization, "Bearer firebase-token");
+    assert.equal(options.headers.Authorization, "Bearer supabase-token");
     calls.push({ url, body });
     if (url.endsWith("query")) {
       const rows = [...records.values()].map(data => ({ id: data.id, data }));
@@ -27,8 +28,10 @@ function fixture() {
     throw new Error("Unexpected endpoint");
   } };
   const getRealtimeClient = async () => ({ supabase: { channel: () => channel } });
-  const service = new Function("auth", "apiClient", "buildAuthHeaders", "getRealtimeClient", `${source}\nreturn {onSnapshot,collection,doc,getDoc,getDocFromCache,getDocs,setDoc,arrayUnion,serverTimestamp};`)
-    (auth, apiClient, token => ({ Authorization: `Bearer ${token}` }), getRealtimeClient);
+  const getApplicationIdentity = async () => auth.currentUser ? `supabase-auth:${auth.currentUser.id}` : "";
+  const getApplicationAccessToken = async () => accessToken;
+  const service = new Function("auth", "apiClient", "buildAuthHeaders", "getRealtimeClient", "getApplicationIdentity", "getApplicationAccessToken", `${source}\nreturn {onSnapshot,collection,doc,getDoc,getDocFromCache,getDocs,setDoc,arrayUnion,serverTimestamp};`)
+    (auth, apiClient, token => ({ Authorization: `Bearer ${token}` }), getRealtimeClient, getApplicationIdentity, getApplicationAccessToken);
   return { service, records, calls, auth, apiClient, emit: id => event({ new: { document_id: id } }),
     status: value => status(value), unsubscribed: () => unsubscribed, gate: fn => { queryGate = fn; } };
 }
@@ -80,20 +83,24 @@ test("document snapshots expose expected APIs and caches do not cross accounts",
   await assert.rejects(f.service.getDocFromCache(ref), /No cached/);
 });
 
-test("realtime token exchange deduplicates, refreshes on Firebase token changes and rejects old accounts", async () => {
+test("realtime token exchange deduplicates, refreshes on Supabase token changes and rejects old accounts", async () => {
   const tokenSource = readFileSync(new URL("../src/app/services/databaseToken.js", import.meta.url), "utf8")
-    .replace(/import\s+[\s\S]*?\s+from\s+"[^"]+";/g, "").replace(/export /g, "");
-  let firebaseToken = "first", requests = 0, finish;
-  const auth = { currentUser: { getIdToken: async () => firebaseToken } };
+    .replace(/import\s+[\s\S]*?\s+from\s+"[^"]+";/g, "")
+    .replace('await import("../../supabaseClient.js")', "await getSupabaseSession()")
+    .replace(/export /g, "");
+  let sessionToken = "first", requests = 0, finish;
+  const auth = {};
+  const getSupabaseSession = async () => ({ supabase: { auth: { getSession: async () => ({ data: { session: auth.currentUser ? { access_token: sessionToken, user: auth.currentUser } : null }, error: null }) } } });
   const apiClient = { async get() { requests++; return { data: { token: `bridge-${requests}`, expiresIn: 300 } }; } };
-  const getToken = new Function("auth", "apiClient", "buildAuthHeaders", `${tokenSource}\nreturn getDatabaseAccessToken;`)(auth, apiClient, () => ({}));
+  auth.currentUser = { id: "synthetic" };
+  const getToken = new Function("auth", "apiClient", "buildAuthHeaders", "getSupabaseSession", `${tokenSource}\nreturn getDatabaseAccessToken;`)(auth, apiClient, () => ({}), getSupabaseSession);
   assert.deepEqual(await Promise.all([getToken(), getToken()]), ["bridge-1", "bridge-1"]);
   assert.equal(await getToken(), "bridge-1");
   assert.equal(requests, 1);
-  firebaseToken = "new-firebase-session";
+  sessionToken = "new-supabase-session";
   assert.equal(await getToken(), "bridge-2");
   apiClient.get = () => new Promise(resolve => { finish = resolve; });
-  firebaseToken = "pending";
+  sessionToken = "pending";
   const oldRequest = getToken();
   await flush();
   auth.currentUser = null;

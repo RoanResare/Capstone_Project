@@ -66,6 +66,7 @@ export function CustomerSignup() {
       ? getPhoneSubscriberInput(event.target.value)
       : event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
+    setFeedback((current) => current.type === "error" ? { type: "", message: "" } : current);
   };
 
   const handleSubmit = async (event) => {
@@ -75,13 +76,19 @@ export function CustomerSignup() {
       return;
     }
 
+    // Password managers can update input values without dispatching onChange.
+    // Snapshot before disabling inputs or opening terms, which causes a rerender.
+    // Preserve passwords exactly; trimming would change the user's credentials.
+    const submittedForm = Object.fromEntries(new FormData(event.currentTarget));
+    setForm(submittedForm);
+
     if (!termsReady) {
       setShowTerms(true);
       setFeedback({ type: "", message: "" });
       return;
     }
 
-    const textErrors = getTextValidationErrors(form, ACCOUNT_TEXT_FIELDS);
+    const textErrors = getTextValidationErrors(submittedForm, ACCOUNT_TEXT_FIELDS);
     if (Object.keys(textErrors).length) {
       setFeedback({ type: "error", message: Object.values(textErrors)[0] });
       return;
@@ -91,7 +98,7 @@ export function CustomerSignup() {
     setFeedback({ type: "", message: "" });
 
     try {
-      const normalizedPhone = normalizePhilippineMobileNumber(form.phone);
+      const normalizedPhone = normalizePhilippineMobileNumber(submittedForm.phone);
       if (!normalizedPhone) {
         setFeedback({
           type: "error",
@@ -107,12 +114,12 @@ export function CustomerSignup() {
       }
 
       const result = await signUp({
-        fullName: form.fullName,
-        username: form.username,
-        email: form.email,
+        fullName: submittedForm.fullName,
+        username: submittedForm.username,
+        email: submittedForm.email,
         phone: normalizedPhone,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
+        password: submittedForm.password,
+        confirmPassword: submittedForm.confirmPassword,
       });
 
       if (!result.ok) {
@@ -171,6 +178,7 @@ export function CustomerSignup() {
             <div>
               <label className="mb-2 block text-sm font-medium text-[#415D62]">Full name</label>
               <input
+                name="fullName"
                 value={form.fullName}
                 autoComplete="name"
                 onChange={handleChange("fullName")}
@@ -183,6 +191,7 @@ export function CustomerSignup() {
             <div>
               <label className="mb-2 block text-sm font-medium text-[#415D62]">Email</label>
               <input
+                name="email"
                 type="email"
                 value={form.email}
                 autoComplete="email"
@@ -198,6 +207,7 @@ export function CustomerSignup() {
                 Username
               </label>
               <input
+                name="username"
                 value={form.username}
                 autoComplete="username"
                 onChange={handleChange("username")}
@@ -220,6 +230,7 @@ export function CustomerSignup() {
                   +63
                 </span>
                 <input
+                  name="phone"
                   value={form.phone}
                   onChange={handleChange("phone")}
                   disabled={isSubmitting}
@@ -242,6 +253,7 @@ export function CustomerSignup() {
                 <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
                 <div className="relative">
                   <input
+                    name="password"
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     autoComplete="new-password"
@@ -282,6 +294,7 @@ export function CustomerSignup() {
                 </label>
                 <div className="relative">
                   <input
+                    name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     value={form.confirmPassword}
                     autoComplete="new-password"

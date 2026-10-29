@@ -9,6 +9,7 @@ function loadRegistration(options = {}) {
   const pendingWrites = [];
   let authCreated = 0;
   let authLookups = 0;
+  let authDeleted = 0;
   const db = {
     collection(name) {
       return { doc(id) { return { id, key: `${name}/${id}` }; } };
@@ -46,9 +47,14 @@ function loadRegistration(options = {}) {
       },
       generateSupabaseEmailLink: async () => {
         authCreated += 1;
+        if (options.triggerProfile) records.set("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620", {
+          uid: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com",
+          role: "customer", accountStatus: "active", createdAt: new Date().toISOString(),
+          ...options.triggerProfile,
+        });
         return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash" };
       },
-      deleteSupabaseUser: async () => {}, verifySupabaseEmailToken: async () => ({}),
+      deleteSupabaseUser: async () => { authDeleted += 1; }, verifySupabaseEmailToken: async () => ({}),
     };
     if (id === "../services/mail.service") return { sendEmailVerificationLink: async () => ({ messageId: "mail-id" }) };
     if (id === "../services/phoneAccounts.service") return { findPhoneAccounts: async () => [], PHONE_ACCOUNT_LIMIT: 3, PHONE_ACCOUNT_LIMIT_MESSAGE: "Phone limit reached." };
@@ -64,7 +70,7 @@ function loadRegistration(options = {}) {
   controller._compile(fs.readFileSync(filename, "utf8"), filename);
   const response = { status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
   return {
-    records, response, get authCreated() { return authCreated; },
+    records, response, get authCreated() { return authCreated; }, get authDeleted() { return authDeleted; },
     run: () => controller.exports.createCustomerProfile({ body: {
       fullName: "Survey Customer", email: "customer@example.com", username: "survey_customer",
       phone: "+63 9940702702", password: "Valid!Pass123",
@@ -86,6 +92,38 @@ test("customer registration creates a Supabase identity and a complete PostgreSQ
   assert.equal(Object.hasOwn(profile, "passwordHash"), false);
   assert.equal(fixture.records.get("usernames/survey_customer").uid, profile.uid);
   assert.equal(fixture.authCreated, 1);
+});
+
+test("registration completes the matching profile created by an Auth INSERT trigger", async () => {
+  const fixture = loadRegistration({ triggerProfile: {} });
+  await fixture.run();
+  const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+  assert.equal(fixture.response.statusCode, 202);
+  assert.equal(profile.username, "survey_customer");
+  assert.equal(profile.verificationStatus, "pending");
+  assert.equal(profile.accountStatus, "inactive");
+  assert.equal(fixture.authDeleted, 0);
+});
+
+test("conflicting, old or verified profiles are preserved when registration is rejected", async () => {
+  for (const triggerProfile of [
+    { email: "someone-else@example.com" },
+    { createdAt: "2020-01-01T00:00:00Z" },
+    { emailVerified: true }, { role: "admin" }, { username: "another_name" },
+  ]) {
+    const fixture = loadRegistration({ triggerProfile });
+    await assert.rejects(fixture.run(), (error) => error.statusCode === 409);
+    assert.equal(fixture.records.size, 1);
+    assert.equal(fixture.authDeleted, 0);
+  }
+});
+
+test("existing Supabase emails and usernames are rejected before Auth provisioning", async () => {
+  for (const options of [{ authUser: { id: "existing" } }, { usernameOwner: { uid: "existing" } }]) {
+    const fixture = loadRegistration(options);
+    await assert.rejects(fixture.run(), (error) => error.statusCode === 409);
+    assert.equal(fixture.authCreated, 0);
+  }
 });
 
 test("a PostgreSQL duplicate profile is rejected before provisioning another Auth identity", async () => {

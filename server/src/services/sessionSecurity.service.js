@@ -8,6 +8,7 @@ const SESSION_CONNECTIONS_COLLECTION = "sessionConnections";
 const SECURITY_COLLECTION = "sessionSecurity";
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const LOOKUP_TIMEOUT_MS = 5000;
+const LOOKUP_FAILURE_RETRY_MS = 30 * 1000;
 const VPN_BLOCK_MESSAGE = "Blocked VPN IP address";
 const SESSION_TERMINATED_MESSAGE = "Your session was terminated because your IP address changed...";
 const BLOCKED_NETWORK_NAMES = [
@@ -56,6 +57,7 @@ for (const cidr of (env.security.blockedNetworkCidrs || "").split(",").map((valu
   blockedNetworks.addSubnet(address, bits, version === 4 ? "ipv4" : "ipv6");
 }
 let warnedAnonymousResponse = false;
+let lookupRetryAt = 0;
 
 function normalizeIp(value = "") {
   const ip = String(value || "").trim().replace(/^::ffff:/, "");
@@ -130,11 +132,14 @@ function getProviderBlockReason(data) {
 
 async function lookupIpSecurity(ip) {
   if (!shouldLookupIp(ip)) return { checked: false, blocked: false };
+  // A provider outage affects all IPs. Avoid retrying it on every session poll.
+  if (Date.now() < lookupRetryAt) return { checked: false, blocked: false };
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
   try {
     const response = await fetch(buildProviderUrl(ip), { signal: controller.signal });
     if (!response.ok) {
+      if (response.status === 429 || response.status >= 500) lookupRetryAt = Date.now() + LOOKUP_FAILURE_RETRY_MS;
       console.warn("[session-security] IP provider returned a non-OK response.", {
         ip,
         status: response.status,
@@ -161,9 +166,13 @@ async function lookupIpSecurity(ip) {
     }
     return { checked: true, blocked, location };
   } catch (error) {
+    lookupRetryAt = Date.now() + LOOKUP_FAILURE_RETRY_MS;
     console.warn("[session-security] IP provider lookup failed.", {
       ip,
       error: error?.name || "LookupError",
+      // Log diagnostic codes only; URLs/messages can contain the provider API key.
+      cause: error?.cause?.code || error?.code || "UNKNOWN",
+      retryAfterSeconds: LOOKUP_FAILURE_RETRY_MS / 1000,
     });
     return { checked: false, blocked: false };
   } finally {

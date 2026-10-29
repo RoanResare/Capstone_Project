@@ -54,11 +54,15 @@ async function createCustomerProfile(req, res) {
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
   await validateAccessSecurity(req);
+  const signupStartedAt = Date.now();
   const challenge = await generateSupabaseEmailLink({ email, type: "signup", password,
     userMetadata: { full_name: fullName, username, phone: phone || "" } });
   let identity = challenge.user;
   if (!identity?.id) identity = await findSupabaseUserByEmail(email);
   const uid = identity?.id;
+  if (identity?.email && normalizeEmail(identity.email) !== email) {
+    throw new ApiError(503, "Supabase Auth returned an identity for a different email.", { code: "SUPABASE_AUTH_IDENTITY_MISMATCH" });
+  }
   if (!uid) {
     console.error("[registration] Supabase signup challenge returned no resolvable Auth user.", {
       hasTokenHash: Boolean(challenge.tokenHash),
@@ -71,18 +75,33 @@ async function createCustomerProfile(req, res) {
   const now = new Date().toISOString();
   const profileRef = db.collection("users").doc(uid);
   const usernameRef = db.collection("usernames").doc(username);
+  let profileCommitted = false;
   try {
     await db.runTransaction(async (transaction) => {
       const profile = await transaction.get(profileRef);
       const usernameDoc = await transaction.get(usernameRef);
-      if (profile.exists) throw new ApiError(409, "This account already has a profile.");
-      if (usernameDoc.exists) throw new ApiError(409, "That username is already in use.");
+      // Auth INSERT triggers may create a profile while generate_link runs.
+      // Complete only a fresh, unverified customer row for this exact identity.
+      const existing = profile.data() || {};
+      const createdAt = new Date(existing.createdAt).getTime();
+      const triggerProfile = profile.exists && normalizeEmail(existing.email) === email
+        && (existing.authUserId || existing.uid) === uid
+        && (!existing.username || existing.username === username)
+        && (!existing.role || existing.role === "customer")
+        && existing.emailVerified !== true && existing.verificationStatus !== "verified"
+        && [undefined, "active", "inactive", "pending"].includes(existing.accountStatus)
+        && [undefined, "active", "inactive", "pending"].includes(existing.status)
+        && Number.isFinite(createdAt) && createdAt >= signupStartedAt - 1000 && createdAt <= Date.now();
+      if (profile.exists && !triggerProfile) throw new ApiError(409, "This account already has a profile.");
+      if (usernameDoc.exists && !(triggerProfile && usernameDoc.data()?.uid === uid
+        && normalizeEmail(usernameDoc.data()?.email) === email)) throw new ApiError(409, "That username is already in use.");
       let phoneRef = null;
       let phoneAccountIds = [];
       if (phone) {
         phoneRef = db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, ""));
         const lock = await transaction.get(phoneRef);
         phoneAccountIds = [...new Set([...(lock.data()?.accountIds || []), ...await findPhoneAccounts(phone, transaction)])];
+        phoneAccountIds = phoneAccountIds.filter((accountId) => accountId !== uid);
         if (phoneAccountIds.length >= PHONE_ACCOUNT_LIMIT) throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
       }
       transaction.set(profileRef, {
@@ -95,18 +114,21 @@ async function createCustomerProfile(req, res) {
       transaction.set(usernameRef, { uid, email, username, createdAt: now, updatedAt: now, verificationStatus: "pending" });
       if (phoneRef) transaction.set(phoneRef, { accountIds: [...phoneAccountIds, uid], updatedAt: now });
     });
+    profileCommitted = true;
     await sendEmailVerificationLink({ to: email, fullName, verificationLink: buildAppVerificationLink(challenge.tokenHash, email) });
   } catch (error) {
-    await db.runTransaction(async (transaction) => {
+    if (profileCommitted) await db.runTransaction(async (transaction) => {
       const profile = await transaction.get(profileRef);
       const usernameDoc = await transaction.get(usernameRef);
       const phoneRef = phone ? db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, "")) : null;
       const lock = phoneRef ? await transaction.get(phoneRef) : null;
-      if (profile.exists && profile.data().verificationStatus === "pending") transaction.delete(profileRef);
+      if (profile.exists && profile.data().authUserId === uid && normalizeEmail(profile.data().email) === email
+        && profile.data().verificationStatus === "pending") transaction.delete(profileRef);
       if (usernameDoc.exists && usernameDoc.data().uid === uid) transaction.delete(usernameRef);
       if (lock?.exists) transaction.set(phoneRef, { accountIds: (lock.data()?.accountIds || []).filter((accountId) => accountId !== uid), updatedAt: new Date().toISOString() });
     }).catch(() => {});
-    await deleteSupabaseUser(uid).catch(() => {});
+    // Never delete an existing identity/profile when the transaction found a conflict.
+    if (profileCommitted || error?.statusCode !== 409) await deleteSupabaseUser(uid).catch(() => {});
     if (error?.code === "23505" || error?.cause?.code === "23505" || error?.originalError?.code === "23505") {
       throw new ApiError(409, "An account with this email or username already exists.", {
         code: "REGISTRATION_IDENTITY_CONFLICT",

@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:client": "vite",
     "dev:server": "node scripts/dev-server.mjs",
-    "build": "node scripts/buildRender.mjs",
+    "build": "npm --prefix server run build",
     "build:frontend": "node scripts/verifyFrontendEnv.mjs && vite build && node scripts/copyFrontendToServer.mjs",
     "start": "node server/server.js",
     "preview": "vite preview"

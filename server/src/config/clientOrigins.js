@@ -7,6 +7,7 @@ function getAllowedClientOrigins() {
     "https://www.charmingfurfectionpetservices.online",
     "https://charmingfurfectionpetservices.online",
     "https://api.charmingfurfectionpetscareservices.online",
+    "https://api.charmingfurfectionpetservices.online",
     "https://capstone-project-1-yqto.onrender.com",
     "http://localhost:5173",
     "http://localhost:3000",

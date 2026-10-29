@@ -46,16 +46,7 @@ if (!fs.existsSync(frontendIndexPath)) {
   });
 }
 const allowedOrigins = getAllowedClientOrigins();
-const databaseConnectOrigins = [];
-if (process.env.DATABASE_PROVIDER === "postgres") {
-  try {
-    const supabaseOrigin = new URL(process.env.SUPABASE_URL);
-    if (supabaseOrigin.protocol !== "https:") throw new Error("Use an HTTPS Supabase URL.");
-    databaseConnectOrigins.push(supabaseOrigin.origin, `wss://${supabaseOrigin.host}`);
-  } catch (_error) { throw new Error("Configure a valid HTTPS Supabase project URL before enabling PostgreSQL."); }
-}
-
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
@@ -66,9 +57,22 @@ app.use(cors({
   },
   credentials: true,
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Accept", "Authorization", "Content-Type", "X-Database-Provider"],
+  maxAge: 600,
   optionsSuccessStatus: 204,
   preflightContinue: false,
-}));
+};
+const databaseConnectOrigins = [];
+if (process.env.DATABASE_PROVIDER === "postgres") {
+  try {
+    const supabaseOrigin = new URL(process.env.SUPABASE_URL);
+    if (supabaseOrigin.protocol !== "https:") throw new Error("Use an HTTPS Supabase URL.");
+    databaseConnectOrigins.push(supabaseOrigin.origin, `wss://${supabaseOrigin.host}`);
+  } catch (_error) { throw new Error("Configure a valid HTTPS Supabase project URL before enabling PostgreSQL."); }
+}
+
+// Mounted before routes so cors handles all browser preflight OPTIONS requests.
+app.use(cors(corsOptions));
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -77,6 +81,7 @@ app.use(helmet({
         "https://identitytoolkit.googleapis.com",
         "https://securetoken.googleapis.com",
         "https://api.charmingfurfectionpetscareservices.online",
+        "https://api.charmingfurfectionpetservices.online",
         "https://capstone-project-bczf.onrender.com",
         ...databaseConnectOrigins,
       ],

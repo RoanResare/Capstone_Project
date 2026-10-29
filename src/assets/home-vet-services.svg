@@ -1,0 +1,39 @@
+<svg width="900" height="650" viewBox="0 0 900 650" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="30" y1="40" x2="858" y2="601" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#191614"/>
+      <stop offset="0.55" stop-color="#735316"/>
+      <stop offset="1" stop-color="#B07C17"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="600" y1="180" x2="822" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ED2E0"/>
+      <stop offset="1" stop-color="#2D9B9B"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="10" width="884" height="630" rx="56" fill="url(#bg)"/>
+  <circle cx="126" cy="126" r="70" fill="#9EE8E7" stroke="#111111" stroke-width="8"/>
+  <rect x="51" y="148" width="150" height="56" rx="28" fill="#FFC320" stroke="#111111" stroke-width="6"/>
+  <text x="126" y="113" fill="#111111" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">CHARMING</text>
+  <text x="126" y="131" fill="#111111" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">FUR-FECTION</text>
+  <text x="126" y="184" fill="#111111" font-family="Arial, sans-serif" font-size="16" font-weight="900" text-anchor="middle">PET CARE</text>
+  <text x="126" y="202" fill="#111111" font-family="Arial, sans-serif" font-size="16" font-weight="900" text-anchor="middle">SERVICES</text>
+  <path d="M468 14L890 452V80C890 41 859 10 820 10H468V14Z" fill="#C18A16" opacity="0.16"/>
+  <text x="318" y="176" fill="#FFC320" font-family="Arial, sans-serif" font-size="94" font-weight="300">VET</text>
+  <text x="254" y="276" fill="#2DC6D9" font-family="Arial, sans-serif" font-size="96" font-weight="900">CLINIC</text>
+  <text x="64" y="376" fill="#FFC320" font-family="Arial, sans-serif" font-size="60" font-weight="900">SERVICES OFFERED:</text>
+  <text x="114" y="438" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="44">• Vaccination</text>
+  <text x="114" y="488" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="44">• Deworming</text>
+  <text x="114" y="538" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="44">• Consultation</text>
+  <text x="114" y="588" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="44">• Laboratory Testing</text>
+  <text x="114" y="638" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="44">• Low Cost Kapon</text>
+  <path d="M644 190L882 90L882 622L616 622L554 420L644 190Z" fill="url(#accent)"/>
+  <path d="M674 210L850 138L850 592L644 592L598 428L674 210Z" fill="#FAFAF7"/>
+  <ellipse cx="774" cy="362" rx="112" ry="164" fill="#F5F3EE"/>
+  <path d="M702 252L748 198L786 270" fill="#F5F3EE"/>
+  <path d="M806 274L834 202L860 286" fill="#F5F3EE"/>
+  <circle cx="736" cy="346" r="8" fill="#2B2B2B"/>
+  <circle cx="806" cy="346" r="8" fill="#2B2B2B"/>
+  <ellipse cx="772" cy="384" rx="24" ry="20" fill="#E19BAB"/>
+  <path d="M772 404C750 424 722 444 702 468" stroke="#D8C7C8" stroke-width="10" stroke-linecap="round"/>
+  <path d="M800 404C820 430 844 452 858 470" stroke="#D8C7C8" stroke-width="10" stroke-linecap="round"/>
+</svg>

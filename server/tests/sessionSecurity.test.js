@@ -1,0 +1,711 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const { test } = require("node:test");
+const { ApiError } = require("../src/utils/ApiError");
+
+function loadService(filename, dependencies, globals = {}) {
+  const context = {
+    module: { exports: {} },
+    require: (name) => {
+      if (name === "../utils/ApiError") return { ApiError };
+      if (name === "../utils/emailValidation") return require("../src/utils/emailValidation");
+      if (name === "./disposableEmailDomains.service") return require("../src/services/disposableEmailDomains.service");
+      if (name.startsWith("node:") && !(name in dependencies)) return require(name);
+      if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
+      return dependencies[name];
+    },
+    URL, AbortController, setTimeout, clearTimeout,
+    console: { log() {}, warn() {} }, ...globals,
+  };
+  const scriptPath = path.join(__dirname, "../src/services", filename);
+  vm.runInNewContext(fs.readFileSync(scriptPath, "utf8"), context, {
+    filename: scriptPath,
+    importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER,
+  });
+  return context.module.exports;
+}
+
+
+function registrationService() {
+  return loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: { failClosed: true, geoLookupUrl: "https://example.org/vpn" } } },
+  }, { fetch: async () => assert.fail("No network/IP provider should be called") });
+}
+
+const response = (data) => ({ ok: true, json: async () => data });
+
+test("registration records IP only and never blocks on VPN, geography, unknown IP, or shared networks", async () => {
+  const service = registrationService();
+  assert.equal(service.validateAccessSecurity, undefined);
+  for (const ip of ["1.2.3.4", "8.8.8.8", "::1", "unknown", "2001:4860:4860::8888"]) {
+    const result = await service.validateRegistrationSecurity({ ip }, "customer@gmail.com");
+    assert.equal(result.registrationIp, ip);
+  }
+});
+
+function sessionSecurityService({ fetch = async () => response({ country: "Philippines" }), records = new Map(), revocations = [], security = {}, globals = {} } = {}) {
+  let transactionTail = Promise.resolve();
+  const db = {
+    collection: (name) => ({ doc: (id) => ({
+      id,
+      key: `${name}/${id}`,
+      get: async () => ({ data: () => records.get(`${name}/${id}`) }),
+      set: async (value, options = {}) => {
+        const key = `${name}/${id}`;
+        records.set(key, options.merge ? { ...records.get(key), ...value } : value);
+      },
+    }) }),
+    runTransaction: (action) => {
+      const operation = transactionTail.then(() => action({
+        get: async (ref) => ({ data: () => records.get(ref.key) }),
+        set: (ref, value) => records.set(ref.key, { ...records.get(ref.key), ...value }),
+      }));
+      transactionTail = operation.catch(() => {});
+      return operation;
+    },
+  };
+  return loadService("sessionSecurity.service.js", {
+    "../config/firebaseAdmin": { db, auth: { revokeRefreshTokens: async (uid) => { revocations.push(uid); } } },
+    "../config/env": { env: { security: {
+      geoLookupUrl: "https://api.ipapi.is/?q={ip}&key={api_key}",
+      geoLookupApiKey: "test-key",
+      ...security,
+    } } },
+  }, { fetch, ...globals });
+}
+
+test("login security calls ipapi.is and blocks explicit flags outside the regional whitelist", async () => {
+  for (const flag of ["is_vpn", "is_proxy", "is_tor", "is_hosting"]) {
+    const calls = [];
+    const service = sessionSecurityService({
+      fetch: async (url) => {
+        calls.push(url);
+        return response({ ip: "8.8.8.8", location: { country_code: "US", state: "Virginia" }, [flag]: true });
+      },
+    });
+    await assert.rejects(service.validateAccessSecurity({ ip: "8.8.8.8" }),
+      { statusCode: 403, message: "Blocked VPN IP address" });
+    assert.deepEqual(calls, ["https://api.ipapi.is/?q=8.8.8.8&key=test-key"]);
+  }
+});
+
+test("foreign or missing countries allow login and active sessions without explicit flags", async () => {
+  for (const data of [
+    { company: "Cloudflare, Inc.", country: "Japan", is_vpn: false },
+    { country: "Singapore", is_proxy: false, is_hosting: false },
+    { country: "Hong Kong", is_vpn: false, is_tor: false },
+    { location: { country: "Japan", country_code: "JP" } },
+    { location: { country: "Philippines", country_code: "JP" } },
+    {},
+  ]) {
+    const revocations = [];
+    const service = sessionSecurityService({ fetch: async () => response(data), revocations });
+    assert.equal((await service.validateAccessSecurity({ ip: "172.70.223.199" })).checked, true);
+    await service.validateSessionSecurity({
+      ip: "172.70.223.199", auth: { user: { uid: "user" }, claims: { iat: 10 } },
+    });
+    assert.deepEqual(revocations, []);
+  }
+});
+
+test("known VPN and hosting names or classifications block even with false VPN flags", async () => {
+  for (const data of [
+    { company: "Proton AG" },
+    { company: { name: "Proton Technologies AG" } },
+    { asn: "AS209103 Proton AG" },
+    { asn: { org: "ProtonVPN AG" } },
+    { asn: { name: "Windscribe Limited" } },
+    { company_name: "Privado Networks AG" },
+    { asn_org: "TunnelBear, LLC" },
+    { company: { name: "  PROTON, AG  " } },
+    { company: { name: "Unlisted hosting provider", type: "hosting" } },
+    { asn: { org: "Unlisted data center", type: "HOSTING" } },
+    { company: "Hetzner Online GmbH" },
+    { asn: { org: "DigitalOcean, LLC" } },
+    { company: "Amazon Data Services Japan" },
+    { is_datacenter: true },
+    { egress_service: { type: "private_relay", provider: "Cloudflare WARP" } },
+    { egress_service: { type: "secure_web_gateway", provider: "Zscaler" } },
+  ]) {
+    const revocations = [];
+    const service = sessionSecurityService({ fetch: async () => response({
+      country_code: "DE", ...data, is_vpn: false, is_proxy: false, is_tor: false, is_hosting: false,
+    }), revocations });
+    await assert.rejects(service.validateAccessSecurity({ ip: "8.8.8.8" }), { statusCode: 403 });
+    await assert.rejects(service.validateSessionSecurity({
+      ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10 } },
+    }), { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
+    assert.deepEqual(revocations, ["user"]);
+  }
+});
+
+test("local carriers and unrelated shared networks allow clean re-baselining", async () => {
+  for (const data of [
+    { company: "DITO Telecommunity Corporation", country: "Hong Kong" },
+    { asn: "AS4775 Globe Telecoms", country: "Singapore" },
+    { company: { name: "Globe Telecom, Inc." } },
+    { asn: { org: "Smart Communications, Inc." } },
+    { company: "PLDT Inc." },
+    { company: "Converge ICT Solutions", country: "PHILIPPINES" },
+    { company: { name: "Sky Cable Corporation" }, country: "Philippines" },
+    { asn: { org: "Sky Broadband" }, country: "philippines" },
+    { company: "An unlisted residential ISP", country: "pHiLiPpInEs" },
+    { company: "Philippine Long Distance Telephone Company" },
+    { company: "DITO Telecommunity", asn: "AS123 DITO Telecommunity" },
+    { company: { name: "Unknown local fiber network", type: "isp" }, asn: { type: "isp" }, country: "Singapore" },
+    { egress_service: { type: "satellite", provider: "Starlink" } },
+    { company: "Cloudflare, Inc." },
+    { company: "Proton Automotive" },
+    { company: "NotWindscribe Networks" },
+  ]) {
+    const records = new Map([["sessionConnections/session", { uid: "user", ip: "1.1.1.1" }]]);
+    const revocations = [];
+    const service = sessionSecurityService({ fetch: async () => response(data), records, revocations });
+    await service.validateAccessSecurity({ ip: "8.8.8.8" });
+    for (const ip of ["8.8.8.8", "1.1.1.1", "8.8.8.8"]) {
+      await service.validateSessionSecurity({
+        ip, auth: { user: { uid: "user" }, claims: { iat: 10, sessionId: "session" } },
+      });
+      assert.equal(records.get("sessionConnections/session").ip, ip);
+    }
+    assert.deepEqual(revocations, []);
+  }
+});
+
+test("every regional country overrides threat flags, provider names, and configured ranges", async () => {
+  for (const countryCode of ["PH", "SG", "HK", "BN", "KH", "ID", "LA", "MY", "MM", "TH", "TL", "VN"]) {
+    for (const flag of ["is_vpn", "is_proxy", "is_tor", "is_hosting", "is_datacenter"]) {
+      const records = new Map([["sessionConnections/session", { uid: "user", ip: "1.1.1.1" }]]);
+      const revocations = [];
+      const service = sessionSecurityService({ fetch: async () => response({
+        company: { name: "Proton AG", type: "hosting" }, location: { country_code: countryCode, state: "Local region" }, [flag]: true,
+      }), records, revocations, security: { blockedNetworkCidrs: "8.8.8.0/24" } });
+      const binding = await service.createFreshSessionBinding({ uid: "user" }, { ip: "8.8.8.8" });
+      assert.equal(records.get(`sessionConnections/${binding.sessionId}`).countryCode, countryCode);
+      await service.validateSessionSecurity({
+        ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10, sessionId: "session" } },
+      });
+      assert.equal(records.get("sessionConnections/session").countryCode, countryCode);
+      assert.equal(records.get("sessionConnections/session").region, "Local region");
+      assert.equal(records.has("sessionSecurity/user"), false);
+      assert.deepEqual(revocations, []);
+    }
+  }
+});
+
+test("regional names, codes, and conflicting provider fields allow access even with VPN evidence", async () => {
+  for (const data of [
+    { country: "Philippines" }, { country: " philippines " },
+    { country_code: "PH" }, { country: "PHL" },
+    { location: { country: "Philippines", country_code: "PH" } },
+    { country: "Singapore" }, { country: "Hong Kong" }, { country: "SGP" }, { country: "HKG" },
+    { country: "Vietnam" }, { country: "Brunei Darussalam" }, { country: "East Timor" },
+    { location: { country: "Philippines", country_code: "US" } },
+    { country_code: "DE", location: { country_code: "HK" } },
+  ]) {
+    const service = sessionSecurityService({ fetch: async () => response({ ...data, is_vpn: true }) });
+    assert.equal((await service.validateAccessSecurity({ ip: "8.8.8.8" })).checked, true);
+  }
+});
+
+test("clean IP changes update the session baseline; VPN activation terminates the session", async () => {
+  const records = new Map([
+    ["sessionSecurity/user", { revokedBefore: 0 }],
+    ["sessionConnections/session-1", { uid: "user", ip: "8.8.8.8" }],
+  ]);
+  const revocations = [];
+  const service = sessionSecurityService({
+    records,
+    revocations,
+    fetch: async (url) => response({
+      country: url.includes("9.9.9.9") ? "Japan" : "Hong Kong",
+      is_vpn: url.includes("9.9.9.9"),
+      is_proxy: false,
+      is_tor: false,
+      is_hosting: false,
+    }),
+  });
+  const req = {
+    ip: "1.1.1.1",
+    auth: { user: { uid: "user" }, claims: { sub: "user", iat: 10, sessionId: "session-1" } },
+  };
+
+  await service.validateSessionSecurity(req);
+  assert.equal(records.get("sessionConnections/session-1").ip, "1.1.1.1");
+  assert.deepEqual(revocations, []);
+
+  req.ip = "8.8.8.8";
+  await service.validateSessionSecurity(req);
+  req.ip = "1.1.1.1";
+  await service.validateSessionSecurity(req);
+  assert.equal(records.get("sessionConnections/session-1").ip, "1.1.1.1");
+  assert.deepEqual(revocations, []);
+
+  req.ip = "9.9.9.9";
+  await assert.rejects(service.validateSessionSecurity(req),
+    { statusCode: 403, message: "Your session was terminated because your IP address changed..." });
+  assert.deepEqual(revocations, ["user"]);
+});
+
+test("configured IPv4 and IPv6 ranges require confirmed non-regional geography", async () => {
+  const calls = [];
+  const service = sessionSecurityService({
+    security: { blockedNetworkCidrs: "8.8.8.0/24, 2001:4860:abcd::/48" },
+    fetch: async (url) => { calls.push(url); return response({ country_code: "US", company: { type: "isp" } }); },
+  });
+  for (const ip of ["8.8.8.0", "8.8.8.255", "2001:4860:abcd::1234"]) {
+    await assert.rejects(service.validateAccessSecurity({ ip }), { statusCode: 403 });
+  }
+  assert.equal(calls.length, 3);
+  for (const ip of ["8.8.9.1", "2001:4860:abce::1234"]) {
+    await service.validateAccessSecurity({ ip });
+  }
+  assert.equal(calls.length, 5);
+  for (const cidr of ["invalid/24", "8.8.8.0/33", "2001:4860::/129", "8.8.8.0/", "8.8.8.0/24/1"]) {
+    assert.throws(() => sessionSecurityService({ security: { blockedNetworkCidrs: cidr } }), /invalid IP address or CIDR/);
+  }
+});
+
+test("unknown geography and provider failures fail open even for configured ranges", async () => {
+  const providers = [
+    async () => { throw new Error("Provider unavailable"); },
+    async () => ({ ok: false, status: 429 }),
+    async () => ({ ok: false, status: 503 }),
+    async () => ({ ok: true, json: async () => { throw new SyntaxError("Invalid JSON"); } }),
+    async () => response({ error: "Quota exhausted", country_code: "US", is_vpn: true }),
+    async () => response(null),
+    async () => response({ country_code: "ZZ", is_vpn: true }),
+    async () => response({ country: "Unrecognized country", is_hosting: true }),
+    async () => response({ company: "Proton AG", is_vpn: true }),
+    async (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(Object.assign(new Error("Timed out"), { name: "AbortError" })));
+    }),
+  ];
+  for (const fetch of providers) {
+    const revocations = [];
+    const records = new Map([["sessionConnections/session", { uid: "user", ip: "1.1.1.1", countryCode: "PH" }]]);
+    const service = sessionSecurityService({ fetch, revocations, records,
+      security: { failClosed: true, blockedNetworkCidrs: "8.8.8.0/24" },
+      globals: { setTimeout: (callback) => setTimeout(callback, 5) },
+    });
+    await service.createFreshSessionBinding({ uid: "user" }, { ip: "8.8.8.8" });
+    await service.validateSessionSecurity({ ip: "8.8.8.8",
+      auth: { user: { uid: "user" }, claims: { iat: 10, sessionId: "session" } } });
+    assert.deepEqual(revocations, []);
+    assert.equal(records.has("sessionSecurity/user"), false);
+  }
+});
+
+test("the same IP is rechecked and its country and region changes are saved", async () => {
+  let location = { country_code: "PH", state: "Metro Manila" };
+  const records = new Map();
+  const revocations = [];
+  const service = sessionSecurityService({ records, revocations,
+    fetch: async () => response({ location, is_vpn: true }),
+  });
+  const binding = await service.createFreshSessionBinding({ uid: "user" }, { ip: "8.8.8.8" });
+  const req = { ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10, sessionId: binding.sessionId } } };
+  location = { country_code: "SG", state: "Singapore" };
+  await service.validateSessionSecurity(req);
+  assert.equal(records.get(`sessionConnections/${binding.sessionId}`).countryCode, "SG");
+  assert.equal(records.get(`sessionConnections/${binding.sessionId}`).region, "Singapore");
+  assert.deepEqual(revocations, []);
+  location = { country_code: "US", state: "Virginia" };
+  await assert.rejects(service.validateSessionSecurity(req), { statusCode: 403 });
+  assert.deepEqual(revocations, ["user"]);
+});
+
+test("late VPN checks and replayed tokens cannot revoke a fresh clean session", async () => {
+  let time = 100000;
+  let finishLate;
+  let startLate;
+  const started = new Promise((resolve) => { startLate = resolve; });
+  const records = new Map();
+  const revocations = [];
+  const service = sessionSecurityService({ records, revocations,
+    globals: { Date: class extends Date { static now() { return time; } } },
+    fetch: async (url) => {
+      if (url.includes("9.9.9.9")) {
+        startLate();
+        await new Promise((resolve) => { finishLate = resolve; });
+        return response({ country_code: "US", company: "Proton AG", is_vpn: false });
+      }
+      return response(url.includes("8.8.8.8") ? { country_code: "US", is_datacenter: true } : { company: { type: "isp" } });
+    },
+  });
+  const oldAuth = { user: { uid: "user" }, claims: { iat: 10 } };
+  const late = assert.rejects(service.validateSessionSecurity({ ip: "9.9.9.9", auth: oldAuth }), { statusCode: 403 });
+  await started;
+  await assert.rejects(service.validateSessionSecurity({ ip: "8.8.8.8", auth: oldAuth }), { statusCode: 403 });
+  const cutoff = records.get("sessionSecurity/user").revokedBefore;
+  time = 101100;
+  await service.waitForFreshSession("user", { now: () => time, sleep: () => assert.fail("Clean recovery should not wait past the cutoff") });
+  const binding = await service.createFreshSessionBinding({ uid: "user" }, { ip: "1.1.1.1" });
+  const freshRequest = { ip: "1.1.1.1", auth: { user: { uid: "user" }, claims: { iat: 101, sessionId: binding.sessionId } } };
+  await service.validateSessionSecurity(freshRequest);
+  time = 102000;
+  finishLate();
+  await late;
+  assert.equal(records.get("sessionSecurity/user").revokedBefore, cutoff);
+  assert.deepEqual(revocations, ["user"]);
+  await assert.rejects(service.validateSessionSecurity({ ip: "1.1.1.1", auth: oldAuth }), { statusCode: 401 });
+  await service.validateSessionSecurity(freshRequest);
+});
+
+test("simultaneous VPN violations revoke refresh tokens only once", async () => {
+  const revocations = [];
+  const service = sessionSecurityService({ fetch: async () => response({ country_code: "US", is_vpn: true }), revocations });
+  const req = { ip: "8.8.8.8", auth: { user: { uid: "user" }, claims: { iat: 10 } } };
+  await Promise.all([assert.rejects(service.validateSessionSecurity(req), { statusCode: 403 }),
+    assert.rejects(service.validateSessionSecurity(req), { statusCode: 403 })]);
+  assert.deepEqual(revocations, ["user"]);
+});
+
+test("anonymous provider responses produce one concise warning without logging credentials", async () => {
+  const warnings = [];
+  const service = sessionSecurityService({
+    fetch: async () => response({ company: "Local ISP", docs: "https://ipapi.is/free-tier.html" }),
+    globals: { console: { warn: (...args) => warnings.push(args) } },
+  });
+  await service.validateAccessSecurity({ ip: "8.8.8.8" });
+  await service.validateAccessSecurity({ ip: "1.1.1.1" });
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0][0], /FRAUD_GEO_LOOKUP_API_KEY/);
+  assert.doesNotMatch(JSON.stringify(warnings), /test-key/);
+});
+
+test("login, OTP, and session middleware create and validate clean session bindings", () => {
+  for (const file of ["controllers/auth.controller.js", "middlewares/authenticate.js"]) {
+    const source = fs.readFileSync(path.join(__dirname, "../src", file), "utf8");
+    assert.match(source, /validateAccessSecurity|validateSessionSecurity|createFreshSessionBinding/);
+  }
+  const source = fs.readFileSync(path.join(__dirname, "../src/services/sessionSecurity.service.js"), "utf8");
+  assert.match(source, /getClientIp/);
+  assert.match(source, /validateAccessSecurity/);
+  assert.match(source, /sessionConnections/);
+});
+
+function middlewareFor(user, claims, firebase = false) {
+  return loadService("../middlewares/authenticate.js", {
+    "../config/firebaseAdmin": { auth: { verifyIdToken: async () => claims } },
+    "../config/env": { env: { auth: { jwtSecret: "test" }, runtime: { firebaseAdminReady: true } } },
+    "../services/token.service": { verifyAccessToken: () => {
+      if (firebase) throw new ApiError(401, "Not a server token");
+      return claims;
+    } },
+    "../services/user.service": { getUserByUid: async () => user, toPublicUser: (value) => value },
+    "../services/sessionSecurity.service": { validateSessionSecurity: async () => {} },
+    "../constants/auth": { USER_STATUSES: { ACTIVE: "active" }, FRAUD_STATUSES: { SUSPENDED: "suspended", BANNED: "banned" } },
+  });
+}
+
+test("both token types authorize every role after session security passes", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    const claims = { sub: role, role, email: role + "@gmail.com", accountStatus: "active",
+      connectionIp: "9.9.9.9", sessionId: "historic-session" };
+    const user = { uid: role, ...claims };
+    for (const firebase of [false, true]) {
+      const middleware = middlewareFor(user, claims, firebase);
+      for (const ip of ["1.2.3.4", "5.6.7.8", "::1", "unknown"]) {
+        const req = { ip, headers: { authorization: "Bearer test" } };
+        let called = false;
+        await middleware.verifyToken(req, {}, (error) => { assert.equal(error, undefined); called = true; });
+        assert.equal(called, true);
+        assert.equal(req.auth.user.uid, role);
+      }
+    }
+    const middleware = middlewareFor(user, claims);
+    let called = false;
+    await middleware.verifySessionToken({ headers: { authorization: "Bearer test" } }, {},
+      (error) => { assert.equal(error, undefined); called = true; });
+    assert.equal(called, true);
+  }
+});
+
+test("authentication still rejects missing tokens and banned/inactive accounts", async () => {
+  const claims = { sub: "user", role: "customer", email: "customer@gmail.com", accountStatus: "active" };
+  for (const changes of [{ accountStatus: "inactive" }, { fraudStatus: "banned" }, { fraudStatus: "suspended" }]) {
+    const middleware = middlewareFor({ uid: "user", ...claims, ...changes }, claims);
+    await middleware.verifyToken({ headers: { authorization: "Bearer test" } }, {}, (error) => {
+      assert.equal(error.statusCode, 403);
+    });
+  }
+  const middleware = middlewareFor({ uid: "user", ...claims }, claims);
+  await middleware.verifyToken({ headers: {} }, {}, (error) => assert.equal(error.statusCode, 401));
+});
+
+test("historic pending revocations recover at login", async () => {
+  let time = 200250;
+  let revocations = 0;
+  const records = new Map([["user", { revokedBefore: 100, revocationPending: true }]]);
+  const db = {
+    collection: (name) => {
+      assert.equal(name, "sessionSecurity");
+      return { doc: (uid) => ({ uid, get: async () => ({ data: () => records.get(uid) }) }) };
+    },
+    runTransaction: async (action) => action({
+      get: async (ref) => ({ data: () => records.get(ref.uid) }),
+      set: (ref, value) => records.set(ref.uid, { ...records.get(ref.uid), ...value }),
+    }),
+  };
+  const service = loadService("sessionSecurity.service.js", {
+    "../config/firebaseAdmin": { db, auth: { revokeRefreshTokens: async () => { revocations++; } } },
+    "../config/env": { env: { security: {} } },
+  });
+  assert.equal(typeof service.validateSessionSecurity, "function");
+  assert.equal(typeof service.createFreshSessionBinding, "function");
+  await service.waitForFreshSession("user", { now: () => time, sleep: async (ms) => { time += ms; } });
+  assert.equal(records.get("user").revocationPending, false);
+  assert.equal(records.get("user").revokedBefore, 200);
+  assert.equal(time, 201000);
+  assert.equal(revocations, 1);
+  await service.waitForFreshSession("user", { now: () => time, sleep: async () => assert.fail("Recovered login must not wait again") });
+  assert.equal(revocations, 1);
+});
+
+test("malformed email errors retain the validation message", async () => {
+  const service = registrationService();
+  for (const email of ["fake", "fake@@gmail.com", ".fake@gmail.com", "fake@-domain.com"]) {
+    await assert.rejects(service.validateRegistrationSecurity({ ip: "1.2.3.4" }, email),
+      { statusCode: 400, message: "Illegitimate email cannot be verified" });
+  }
+});
+
+test("built-in disposable domains and subdomains reject before DNS or provider requests", async () => {
+  for (const emailValidationUrl of ["", "https://example.org/check?email={email}"]) {
+    const service = loadService("registrationSecurity.service.js", {
+      "../config/env": { env: { security: { emailValidationUrl } } },
+      "node:dns/promises": { Resolver: class { async resolveMx() { assert.fail("Disposable domains must not query DNS"); } } },
+    }, { fetch: async () => assert.fail("Disposable domains must not query the provider") });
+    for (const domain of ["hudzer.com", "mailinator.com", "tempmail.com", "temp-mail.org",
+      "10minutemail.com", "throwawaymail.com", "guerrillamail.com", "guerrillamail.net",
+      "yopmail.com", "1secmail.com", "maildrop.cc", "getnada.com", "inbox.mailinator.com", "yzcalo.com", "gmeenramy.com"]) {
+      await assert.rejects(service.validateRegistrationSecurity({ ip: "1.2.3.4" }, ` User@${domain.toUpperCase()} `),
+        (error) => error.statusCode === 400 && error.message === "Temporary or disposable email addresses are not allowed"
+          && error.details.code === "DISPOSABLE_EMAIL_DOMAIN");
+    }
+  }
+});
+
+test("registration allows trusted providers and school domains while rejecting custom domains", async () => {
+  const dnsCalls = [];
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: {} } },
+    "node:dns/promises": { Resolver: class { async resolveMx(domain) {
+      dnsCalls.push(domain);
+      return [{ exchange: "mx.business.example" }];
+    } } },
+  });
+  for (const domain of ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"]) {
+    await service.validateRegistrationSecurity({}, `user+tag@${domain}`);
+  }
+  assert.equal(dnsCalls.length, 0);
+  for (const domain of ["sti.edu", "students.sti.edu", "school.edu.ph", "students.school.edu.ph"]) {
+    await service.validateRegistrationSecurity({}, `user@${domain}`);
+  }
+  assert.deepEqual(dnsCalls, ["school.edu.ph", "students.school.edu.ph"]);
+  for (const domain of ["business.com.ph", "company.org", "lala.com", "mailinator.com.business.org", "notmailinator.example"]) {
+    await assert.rejects(service.validateRegistrationSecurity({}, `user@${domain}`),
+      (error) => error.statusCode === 400 && error.details.code === "UNTRUSTED_EMAIL_DOMAIN");
+  }
+});
+
+test("every registration checks disposable domains before any provider request", async () => {
+  let providerCalls = 0;
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}", failClosed: true } } },
+    "node:dns/promises": { Resolver: class { async resolveMx() { assert.fail("Registration does not classify custom domains by DNS"); } } },
+  }, { fetch: async () => { providerCalls++; return response({ valid: true, deliverable: true }); } });
+  const req = { ip: "1.2.3.4", body: { fullName: "Same Name", password: "Test123!", phone: "09620614953" } };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await service.validateRegistrationSecurity(req, "student@sti.edu");
+    for (const domain of ["yzcalo.com", "gmeenramy.com"]) {
+      await assert.rejects(service.validateRegistrationSecurity(req, `same@${domain}`),
+        { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
+    }
+  }
+  assert.equal(providerCalls, 3);
+});
+
+test("registration rejects custom domains without mail records and reports DNS outages as temporary", async () => {
+  for (const [records, code, statusCode] of [[[], null, 400], [null, "ENOTFOUND", 400], [null, "ETIMEOUT", 503]]) {
+    const service = loadService("registrationSecurity.service.js", {
+      "../config/env": { env: { security: {} } },
+      "node:dns/promises": { Resolver: class { async resolveMx() {
+        if (code) throw Object.assign(new Error(code), { code });
+        return records;
+      } } },
+    });
+    await assert.rejects(service.validateRegistrationSecurity({}, "user@school.edu.ph"), { statusCode });
+  }
+});
+
+test("external disposable heuristics cannot reject unlisted custom or institutional domains", async () => {
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}" } } },
+  }, { fetch: async () => response({ valid: true, deliverable: true, disposable: true }) });
+  for (const domain of ["new-disposable.example", "sti.edu", "students.sti.edu", "gmail.com", "yahoo.com", "outlook.com", "hotmail.com"]) {
+    await service.assertEmailIsDeliverable(`user@${domain}`);
+  }
+});
+
+test("backend account creation rejects disposable email before checking duplicates or creating identities", async () => {
+  const registration = registrationService();
+  const service = loadService("user.service.js", {
+    "../config/env": { env: { nodeEnv: "test" } },
+    "../config/firebaseAdmin": {
+      auth: { createUser: () => assert.fail("A disposable address must not create an identity") },
+      db: { collection: () => assert.fail("Disposable validation must precede duplicate checks") },
+    },
+    "../constants/auth": require("../src/constants/auth"),
+    "../utils/phoneNumber": require("../src/utils/phoneNumber"),
+    "./registrationSecurity.service": registration,
+  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    for (const domain of ["yzcalo.com", "gmeenramy.com"]) {
+      await assert.rejects(service.createPortalUser({
+        email: `same@${domain}`, fullName: "Same Name", username: "same_user", password: "Test123!",
+        role: "staff", phone: "09620614953",
+      }), { statusCode: 400, message: "Temporary or disposable email addresses are not allowed" });
+    }
+  }
+});
+
+test("unknown email domains require mail records; DNS outages are not mislabeled as fake emails", async () => {
+  for (const [records, code, statusCode] of [[[{ exchange: "mx.example.org" }], null, null],
+    [[], null, 400], [[{ exchange: "." }], null, 400], [null, "ENOTFOUND", 400], [null, "ETIMEOUT", 503]]) {
+    const service = loadService("registrationSecurity.service.js", {
+      "../config/firebaseAdmin": { db: null },
+      "../config/env": { env: { security: {} } },
+      "node:dns/promises": { Resolver: class { async resolveMx() {
+        if (code) throw Object.assign(new Error(code), { code });
+        return records;
+      } } },
+    });
+    if (statusCode) {
+      await assert.rejects(service.assertEmailIsDeliverable("test@example.org"),
+        statusCode === 400 ? { statusCode, message: "Illegitimate email cannot be verified" } : { statusCode });
+    } else await service.assertEmailIsDeliverable("test@example.org");
+  }
+});
+
+test("configured email providers cannot bypass mailbox validation for common domains", async () => {
+  const service = loadService("registrationSecurity.service.js", {
+    "../config/firebaseAdmin": { db: null },
+    "../config/env": { env: { security: { emailValidationUrl: "https://example.org/check?email={email}" } } },
+  }, { fetch: async () => response({ deliverable: false }) });
+  await assert.rejects(service.assertEmailIsDeliverable("fake@gmail.com"),
+    { statusCode: 400, message: "Illegitimate email cannot be verified" });
+});
+
+test("booking transaction enforces ownership and capacity before writing", async () => {
+  let writes = 0;
+  let full = false;
+  const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
+  const transaction = {
+    get: async (ref) => ref.query
+      ? { docs: full ? Array.from({length:3}, (_, index) => ({ id: `other-${index}`, data: () => ({ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", customerId: `customer-${index}`, petRecordId: `pet-${index}` }) })) : [] }
+      : { exists: ref.name === "pets", data: () => ({ customerId: "user", petType: "Cat" }) },
+    set: () => { writes++; },
+  };
+  const controller = loadService("../controllers/appointment.controller.js", {
+    "../config/firebaseAdmin": { db: {
+      collection: (name) => ({ doc: (id) => ({name,id}), where: () => makeQuery() }),
+      runTransaction: async (action) => action(transaction),
+    } },
+  });
+  const req = {
+    auth: { user: { uid: "user", role: "customer" } }, params: { id: "booking" },
+    body: { id: "booking", customerId: "other", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", slotCapacity: 1 },
+  };
+  await assert.rejects(controller.saveAppointment(req, { json() {} }), { statusCode: 403 });
+  assert.equal(writes, 0);
+  req.body.customerId = "user";
+  full = true;
+  await assert.rejects(controller.saveAppointment(req, { json() {} }), { statusCode: 409 });
+  assert.equal(writes, 0);
+  full = false;
+  await controller.saveAppointment(req, { json() {} });
+  assert.equal(writes, 2);
+});
+
+function appointmentFixture({ existing, slot, active = [] } = {}) {
+  const writes = [];
+  const existingAppointment = existing ? { serviceId: "vaccination", serviceIds: ["vaccination"], petRecordId: "pet",
+    slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00",
+    clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], ...existing } : undefined;
+  const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
+  const controller = loadService("../controllers/appointment.controller.js", {
+    "../config/firebaseAdmin": { db: {
+      collection: (name) => ({ doc: (id) => ({ name, id }), where: () => makeQuery() }),
+      runTransaction: async (action) => action({
+        get: async (ref) => ref.query ? { docs: active.map((data, index) => ({ id: `other-${index}`, data: () => data })) }
+          : { exists: Boolean(ref.name === "appointments" ? existingAppointment : ref.name === "pets" ? true : ref.name === "deletedPets" ? false : slot),
+            data: () => ref.name === "appointments" ? existingAppointment : ref.name === "pets" ? {customerId:"user",petType:"Cat"} : slot },
+        set: (ref, data) => writes.push(data),
+      }),
+    } },
+  });
+  return { writes, save: (body, role = "customer") => controller.saveAppointment({
+    params: { id: "booking" }, auth: { user: { uid: "user", role } },
+    body: { id: "booking", customerId: "user", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId:"slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body },
+  }, { json() {} }) };
+}
+
+test("admin and staff must assign staff before confirmation or acceptance", async () => {
+  for (const role of ["admin", "staff"]) {
+    for (const status of ["Confirmed", "Accepted"]) {
+      const fixture = appointmentFixture({ existing: { status: "Pending" } });
+      for (const assignedStaff of [undefined, "", "   "]) {
+        await assert.rejects(fixture.save({ status, assignedStaff }, role), { statusCode: 400 });
+      }
+      assert.equal(fixture.writes.length, 0);
+      await fixture.save({ status, assignedStaff: "Active Staff" }, role);
+      assert.equal(fixture.writes.length, 1);
+    }
+  }
+  const fixture = appointmentFixture({ existing: { status: "Confirmed", assignedStaff: "Staff" } });
+  await assert.rejects(fixture.save({ status: "Confirmed", assignedStaff: "" }, "admin"), { statusCode: 400 });
+});
+
+test("disabled slots reject new bookings and rescheduling; reopened slots accept bookings", async () => {
+  for (const slot of [{ isOpen: false }, { disabled: true }, { status: "Cancelled" }, { status: "disabled" }, { status: "Closed" }]) {
+    for (const existing of [undefined, { customerId: "user", status: "Pending", slotId: "old" }]) {
+      const fixture = appointmentFixture({ slot, existing });
+      await assert.rejects(fixture.save({ slotId: "closed" }), { statusCode: 409 });
+      assert.equal(fixture.writes.length, 0);
+    }
+  }
+  const reopened = appointmentFixture({ slot: { isOpen: true, disabled: false, status: "Open", capacity: 3 } });
+  await reopened.save({ slotId: "reopened" });
+  assert.equal(reopened.writes.length, 2);
+});
+
+test("stored slot capacity overrides customer input and customers cannot approve or reopen appointments", async () => {
+  const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
+  await assert.rejects(full.save({ slotId: "slot", slotCapacity: 99 }), { statusCode: 409 });
+  const customer = appointmentFixture({ existing: { customerId: "user", status: "Pending" } });
+  await assert.rejects(customer.save({ status: "Confirmed", assignedStaff: "Staff" }), { statusCode: 403 });
+  assert.equal(customer.writes.length, 0);
+  const confirmed = appointmentFixture({ existing: { customerId: "user", status: "Confirmed", assignedStaff: "Staff" } });
+  await assert.rejects(confirmed.save({ status: "Pending" }), { statusCode: 403 });
+  await confirmed.save({ status: "Cancelled" });
+  assert.equal(confirmed.writes.length, 2);
+});
+
+test("Pending appointments reserve slot capacity and cancellations free the slot", async () => {
+  const full = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
+  await assert.rejects(full.save({ slotId: "slot" }), { statusCode: 409 });
+  assert.equal(full.writes.length, 0);
+
+  const released = appointmentFixture({ slot: { isOpen: true, capacity: 1 } });
+  await released.save({ slotId: "slot" });
+  assert.equal(released.writes.length, 2);
+  assert.equal(released.writes[0].reservationVersion, 1);
+
+  const reactivated = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, existing: { status: "Cancelled" }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
+  await assert.rejects(reactivated.save({ status: "Pending" }, "staff"), { statusCode: 409 });
+  assert.equal(reactivated.writes.length, 0);
+});

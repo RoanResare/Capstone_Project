@@ -1,0 +1,128 @@
+﻿[
+    {
+        "tab":  "overview",
+        "width":  390,
+        "overflow":  false,
+        "bannerHeight":  148,
+        "sidebar":  358
+    },
+    {
+        "tab":  "services",
+        "width":  390,
+        "overflow":  false,
+        "bannerHeight":  148,
+        "sidebar":  358
+    },
+    {
+        "tab":  "profile",
+        "width":  390,
+        "overflow":  false,
+        "bannerHeight":  148,
+        "sidebar":  358
+    },
+    {
+        "tab":  "signup",
+        "width":  390,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "login",
+        "width":  390,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "home",
+        "width":  390,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "overview",
+        "width":  768,
+        "overflow":  false,
+        "bannerHeight":  164,
+        "sidebar":  720
+    },
+    {
+        "tab":  "services",
+        "width":  768,
+        "overflow":  false,
+        "bannerHeight":  164,
+        "sidebar":  720
+    },
+    {
+        "tab":  "profile",
+        "width":  768,
+        "overflow":  false,
+        "bannerHeight":  164,
+        "sidebar":  720
+    },
+    {
+        "tab":  "signup",
+        "width":  768,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "login",
+        "width":  768,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "home",
+        "width":  768,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "overview",
+        "width":  1440,
+        "overflow":  false,
+        "bannerHeight":  123,
+        "sidebar":  216
+    },
+    {
+        "tab":  "services",
+        "width":  1440,
+        "overflow":  false,
+        "bannerHeight":  123,
+        "sidebar":  216
+    },
+    {
+        "tab":  "profile",
+        "width":  1440,
+        "overflow":  false,
+        "bannerHeight":  123,
+        "sidebar":  216
+    },
+    {
+        "tab":  "signup",
+        "width":  1440,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "login",
+        "width":  1440,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    },
+    {
+        "tab":  "home",
+        "width":  1440,
+        "overflow":  false,
+        "bannerHeight":  0,
+        "sidebar":  0
+    }
+]

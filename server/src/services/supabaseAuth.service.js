@@ -1,0 +1,186 @@
+const { env } = require("../config/env");
+const { ApiError } = require("../utils/ApiError");
+
+function authHeaders({ admin = false, accessToken = "" } = {}) {
+  const apiKey = admin ? env.supabase.serviceRoleKey : env.supabase.anonKey;
+  if (!env.supabase.url || !apiKey) {
+    throw new ApiError(503, admin
+      ? "Supabase Auth administration is not configured on the backend."
+      : "Supabase Auth is not configured on the backend.");
+  }
+  return {
+    apikey: apiKey,
+    Authorization: `Bearer ${accessToken || apiKey}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function authRequest(path, { method = "GET", body, admin = false, accessToken = "" } = {}) {
+  let response;
+  try {
+    response = await fetch(`${env.supabase.url}/auth/v1${path}`, {
+      method,
+      headers: authHeaders({ admin, accessToken }),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (_error) {
+    throw new ApiError(503, "Supabase Auth could not be reached right now.", { code: "SUPABASE_AUTH_UNAVAILABLE" });
+  }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const code = String(payload?.code || payload?.error_code || payload?.error || "");
+    const message = String(payload?.msg || payload?.message || "");
+    const authFailure = response.status === 400 || response.status === 401 || response.status === 403;
+    throw new ApiError(authFailure ? 400 : response.status >= 500 ? 503 : response.status,
+      message || "Supabase Auth request failed.", { code, error: payload?.error || "" });
+  }
+  return payload;
+}
+
+async function signInWithSupabasePassword(email, password) {
+  try {
+    const session = await authRequest("/token?grant_type=password", {
+      method: "POST", body: { email, password },
+    });
+    if (!session?.access_token || !session?.user?.id) {
+      throw new ApiError(503, "Supabase Auth returned an incomplete session.");
+    }
+    return session;
+  } catch (error) {
+    if (error.statusCode === 401) {
+      error.message = "Invalid email or password.";
+      error.details = { ...(error.details || {}), supabaseCode: "INVALID_LOGIN_CREDENTIALS" };
+    }
+    throw error;
+  }
+}
+
+async function findSupabaseUserByEmail(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return null;
+  const payload = await authRequest(`/admin/users?page=1&per_page=100&filter=${encodeURIComponent(normalized)}`, { admin: true });
+  const users = Array.isArray(payload?.users) ? payload.users : [];
+  return users.find((user) => String(user.email || "").trim().toLowerCase() === normalized) || null;
+}
+
+async function createSupabaseSessionForUser(email) {
+  const generated = await authRequest("/admin/generate_link", {
+    method: "POST", admin: true, body: { type: "magiclink", email },
+  });
+  const tokenHash = generated?.hashed_token || generated?.properties?.hashed_token;
+  if (!tokenHash) throw new ApiError(503, "Supabase Auth did not generate a session challenge.");
+  const session = await authRequest("/verify", {
+    method: "POST", body: { type: "magiclink", token_hash: tokenHash },
+  });
+  if (!session?.access_token || !session?.user?.id) {
+    throw new ApiError(503, "Supabase Auth did not return a complete session.");
+  }
+  return session;
+}
+
+async function generateSupabaseRecoveryToken(email) {
+  const generated = await authRequest("/admin/generate_link", {
+    method: "POST", admin: true, body: { type: "recovery", email },
+  });
+  const tokenHash = generated?.hashed_token || generated?.properties?.hashed_token;
+  if (!tokenHash) throw new ApiError(503, "Supabase Auth did not generate a password reset challenge.");
+  return { tokenHash, user: generated.user || null };
+}
+
+async function createSupabaseUser({ email, password, userMetadata = {}, emailConfirmed = false }) {
+  return authRequest("/admin/users", {
+    method: "POST", admin: true,
+    body: { email, password, email_confirm: emailConfirmed, user_metadata: userMetadata },
+  });
+}
+
+async function getSupabaseUserById(userId) {
+  return authRequest(`/admin/users/${encodeURIComponent(userId)}`, { admin: true });
+}
+
+async function deleteSupabaseUser(userId) {
+  return authRequest(`/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE", admin: true });
+}
+
+async function updateSupabaseUser(userId, updates = {}) {
+  return authRequest(`/admin/users/${encodeURIComponent(userId)}`, { method: "PUT", admin: true, body: updates });
+}
+
+async function generateSupabaseEmailLink({ email, type, password, userMetadata = {} }) {
+  const generated = await authRequest("/admin/generate_link", {
+    method: "POST", admin: true,
+    body: { type, email, ...(password ? { password } : {}), options: { data: userMetadata } },
+  });
+  const tokenHash = generated?.hashed_token || generated?.properties?.hashed_token;
+  if (!tokenHash) throw new ApiError(503, "Supabase Auth did not generate an email verification challenge.");
+  return { tokenHash, user: generated.user || null, actionLink: generated.action_link || "" };
+}
+
+async function verifySupabaseEmailToken(tokenHash, type = "signup") {
+  return authRequest("/verify", { method: "POST", body: { type, token_hash: tokenHash } });
+}
+
+async function verifySupabaseRecoveryToken(tokenHash) {
+  return authRequest("/verify", {
+    method: "POST", body: { type: "recovery", token_hash: tokenHash },
+  });
+}
+
+async function updateSupabasePassword(accessToken, password) {
+  return authRequest("/user", { method: "PUT", accessToken, body: { password } });
+}
+
+function decodeJwtPayload(token) {
+  const encoded = String(token || "").split(".")[1];
+  if (!encoded) return null;
+  try { return JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); }
+  catch { return null; }
+}
+
+function isSupabaseAccessToken(token) {
+  if (!env.runtime.supabaseAuthReady) return false;
+  const claims = decodeJwtPayload(token);
+  return claims?.iss === `${env.supabase.url}/auth/v1` && typeof claims.sub === "string";
+}
+
+async function verifySupabaseAccessToken(token) {
+  if (!env.runtime.supabaseAuthReady) throw new ApiError(503, "Supabase Auth verification is not configured on the backend.");
+  const claims = decodeJwtPayload(token);
+  if (!claims || claims.iss !== `${env.supabase.url}/auth/v1` || typeof claims.sub !== "string") {
+    throw new ApiError(401, "The Supabase session token is invalid or has expired.");
+  }
+  let response;
+  try {
+    response = await fetch(`${env.supabase.url}/auth/v1/user`, {
+      headers: { apikey: env.supabase.anonKey, Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (_error) {
+    throw new ApiError(503, "Supabase Auth could not be reached to verify this session.", { code: "SUPABASE_AUTH_UNAVAILABLE" });
+  }
+  if (response.status === 401 || response.status === 403) throw new ApiError(401, "The Supabase session token is invalid or has expired.");
+  if (!response.ok) throw new ApiError(503, "Supabase Auth could not verify this session right now.", { code: "SUPABASE_AUTH_UNAVAILABLE" });
+  const user = await response.json().catch(() => null);
+  if (!user?.id || user.id !== claims.sub) throw new ApiError(401, "The Supabase session does not match its user identity.");
+  return { ...claims, uid: user.id, sub: user.id, email: user.email || claims.email || "", supabaseUser: user };
+}
+
+module.exports = {
+  authRequest,
+  createSupabaseUser,
+  deleteSupabaseUser,
+  createSupabaseSessionForUser,
+  decodeJwtPayload,
+  findSupabaseUserByEmail,
+  generateSupabaseRecoveryToken,
+  generateSupabaseEmailLink,
+  getSupabaseUserById,
+  isSupabaseAccessToken,
+  signInWithSupabasePassword,
+  updateSupabasePassword,
+  updateSupabaseUser,
+  verifySupabaseEmailToken,
+  verifySupabaseAccessToken,
+  verifySupabaseRecoveryToken,
+};

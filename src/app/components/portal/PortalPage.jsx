@@ -1,0 +1,2352 @@
+import { EmployeeSaveConfirmation } from "./EmployeeSaveConfirmation.jsx";
+import { EmployeePasswordInput } from "./EmployeePasswordInput.jsx";
+import { buildAppointmentHistory } from "../../../../shared/appointmentHistory.mjs";
+import { getPasswordPolicyError } from "../../utils/passwordPolicy.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
+import { AppointmentApprovalDialog } from "./AppointmentApprovalDialog.jsx";
+import { BookingAdditions } from "../BookingAdditions.jsx";
+import { createPortal } from "react-dom";
+import { PricelistManager } from "./PricelistManager.jsx";
+import { KaponPromoManager } from "./KaponPromoManager.jsx";
+import { AppointmentCalendar } from "./AppointmentCalendar.jsx";
+import { useLocation, useSearchParams } from "react-router-dom";
+import {
+  CalendarDays,
+  ArrowLeft,
+  Clock3,
+  Mail,
+  PawPrint,
+  Phone,
+  Search,
+  Trash2,
+  X,
+  UserRound,
+} from "lucide-react";
+import { useApp } from "../../context/AppContext.jsx";
+import { useToast } from "../../context/ToastContext.jsx";
+import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
+import { getActiveAppointmentCountForSlot, getBlockCapacity } from "../../../../shared/bookingServices.mjs";
+import { groupPendingAppointments, appointmentDateKey } from "../../utils/appointmentPresentation.js";
+import {
+  canApproveAppointment,
+  canCompleteAppointment,
+  canChangeAppointmentStatus,
+} from "../../utils/appointmentActions.js";
+import {
+  appointmentFilters,
+  breedsByPetType,
+  buildSeedAvailabilitySlots,
+  petTypeOptions,
+  portalUserRoles,
+  portalUserStatuses,
+} from "../../data/systemData.js";
+
+const NEW_PORTAL_USER_ID = "__new-portal-user__";
+function isValidDateInstance(value) {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
+function parseDateValue(value) {
+  if (value instanceof Date) {
+    return isValidDateInstance(value) ? value : null;
+  }
+
+  if (value && typeof value === "object") {
+    if (typeof value.toDate === "function") {
+      const parsed = value.toDate();
+      return isValidDateInstance(parsed) ? parsed : null;
+    }
+
+    if (typeof value.seconds === "number") {
+      const milliseconds = value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1000000);
+      const parsed = new Date(milliseconds);
+      return isValidDateInstance(parsed) ? parsed : null;
+    }
+  }
+
+  if (typeof value !== "string" && typeof value !== "number") {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  return isValidDateInstance(parsed) ? parsed : null;
+}
+
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+function getLocalDateKey(date = new Date()) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+}
+
+function normalizeScheduleTime(timeValue) {
+  if (typeof timeValue !== "string") {
+    return "";
+  }
+
+  const normalized = timeValue.trim();
+  if (!normalized) {
+    return "";
+  }
+
+  const match = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    return normalized;
+  }
+
+  const [, hours, minutes] = match;
+  return `${padDatePart(hours)}:${minutes}`;
+}
+
+function parseDateTimeParts(dateValue, timeValue) {
+  if (typeof dateValue !== "string" || typeof timeValue !== "string") {
+    return null;
+  }
+
+  const normalizedDate = dateValue.trim();
+  const normalizedTime = normalizeScheduleTime(timeValue);
+  if (!normalizedDate || !normalizedTime) {
+    return null;
+  }
+
+  const parsed = new Date(`${normalizedDate}T${normalizedTime}:00`);
+  return isValidDateInstance(parsed) ? parsed : null;
+}
+
+function formatDateTime(value, fallback = "Time unavailable") {
+  const parsed = parseDateValue(value);
+  if (!parsed) {
+    return fallback;
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatDateLabel(value, fallback = "Not set") {
+  if (typeof value !== "string" || !value.trim()) {
+    return fallback;
+  }
+
+  const parsed = new Date(`${value.trim()}T00:00:00`);
+  if (!isValidDateInstance(parsed)) {
+    return fallback;
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function formatTimeLabel(value, fallback = "Time unavailable") {
+  const normalizedTime = normalizeScheduleTime(value);
+
+  if (!normalizedTime) {
+    return fallback;
+  }
+
+  const parsed = new Date(`2000-01-01T${normalizedTime}:00`);
+  if (!isValidDateInstance(parsed)) {
+    return normalizedTime;
+  }
+
+  return new Intl.DateTimeFormat("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatAppointmentSchedule(appointment, fallback = "Schedule pending") {
+  const parsed = parseDateTimeParts(appointment?.scheduleDate, appointment?.scheduleTime);
+  if (parsed) {
+    return formatDateTime(parsed);
+  }
+
+  if (appointment?.schedule) {
+    return formatDateTime(appointment.schedule, fallback);
+  }
+
+  return fallback;
+}
+
+function getAppointmentSortTime(appointment) {
+  const parsed = parseDateTimeParts(appointment?.scheduleDate, appointment?.scheduleTime);
+  if (parsed) {
+    return parsed.getTime();
+  }
+
+  return parseDateValue(appointment?.schedule)?.getTime() ?? Number.POSITIVE_INFINITY;
+}
+
+function getNewestTimestamp(record, fallbackFields = []) {
+  const timestampFields = ["createdAt", ...fallbackFields, "updatedAt"];
+
+  for (const field of timestampFields) {
+    const parsed = parseDateValue(record?.[field]);
+    if (parsed) {
+      return parsed.getTime();
+    }
+  }
+
+  return 0;
+}
+
+function sortByNewest(left, right, fallbackFields = []) {
+  const rightTime = getNewestTimestamp(right, fallbackFields);
+  const leftTime = getNewestTimestamp(left, fallbackFields);
+
+  if (rightTime !== leftTime) {
+    return rightTime - leftTime;
+  }
+
+  return String(right?.id || "").localeCompare(String(left?.id || ""));
+}
+
+function statusClasses(status) {
+  if (status === "Completed") return "bg-[#165B3B] text-white";
+  if (["Confirmed", "Accepted", "Approved", "Completed"].includes(status)) {
+    return "bg-[#E8F7EE] text-[#1D7C45]";
+  }
+
+  if (status === "No Show") return "bg-[#F1F3F5] text-[#5B636D]";
+  if (["Rejected", "Cancelled"].includes(status)) {
+    return "bg-[#FCE8EB] text-[#B23949]";
+  }
+
+  if (["Pending"].includes(status)) {
+    return "bg-[#FFF4DF] text-[#A56A0F]";
+  }
+
+  return "bg-[#EAF4F4] text-[#2D6A73]";
+}
+
+function employeeStatusClasses(status) {
+  if (status === "active") {
+    return "bg-[#E8F7EE] text-[#1D7C45]";
+  }
+
+  if (status === "suspended") {
+    return "bg-[#FFF4DF] text-[#A56A0F]";
+  }
+
+  return "bg-[#FCE8EB] text-[#B23949]";
+}
+
+function formatRoleLabel(role = "staff") {
+  const normalized = typeof role === "string" ? role.trim().toLowerCase() : "staff";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatUserStatusLabel(status = "active") {
+  const normalized = typeof status === "string" ? status.trim().toLowerCase() : "active";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function notificationTone(level = "info") {
+  if (level === "success") {
+    return "bg-[#E8F7EE] text-[#1D7C45]";
+  }
+
+  if (level === "warning") {
+    return "bg-[#FFF4DF] text-[#A56A0F]";
+  }
+
+  if (level === "error") {
+    return "bg-[#FCE8EB] text-[#B23949]";
+  }
+
+  return "bg-[#EAF4F4] text-[#2D6A73]";
+}
+
+function matchesSearch(appointment, searchValue) {
+  if (!searchValue) {
+    return true;
+  }
+
+  const lookup = searchValue.trim().toLowerCase();
+  if (!lookup) {
+    return true;
+  }
+
+  return [
+    appointment.ownerName,
+    appointment.petName,
+    appointment.service,
+    appointment.customerEmail,
+    appointment.assignedStaff,
+  ]
+    .filter(Boolean)
+    .some((value) => value.toLowerCase().includes(lookup));
+}
+
+function getAppointmentAccountIdentifiers(appointment) {
+  const identifiers = [];
+  const customerId = String(appointment?.customerId || "").trim().toLowerCase();
+  const customerEmail = String(appointment?.customerEmail || "").trim().toLowerCase();
+  const ownerName = String(appointment?.ownerName || "").trim().toLowerCase();
+
+  if (customerId) {
+    identifiers.push(`id:${customerId}`);
+  }
+  if (customerEmail) {
+    identifiers.push(`email:${customerEmail}`);
+  }
+  if (!identifiers.length && ownerName) {
+    identifiers.push(`owner:${ownerName}`);
+  }
+
+  return identifiers;
+}
+
+function getAppointmentRisk(appointment, appointments) {
+  const accountIdentifiers = new Set(getAppointmentAccountIdentifiers(appointment));
+  const cancelledCount = (Array.isArray(appointments) ? appointments : []).filter((candidate) => {
+    if (String(candidate?.status || "").toLowerCase() !== "cancelled") {
+      return false;
+    }
+
+    return getAppointmentAccountIdentifiers(candidate).some((identifier) =>
+      accountIdentifiers.has(identifier),
+    );
+  }).length;
+
+  return {
+    isHighRisk: cancelledCount >= 3,
+    cancelledCount,
+  };
+}
+
+function matchesPetRecordSearch(record, searchValue) {
+  if (!searchValue) {
+    return true;
+  }
+
+  const lookup = searchValue.trim().toLowerCase();
+  if (!lookup) {
+    return true;
+  }
+
+  return [
+    record.ownerName,
+    record.petName,
+    record.petType,
+    record.breed,
+    record.customerEmail,
+  ]
+    .filter(Boolean)
+    .some((value) => value.toLowerCase().includes(lookup));
+}
+
+function normalizeLineItems(value) {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  return value
+    .split("\n")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function matchesUserSearch(user, searchValue) {
+  if (!searchValue) {
+    return true;
+  }
+
+  const lookup = searchValue.trim().toLowerCase();
+  if (!lookup) {
+    return true;
+  }
+
+  return [user.name, user.email, user.username, user.role, user.status]
+    .filter(Boolean)
+    .some((value) => value.toLowerCase().includes(lookup));
+}
+
+function buildPetRecordForm(record = null) {
+  const current = record && typeof record === "object" ? record : {};
+  const savedPetType = typeof current.petType === "string" ? current.petType : "";
+  const petType = petTypeOptions.includes(savedPetType) ? savedPetType : "";
+  const customPetType = "";
+  const breedOptions = breedsByPetType[petType] || [];
+  const savedBreed = typeof current.breed === "string" ? current.breed : "";
+  const breed = breedOptions.includes(savedBreed) ? savedBreed : savedBreed ? "Other" : "";
+  const customBreed = breed === "Other" && savedBreed !== "Other" ? savedBreed : "";
+
+  return {
+    id: typeof current.id === "string" ? current.id : "",
+    customerId: typeof current.customerId === "string" ? current.customerId : "",
+    ownerName: typeof current.ownerName === "string" ? current.ownerName : "",
+    customerEmail: typeof current.customerEmail === "string" ? current.customerEmail : "",
+    petName: typeof current.petName === "string" ? current.petName : "",
+    petType,
+    customPetType,
+    breed,
+    customBreed,
+    gender: ["Male", "Female"].includes(current.gender) ? current.gender : "",
+    lastVisit: typeof current.lastVisit === "string" ? current.lastVisit : "",
+    notes: typeof current.notes === "string" ? current.notes : "",
+    visitRecordsText: Array.isArray(current.visitRecords)
+      ? current.visitRecords.join("\n")
+      : "",
+    medicalRecordsText: Array.isArray(current.medicalRecords)
+      ? current.medicalRecords.join("\n")
+      : "",
+  };
+}
+
+function buildPortalUserForm(user = null) {
+  const current = user && typeof user === "object" ? user : {};
+
+  return {
+    id: typeof current.id === "string" ? current.id : "",
+    name: typeof current.name === "string" ? current.name : "",
+    email: typeof current.email === "string" ? current.email : "",
+    username: typeof current.username === "string" ? current.username : "",
+    password: "",
+    role: typeof current.role === "string" ? current.role : "staff",
+  };
+}
+
+function buildChangedPortalUserPayload(form, originalForm) {
+  const payload = {};
+
+  ["name", "email", "username", "role"].forEach((field) => {
+    if (form[field] !== originalForm[field]) {
+      payload[field] = form[field];
+    }
+  });
+
+  if (form.password.trim()) {
+    payload.password = form.password.trim();
+  }
+
+  return payload;
+}
+
+function describeNotification(notification) {
+  if (notification.targetType === "appointment") {
+    const schedule = [notification.appointmentDate, notification.appointmentTime]
+      .filter(Boolean)
+      .join(" ");
+    const service = notification.serviceName || "Appointment";
+    const petName = notification.petName || notification.subjectName || "Pet";
+    return `${petName} | ${service}${schedule ? ` | ${schedule}` : ""}`;
+  }
+
+  const subject = notification.subjectName || notification.actorName || "Account";
+  const role = notification.subjectRole || notification.actorRole || "system";
+  return `${subject} | ${role}`;
+}
+
+function PanelCard({ title, description, children, className = "", bodyClassName = "" }) {
+  return (
+    <section className={`rounded-2xl bg-white p-4 shadow-[0_14px_30px_rgba(102,91,72,0.1)] md:p-5 ${className}`}>
+      <div className="border-b border-[#EFE7DC] pb-3">
+        <h3 className="text-xl font-semibold text-[#20343B]">{title}</h3>
+        {description && <p className="mt-1 text-sm text-[#607277]">{description}</p>}
+      </div>
+      <div className={`mt-4 min-w-0 ${bodyClassName}`}>{children}</div>
+    </section>
+  );
+}
+
+function EmptyState({ title, message }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-[#D8E5E5] bg-[#F8FBFB] px-5 py-6 text-center">
+      <h4 className="text-lg font-semibold text-[#20343B]">{title}</h4>
+      <p className="mt-2 text-sm text-[#607277]">{message}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(status)}`}>
+      {["Accepted", "Confirmed"].includes(status) ? "Approved" : status}
+    </span>
+  );
+}
+
+function EmployeeStatusBadge({ status }) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold ${employeeStatusClasses(status)}`}
+    >
+      {formatUserStatusLabel(status)}
+    </span>
+  );
+}
+
+function MetricCard({ label, value, tone = "teal" }) {
+  const toneClasses = {
+    teal: "bg-[#EAF7F7] text-[#2D6B73]",
+    gold: "bg-[#FFF6E5] text-[#A56A0F]",
+    rose: "bg-[#FBECEF] text-[#B23949]",
+    slate: "bg-[#EEF3F5] text-[#3E5960]",
+    green: "bg-[#DDF5E6] text-[#187A4B]",
+    forest: "bg-[#165B3B] text-white",
+  };
+
+  return (
+    <div className={`rounded-2xl px-4 py-3.5 ${toneClasses[tone]}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] opacity-80">{label}</p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack, isSaving = false }) {
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [decisionStatus,setDecisionStatus]=useState("");
+  const [sessionNow, setSessionNow] = useState(Date.now());
+  useEffect(() => {
+    setSessionNow(Date.now());
+    if (!appointment?.sessionStartedAt || appointment.sessionEndedAt) return;
+    const timer = window.setInterval(() => setSessionNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [appointment?.sessionStartedAt, appointment?.sessionEndedAt]);
+  if (!appointment) {
+    return (
+      <PanelCard
+        title="Appointment details"
+        description="Select a booking from the list to review contact details and queue actions."
+      >
+        <EmptyState
+          title="No appointment selected"
+          message="Choose a customer booking to approve, reject, cancel, or update."
+        />
+      </PanelCard>
+    );
+  }
+
+  const contactPhone = appointment.contactNumber || "No phone saved";
+  const canComplete = canCompleteAppointment(appointment.status);
+  const clinicToday = appointmentDateKey({ schedule: new Date(sessionNow).toISOString() });
+  const canStartSession = canComplete && appointmentDateKey(appointment) === clinicToday;
+  const elapsedSeconds = appointment.sessionStartedAt
+    ? Math.max(0, Math.floor(((appointment.sessionEndedAt ? Date.parse(appointment.sessionEndedAt) : sessionNow) - Date.parse(appointment.sessionStartedAt)) / 1000)) : 0;
+  const requestStatusChange = (status) => {
+    if (!canChangeAppointmentStatus(appointment.status, status)) return;
+    if (status === "Accepted") { setApprovalOpen(true); return; }
+    if (["Rejected", "Cancelled"].includes(status)) { setDecisionStatus(status); return; }
+    if (status === "Completed") {
+      if (window.confirm("Are you certain you want to mark this appointment as completed? Please confirm that the appointment has been fully completed.")) {
+        updateAppointment(appointment.id, { status });
+      }
+      return;
+    }
+
+    const action = status === "Rejected" ? "reject" : status === "Accepted" ? "approve" : "cancel";
+    if (window.confirm(`Are you sure you would like to ${action} this appointment? The customer will be notified of this change.`)) {
+      updateAppointment(appointment.id, { status });
+    }
+  };
+
+  if(decisionStatus)return <AppointmentDecisionForm status={decisionStatus} busy={isSaving} onSave={updates=>updateAppointment(appointment.id,updates)} onClose={()=>setDecisionStatus("")}/>;
+  return (
+    <PanelCard
+      title={`${appointment.petName} | ${appointment.service}`}
+      description="Review customer information, current status, and assignment details."
+    >
+      <div className="space-y-4">
+        {approvalOpen && <AppointmentApprovalDialog appointment={appointment} busy={isSaving}
+          onConfirm={() => updateAppointment(appointment.id, { status: "Accepted" })}
+          onClose={() => setApprovalOpen(false)} />}
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={isSaving}
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#EEF6F6] px-4 py-2.5 text-sm font-semibold text-[#24444A]"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+        <div className="rounded-[24px] bg-[#F6FAFA] px-5 py-5">
+          {appointment.cancellationReason && (
+            <p className="mb-4 text-sm text-[#B23949]">{appointment.cancellationReason}</p>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusBadge status={appointment.status} />
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#365057]">
+              {formatAppointmentSchedule(appointment)}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-4 text-sm text-[#607277] md:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+                Owner details
+              </p>
+              <div className="flex items-center gap-3">
+                <UserRound size={16} />
+                <span>{appointment.ownerName}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Mail size={16} />
+                <span>{appointment.customerEmail || "No email saved"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone size={16} />
+                <span>{contactPhone}</span>
+              </div>
+            </div>
+            <div className="space-y-3 border-[#DDEAEA] md:border-l md:pl-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+                Pet details
+              </p>
+              <div className="flex items-center gap-3">
+                <PawPrint size={16} />
+                <span>{appointment.petName} | {appointment.petType || "Pet type not saved"}</span>
+              </div>
+              <BookingAdditions appointment={appointment}/>
+              {appointment.decision?.reason && <p className="text-sm text-[#607277]">Reason: {appointment.decision.reason}</p>}
+
+              <div className="flex items-center gap-3">
+                <Clock3 size={16} />
+                <span>Booked: {formatDateTime(appointment.createdAt, "Booking timestamp unavailable")}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Clock3 size={16} />
+                <span>Assigned staff: {appointment.assignedStaff || "Not assigned"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-[#425A60]">
+            Assign staff
+          </label>
+          <select
+            value={appointment.assignedStaff || ""}
+            disabled={isSaving || staffOptions.length === 0 || ["Completed", "Cancelled", "Rejected"].includes(appointment.status)}
+            onChange={(event) =>
+              updateAppointment(appointment.id, { assignedStaff: event.target.value })
+            }
+            className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+          >
+            <option value="" disabled>{staffOptions.length ? "Select staff" : "No active staff available"}</option>
+            {appointment.assignedStaff && !staffOptions.includes(appointment.assignedStaff) && (
+              <option value={appointment.assignedStaff} disabled>{appointment.assignedStaff}</option>
+            )}
+            {staffOptions.map((staffName) => (
+              <option key={staffName}>{staffName}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => requestStatusChange("Accepted")}
+            disabled={isSaving || !appointment.assignedStaff?.trim() || !canApproveAppointment(appointment.status)}
+            title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Approve appointment"}
+            className="rounded-2xl bg-[#E8F7EE] px-4 py-2.5 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+          >
+            Approve appointment
+          </button>
+          <button
+            type="button"
+            disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Rejected")}
+            onClick={() => requestStatusChange("Rejected")}
+            className="rounded-2xl bg-[#FFF4DF] px-4 py-2.5 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+          >
+            Reject appointment
+          </button>
+          <button
+            type="button"
+            disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Cancelled")}
+            onClick={() => requestStatusChange("Cancelled")}
+            className="rounded-2xl bg-[#FBECEF] px-4 py-2.5 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+          >
+            Cancel appointment
+          </button>
+        </div>
+
+        {(canStartSession || appointment.sessionStartedAt) && (
+          <div className="space-y-3 rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-4">
+            {appointment.sessionStartedAt && <p className="text-sm text-[#365057]" role="timer">Session duration: {Math.floor(elapsedSeconds / 3600)}h {Math.floor(elapsedSeconds / 60) % 60}m {elapsedSeconds % 60}s</p>}
+            {canComplete && !appointment.sessionEndedAt && <button type="button" disabled={isSaving}
+              onClick={() => updateAppointment(appointment.id, { sessionAction: appointment.sessionStartedAt ? "end" : "start" })}
+              className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              {appointment.sessionStartedAt ? "End session" : "Start session"}
+            </button>}
+          </div>
+        )}
+
+        <div className="rounded-[24px] border border-[#E6F0F0] bg-[#FCFEFE] px-5 py-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+            Queue notes
+          </p>
+          <p className="mt-3 text-sm leading-5 text-[#607277]">
+            {appointment.notes || "No appointment notes were provided by the customer."}
+          </p>
+          <p className="mt-4 text-xs text-[#7A9297]">
+            Updated by {currentUser.name} as part of the appointment workflow.
+          </p>
+        </div>
+      </div>
+    </PanelCard>
+  );
+}
+
+function AppointmentDetailDialog({ appointment, currentUser, staffOptions, updateAppointment, onBack }) {
+  const dialogRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => { dialog.close(); document.body.style.overflow = previousOverflow; };
+  }, []);
+  const save = async (...args) => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try { return await updateAppointment(...args); }
+    finally { setIsSaving(false); }
+  };
+  const dialog = (
+    <dialog ref={dialogRef} aria-label="Appointment details" aria-modal="true"
+      onCancel={(event) => { event.preventDefault(); if (!isSaving) onBack(); }}
+      className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-5">
+      <button type="button" aria-label="Close appointment details" title="Close" disabled={isSaving} onClick={onBack} className="mb-2 ml-auto flex h-8 w-8 items-center justify-center text-[#607277] disabled:opacity-50"><X size={20} /></button>
+      <AppointmentDetailPanel appointment={appointment} currentUser={currentUser} staffOptions={staffOptions}
+        updateAppointment={save} onBack={onBack} isSaving={isSaving} />
+    </dialog>
+  );
+  return typeof document === "undefined" ? dialog : createPortal(dialog, document.body);
+}
+
+function NotificationContextPanel({ notification, relatedAppointment, openAppointment }) {
+  if (!notification) {
+    return (
+      <PanelCard
+        title="Notification context"
+        description="Open a notification from the header to jump directly into its related booking or account detail."
+      >
+        <EmptyState
+          title="No notification selected"
+          message="Unread customer account and appointment events will open here with their context."
+        />
+      </PanelCard>
+    );
+  }
+
+  return (
+    <PanelCard
+      title={notification.title}
+      description="Notification details and related appointment context."
+    >
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
+            {notification.actorName} | {notification.actorRole}
+          </span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${notificationTone(notification.level)}`}>
+            {notification.actionLabel}
+          </span>
+        </div>
+
+        <p className="text-sm leading-5 text-[#607277]">{notification.message}</p>
+
+        <div className="rounded-[24px] bg-[#F6FAFA] px-4 py-4 text-sm text-[#4E686E]">
+          <p className="font-semibold text-[#20343B]">{describeNotification(notification)}</p>
+          {notification.email && <p className="mt-2">Email: {notification.email}</p>}
+          {notification.phone && <p className="mt-1">Phone: {notification.phone}</p>}
+          <p className="mt-2 text-xs text-[#7A9297]">{formatDateTime(notification.createdAt)}</p>
+        </div>
+
+        {relatedAppointment ? (
+          <button
+            type="button"
+            onClick={() => openAppointment(relatedAppointment.id, notification.id)}
+            className="w-full rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            Open related appointment
+          </button>
+        ) : (
+          <div className="rounded-[22px] bg-[#FFF4DF] px-4 py-2.5 text-sm text-[#A56A0F]">
+            This notification is account-related, so its full detail is shown here without a
+            linked appointment record.
+          </div>
+        )}
+      </div>
+    </PanelCard>
+  );
+}
+
+function AppointmentHistory({ currentUser, appointments, openAppointment, onLoadMore, isLoadingMore }) {
+  const events = buildAppointmentHistory(appointments, currentUser.role);
+  return <PanelCard title="History" description="Completed, rejected, cancelled, and no-show appointment events visible to your role.">
+    {events.length === 0 ? <EmptyState title="No appointment history" message="Completed, rejected, cancelled, and no-show appointments will appear here." /> : (
+      <div className="portal-scroll-panel max-h-[420px] space-y-3 overflow-y-auto overscroll-contain pr-2">
+        {events.map(event => <button key={event.id} type="button" onClick={() => openAppointment(event.appointmentId)}
+          className="w-full rounded-[22px] border border-[#D7ECEC] bg-[#F8FCFC] px-4 py-4 text-left transition hover:border-[#BFE1E1]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold text-[#20343B]">
+              {event.petName}
+              {event.petName && event.service ? <span>{" | "}</span> : null}
+              {event.service}
+            </p>
+            <StatusBadge status={event.status} />
+          </div>
+          <p className="mt-2 text-sm text-[#607277]">{event.customerName} {event.scheduleDate} {event.scheduleTime}</p>
+          {event.actorName && <p className="mt-2 text-xs text-[#607277]">{event.actorName} | {event.actorRole}</p>}
+          {event.reason && <p className="mt-2 text-sm text-[#607277]">Reason: {event.reason}</p>}
+          <p className="mt-2 text-xs text-[#7A9297]">{formatDateTime(event.createdAt)}</p>
+        </button>)}
+      </div>
+    )}
+    <button type="button" disabled={isLoadingMore} onClick={onLoadMore} className="mt-3 w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">
+      {isLoadingMore ? "Loading older appointments..." : "Load older appointments"}
+    </button>
+  </PanelCard>;
+}
+
+function AppointmentsWorkspace({
+  currentUser,
+  state,
+  visibleNotifications,
+  updateAppointment,
+  loadMoreAppointments,
+  refreshScheduleData,
+}) {
+  const toast = useToast();
+  const [isLoadingAllAppointments, setIsLoadingAllAppointments] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const savedStatus = searchParams.get("status") || "All";
+  const requestedStatus = ["Confirmed", "Accepted"].includes(savedStatus) ? "Approved" : savedStatus;
+  const statusFilter = appointmentFilters.includes(requestedStatus) ? requestedStatus : "All";
+  const [searchValue, setSearchValue] = useState(() => searchParams.get("search") || "");
+  const savedSearch = searchParams.get("search") || "";
+  useEffect(() => { setSearchValue(savedSearch); }, [savedSearch]);
+  const updateListFilter = (key, value) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (searchValue) nextParams.set("search", searchValue);
+    else nextParams.delete("search");
+    if (value && value !== "All") nextParams.set(key, value);
+    else nextParams.delete(key);
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const appointments = (Array.isArray(state.appointments) ? state.appointments : [])
+    .filter((appointment) => appointment && typeof appointment === "object")
+    .slice()
+    .sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"]));
+  const staffOptions = [...new Set((Array.isArray(state.users) ? state.users : [])
+    .filter((user) => user && user.status === "active" && user.role === "staff")
+    .map((user) => user.name?.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
+  const handleAppointmentUpdate = async (appointmentId, updates) => {
+    const appointment = appointments.find((entry) => entry.id === appointmentId);
+    if (updates?.status && !canChangeAppointmentStatus(appointment?.status, updates.status)) {
+      toast.error("This action is unavailable for the appointment's current status.");
+      return false;
+    }
+    try {
+      await updateAppointment(appointmentId, updates, currentUser.name);
+      await refreshScheduleData();
+      return true;
+    } catch (error) {
+      toast.error(error.message || "Unable to update appointment.");
+      return false;
+    }
+
+  };
+  const filteredAppointments = appointments.filter((appointment) => {
+    const matchesStatus = statusFilter === "All" || appointment.status === statusFilter ||
+      (statusFilter === "Approved" && ["Accepted", "Confirmed"].includes(appointment.status));
+    return matchesStatus && matchesSearch(appointment, searchValue);
+  });
+  const pendingCount = appointments.filter((appointment) => appointment.status === "Pending").length;
+  const approvedCount = appointments.filter(
+    (appointment) => ["Accepted", "Approved", "Confirmed"].includes(appointment.status),
+  ).length;
+  const completedCount = appointments.filter(
+    (appointment) => appointment.status === "Completed",
+  ).length;
+  const rejectedCount = appointments.filter((appointment) => appointment.status === "Rejected").length;
+  const cancelledCount = appointments.filter((appointment) => appointment.status === "Cancelled").length;
+  const expiredCount = appointments.filter((appointment) => appointment.status === "No Show").length;
+
+  const selectedNotificationId = searchParams.get("notification") || "";
+  const selectedNotification =
+    visibleNotifications.find((notification) => notification.id === selectedNotificationId) || null;
+  const selectedAppointmentId =
+    searchParams.get("appointment") || selectedNotification?.relatedAppointmentId || "";
+  const selectedAppointment =
+    appointments.find((appointment) => appointment.id === selectedAppointmentId) ||
+    null;
+  const relatedNotificationAppointment =
+    selectedNotification?.relatedAppointmentId
+      ? appointments.find(
+          (appointment) => appointment.id === selectedNotification.relatedAppointmentId,
+        ) || null
+      : null;
+
+  const openAppointment = (appointmentId, notificationId = "") => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (searchValue) nextParams.set("search", searchValue);
+    else nextParams.delete("search");
+    nextParams.delete("appointment");
+    nextParams.delete("notification");
+
+    if (appointmentId) {
+      nextParams.set("appointment", appointmentId);
+    }
+
+    if (notificationId) {
+      nextParams.set("notification", notificationId);
+    }
+
+    setSearchParams(nextParams);
+  };
+
+  const clearSelectedAppointment = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (searchValue) nextParams.set("search", searchValue);
+    else nextParams.delete("search");
+    nextParams.delete("appointment");
+    nextParams.delete("notification");
+    setSearchParams(nextParams);
+  };
+
+  const appointmentSections = [
+    { title: "Pending", statuses: ["Pending"] },
+    { title: "Approved", statuses: ["Accepted", "Approved", "Confirmed"] },
+    { title: "Completed", statuses: ["Completed"] },
+    { title: "Rejected", statuses: ["Rejected"] },
+    { title: "Cancelled", statuses: ["Cancelled"] },
+    { title: "No Show", statuses: ["No Show"] },
+  ]
+    .filter((section) => statusFilter === "All" || section.statuses.includes(statusFilter))
+    .map((section) => ({
+      ...section,
+      appointments: filteredAppointments.filter((appointment) => section.statuses.includes(appointment.status)),
+    }));
+
+  return (
+    <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-col">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <MetricCard label="Pending" value={pendingCount} tone="gold" />
+        <MetricCard label="Approved" value={approvedCount} tone="green" />
+        <MetricCard label="Completed" value={completedCount} tone="forest" />
+        <MetricCard label="Rejected" value={rejectedCount} tone="rose" />
+        <MetricCard label="Cancelled" value={cancelledCount} tone="rose" />
+        <MetricCard label="No Show" value={expiredCount} tone="slate" />
+      </div>
+
+      <AppointmentCalendar appointments={appointments} onOpenAppointment={openAppointment} />
+
+      <div className="min-w-0">
+        <PanelCard
+          title="Manage appointments"
+          description="View bookings, review customer details, and keep the queue moving."
+          className="flex h-[min(78dvh,900px)] min-h-[640px] flex-col xl:h-[clamp(600px,calc(100dvh-12rem),900px)] xl:self-start"
+          bodyClassName="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="grid shrink-0 gap-3 md:grid-cols-[220px_minmax(0,1fr)]">
+              <select
+                aria-label="Filter managed appointments by status"
+                value={statusFilter}
+                onChange={(event) => updateListFilter("status", event.target.value)}
+                className="rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+              >
+                {appointmentFilters.map((filter) => (
+                  <option key={filter}>{filter}</option>
+                ))}
+              </select>
+
+              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm text-[#607277]">
+                <Search size={16} />
+                <input
+                  aria-label="Search managed appointments"
+                  value={searchValue}
+                  autoComplete="off"
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  className="w-full bg-transparent outline-none"
+                  placeholder="Search by customer, pet, email, service, or assignee"
+                />
+              </label>
+            </div>
+
+            {filteredAppointments.length === 0 ? (
+              <EmptyState
+                title="No matching appointments"
+                message="Try another filter or wait for new customer bookings to reach the queue."
+              />
+            ) : (
+              <div className="portal-scroll-panel min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain rounded-lg border border-[#E6F0F0] bg-[#FBFDFC] p-2 [scrollbar-gutter:stable]">
+                {appointmentSections.map((section) => (
+                  <section key={section.title} className="rounded-2xl border border-[#E6F0F0] bg-[#FBFDFC] p-3">
+                    <div className="mb-3 flex items-center justify-between gap-3 border-b border-[#E6F0F0] pb-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">
+                        {section.title}
+                      </p>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#365057]">
+                        {section.appointments.length}
+                      </span>
+                    </div>
+                    {section.appointments.length === 0 ? (
+                      <p className="px-2 py-2.5 text-sm text-[#7A9297]">No {section.title.toLowerCase()} appointments.</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {(section.title === "Pending" ? groupPendingAppointments(section.appointments) : [{ date: null, appointments: section.appointments }]).map((group) => (
+                          <div key={group.date || section.title} className="space-y-2.5">
+                            {section.title === "Pending" && <p className="px-1 pt-2 text-sm font-semibold text-[#425A60]">{group.date ? formatDateLabel(group.date) : "Date not set"}</p>}
+                        {group.appointments.map((appointment) => {
+                          const risk = getAppointmentRisk(appointment, appointments);
+
+                          return (
+                            <button
+                              key={appointment.id}
+                              type="button"
+                              onClick={() => openAppointment(appointment.id)}
+                              className={`w-full rounded-2xl border px-4 py-2.5 text-left transition ${
+                                selectedAppointment?.id === appointment.id
+                                  ? "border-[#BFE1E1] bg-[#F8FCFC]"
+                                  : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
+                              }`}
+                            >
+                              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <p className="text-lg font-semibold text-[#20343B]">
+                                      {appointment.petName} | {appointment.service}
+                                    </p>
+                                    <StatusBadge status={appointment.status} />
+                                    {risk.isHighRisk && (
+                                      <span
+                                        title={`${risk.cancelledCount} cancelled appointments on this account`}
+                                        className="rounded-full bg-[#FCE8EB] px-2.5 py-1 text-xs font-bold text-[#B23949]"
+                                      >
+                                        High Risk / Frequent Canceller
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-2 text-sm text-[#607277]">
+                                    {appointment.ownerName} | {appointment.customerEmail || "No email"}
+                                  </p>
+                                  <p className="mt-2 text-sm text-[#607277]">
+                                    {formatAppointmentSchedule(appointment)}
+                                  </p>
+                                  <p className="mt-2 text-sm text-[#607277]">
+                                    Assigned staff: {appointment.assignedStaff || "Not assigned"}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
+                                  {appointment.notes ? "Has notes" : "No notes"}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                ))}
+                {appointments.length >= 200 && (
+                  <button
+                    type="button"
+                    disabled={isLoadingAllAppointments}
+                    onClick={async () => {
+                      setIsLoadingAllAppointments(true);
+                      try { await loadMoreAppointments(); }
+                      finally { setIsLoadingAllAppointments(false); }
+                    }}
+                    className="w-full rounded-xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#2D6B73] disabled:opacity-60"
+                  >
+                    {isLoadingAllAppointments ? "Loading older appointments..." : "Load older appointments"}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </PanelCard>
+
+      </div>
+
+      {selectedAppointment && <AppointmentDetailDialog
+          appointment={selectedAppointment}
+          currentUser={currentUser}
+          staffOptions={staffOptions}
+          updateAppointment={handleAppointmentUpdate}
+          onBack={clearSelectedAppointment}
+        />}
+
+      <AppointmentHistory
+        currentUser={currentUser}
+        appointments={appointments}
+        openAppointment={openAppointment}
+        onLoadMore={async () => { setIsLoadingHistory(true); try { await loadMoreAppointments(); } catch (error) { toast.error(error.message || "Unable to load appointment history."); } finally { setIsLoadingHistory(false); } }}
+        isLoadingMore={isLoadingHistory}
+      />
+    </div>
+  );
+}
+
+function ScheduleWorkspace({ currentUser, state, saveAvailabilitySlot }) {
+  const toast = useToast();
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const seedSlots = useMemo(() => buildSeedAvailabilitySlots({ days: 90 }), []);
+  const slotsById = useMemo(() => {
+    const map = new Map();
+    seedSlots.forEach((slot) => map.set(slot.id, slot));
+    (state.availabilitySlots || []).forEach((slot) => {
+      if (slot?.id) {
+        map.set(slot.id, { ...map.get(slot.id), ...slot });
+      }
+    });
+    return map;
+  }, [seedSlots, state.availabilitySlots]);
+  const selectedDateSlots = useMemo(
+    () =>
+      Array.from(slotsById.values())
+        .filter((slot) => slot.date === selectedDate)
+        .sort((left, right) => String(left.time).localeCompare(String(right.time))),
+    [selectedDate, slotsById],
+  );
+  const appointments = state.appointments || [];
+  const closedSlots = Array.from(slotsById.values()).filter((slot) => slot.isOpen === false);
+
+  const toggleSlot = async (slot, isOpen) => {
+    const nextSlot = {
+      ...slot,
+      isOpen,
+      disabled: !isOpen,
+      status: isOpen ? "Open" : "Cancelled",
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser?.name || "Staff",
+    };
+
+    try {
+      await saveAvailabilitySlot(nextSlot);
+      toast.success(`${formatDateLabel(slot.date)} ${formatTimeLabel(slot.time)} is now ${isOpen ? "open" : "disabled"}.`);
+    } catch (error) {
+      toast.error(error.message || "Unable to update this slot. Please try again.");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <KaponPromoManager />
+      <div className="grid gap-4 xl:grid-cols-[0.78fr_1.22fr]">
+        <PanelCard
+          title="Manage schedule"
+          description="Choose a date, then disable or reopen individual appointment time slots."
+        >
+          <label className="block text-sm font-medium text-[#425A60]">
+            Calendar date
+          </label>
+          <input
+            type="date"
+            min={todayKey}
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+          />
+          <div className="mt-5 rounded-[22px] bg-[#F6FAFA] px-4 py-4 text-sm text-[#607277]">
+            Disabled slots immediately disappear from customer booking availability. Reopen a slot when it can be booked again.
+          </div>
+        </PanelCard>
+
+        <PanelCard title={formatDateLabel(selectedDate)} description="Available time slots for the selected calendar date.">
+          {selectedDateSlots.length === 0 ? (
+            <EmptyState
+              title="No slots for this date"
+              message="Seed availability starts tomorrow. Choose a later date to manage slots."
+            />
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {selectedDateSlots.map((slot) => {
+                const isOpen = slot.isOpen !== false;
+                const bookedCount = getActiveAppointmentCountForSlot(appointments, slot);
+                const capacity = getBlockCapacity(slot);
+                const remaining = Math.max(capacity - bookedCount, 0);
+                const capacityLabel = !isOpen ? "slot closed" : remaining ? `${remaining} spots open` : "fully booked";
+                return (
+                  <div
+                    key={slot.id}
+                    className="flex min-h-[132px] flex-col justify-between rounded-lg border border-[#E6F0F0] bg-white px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-lg font-semibold text-[#20343B]">{formatTimeLabel(slot.time)}</p>
+                        <p className="mt-1 text-sm text-[#607277]">{bookedCount}/{capacity} appointments booked · {capacityLabel}</p>
+                      </div>
+                      <StatusBadge status={isOpen ? "Open" : "Cancelled"} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleSlot(slot, !isOpen)}
+                      className={`mt-4 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+                        isOpen
+                          ? "bg-[#FBECEF] text-[#B23949] hover:bg-[#F8DDE2]"
+                          : "bg-[#E8F7EE] text-[#1D7C45] hover:bg-[#DDF1E6]"
+                      }`}
+                    >
+                      {isOpen ? "Disable slot" : "Reopen slot"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </PanelCard>
+      </div>
+
+      <PanelCard title="Disabled slots" description="Upcoming appointment times hidden from customer booking.">
+        {closedSlots.length === 0 ? (
+          <EmptyState title="No disabled slots" message="Disabled time slots will appear here." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {closedSlots.slice(0, 12).map((slot) => (
+              <div key={slot.id} className="rounded-lg border border-[#F4D9DE] bg-[#FFF8F9] px-4 py-2.5">
+                <p className="font-semibold text-[#20343B]">{formatDateLabel(slot.date)}</p>
+                <p className="mt-1 text-sm text-[#607277]">{formatTimeLabel(slot.time)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </PanelCard>
+    </div>
+  );
+}
+
+function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
+  const todayKey = getLocalDateKey();
+  const [searchValue, setSearchValue] = useState("");
+  const [petTypeFilter, setPetTypeFilter] = useState("Dog");
+  const [selectedRecordId, setSelectedRecordId] = useState("");
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [form, setForm] = useState(() => buildPetRecordForm());
+
+  const petRecords = (Array.isArray(state.petRecords) ? state.petRecords : [])
+    .filter((record) => record && typeof record === "object")
+    .slice()
+    .sort((left, right) => sortByNewest(left, right, ["updatedAt", "lastVisit"]));
+  const filteredPetRecords = petRecords
+    .filter((record) => String(record.petType || "").toLowerCase() === petTypeFilter.toLowerCase())
+    .filter((record) => matchesPetRecordSearch(record, searchValue))
+    .sort((left, right) =>
+      String(left.petName || "").localeCompare(String(right.petName || ""), undefined, {
+        sensitivity: "base",
+      }),
+    );
+  const selectedRecord =
+    petRecords.find((record) => record.id === selectedRecordId) ||
+    filteredPetRecords[0] ||
+    petRecords[0] ||
+    null;
+  const customersWithPets = new Set(
+    petRecords
+      .map((record) => record.customerEmail || record.customerId || record.ownerName)
+      .filter(Boolean),
+  ).size;
+  const petsWithNotes = petRecords.filter((record) => record.notes?.trim()).length;
+  const availableBreedOptions = breedsByPetType[form.petType] || [];
+  const linkedAppointmentCount = (record) =>
+    (Array.isArray(state.appointments) ? state.appointments : []).filter(
+      (appointment) =>
+        appointment.petRecordId === record.id ||
+        (appointment.petName === record.petName &&
+          appointment.customerEmail === record.customerEmail),
+    ).length;
+
+  useEffect(() => {
+    if (!selectedRecordId && filteredPetRecords[0]) {
+      setSelectedRecordId(filteredPetRecords[0].id);
+      return;
+    }
+
+    if (selectedRecordId && !petRecords.some((record) => record.id === selectedRecordId)) {
+      setSelectedRecordId(filteredPetRecords[0]?.id || petRecords[0]?.id || "");
+    }
+  }, [filteredPetRecords, petRecords, selectedRecordId]);
+
+  useEffect(() => {
+    setForm(buildPetRecordForm(selectedRecord));
+  }, [selectedRecord, selectedRecordId]);
+
+  const updateField = (field) => (event) => {
+    if (field !== "lastVisit" && field !== "notes") return;
+    const value = event.target.value;
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveRecord = async (event) => {
+    event.preventDefault();
+
+    const textErrors = getTextValidationErrors(form, { notes: "Notes" });
+    if (Object.keys(textErrors).length) {
+      setFeedback({ type: "error", message: Object.values(textErrors)[0] });
+      return;
+    }
+
+    if (!selectedRecord?.id) {
+      setFeedback({
+        type: "error",
+        message: "Select an existing booking-created pet record before saving changes.",
+      });
+      return;
+    }
+
+    if (!form.lastVisit.trim() && !form.notes.trim()) {
+      setFeedback({
+        type: "error",
+        message: "Last visit or notes must be filled before saving.",
+      });
+      return;
+    }
+
+    if (form.lastVisit.trim() > getLocalDateKey()) {
+      setFeedback({
+        type: "error",
+        message: "Last Visit cannot be a future date. Choose today or an earlier date.",
+      });
+      return;
+    }
+
+    try {
+      await savePetRecord(
+        {
+          ...selectedRecord,
+          lastVisit: form.lastVisit.trim(),
+          notes: form.notes.trim(),
+          updatedAt: new Date().toISOString(),
+        },
+        currentUser.name,
+      );
+
+      setFeedback({
+        type: "success",
+        message: `${form.petName.trim()} was saved successfully.`,
+      });
+    } catch (error) {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to save pet record." });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <MetricCard label="Total Pet Records" value={petRecords.length} />
+        <MetricCard label="Customers With Pets" value={customersWithPets} tone="slate" />
+        <MetricCard label="Records With Notes" value={petsWithNotes} tone="gold" />
+      </div>
+
+      <div className="grid min-w-0 items-stretch gap-4 xl:h-[780px] xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+        <PanelCard
+          title="Manage pet records"
+          description="Review booking-created customer pets, keep medical notes current, and prepare future appointments faster."
+          className="h-full min-w-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col"
+          bodyClassName="xl:flex xl:min-h-0 xl:flex-1"
+        >
+          <div className="space-y-4 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:space-y-0 xl:gap-4">
+            <div className="flex flex-col gap-3 xl:shrink-0">
+              <div className="grid grid-cols-2 rounded-2xl bg-[#EEF6F6] p-1">
+                {["Cat", "Dog"].map((petType) => (
+                  <button
+                    key={petType}
+                    type="button"
+                    onClick={() => {
+                      setPetTypeFilter(petType);
+                      setSearchValue("");
+                    }}
+                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                      petTypeFilter === petType
+                        ? "bg-white text-[#173E44] shadow-[0_8px_18px_rgba(94,81,60,0.08)]"
+                        : "text-[#607277] hover:text-[#24444A]"
+                    }`}
+                  >
+                    {petType}
+                  </button>
+                ))}
+              </div>
+              <label className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm text-[#607277] md:flex-1">
+                <Search size={16} />
+                <input
+                  value={searchValue}
+                  autoComplete="off"
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  className="w-full bg-transparent outline-none"
+                  placeholder={`Search ${petTypeFilter.toLowerCase()} records by owner, pet, breed, or email`}
+                />
+              </label>
+            </div>
+
+            {filteredPetRecords.length === 0 ? (
+              <EmptyState
+                title="No matching pet records"
+                message="Customer pet profiles will appear here as soon as they are created or booked."
+              />
+            ) : (
+              <div className="portal-scroll-panel min-h-0 h-[520px] max-h-[520px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-none">
+                {filteredPetRecords.map((record) => {
+                  const appointmentCount = linkedAppointmentCount(record);
+
+                  return (
+                    <button
+                      key={record.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedRecordId(record.id);
+                        setFeedback({ type: "", message: "" });
+                      }}
+                      className={`h-[96px] w-full rounded-2xl border px-4 py-2.5 text-left transition ${
+                      selectedRecord?.id === record.id
+                          ? "border-[#BFE1E1] bg-[#F8FCFC]"
+                          : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6A73]">
+                          <PawPrint size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-lg font-semibold text-[#20343B]">
+                            {record.petName} | {record.petType}
+                          </p>
+                          <p className="mt-1 truncate text-sm text-[#607277]">
+                            {record.ownerName} | {record.customerEmail || "No email saved"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs font-semibold">
+                        <div className="flex min-w-0 flex-wrap gap-2">
+                        <span className="rounded-full bg-[#F2F6F6] px-3 py-1 text-[#365057]">
+                          {record.breed || "Breed pending"}
+                        </span>
+                        <span className="rounded-full bg-[#FFF6E5] px-3 py-1 text-[#A56A0F]">
+                          {appointmentCount} linked appointment{appointmentCount === 1 ? "" : "s"}
+                        </span>
+                        </div>
+                        <span className="shrink-0 text-[#607277]">
+                          {formatDateLabel(record.lastVisit)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </PanelCard>
+
+        <PanelCard
+          title="Pet record details"
+          description="Pet profile information, visit history, and medical notes."
+          className="h-full min-w-0 overflow-hidden xl:flex xl:min-h-0 xl:flex-col"
+          bodyClassName="min-h-0 xl:flex-1 xl:overflow-y-auto"
+        >
+          {selectedRecord ? (
+            <form noValidate onSubmit={saveRecord} className="space-y-4">
+              <fieldset disabled className="grid gap-4 md:grid-cols-2 [&_input]:cursor-not-allowed [&_input]:bg-[#F1F5F5] [&_select]:cursor-not-allowed [&_select]:bg-[#F1F5F5] [&_select]:text-[#425A60]">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Owner name
+                  </label>
+                  <input
+                    value={form.ownerName}
+                    readOnly
+                    autoComplete="off"
+                    maxLength={80}
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Customer name"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Customer email
+                  </label>
+                  <input
+                    type="email"
+                    value={form.customerEmail}
+                    readOnly
+                    autoComplete="off"
+                    maxLength={120}
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="customer@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Pet name
+                  </label>
+                  <input
+                    value={form.petName}
+                    readOnly
+                    autoComplete="off"
+                    maxLength={60}
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Pet name"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Pet type
+                  </label>
+                  <select
+                    value={form.petType}
+                    disabled
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  >
+                    <option value="">Select pet type</option>
+                    {petTypeOptions.map((petType) => (
+                      <option key={petType} value={petType}>
+                        {petType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Breed
+                  </label>
+                  <select
+                    value={form.breed}
+                    disabled
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+                  >
+                    <option value="">
+                      {form.petType ? "Select breed" : "Select pet type first"}
+                    </option>
+                    {availableBreedOptions.map((breed) => (
+                      <option key={breed} value={breed}>
+                        {breed}
+                      </option>
+                    ))}
+                  </select>
+                  {form.breed === "Other" && (
+                    <input
+                      value={form.customBreed}
+                      readOnly
+                      autoComplete="off"
+                      maxLength={60}
+                      className="mt-3 w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                      placeholder="Specify breed"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Pet gender
+                  </label>
+                  <select disabled value={form.gender}
+                    className="w-full rounded-2xl border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#2D9B9B]">
+                    <option value="" disabled>Select pet gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </fieldset>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Last Visited
+                  </label>
+                  <input
+                    type="date"
+                    value={form.lastVisit}
+                    max={todayKey}
+                    autoComplete="off"
+                    onChange={updateField("lastVisit")}
+                    className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                  Notes
+                </label>
+                <textarea
+                  value={form.notes}
+                  onChange={updateField("notes")}
+                  maxLength={500}
+                  className="min-h-[120px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  placeholder="Handling notes, special reminders, or grooming concerns"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Visit records
+                  </label>
+                  <textarea
+                    value={form.visitRecordsText}
+                    readOnly
+                    maxLength={1200}
+                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-2.5 text-sm outline-none"
+                    placeholder="One visit update per line"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">
+                    Medical records
+                  </label>
+                  <textarea
+                    value={form.medicalRecordsText}
+                    readOnly
+                    maxLength={1200}
+                    className="min-h-[140px] w-full rounded-2xl border border-[#D9E7E7] bg-[#F1F5F5] px-4 py-2.5 text-sm outline-none"
+                    placeholder="One medical note per line"
+                  />
+                </div>
+              </div>
+
+              {selectedRecord && (
+                <div className="rounded-[24px] bg-[#F6FAFA] px-5 py-4 text-sm text-[#607277]">
+                  <p className="font-semibold text-[#20343B]">
+                    Linked appointments: {linkedAppointmentCount(selectedRecord)}
+                  </p>
+                  <p className="mt-2">
+                    Record owner: {selectedRecord.ownerName || "No owner saved"}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 md:flex-row">
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white"
+                >
+                  Save pet record
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setForm(buildPetRecordForm(selectedRecord))}
+                  className="rounded-2xl bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#24444A]"
+                >
+                  Reset changes
+                </button>
+              </div>
+
+              {feedback.message && (
+                <p
+                  className={`rounded-[22px] px-4 py-2.5 text-sm font-medium ${
+                    feedback.type === "error"
+                      ? "bg-[#FBECEF] text-[#B23949]"
+                      : "bg-[#EAF7F7] text-[#2D6B73]"
+                  }`}
+                >
+                  {feedback.message}
+                </p>
+              )}
+            </form>
+          ) : (
+            <EmptyState
+              title="No pet record selected"
+              message="Customer pet records will appear here after a booking is submitted."
+            />
+          )}
+        </PanelCard>
+      </div>
+
+    </div>
+  );
+}
+
+
+function ManageUsersWorkspace({
+  currentUser,
+  state,
+  visibleNotifications,
+  createStaff,
+  updateUser,
+  deleteUser,
+}) {
+  const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchValue, setSearchValue] = useState("");
+  const [employeeRole, setEmployeeRole] = useState("admin");
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pendingUserStatus, setPendingUserStatus] = useState(null);
+  const [pendingUserSave, setPendingUserSave] = useState(null);
+  const [form, setForm] = useState(() => buildPortalUserForm());
+  const [originalForm, setOriginalForm] = useState(() => buildPortalUserForm());
+
+  const portalUsers = (Array.isArray(state.users) ? state.users : [])
+    .filter((user) => user && ["admin", "staff"].includes(user.role))
+    .slice()
+    .sort((left, right) => (left.name || "").localeCompare(right.name || "", "en", { sensitivity: "base" }));
+  const filteredUsers = portalUsers.filter((user) => user.role === employeeRole && matchesUserSearch(user, searchValue));
+  const activeCount = portalUsers.filter((user) => user.status === "active").length;
+  const suspendedCount = portalUsers.filter((user) => user.status === "suspended").length;
+  const inactiveCount = portalUsers.filter((user) => user.status === "inactive").length;
+  const selectedNotificationId = searchParams.get("notification") || "";
+  const selectedNotification =
+    visibleNotifications.find((notification) => notification.id === selectedNotificationId) || null;
+  const userParam = searchParams.get("user") || "";
+  const isCreatingNew = userParam === NEW_PORTAL_USER_ID;
+  const selectedUser =
+    isCreatingNew
+      ? null
+      : portalUsers.find((user) => user.id === userParam) ||
+        (selectedNotification?.targetType === "portal-account"
+          ? portalUsers.find((user) => user.id === selectedNotification.targetId) || null
+          : null) ||
+        filteredUsers[0] ||
+        portalUsers[0] ||
+        null;
+
+  const requestUserStatusChange = (user, status) => {
+    if (isSaving || !user?.id || user.status === status) {
+      return;
+    }
+
+    setPendingUserStatus({ user, status });
+    setFeedback({ type: "", message: "" });
+  };
+
+  const confirmUserStatusChange = async (currentPassword) => {
+    if (!pendingUserStatus || isSaving) {
+      return;
+    }
+
+    const { user, status } = pendingUserStatus;
+    setIsSaving(true);
+    setFeedback({ type: "", message: "" });
+
+    try {
+      const result = await updateUser(user.id, { status, currentPassword });
+      if (!result?.ok) {
+        setFeedback({
+          type: "error",
+          message: result?.error || "Unable to update employee status.",
+        });
+        return;
+      }
+
+      const message = `${user.name} is now ${formatUserStatusLabel(status)}.`;
+      setFeedback({ type: "success", message });
+      setPendingUserStatus(null);
+      toast.success(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    const nextForm = buildPortalUserForm(isCreatingNew ? null : selectedUser);
+
+    setForm(nextForm);
+    setOriginalForm(nextForm);
+    if (isCreatingNew) {
+      setConfirmDelete(false);
+      return;
+    }
+
+    setConfirmDelete(false);
+  }, [isCreatingNew, selectedUser]);
+
+  const updateField = (field) => (event) => {
+    const value = event.target.value;
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const openUser = (userId, notificationId = "") => {
+    const nextParams = new URLSearchParams();
+
+    if (userId) {
+      nextParams.set("user", userId);
+    }
+
+    if (notificationId) {
+      nextParams.set("notification", notificationId);
+    }
+
+    setSearchParams(nextParams);
+    setFeedback({ type: "", message: "" });
+    setPendingUserSave(null);
+    setPendingUserStatus(null);
+  };
+
+  const startNewUser = () => {
+    openUser(NEW_PORTAL_USER_ID, selectedNotificationId);
+  };
+
+  const saveUser = async (event) => {
+    event.preventDefault();
+    if (isSaving) {
+      return;
+    }
+
+    const textErrors = getTextValidationErrors(form, ACCOUNT_TEXT_FIELDS);
+    if (Object.keys(textErrors).length) {
+      const message = Object.values(textErrors)[0];
+      setFeedback({ type: "error", message });
+      toast.error(message);
+      return;
+    }
+
+    const fullPayload = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      username: form.username.trim(),
+      role: form.role,
+      password: form.password.trim(),
+    };
+
+    if (!fullPayload.name || !fullPayload.email || !fullPayload.username || !fullPayload.role) {
+      setFeedback({
+        type: "error",
+        message: "Name, email, username, and role are required.",
+      });
+      return;
+    }
+
+    if (!isValidEmail(fullPayload.email)) {
+      setFeedback({
+        type: "error",
+        message: ILLEGITIMATE_EMAIL_ERROR,
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]{3,32}$/.test(fullPayload.username)) {
+      setFeedback({
+        type: "error",
+        message: "Username must be 3-32 characters and use only letters, numbers, or underscores.",
+      });
+      return;
+    }
+
+    const payload = isCreatingNew ? fullPayload : buildChangedPortalUserPayload(fullPayload, originalForm);
+
+    setPendingUserSave({
+      fullPayload,
+      payload,
+      mode: isCreatingNew ? "create" : "update",
+      userId: selectedUser?.id || "",
+    });
+    setFeedback({ type: "", message: "" });
+  };
+
+  const confirmSaveUser = async () => {
+    if (!pendingUserSave || isSaving) {
+      return;
+    }
+
+    const passwordError = pendingUserSave.fullPayload.password
+      ? getPasswordPolicyError(pendingUserSave.fullPayload.password.trim())
+      : pendingUserSave.mode === "create" ? "A password is required for a new employee account." : "";
+    if (passwordError) { setFeedback({ type: "error", message: passwordError }); return; }
+    setIsSaving(true);
+    setFeedback({ type: "", message: "" });
+
+    try {
+      const result = pendingUserSave.mode === "create"
+        ? await createStaff(pendingUserSave.payload)
+        : await updateUser(pendingUserSave.userId, pendingUserSave.payload);
+
+      if (!result?.ok) {
+        setFeedback({
+          type: "error",
+          message: result?.error || "Unable to save the employee account.",
+        });
+        return;
+      }
+
+      if (pendingUserSave.mode === "create" && result.id) {
+        setEmployeeRole(pendingUserSave.fullPayload.role);
+        openUser(result.id, selectedNotificationId);
+      }
+
+      const savedForm = buildPortalUserForm(
+        result.user
+          ? { ...result.user, password: "" }
+          : {
+              ...selectedUser,
+              ...pendingUserSave.fullPayload,
+              id: selectedUser?.id || result.id || "",
+              password: "",
+            },
+      );
+      const successMessage = pendingUserSave.mode === "create"
+        ? "Employee account created successfully."
+        : "Employee account updated successfully.";
+
+      setForm(savedForm);
+      setOriginalForm(savedForm);
+      setPendingUserSave(null);
+      setFeedback({
+        type: "success",
+        message: successMessage,
+      });
+      toast.success(successMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (currentPassword) => {
+    if (!selectedUser?.id) {
+      return;
+    }
+
+    if (isSaving || !currentPassword) return;
+
+    setIsSaving(true);
+
+    try {
+      const result = await deleteUser(selectedUser.id, currentPassword);
+      if (!result?.ok) {
+        setFeedback({
+          type: "error",
+          message: result?.error || "Unable to delete the employee account.",
+        });
+        return;
+      }
+
+      setConfirmDelete(false);
+      setFeedback({
+        type: "success",
+        message: "Employee account deleted successfully.",
+      });
+      toast.success("Employee account deleted successfully.");
+
+      const fallbackUser = filteredUsers.find((user) => user.id !== selectedUser.id) || null;
+      openUser(fallbackUser?.id || "");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetForm = () => {
+    if (isCreatingNew) {
+      setForm(buildPortalUserForm());
+      setFeedback({ type: "", message: "" });
+      setPendingUserSave(null);
+      return;
+    }
+
+    setForm(originalForm);
+    setFeedback({ type: "", message: "" });
+    setConfirmDelete(false);
+    setPendingUserSave(null);
+    setPendingUserStatus(null);
+  };
+
+  const selectedUserIsCurrentAdmin = selectedUser?.id === currentUser.id;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-4">
+        <MetricCard label="Employee Accounts" value={portalUsers.length} />
+        <MetricCard label="Active" value={activeCount} tone="teal" />
+        <MetricCard label="Suspended" value={suspendedCount} tone="gold" />
+        <MetricCard label="Inactive" value={inactiveCount} tone="rose" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
+        <PanelCard
+          title="Employee accounts"
+          description="Create employees here; change account status from the list below."
+        >
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 md:flex-row">
+              <label className="flex items-center gap-3 rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm text-[#607277] md:flex-1">
+                <Search size={16} />
+                <input
+                  value={searchValue}
+                  autoComplete="off"
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  className="w-full bg-transparent outline-none"
+                  placeholder="Search by name, email, username, role, or status"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={startNewUser}
+                className="rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Add employee
+              </button>
+            </div>
+
+            {selectedNotification?.targetType === "portal-account" && (
+              <div className="rounded-[22px] border border-[#E6F0F0] bg-[#F8FCFC] px-4 py-2.5 text-sm text-[#607277]">
+                <p className="font-semibold text-[#20343B]">{selectedNotification.title}</p>
+                <p className="mt-1">{selectedNotification.message}</p>
+              </div>
+            )}
+
+            <div role="group" aria-label="Filter employee accounts by role" className="flex gap-1 rounded-lg bg-[#EEF6F6] p-1">
+              {["admin", "staff"].map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  aria-pressed={employeeRole === role}
+                  onClick={() => {
+                    setEmployeeRole(role);
+                    openUser("");
+                  }}
+                  className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition ${employeeRole === role ? "bg-[#173E44] text-white" : "text-[#365057] hover:bg-white"}`}
+                >
+                  {formatRoleLabel(role)}
+                </button>
+              ))}
+            </div>
+
+            {filteredUsers.length === 0 ? (
+              <EmptyState
+                title="No employee accounts found"
+                message={searchValue.trim() ? `No ${employeeRole} accounts match your search.` : `No ${employeeRole} accounts yet. Use Add employee to create one.`}
+              />
+            ) : (
+              <div aria-label={`${formatRoleLabel(employeeRole)} employee accounts`} className="max-h-[504px] space-y-3 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
+                {filteredUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openUser(user.id, selectedNotificationId)}
+                    onKeyDown={(event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        openUser(user.id, selectedNotificationId);
+                      }
+                    }}
+                    className={`min-h-[160px] w-full rounded-lg border px-4 py-2.5 text-left transition ${
+                      selectedUser?.id === user.id && !isCreatingNew
+                        ? "border-[#BFE1E1] bg-[#F8FCFC]"
+                        : "border-[#E6F0F0] bg-white hover:border-[#D0E4E4]"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6A73]">
+                        <UserRound size={18} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-lg font-semibold text-[#20343B]">{user.name}</p>
+                        <p className="mt-1 truncate text-sm text-[#607277]">{user.email}</p>
+                        {user.username && (
+                          <p className="mt-1 truncate text-xs font-semibold text-[#7A9297]">
+                            @{user.username}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[#F2F6F6] px-3 py-1 text-xs font-semibold text-[#365057]">
+                        {formatRoleLabel(user.role)}
+                      </span>
+                      <EmployeeStatusBadge status={user.status} />
+                      <select
+                        value={user.status}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => {
+                          event.stopPropagation();
+                          requestUserStatusChange(user, event.target.value);
+                        }}
+                        disabled={isSaving || user.id === currentUser.id}
+                        className="rounded-full border border-[#D9E7E7] bg-white px-3 py-1.5 text-xs font-semibold text-[#365057] outline-none transition focus:border-[#2D9B9B] disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={`Change status for ${user.name}`}
+                      >
+                        {portalUserStatuses.map((status) => (
+                          <option key={status.value} value={status.value}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </PanelCard>
+
+        <PanelCard
+          title={isCreatingNew ? "Create employee account" : "Employee account details"}
+          description={
+            isCreatingNew
+              ? "New employee accounts start Active. Manage status from the employee list."
+              : "Edit identity, credentials, and role assignment."
+          }
+        >
+          {isCreatingNew || selectedUser ? (
+            <form noValidate onSubmit={saveUser} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">Name</label>
+                  <input
+                    value={form.name}
+                    autoComplete="off"
+                    onChange={updateField("name")}
+                    disabled={isSaving}
+                    maxLength={80}
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Employee full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">Email</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    autoComplete="off"
+                    onChange={updateField("email")}
+                    disabled={isSaving}
+                    maxLength={120}
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="employee@furfection.local"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">Username</label>
+                  <input
+                    value={form.username}
+                    autoComplete="off"
+                    onChange={updateField("username")}
+                    disabled={isSaving}
+                    maxLength={32}
+                    pattern="[A-Za-z0-9_]{3,32}"
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="employee username"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#425A60]">Role</label>
+                  <select
+                    value={form.role}
+                    onChange={updateField("role")}
+                    disabled={isSaving || selectedUserIsCurrentAdmin}
+                    className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
+                  >
+                    {portalUserRoles.map((role) => (
+                      <option key={role.value} value={role.value}>
+                        {role.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {!isCreatingNew && (
+                  <div className="min-w-0 md:col-span-2">
+                    <EmployeePasswordInput id="employee-edit-password" value={form.password} disabled={isSaving}
+                      onChange={password => setForm(current => ({ ...current, password }))} />
+                  </div>
+                )}
+              </div>
+
+              {!isCreatingNew && selectedUser && (
+                <div className="rounded-lg bg-[#F6FAFA] px-4 py-4 text-sm text-[#607277]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#365057]">
+                      {formatRoleLabel(selectedUser.role)}
+                    </span>
+                    <EmployeeStatusBadge status={selectedUser.status} />
+                  </div>
+                  <p className="mt-3">
+                    Current access: {selectedUser.status === "active" ? "Can sign in to the portal." : "Portal sign-in is blocked."}
+                  </p>
+                  {selectedUserIsCurrentAdmin && (
+                    <p className="mt-2 text-[#A56A0F]">
+                      Your current admin session cannot remove its own admin role, deactivate itself, or delete itself.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 md:flex-row">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                className="rounded-lg bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white"
+                >
+                  {isSaving
+                    ? isCreatingNew
+                      ? "Creating account..."
+                      : "Saving changes..."
+                    : isCreatingNew
+                      ? "Create account"
+                      : "Save changes"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={isSaving}
+                  className="rounded-lg bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#24444A]"
+                >
+                  {isCreatingNew ? "Clear form" : "Reset changes"}
+                </button>
+
+                {!isCreatingNew && selectedUser && (
+                  <button
+                    type="button"
+                  onClick={() => { setFeedback({ type: "", message: "" }); setConfirmDelete(true); }}
+                  disabled={isSaving}
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold ${
+                      confirmDelete
+                        ? "bg-[#B23949] text-white"
+                        : "bg-[#FBECEF] text-[#B23949]"
+                    }`}
+                  >
+                    <Trash2 size={16} />
+                    {isSaving && confirmDelete
+                      ? "Deleting..."
+                      : confirmDelete
+                        ? "Confirm permanent delete"
+                        : "Delete account"}
+                  </button>
+                )}
+              </div>
+
+              {confirmDelete && selectedUser && <EmployeeSaveConfirmation
+                pendingSave={{ mode: "delete", fullPayload: selectedUser }} isSaving={isSaving}
+                error={feedback.type === "error" ? feedback.message : ""}
+                onCancel={() => { setConfirmDelete(false); setFeedback({ type: "", message: "" }); }} onConfirm={handleDelete} />}
+              {pendingUserStatus && <EmployeeSaveConfirmation
+                pendingSave={{ mode: "status", fullPayload: pendingUserStatus.user, status: pendingUserStatus.status }} isSaving={isSaving}
+                error={feedback.type === "error" ? feedback.message : ""}
+                onCancel={() => { setPendingUserStatus(null); setFeedback({ type: "", message: "" }); }} onConfirm={confirmUserStatusChange} />}
+
+              {pendingUserSave && (
+                <EmployeeSaveConfirmation
+                  pendingSave={pendingUserSave}
+                  isSaving={isSaving}
+                  onCancel={() => setPendingUserSave(null)}
+                  error={feedback.type === "error" ? feedback.message : ""}
+                  onNewPasswordChange={password => {
+                    setForm(current => ({ ...current, password }));
+                    setPendingUserSave(current => {
+                      const payload = { ...current.payload };
+                      if (password) payload.password = password.trim();
+                      else if (current.mode === "create") payload.password = "";
+                      else delete payload.password;
+                      return { ...current, fullPayload: { ...current.fullPayload, password }, payload };
+                    });
+                    setFeedback({ type: "", message: "" });
+                  }}
+                  onConfirm={confirmSaveUser}
+                />
+              )}
+
+              {feedback.message && (
+                <p
+                  className={`rounded-[22px] px-4 py-2.5 text-sm font-medium ${
+                    feedback.type === "error"
+                      ? "bg-[#FBECEF] text-[#B23949]"
+                      : "bg-[#EAF7F7] text-[#2D6B73]"
+                  }`}
+                >
+                  {feedback.message}
+                </p>
+              )}
+            </form>
+          ) : (
+            <EmptyState
+              title="No employee account selected"
+              message="Choose an employee account from the list or create a new one."
+            />
+          )}
+        </PanelCard>
+      </div>
+    </div>
+  );
+}
+
+
+export function PortalPage() {
+  const location = useLocation();
+  const {
+    currentUser,
+    state,
+    visibleNotifications,
+    updateAppointment,
+    loadMoreAppointments,
+    refreshScheduleData,
+    saveAvailabilitySlot,
+    savePetRecord,
+    createStaff,
+    updateUser,
+    deleteUser,
+  } = useApp();
+  if (location.pathname.endsWith("/pricelists")) return currentUser?.role === "admin" ? <PricelistManager /> : <p>Administrator access required.</p>;
+  const activeModule = location.pathname.endsWith("/pet-records")
+    ? "pet-records"
+    : location.pathname.endsWith("/schedule")
+      ? "schedule"
+    : location.pathname.endsWith("/manage-users")
+      ? "manage-users"
+      : "appointments";
+
+  if (activeModule === "pet-records") {
+    return (
+      <PetRecordsWorkspace
+        currentUser={currentUser}
+        state={state}
+        savePetRecord={savePetRecord}
+      />
+    );
+  }
+
+  if (activeModule === "schedule") {
+    return (
+      <ScheduleWorkspace
+        currentUser={currentUser}
+        state={state}
+        saveAvailabilitySlot={saveAvailabilitySlot}
+      />
+    );
+  }
+
+  if (activeModule === "manage-users") {
+    return (
+      <ManageUsersWorkspace
+        currentUser={currentUser}
+        state={state}
+        visibleNotifications={visibleNotifications}
+        createStaff={createStaff}
+        updateUser={updateUser}
+        deleteUser={deleteUser}
+      />
+    );
+  }
+
+  return (
+    <AppointmentsWorkspace
+      currentUser={currentUser}
+      state={state}
+      visibleNotifications={visibleNotifications}
+      updateAppointment={updateAppointment}
+      loadMoreAppointments={loadMoreAppointments}
+      refreshScheduleData={refreshScheduleData}
+    />
+  );
+}
+import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../../shared/textModeration.mjs";

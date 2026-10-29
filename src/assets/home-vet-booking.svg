@@ -1,0 +1,76 @@
+<svg width="900" height="650" viewBox="0 0 900 650" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="74" y1="60" x2="785" y2="626" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B4C84"/>
+      <stop offset="1" stop-color="#163C66"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="498" y1="56" x2="824" y2="602" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E5EEF9"/>
+      <stop offset="1" stop-color="#F8FBFE"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="204" y1="456" x2="381" y2="575" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD147"/>
+      <stop offset="1" stop-color="#FFB702"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="10" width="884" height="630" rx="56" fill="url(#bg)"/>
+  <circle cx="126" cy="126" r="70" fill="#9EE8E7" stroke="#111111" stroke-width="8"/>
+  <rect x="51" y="148" width="150" height="56" rx="28" fill="#FFC320" stroke="#111111" stroke-width="6"/>
+  <text x="126" y="113" fill="#111111" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">CHARMING</text>
+  <text x="126" y="131" fill="#111111" font-family="Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">FUR-FECTION</text>
+  <text x="126" y="184" fill="#111111" font-family="Arial, sans-serif" font-size="16" font-weight="900" text-anchor="middle">PET CARE</text>
+  <text x="126" y="202" fill="#111111" font-family="Arial, sans-serif" font-size="16" font-weight="900" text-anchor="middle">SERVICES</text>
+  <text x="258" y="170" fill="#A5DAFB" font-family="Arial, sans-serif" font-size="84" font-weight="900">VET</text>
+  <text x="468" y="172" fill="#A5DAFB" font-family="Arial, sans-serif" font-size="54" font-weight="700">+</text>
+  <text x="208" y="276" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="88" font-weight="900">CLINIC</text>
+  <g opacity="0.18" stroke="#93D7FF">
+    <path d="M138 244H438" stroke-width="4"/>
+    <path d="M138 334H438" stroke-width="4"/>
+    <path d="M138 424H438" stroke-width="4"/>
+    <circle cx="126" cy="316" r="90" stroke-width="2"/>
+  </g>
+  <g>
+    <polygon points="96,290 124,272 152,290 152,322 124,340 96,322" fill="#FFC320"/>
+    <rect x="164" y="278" width="306" height="52" rx="26" fill="#3C72A6" opacity="0.88"/>
+    <text x="206" y="312" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="700">Vaccination / Deworming</text>
+    <path d="M117 292L130 305L145 287" stroke="#1C2A38" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g>
+    <polygon points="96,368 124,350 152,368 152,400 124,418 96,400" fill="#FFC320"/>
+    <rect x="164" y="356" width="286" height="52" rx="26" fill="#3C72A6" opacity="0.88"/>
+    <text x="206" y="390" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="700">Consultation</text>
+    <path d="M115 363C115 355 121 349 129 349C137 349 143 355 143 363V386H115V363Z" stroke="#1C2A38" stroke-width="6"/>
+    <path d="M129 386V405" stroke="#1C2A38" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <g>
+    <polygon points="96,446 124,428 152,446 152,478 124,496 96,478" fill="#FFC320"/>
+    <rect x="164" y="434" width="306" height="52" rx="26" fill="#3C72A6" opacity="0.88"/>
+    <text x="206" y="468" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="28" font-weight="700">Laboratory Testing</text>
+    <path d="M116 446H142" stroke="#1C2A38" stroke-width="6" stroke-linecap="round"/>
+    <path d="M121 446V466C121 474 126 482 134 486" stroke="#1C2A38" stroke-width="6" stroke-linecap="round"/>
+    <path d="M137 446V466C137 474 132 482 124 486" stroke="#1C2A38" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <path d="M535 72C624 58 773 80 849 164V585C762 620 636 620 539 583C498 569 458 531 455 482V180C458 130 493 84 535 72Z" fill="url(#panel)"/>
+  <ellipse cx="678" cy="286" rx="130" ry="172" fill="#FFFFFF"/>
+  <path d="M596 165L642 112L682 187" fill="#FFFFFF"/>
+  <path d="M736 184L775 112L807 194" fill="#FFFFFF"/>
+  <ellipse cx="636" cy="282" rx="24" ry="18" fill="#DCA58E"/>
+  <ellipse cx="722" cy="282" rx="24" ry="18" fill="#DCA58E"/>
+  <ellipse cx="682" cy="318" rx="30" ry="24" fill="#D9B4A0"/>
+  <circle cx="647" cy="270" r="9" fill="#C49A2F"/>
+  <circle cx="714" cy="270" r="9" fill="#C49A2F"/>
+  <circle cx="647" cy="270" r="4" fill="#111111"/>
+  <circle cx="714" cy="270" r="4" fill="#111111"/>
+  <path d="M682 318L668 333H696L682 318Z" fill="#F08DA0"/>
+  <path d="M650 348C665 360 699 360 714 348" stroke="#E2B6BE" stroke-width="6" stroke-linecap="round"/>
+  <path d="M666 334L656 347" stroke="#5A5A5A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M698 334L708 347" stroke="#5A5A5A" stroke-width="3" stroke-linecap="round"/>
+  <g>
+    <rect x="603" y="432" width="176" height="34" rx="17" fill="#C98D55"/>
+    <rect x="658" y="420" width="32" height="150" rx="16" fill="#C2C7D0"/>
+    <circle cx="775" cy="486" r="64" fill="none" stroke="#DCE1EA" stroke-width="18"/>
+    <rect x="771" y="530" width="22" height="72" rx="11" transform="rotate(-22 771 530)" fill="#C2C7D0"/>
+  </g>
+  <text x="218" y="552" fill="url(#gold)" font-family="Arial, sans-serif" font-size="74" font-weight="900">SATURDAY</text>
+  <text x="218" y="614" fill="url(#gold)" font-family="Arial, sans-serif" font-size="74" font-weight="900">9AM TO 6PM</text>
+</svg>

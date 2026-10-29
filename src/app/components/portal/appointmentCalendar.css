@@ -1,0 +1,122 @@
+.appointment-calendar {
+  --fc-border-color: #d9e7e7;
+  --fc-today-bg-color: #f3faf7;
+  --fc-neutral-bg-color: #f6fafa;
+  --fc-page-bg-color: #ffffff;
+  --fc-event-selected-overlay-color: transparent;
+  color: #20343b;
+}
+
+.appointment-calendar .fc {
+  font-size: 12px;
+}
+
+.appointment-calendar .fc-col-header-cell {
+  padding: 6px 0;
+  background: #f6fafa;
+  font-weight: 600;
+}
+
+.appointment-calendar .fc-daygrid-day-number {
+  padding: 6px;
+}
+
+.appointment-calendar .fc-event {
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 2px 3px;
+}
+
+.appointment-calendar .calendar-event-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 5px;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.appointment-calendar .calendar-event-name {
+  font-weight: 700;
+}
+
+.appointment-calendar .calendar-event-service,
+.appointment-calendar .calendar-event-pet,
+.appointment-calendar .calendar-event-assignee {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.appointment-calendar .calendar-event-contact,
+.appointment-calendar .calendar-event-assignee {
+  display: none;
+}
+
+.appointment-calendar .fc-popover .calendar-event-contact,
+.appointment-calendar .fc-popover .calendar-event-assignee {
+  display: block;
+}
+
+.appointment-calendar .fc-timegrid-event .calendar-event-content {
+  overflow: hidden;
+  overflow-wrap: normal;
+  padding: 2px 4px;
+  line-height: 1.2;
+}
+
+.appointment-calendar .fc-timegrid-event .calendar-event-content > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appointment-calendar .fc-more-link {
+  font-weight: 600;
+  color: #2d6b73;
+}
+
+.appointment-calendar .fc-popover {
+  width: min(420px, calc(100vw - 32px));
+  max-width: min(420px, calc(100vw - 32px));
+  max-height: min(72vh, 680px);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.appointment-calendar .fc-popover-header {
+  flex: 0 0 auto;
+}
+
+.appointment-calendar .fc-popover-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.appointment-detail-dialog > section {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .appointment-calendar .fc {
+    font-size: 10px;
+  }
+
+  .appointment-calendar .calendar-event-content {
+    padding: 3px;
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .appointment-calendar .fc-timegrid-axis,
+  .appointment-calendar .fc-timegrid-slot-label {
+    width: 40px;
+  }
+}

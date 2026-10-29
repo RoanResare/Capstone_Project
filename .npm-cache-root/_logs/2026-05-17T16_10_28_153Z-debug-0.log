@@ -1,0 +1,1318 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.11.0
+2 info using node@v24.14.1
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\resar\OneDrive\Desktop\Capstone_Project\.npmrc
+5 silly config load:file:C:\Users\resar\.npmrc
+6 silly config load:file:C:\Users\resar\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install"
+9 verbose logfile logs-max:10 dir:c:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache-root\_logs\2026-05-17T16_10_28_153Z-
+10 verbose logfile c:\Users\resar\OneDrive\Desktop\Capstone_Project\.npm-cache-root\_logs\2026-05-17T16_10_28_153Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly idealTree buildDeps
+14 silly fetch manifest @tailwindcss/vite@^4.3.0
+15 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2fvite cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/npm 704ms
+17 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2fvite 598ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2fvite set size:undefined disposed:false
+19 silly fetch manifest vite@^8.0.13
+20 silly packumentCache full:https://registry.npmjs.org/vite cache-miss
+21 http fetch GET 200 https://registry.npmjs.org/vite 1652ms (cache miss)
+22 silly packumentCache full:https://registry.npmjs.org/vite set size:undefined disposed:false
+23 silly fetch manifest @types/node@^20.19.0 || >=22.12.0
+24 silly packumentCache full:https://registry.npmjs.org/@types%2fnode cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/@types%2fnode 412ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/@types%2fnode set size:undefined disposed:false
+27 silly fetch manifest @vitejs/devtools@^0.1.18
+28 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fdevtools cache-miss
+29 http fetch GET 200 https://registry.npmjs.org/@vitejs%2fdevtools 89ms (cache miss)
+30 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fdevtools set size:undefined disposed:false
+31 silly fetch manifest esbuild@^0.27.0 || ^0.28.0
+32 silly packumentCache full:https://registry.npmjs.org/esbuild cache-miss
+33 http fetch GET 200 https://registry.npmjs.org/esbuild 133ms (cache miss)
+34 silly packumentCache full:https://registry.npmjs.org/esbuild set size:undefined disposed:false
+35 silly fetch manifest jiti@>=1.21.0
+36 silly packumentCache full:https://registry.npmjs.org/jiti cache-miss
+37 http fetch GET 200 https://registry.npmjs.org/jiti 76ms (cache miss)
+38 silly packumentCache full:https://registry.npmjs.org/jiti set size:undefined disposed:false
+39 silly fetch manifest less@^4.0.0
+40 silly packumentCache full:https://registry.npmjs.org/less cache-miss
+41 http fetch GET 200 https://registry.npmjs.org/less 81ms (cache miss)
+42 silly packumentCache full:https://registry.npmjs.org/less set size:undefined disposed:false
+43 silly fetch manifest sass@^1.70.0
+44 silly packumentCache full:https://registry.npmjs.org/sass cache-miss
+45 http fetch GET 200 https://registry.npmjs.org/sass 95ms (cache miss)
+46 silly packumentCache full:https://registry.npmjs.org/sass set size:undefined disposed:false
+47 silly fetch manifest sass-embedded@^1.70.0
+48 silly packumentCache full:https://registry.npmjs.org/sass-embedded cache-miss
+49 http fetch GET 200 https://registry.npmjs.org/sass-embedded 89ms (cache miss)
+50 silly packumentCache full:https://registry.npmjs.org/sass-embedded set size:undefined disposed:false
+51 silly fetch manifest stylus@>=0.54.8
+52 silly packumentCache full:https://registry.npmjs.org/stylus cache-miss
+53 http fetch GET 200 https://registry.npmjs.org/stylus 77ms (cache miss)
+54 silly packumentCache full:https://registry.npmjs.org/stylus set size:undefined disposed:false
+55 silly fetch manifest sugarss@^5.0.0
+56 silly packumentCache full:https://registry.npmjs.org/sugarss cache-miss
+57 http fetch GET 200 https://registry.npmjs.org/sugarss 67ms (cache miss)
+58 silly packumentCache full:https://registry.npmjs.org/sugarss set size:undefined disposed:false
+59 silly fetch manifest postcss@^8.3.3
+60 silly packumentCache full:https://registry.npmjs.org/postcss cache-miss
+61 http fetch GET 200 https://registry.npmjs.org/postcss 87ms (cache miss)
+62 silly packumentCache full:https://registry.npmjs.org/postcss set size:undefined disposed:false
+63 silly fetch manifest terser@^5.16.0
+64 silly packumentCache full:https://registry.npmjs.org/terser cache-miss
+65 http fetch GET 200 https://registry.npmjs.org/terser 96ms (cache miss)
+66 silly packumentCache full:https://registry.npmjs.org/terser set size:undefined disposed:false
+67 silly fetch manifest tsx@^4.8.1
+68 silly packumentCache full:https://registry.npmjs.org/tsx cache-miss
+69 http fetch GET 200 https://registry.npmjs.org/tsx 69ms (cache miss)
+70 silly packumentCache full:https://registry.npmjs.org/tsx set size:undefined disposed:false
+71 silly fetch manifest yaml@^2.4.2
+72 silly packumentCache full:https://registry.npmjs.org/yaml cache-miss
+73 http fetch GET 200 https://registry.npmjs.org/yaml 74ms (cache miss)
+74 silly packumentCache full:https://registry.npmjs.org/yaml set size:undefined disposed:false
+75 silly fetch manifest @vitejs/plugin-react@^6.0.2
+76 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fplugin-react cache-miss
+77 http fetch GET 200 https://registry.npmjs.org/@vitejs%2fplugin-react 92ms (cache miss)
+78 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fplugin-react set size:undefined disposed:false
+79 silly fetch manifest @rolldown/plugin-babel@^0.1.7 || ^0.2.0
+80 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fplugin-babel cache-miss
+81 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fplugin-babel 82ms (cache miss)
+82 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fplugin-babel set size:undefined disposed:false
+83 silly fetch manifest @babel/core@^7.29.0 || ^8.0.0-rc.1
+84 silly packumentCache full:https://registry.npmjs.org/@babel%2fcore cache-miss
+85 http fetch GET 200 https://registry.npmjs.org/@babel%2fcore 96ms (cache miss)
+86 silly packumentCache full:https://registry.npmjs.org/@babel%2fcore set size:undefined disposed:false
+87 silly fetch manifest @babel/plugin-transform-runtime@^7.29.0 || ^8.0.0-rc.1
+88 silly packumentCache full:https://registry.npmjs.org/@babel%2fplugin-transform-runtime cache-miss
+89 http fetch GET 200 https://registry.npmjs.org/@babel%2fplugin-transform-runtime 121ms (cache miss)
+90 silly packumentCache full:https://registry.npmjs.org/@babel%2fplugin-transform-runtime set size:undefined disposed:false
+91 silly fetch manifest @babel/runtime@^7.27.0 || ^8.0.0-rc.1
+92 silly packumentCache full:https://registry.npmjs.org/@babel%2fruntime cache-miss
+93 http fetch GET 200 https://registry.npmjs.org/@babel%2fruntime 196ms (cache miss)
+94 silly packumentCache full:https://registry.npmjs.org/@babel%2fruntime set size:undefined disposed:false
+95 silly fetch manifest rolldown@^1.0.0-rc.5
+96 silly packumentCache full:https://registry.npmjs.org/rolldown cache-miss
+97 http fetch GET 200 https://registry.npmjs.org/rolldown 157ms (cache miss)
+98 silly packumentCache full:https://registry.npmjs.org/rolldown set size:undefined disposed:false
+99 silly fetch manifest babel-plugin-react-compiler@^1.0.0
+100 silly packumentCache full:https://registry.npmjs.org/babel-plugin-react-compiler cache-miss
+101 http fetch GET 200 https://registry.npmjs.org/babel-plugin-react-compiler 92ms (cache miss)
+102 silly packumentCache full:https://registry.npmjs.org/babel-plugin-react-compiler set size:undefined disposed:false
+103 silly fetch manifest tailwindcss@^4.3.0
+104 silly packumentCache full:https://registry.npmjs.org/tailwindcss cache-miss
+105 http fetch GET 200 https://registry.npmjs.org/tailwindcss 297ms (cache miss)
+106 silly packumentCache full:https://registry.npmjs.org/tailwindcss set size:undefined disposed:false
+107 silly placeDep ROOT @tailwindcss/vite@4.3.0 REPLACE for: capstone-project@0.0.0 want: ^4.3.0
+108 silly placeDep ROOT @vitejs/plugin-react@6.0.2 REPLACE for: capstone-project@0.0.0 want: ^6.0.2
+109 silly placeDep ROOT tailwindcss@4.3.0 OK for: capstone-project@0.0.0 want: ^4.3.0
+110 silly placeDep ROOT vite@8.0.13 REPLACE for: capstone-project@0.0.0 want: ^8.0.13
+111 silly fetch manifest tailwindcss@4.3.0
+112 silly packumentCache full:https://registry.npmjs.org/tailwindcss cache-miss
+113 silly fetch manifest @tailwindcss/node@4.3.0
+114 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2fnode cache-miss
+115 silly fetch manifest @tailwindcss/oxide@4.3.0
+116 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide cache-miss
+117 silly fetch manifest @rolldown/pluginutils@^1.0.0
+118 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fpluginutils cache-miss
+119 silly fetch manifest postcss@^8.5.14
+120 silly packumentCache full:https://registry.npmjs.org/postcss cache-miss
+121 silly fetch manifest rolldown@1.0.1
+122 silly packumentCache full:https://registry.npmjs.org/rolldown cache-miss
+123 http cache https://registry.npmjs.org/postcss 65ms (cache hit)
+124 silly packumentCache full:https://registry.npmjs.org/postcss set size:720302 disposed:false
+125 http cache https://registry.npmjs.org/tailwindcss 132ms (cache hit)
+126 silly packumentCache full:https://registry.npmjs.org/tailwindcss set size:10521111 disposed:false
+127 http cache https://registry.npmjs.org/rolldown 237ms (cache hit)
+128 silly packumentCache full:https://registry.npmjs.org/rolldown set size:3707856 disposed:false
+129 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2fnode 429ms (cache miss)
+130 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2fnode set size:undefined disposed:false
+131 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fpluginutils 466ms (cache miss)
+132 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fpluginutils set size:undefined disposed:false
+133 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide 537ms (cache miss)
+134 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide set size:undefined disposed:false
+135 silly placeDep ROOT @tailwindcss/node@4.3.0 OK for: @tailwindcss/vite@4.3.0 want: 4.3.0
+136 silly placeDep ROOT @tailwindcss/oxide@4.3.0 OK for: @tailwindcss/vite@4.3.0 want: 4.3.0
+137 silly fetch manifest magic-string@^0.30.21
+138 silly packumentCache full:https://registry.npmjs.org/magic-string cache-miss
+139 silly fetch manifest source-map-js@^1.2.1
+140 silly packumentCache full:https://registry.npmjs.org/source-map-js cache-miss
+141 silly fetch manifest enhanced-resolve@^5.21.0
+142 silly packumentCache full:https://registry.npmjs.org/enhanced-resolve cache-miss
+143 silly fetch manifest @jridgewell/remapping@^2.3.5
+144 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fremapping cache-miss
+145 silly fetch manifest @tailwindcss/oxide-darwin-x64@4.3.0
+146 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-darwin-x64 cache-miss
+147 silly fetch manifest @tailwindcss/oxide-freebsd-x64@4.3.0
+148 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-freebsd-x64 cache-miss
+149 silly fetch manifest @tailwindcss/oxide-wasm32-wasi@4.3.0
+150 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-wasm32-wasi cache-miss
+151 http fetch GET 200 https://registry.npmjs.org/source-map-js 100ms (cache miss)
+152 silly packumentCache full:https://registry.npmjs.org/source-map-js set size:undefined disposed:false
+153 silly fetch manifest @tailwindcss/oxide-darwin-arm64@4.3.0
+154 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-darwin-arm64 cache-miss
+155 http fetch GET 200 https://registry.npmjs.org/magic-string 111ms (cache miss)
+156 silly packumentCache full:https://registry.npmjs.org/magic-string set size:undefined disposed:false
+157 silly fetch manifest @tailwindcss/oxide-android-arm64@4.3.0
+158 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-android-arm64 cache-miss
+159 http fetch GET 200 https://registry.npmjs.org/enhanced-resolve 129ms (cache miss)
+160 silly packumentCache full:https://registry.npmjs.org/enhanced-resolve set size:undefined disposed:false
+161 silly fetch manifest @tailwindcss/oxide-linux-x64-gnu@4.3.0
+162 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-x64-gnu cache-miss
+163 http fetch GET 200 https://registry.npmjs.org/@jridgewell%2fremapping 185ms (cache miss)
+164 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fremapping set size:undefined disposed:false
+165 silly fetch manifest @tailwindcss/oxide-linux-x64-musl@4.3.0
+166 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-x64-musl cache-miss
+167 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-wasm32-wasi 473ms (cache miss)
+168 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-wasm32-wasi set size:undefined disposed:false
+169 silly fetch manifest @tailwindcss/oxide-win32-x64-msvc@4.3.0
+170 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-win32-x64-msvc cache-miss
+171 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-android-arm64 413ms (cache miss)
+172 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-android-arm64 set size:undefined disposed:false
+173 silly fetch manifest @tailwindcss/oxide-linux-arm64-gnu@4.3.0
+174 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm64-gnu cache-miss
+175 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-darwin-arm64 477ms (cache miss)
+176 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-darwin-arm64 set size:undefined disposed:false
+177 silly fetch manifest @tailwindcss/oxide-linux-arm64-musl@4.3.0
+178 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm64-musl cache-miss
+179 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-linux-x64-gnu 537ms (cache miss)
+180 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-x64-gnu set size:undefined disposed:false
+181 silly fetch manifest @tailwindcss/oxide-win32-arm64-msvc@4.3.0
+182 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-win32-arm64-msvc cache-miss
+183 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-freebsd-x64 729ms (cache miss)
+184 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-freebsd-x64 set size:undefined disposed:false
+185 silly fetch manifest @tailwindcss/oxide-linux-arm-gnueabihf@4.3.0
+186 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm-gnueabihf cache-miss
+187 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-darwin-x64 781ms (cache miss)
+188 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-darwin-x64 set size:undefined disposed:false
+189 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-linux-x64-musl 720ms (cache miss)
+190 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-x64-musl set size:undefined disposed:false
+191 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-win32-x64-msvc 518ms (cache miss)
+192 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-win32-x64-msvc set size:undefined disposed:false
+193 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-win32-arm64-msvc 351ms (cache miss)
+194 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-win32-arm64-msvc set size:undefined disposed:false
+195 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm64-gnu 549ms (cache miss)
+196 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm64-gnu set size:undefined disposed:false
+197 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm64-musl 563ms (cache miss)
+198 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm64-musl set size:undefined disposed:false
+199 http fetch GET 200 https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm-gnueabihf 474ms (cache miss)
+200 silly packumentCache full:https://registry.npmjs.org/@tailwindcss%2foxide-linux-arm-gnueabihf set size:undefined disposed:false
+201 silly placeDep ROOT @jridgewell/remapping@2.3.5 OK for: @tailwindcss/node@4.3.0 want: ^2.3.5
+202 silly placeDep ROOT enhanced-resolve@5.21.3 OK for: @tailwindcss/node@4.3.0 want: ^5.21.0
+203 silly placeDep ROOT magic-string@0.30.21 OK for: @tailwindcss/node@4.3.0 want: ^0.30.21
+204 silly placeDep ROOT source-map-js@1.2.1 OK for: @tailwindcss/node@4.3.0 want: ^1.2.1
+205 silly fetch manifest @jridgewell/gen-mapping@^0.3.5
+206 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fgen-mapping cache-miss
+207 silly fetch manifest @jridgewell/trace-mapping@^0.3.24
+208 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2ftrace-mapping cache-miss
+209 silly fetch manifest graceful-fs@^4.2.4
+210 silly packumentCache full:https://registry.npmjs.org/graceful-fs cache-miss
+211 silly fetch manifest tapable@^2.3.3
+212 silly packumentCache full:https://registry.npmjs.org/tapable cache-miss
+213 silly fetch manifest @jridgewell/sourcemap-codec@^1.5.5
+214 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec cache-miss
+215 http fetch GET 200 https://registry.npmjs.org/graceful-fs 93ms (cache miss)
+216 silly packumentCache full:https://registry.npmjs.org/graceful-fs set size:undefined disposed:false
+217 http fetch GET 200 https://registry.npmjs.org/tapable 96ms (cache miss)
+218 silly packumentCache full:https://registry.npmjs.org/tapable set size:undefined disposed:false
+219 http fetch GET 200 https://registry.npmjs.org/@jridgewell%2fgen-mapping 106ms (cache miss)
+220 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fgen-mapping set size:undefined disposed:false
+221 http fetch GET 200 https://registry.npmjs.org/@jridgewell%2ftrace-mapping 108ms (cache miss)
+222 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2ftrace-mapping set size:undefined disposed:false
+223 http fetch GET 200 https://registry.npmjs.org/@jridgewell%2fsourcemap-codec 121ms (cache miss)
+224 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec set size:undefined disposed:false
+225 silly placeDep ROOT @jridgewell/gen-mapping@0.3.13 OK for: @jridgewell/remapping@2.3.5 want: ^0.3.5
+226 silly placeDep ROOT @jridgewell/trace-mapping@0.3.31 OK for: @jridgewell/remapping@2.3.5 want: ^0.3.24
+227 silly fetch manifest @jridgewell/sourcemap-codec@^1.5.0
+228 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec cache-miss
+229 silly fetch manifest @jridgewell/resolve-uri@^3.1.0
+230 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fresolve-uri cache-miss
+231 silly fetch manifest @jridgewell/sourcemap-codec@^1.4.14
+232 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec cache-miss
+233 http cache https://registry.npmjs.org/@jridgewell%2fsourcemap-codec 25ms (cache hit)
+234 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec set size:59275 disposed:false
+235 http cache https://registry.npmjs.org/@jridgewell%2fsourcemap-codec 37ms (cache hit)
+236 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec set size:59275 disposed:false
+237 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fsourcemap-codec dispose
+238 http fetch GET 200 https://registry.npmjs.org/@jridgewell%2fresolve-uri 79ms (cache miss)
+239 silly packumentCache full:https://registry.npmjs.org/@jridgewell%2fresolve-uri set size:undefined disposed:false
+240 silly placeDep ROOT @jridgewell/sourcemap-codec@1.5.5 OK for: @jridgewell/gen-mapping@0.3.13 want: ^1.5.0
+241 silly placeDep ROOT @jridgewell/resolve-uri@3.1.2 OK for: @jridgewell/trace-mapping@0.3.31 want: ^3.1.0
+242 silly placeDep ROOT @tailwindcss/oxide-android-arm64@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+243 silly placeDep ROOT @tailwindcss/oxide-darwin-arm64@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+244 silly placeDep ROOT @tailwindcss/oxide-darwin-x64@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+245 silly placeDep ROOT @tailwindcss/oxide-freebsd-x64@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+246 silly placeDep ROOT @tailwindcss/oxide-linux-arm-gnueabihf@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+247 silly placeDep ROOT @tailwindcss/oxide-linux-arm64-gnu@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+248 silly placeDep ROOT @tailwindcss/oxide-linux-arm64-musl@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+249 silly placeDep ROOT @tailwindcss/oxide-linux-x64-gnu@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+250 silly placeDep ROOT @tailwindcss/oxide-linux-x64-musl@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+251 silly placeDep ROOT @tailwindcss/oxide-wasm32-wasi@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+252 silly placeDep ROOT @tailwindcss/oxide-win32-arm64-msvc@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+253 silly placeDep ROOT @tailwindcss/oxide-win32-x64-msvc@4.3.0 OK for: @tailwindcss/oxide@4.3.0 want: 4.3.0
+254 silly placeDep ROOT @rolldown/pluginutils@1.0.1 OK for: @vitejs/plugin-react@6.0.2 want: ^1.0.0
+255 silly placeDep ROOT graceful-fs@4.2.11 OK for: enhanced-resolve@5.21.3 want: ^4.2.4
+256 silly placeDep ROOT tapable@2.3.3 OK for: enhanced-resolve@5.21.3 want: ^2.3.3
+257 silly placeDep ROOT postcss@8.5.14 OK for: vite@8.0.13 want: ^8.5.14
+258 silly placeDep ROOT rolldown@1.0.1 OK for: vite@8.0.13 want: 1.0.1
+259 silly fetch manifest nanoid@^3.3.11
+260 silly packumentCache full:https://registry.npmjs.org/nanoid cache-miss
+261 silly fetch manifest picocolors@^1.1.1
+262 silly packumentCache full:https://registry.npmjs.org/picocolors cache-miss
+263 silly fetch manifest @oxc-project/types@=0.130.0
+264 silly packumentCache full:https://registry.npmjs.org/@oxc-project%2ftypes cache-miss
+265 silly fetch manifest @rolldown/binding-darwin-x64@1.0.1
+266 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-darwin-x64 cache-miss
+267 silly fetch manifest @rolldown/binding-win32-x64-msvc@1.0.1
+268 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-win32-x64-msvc cache-miss
+269 silly fetch manifest @rolldown/binding-linux-x64-gnu@1.0.1
+270 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-x64-gnu cache-miss
+271 silly fetch manifest @rolldown/binding-linux-x64-musl@1.0.1
+272 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-x64-musl cache-miss
+273 http fetch GET 200 https://registry.npmjs.org/picocolors 76ms (cache miss)
+274 silly packumentCache full:https://registry.npmjs.org/picocolors set size:undefined disposed:false
+275 silly fetch manifest @rolldown/binding-freebsd-x64@1.0.1
+276 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-freebsd-x64 cache-miss
+277 http fetch GET 200 https://registry.npmjs.org/nanoid 107ms (cache miss)
+278 silly packumentCache full:https://registry.npmjs.org/nanoid set size:undefined disposed:false
+279 silly fetch manifest @rolldown/binding-linux-arm-gnueabihf@1.0.1
+280 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-arm-gnueabihf cache-miss
+281 http fetch GET 200 https://registry.npmjs.org/@oxc-project%2ftypes 132ms (cache miss)
+282 silly packumentCache full:https://registry.npmjs.org/@oxc-project%2ftypes set size:undefined disposed:false
+283 silly fetch manifest @rolldown/binding-linux-arm64-gnu@1.0.1
+284 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-arm64-gnu cache-miss
+285 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-darwin-x64 319ms (cache miss)
+286 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-darwin-x64 set size:undefined disposed:false
+287 silly fetch manifest @rolldown/binding-darwin-arm64@1.0.1
+288 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-darwin-arm64 cache-miss
+289 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-win32-x64-msvc 375ms (cache miss)
+290 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-win32-x64-msvc set size:undefined disposed:false
+291 silly fetch manifest @rolldown/binding-linux-arm64-musl@1.0.1
+292 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-arm64-musl cache-miss
+293 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-x64-musl 386ms (cache miss)
+294 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-x64-musl set size:undefined disposed:false
+295 silly fetch manifest @rolldown/binding-openharmony-arm64@1.0.1
+296 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-openharmony-arm64 cache-miss
+297 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-x64-gnu 401ms (cache miss)
+298 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-x64-gnu set size:undefined disposed:false
+299 silly fetch manifest @rolldown/binding-win32-arm64-msvc@1.0.1
+300 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-win32-arm64-msvc cache-miss
+301 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-arm-gnueabihf 352ms (cache miss)
+302 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-arm-gnueabihf set size:undefined disposed:false
+303 silly fetch manifest @rolldown/binding-android-arm64@1.0.1
+304 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-android-arm64 cache-miss
+305 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-arm64-gnu 356ms (cache miss)
+306 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-arm64-gnu set size:undefined disposed:false
+307 silly fetch manifest @rolldown/binding-wasm32-wasi@1.0.1
+308 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-wasm32-wasi cache-miss
+309 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-freebsd-x64 451ms (cache miss)
+310 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-freebsd-x64 set size:undefined disposed:false
+311 silly fetch manifest @rolldown/binding-linux-s390x-gnu@1.0.1
+312 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-s390x-gnu cache-miss
+313 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-openharmony-arm64 144ms (cache miss)
+314 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-openharmony-arm64 set size:undefined disposed:false
+315 silly fetch manifest @rolldown/binding-linux-ppc64-gnu@1.0.1
+316 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-ppc64-gnu cache-miss
+317 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-darwin-arm64 238ms (cache miss)
+318 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-darwin-arm64 set size:undefined disposed:false
+319 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-android-arm64 129ms (cache miss)
+320 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-android-arm64 set size:undefined disposed:false
+321 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-s390x-gnu 112ms (cache miss)
+322 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-s390x-gnu set size:undefined disposed:false
+323 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-arm64-musl 266ms (cache miss)
+324 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-arm64-musl set size:undefined disposed:false
+325 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-win32-arm64-msvc 262ms (cache miss)
+326 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-win32-arm64-msvc set size:undefined disposed:false
+327 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-wasm32-wasi 206ms (cache miss)
+328 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-wasm32-wasi set size:undefined disposed:false
+329 http fetch GET 200 https://registry.npmjs.org/@rolldown%2fbinding-linux-ppc64-gnu 275ms (cache miss)
+330 silly packumentCache full:https://registry.npmjs.org/@rolldown%2fbinding-linux-ppc64-gnu set size:undefined disposed:false
+331 silly placeDep ROOT nanoid@3.3.12 OK for: postcss@8.5.14 want: ^3.3.11
+332 silly placeDep ROOT picocolors@1.1.1 OK for: postcss@8.5.14 want: ^1.1.1
+333 silly placeDep ROOT @oxc-project/types@0.130.0 OK for: rolldown@1.0.1 want: =0.130.0
+334 silly placeDep ROOT @rolldown/binding-android-arm64@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+335 silly placeDep ROOT @rolldown/binding-darwin-arm64@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+336 silly placeDep ROOT @rolldown/binding-darwin-x64@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+337 silly placeDep ROOT @rolldown/binding-freebsd-x64@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+338 silly placeDep ROOT @rolldown/binding-linux-arm-gnueabihf@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+339 silly placeDep ROOT @rolldown/binding-linux-arm64-gnu@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+340 silly placeDep ROOT @rolldown/binding-linux-arm64-musl@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+341 silly placeDep ROOT @rolldown/binding-linux-ppc64-gnu@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+342 silly placeDep ROOT @rolldown/binding-linux-s390x-gnu@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+343 silly placeDep ROOT @rolldown/binding-linux-x64-gnu@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+344 silly placeDep ROOT @rolldown/binding-linux-x64-musl@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+345 silly placeDep ROOT @rolldown/binding-openharmony-arm64@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+346 silly placeDep ROOT @rolldown/binding-wasm32-wasi@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+347 silly placeDep ROOT @rolldown/binding-win32-arm64-msvc@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+348 silly placeDep ROOT @rolldown/binding-win32-x64-msvc@1.0.1 OK for: rolldown@1.0.1 want: 1.0.1
+349 silly fetch manifest @napi-rs/wasm-runtime@^1.1.4
+350 silly packumentCache full:https://registry.npmjs.org/@napi-rs%2fwasm-runtime cache-miss
+351 silly fetch manifest @emnapi/core@1.10.0
+352 silly packumentCache full:https://registry.npmjs.org/@emnapi%2fcore cache-miss
+353 silly fetch manifest @emnapi/runtime@1.10.0
+354 silly packumentCache full:https://registry.npmjs.org/@emnapi%2fruntime cache-miss
+355 http fetch GET 200 https://registry.npmjs.org/@napi-rs%2fwasm-runtime 88ms (cache miss)
+356 silly packumentCache full:https://registry.npmjs.org/@napi-rs%2fwasm-runtime set size:undefined disposed:false
+357 http fetch GET 200 https://registry.npmjs.org/@emnapi%2fcore 95ms (cache miss)
+358 silly packumentCache full:https://registry.npmjs.org/@emnapi%2fcore set size:undefined disposed:false
+359 http fetch GET 200 https://registry.npmjs.org/@emnapi%2fruntime 104ms (cache miss)
+360 silly packumentCache full:https://registry.npmjs.org/@emnapi%2fruntime set size:undefined disposed:false
+361 silly placeDep ROOT @emnapi/core@1.10.0 OK for: @rolldown/binding-wasm32-wasi@1.0.1 want: 1.10.0
+362 silly placeDep ROOT @emnapi/runtime@1.10.0 OK for: @rolldown/binding-wasm32-wasi@1.0.1 want: 1.10.0
+363 silly placeDep ROOT @napi-rs/wasm-runtime@1.1.4 OK for: @rolldown/binding-wasm32-wasi@1.0.1 want: ^1.1.4
+364 silly fetch manifest @emnapi/wasi-threads@1.2.1
+365 silly packumentCache full:https://registry.npmjs.org/@emnapi%2fwasi-threads cache-miss
+366 silly fetch manifest @tybys/wasm-util@^0.10.1
+367 silly packumentCache full:https://registry.npmjs.org/@tybys%2fwasm-util cache-miss
+368 http fetch GET 200 https://registry.npmjs.org/@emnapi%2fwasi-threads 81ms (cache miss)
+369 silly packumentCache full:https://registry.npmjs.org/@emnapi%2fwasi-threads set size:undefined disposed:false
+370 http fetch GET 200 https://registry.npmjs.org/@tybys%2fwasm-util 86ms (cache miss)
+371 silly packumentCache full:https://registry.npmjs.org/@tybys%2fwasm-util set size:undefined disposed:false
+372 silly placeDep ROOT @emnapi/wasi-threads@1.2.1 OK for: @emnapi/core@1.10.0 want: 1.2.1
+373 silly placeDep ROOT @tybys/wasm-util@0.10.2 OK for: @napi-rs/wasm-runtime@1.1.4 want: ^0.10.1
+374 silly reify mark retired [
+374 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@emnapi\\core'
+374 silly reify ]
+375 silly reify mark retired [
+375 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@emnapi\\runtime'
+375 silly reify ]
+376 silly reify mark retired [
+376 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@fastify\\busboy'
+376 silly reify ]
+377 silly reify mark retired [
+377 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\firestore'
+377 silly reify ]
+378 silly reify mark retired [
+378 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\paginator'
+378 silly reify ]
+379 silly reify mark retired [
+379 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\projectify'
+379 silly reify ]
+380 silly reify mark retired [
+380 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\promisify'
+380 silly reify ]
+381 silly reify mark retired [
+381 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\storage'
+381 silly reify ]
+382 silly reify mark retired [
+382 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@js-sdsl\\ordered-map'
+382 silly reify ]
+383 silly reify mark retired [
+383 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@napi-rs\\wasm-runtime'
+383 silly reify ]
+384 silly reify mark retired [
+384 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@nodable\\entities'
+384 silly reify ]
+385 silly reify mark retired [
+385 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@opentelemetry\\api'
+385 silly reify ]
+386 silly reify mark retired [
+386 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@oxc-project\\types'
+386 silly reify ]
+387 silly reify mark retired [
+387 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\binding-win32-x64-msvc'
+387 silly reify ]
+388 silly reify mark retired [
+388 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\pluginutils'
+388 silly reify ]
+389 silly reify mark retired [
+389 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\node'
+389 silly reify ]
+390 silly reify mark retired [
+390 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\oxide'
+390 silly reify ]
+391 silly reify mark retired [
+391 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc'
+391 silly reify ]
+392 silly reify mark retired [
+392 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\vite'
+392 silly reify ]
+393 silly reify mark retired [
+393 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tootallnate\\once'
+393 silly reify ]
+394 silly reify mark retired [
+394 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tybys\\wasm-util'
+394 silly reify ]
+395 silly reify mark retired [
+395 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\caseless'
+395 silly reify ]
+396 silly reify mark retired [
+396 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\jsonwebtoken'
+396 silly reify ]
+397 silly reify mark retired [
+397 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\long'
+397 silly reify ]
+398 silly reify mark retired [
+398 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\ms'
+398 silly reify ]
+399 silly reify mark retired [
+399 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\request'
+399 silly reify ]
+400 silly reify mark retired [
+400 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\tough-cookie'
+400 silly reify ]
+401 silly reify mark retired [
+401 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@vitejs\\plugin-react'
+401 silly reify ]
+402 silly reify mark retired [
+402 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\abort-controller'
+402 silly reify ]
+403 silly reify mark retired [
+403 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\arrify'
+403 silly reify ]
+404 silly reify mark retired [
+404 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\async-retry'
+404 silly reify ]
+405 silly reify mark retired [
+405 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\base64-js'
+405 silly reify ]
+406 silly reify mark retired [
+406 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\bignumber.js'
+406 silly reify ]
+407 silly reify mark retired [
+407 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\buffer-equal-constant-time'
+407 silly reify ]
+408 silly reify mark retired [
+408 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\data-uri-to-buffer'
+408 silly reify ]
+409 silly reify mark retired [
+409 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\duplexify'
+409 silly reify ]
+410 silly reify mark retired [
+410 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\ecdsa-sig-formatter'
+410 silly reify ]
+411 silly reify mark retired [
+411 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\end-of-stream'
+411 silly reify ]
+412 silly reify mark retired [
+412 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\enhanced-resolve'
+412 silly reify ]
+413 silly reify mark retired [
+413 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\event-target-shim'
+413 silly reify ]
+414 silly reify mark retired [
+414 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\extend'
+414 silly reify ]
+415 silly reify mark retired [
+415 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\farmhash-modern'
+415 silly reify ]
+416 silly reify mark retired [
+416 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fast-deep-equal'
+416 silly reify ]
+417 silly reify mark retired [
+417 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fast-xml-builder'
+417 silly reify ]
+418 silly reify mark retired [
+418 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fast-xml-parser',
+418 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\fxparser',
+418 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\fxparser.cmd',
+418 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\fxparser.ps1'
+418 silly reify ]
+419 silly reify mark retired [
+419 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fetch-blob'
+419 silly reify ]
+420 silly reify mark retired [
+420 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\firebase-admin'
+420 silly reify ]
+421 silly reify mark retired [
+421 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\formdata-polyfill'
+421 silly reify ]
+422 silly reify mark retired [
+422 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\functional-red-black-tree'
+422 silly reify ]
+423 silly reify mark retired [
+423 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gaxios'
+423 silly reify ]
+424 silly reify mark retired [
+424 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata'
+424 silly reify ]
+425 silly reify mark retired [
+425 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library'
+425 silly reify ]
+426 silly reify mark retired [
+426 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax'
+426 silly reify ]
+427 silly reify mark retired [
+427 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-logging-utils'
+427 silly reify ]
+428 silly reify mark retired [
+428 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gtoken'
+428 silly reify ]
+429 silly reify mark retired [
+429 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\html-entities'
+429 silly reify ]
+430 silly reify mark retired [
+430 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\http-proxy-agent'
+430 silly reify ]
+431 silly reify mark retired [
+431 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\is-stream'
+431 silly reify ]
+432 silly reify mark retired [
+432 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jose'
+432 silly reify ]
+433 silly reify mark retired [
+433 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\json-bigint'
+433 silly reify ]
+434 silly reify mark retired [
+434 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jsonwebtoken'
+434 silly reify ]
+435 silly reify mark retired [
+435 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jwa'
+435 silly reify ]
+436 silly reify mark retired [
+436 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jwks-rsa'
+436 silly reify ]
+437 silly reify mark retired [
+437 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jws'
+437 silly reify ]
+438 silly reify mark retired [
+438 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\limiter'
+438 silly reify ]
+439 silly reify mark retired [
+439 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.clonedeep'
+439 silly reify ]
+440 silly reify mark retired [
+440 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.includes'
+440 silly reify ]
+441 silly reify mark retired [
+441 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isboolean'
+441 silly reify ]
+442 silly reify mark retired [
+442 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isinteger'
+442 silly reify ]
+443 silly reify mark retired [
+443 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isnumber'
+443 silly reify ]
+444 silly reify mark retired [
+444 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isplainobject'
+444 silly reify ]
+445 silly reify mark retired [
+445 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isstring'
+445 silly reify ]
+446 silly reify mark retired [
+446 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.once'
+446 silly reify ]
+447 silly reify mark retired [
+447 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lru-cache'
+447 silly reify ]
+448 silly reify mark retired [
+448 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lru-memoizer'
+448 silly reify ]
+449 silly reify mark retired [
+449 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\mime',
+449 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\mime',
+449 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\mime.cmd',
+449 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\mime.ps1'
+449 silly reify ]
+450 silly reify mark retired [
+450 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\nanoid',
+450 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\nanoid',
+450 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\nanoid.cmd',
+450 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\nanoid.ps1'
+450 silly reify ]
+451 silly reify mark retired [
+451 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\node-domexception'
+451 silly reify ]
+452 silly reify mark retired [
+452 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\node-fetch'
+452 silly reify ]
+453 silly reify mark retired [
+453 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\object-hash'
+453 silly reify ]
+454 silly reify mark retired [
+454 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\p-limit'
+454 silly reify ]
+455 silly reify mark retired [
+455 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\path-expression-matcher'
+455 silly reify ]
+456 silly reify mark retired [
+456 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\postcss'
+456 silly reify ]
+457 silly reify mark retired [
+457 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\proto3-json-serializer'
+457 silly reify ]
+458 silly reify mark retired [
+458 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\readable-stream'
+458 silly reify ]
+459 silly reify mark retired [
+459 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\retry'
+459 silly reify ]
+460 silly reify mark retired [
+460 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\retry-request'
+460 silly reify ]
+461 silly reify mark retired [
+461 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\rolldown',
+461 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\rolldown',
+461 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\rolldown.cmd',
+461 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\rolldown.ps1'
+461 silly reify ]
+462 silly reify mark retired [
+462 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\semver',
+462 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\semver',
+462 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\semver.cmd',
+462 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\semver.ps1'
+462 silly reify ]
+463 silly reify mark retired [
+463 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\stream-events'
+463 silly reify ]
+464 silly reify mark retired [
+464 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\stream-shift'
+464 silly reify ]
+465 silly reify mark retired [
+465 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\string_decoder'
+465 silly reify ]
+466 silly reify mark retired [
+466 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\strnum'
+466 silly reify ]
+467 silly reify mark retired [
+467 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\stubs'
+467 silly reify ]
+468 silly reify mark retired [
+468 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tailwindcss'
+468 silly reify ]
+469 silly reify mark retired [
+469 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tapable'
+469 silly reify ]
+470 silly reify mark retired [
+470 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\teeny-request'
+470 silly reify ]
+471 silly reify mark retired [
+471 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tr46'
+471 silly reify ]
+472 silly reify mark retired [
+472 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\util-deprecate'
+472 silly reify ]
+473 silly reify mark retired [
+473 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\uuid',
+473 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid',
+473 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.cmd',
+473 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.ps1'
+473 silly reify ]
+474 silly reify mark retired [
+474 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\vite',
+474 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\vite',
+474 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\vite.cmd',
+474 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\vite.ps1'
+474 silly reify ]
+475 silly reify mark retired [
+475 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\web-streams-polyfill'
+475 silly reify ]
+476 silly reify mark retired [
+476 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\webidl-conversions'
+476 silly reify ]
+477 silly reify mark retired [
+477 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\whatwg-url'
+477 silly reify ]
+478 silly reify mark retired [
+478 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\xml-naming'
+478 silly reify ]
+479 silly reify mark retired [
+479 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\yallist'
+479 silly reify ]
+480 silly reify mark retired [
+480 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\yocto-queue'
+480 silly reify ]
+481 silly reify moves {
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@emnapi\\core': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@emnapi\\.core-J4llcgcZ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@emnapi\\runtime': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@emnapi\\.runtime-8dRWdHNd',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@fastify\\busboy': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@fastify\\.busboy-7CCRKnkJ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\firestore': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\.firestore-lNgF3NIN',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\paginator': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\.paginator-u0WbSkaL',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\projectify': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\.projectify-zX3tWXIw',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\promisify': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\.promisify-5ylgCWzd',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\storage': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@google-cloud\\.storage-Q7HRvvZQ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@js-sdsl\\ordered-map': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@js-sdsl\\.ordered-map-7D4h5nOc',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@napi-rs\\wasm-runtime': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@napi-rs\\.wasm-runtime-QSOH7rrv',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@nodable\\entities': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@nodable\\.entities-rf1dry3y',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@opentelemetry\\api': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@opentelemetry\\.api-bKWr8fzJ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@oxc-project\\types': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@oxc-project\\.types-BVByILvl',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\binding-win32-x64-msvc': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\.binding-win32-x64-msvc-O8HQUmgL',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\pluginutils': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\.pluginutils-HQRpyJs7',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\node': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\.node-0x8Je99T',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\oxide': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\.oxide-AShmpRo5',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\.oxide-win32-x64-msvc-PDQLuytC',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\vite': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\.vite-nH8eRWry',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tootallnate\\once': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tootallnate\\.once-BN7x0MpQ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tybys\\wasm-util': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tybys\\.wasm-util-tenAVfyQ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\caseless': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\.caseless-D0MvZFCk',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\jsonwebtoken': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\.jsonwebtoken-Av4tcRE5',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\long': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\.long-ZWhyXz1f',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\ms': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\.ms-Tu1RdPgw',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\request': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\.request-BWrbZ0vI',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\tough-cookie': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@types\\.tough-cookie-3TaNkq7f',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@vitejs\\plugin-react': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@vitejs\\.plugin-react-45SYkFBZ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\abort-controller': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.abort-controller-x49G6Wx8',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\arrify': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.arrify-d5zc2DCS',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\async-retry': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.async-retry-WieDbXaJ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\base64-js': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.base64-js-081okfzr',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\bignumber.js': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bignumber.js-FeDkOAYw',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\buffer-equal-constant-time': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.buffer-equal-constant-time-p3cb8cTJ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\data-uri-to-buffer': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.data-uri-to-buffer-YLn6AgQ4',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\duplexify': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.duplexify-7uqcLU3D',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\ecdsa-sig-formatter': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.ecdsa-sig-formatter-WrZBN3Pl',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\end-of-stream': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.end-of-stream-xTzcOfAH',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\enhanced-resolve': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.enhanced-resolve-pANuuK6B',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\event-target-shim': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.event-target-shim-CBTyBneV',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\extend': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.extend-0L8SqdAT',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\farmhash-modern': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.farmhash-modern-R1iQqp38',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fast-deep-equal': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.fast-deep-equal-Z7wUgv2L',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fast-xml-builder': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.fast-xml-builder-2WIeJyX7',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fast-xml-parser': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.fast-xml-parser-zF2t4elM',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\fxparser': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.fxparser-qlKTKNRP',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\fxparser.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.fxparser.cmd-DSBqYVER',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\fxparser.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.fxparser.ps1-eIrRmKGw',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\fetch-blob': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.fetch-blob-itohKRh7',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\firebase-admin': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.firebase-admin-IZHnv5We',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\formdata-polyfill': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.formdata-polyfill-bnhJPAET',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\functional-red-black-tree': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.functional-red-black-tree-v1knJg5B',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gaxios': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.gaxios-Y3YsGpJ6',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gcp-metadata': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.gcp-metadata-ltjWRwfK',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-auth-library': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.google-auth-library-wsjNBQCv',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-gax': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.google-gax-Qy18aCLf',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\google-logging-utils': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.google-logging-utils-GdXkYSdW',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\gtoken': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.gtoken-sMU1Aok1',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\html-entities': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.html-entities-cssNpgsV',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\http-proxy-agent': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.http-proxy-agent-bpSBvKSx',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\is-stream': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.is-stream-0ZgiIxnI',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jose': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.jose-9VCHXngy',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\json-bigint': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.json-bigint-643eiuJ4',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jsonwebtoken': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.jsonwebtoken-WA06j4ZS',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jwa': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.jwa-UuTJg6E7',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jwks-rsa': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.jwks-rsa-WZeWc17E',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\jws': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.jws-iojWTz5s',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\limiter': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.limiter-C64j91nF',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.clonedeep': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.clonedeep-yl3KSH7y',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.includes': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.includes-gIwn9dK2',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isboolean': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.isboolean-MoI7wcSo',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isinteger': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.isinteger-V0fGbeby',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isnumber': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.isnumber-vFQevqvl',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isplainobject': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.isplainobject-1YP9Y1Wi',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.isstring': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.isstring-hPT109GK',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lodash.once': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lodash.once-UkxzEMT3',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lru-cache': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lru-cache-hAA4S3B1',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\lru-memoizer': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.lru-memoizer-PIeENryo',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\mime': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.mime-vZJioiSb',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\mime': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.mime-sq4uqzmJ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\mime.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.mime.cmd-lAAUXmqA',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\mime.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.mime.ps1-kFFpy1fZ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\nanoid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.nanoid-eVSKc3Kc',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\nanoid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.nanoid-vMUJAH1b',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\nanoid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.nanoid.cmd-warwXhpx',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\nanoid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.nanoid.ps1-biEG7VMn',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\node-domexception': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.node-domexception-lx3M04uE',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\node-fetch': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.node-fetch-HmUTHred',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\object-hash': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.object-hash-KR2S7bva',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\p-limit': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.p-limit-TCjv2VTD',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\path-expression-matcher': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.path-expression-matcher-BKS0xzsZ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\postcss': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.postcss-OvtavqP7',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\proto3-json-serializer': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.proto3-json-serializer-4xOzHfA3',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\readable-stream': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.readable-stream-Yg1N4XZ1',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\retry': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.retry-jKndkSWs',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\retry-request': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.retry-request-nauNrFxF',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\rolldown': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.rolldown-UN4DIfDt',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\rolldown': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.rolldown-g3k23c2l',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\rolldown.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.rolldown.cmd-YRIyl3eD',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\rolldown.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.rolldown.ps1-t7yIqLlU',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\semver': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.semver-jryij7T6',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\semver': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.semver-f1ROtWVc',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\semver.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.semver.cmd-INszaiJL',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\semver.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.semver.ps1-ngWlKpnE',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\stream-events': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.stream-events-k5NJCXkZ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\stream-shift': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.stream-shift-dlGBTCwe',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\string_decoder': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.string_decoder-0l9PzTJi',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\strnum': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.strnum-fuAmBRVh',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\stubs': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.stubs-EEZaWdbh',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tailwindcss': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.tailwindcss-s9iK1IXQ',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tapable': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.tapable-YByDyLhA',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\teeny-request': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.teeny-request-XaNZhMUD',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\tr46': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.tr46-mFYdZpvC',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\util-deprecate': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.util-deprecate-vSLAcRyp',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.uuid-EKkmMsei',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.uuid-KtdZb6TE',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.uuid.cmd-iJdedqNx',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\uuid.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.uuid.ps1-sN3oIg2j',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\vite': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.vite-vd8uh2Qw',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\vite': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.vite-FVxjCbO3',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\vite.cmd': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.vite.cmd-Xg7ewbHn',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\vite.ps1': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.bin\\.vite.ps1-yoIOZGmH',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\web-streams-polyfill': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.web-streams-polyfill-tKVD8XXj',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\webidl-conversions': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.webidl-conversions-iE4cjIQT',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\whatwg-url': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.whatwg-url-eEBWrdtu',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\xml-naming': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.xml-naming-gJgNvzDb',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\yallist': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.yallist-0oeaICjd',
+481 silly reify   'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\yocto-queue': 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\.yocto-queue-FaBkOqzB'
+481 silly reify }
+482 silly audit bulk request {
+482 silly audit   '@firebase/ai': [ '2.12.0' ],
+482 silly audit   '@firebase/analytics': [ '0.10.22' ],
+482 silly audit   '@firebase/analytics-compat': [ '0.2.28' ],
+482 silly audit   '@firebase/analytics-types': [ '0.8.4' ],
+482 silly audit   '@firebase/app': [ '0.14.12' ],
+482 silly audit   '@firebase/app-check': [ '0.11.3' ],
+482 silly audit   '@firebase/app-check-compat': [ '0.4.3' ],
+482 silly audit   '@firebase/app-check-interop-types': [ '0.3.4' ],
+482 silly audit   '@firebase/app-check-types': [ '0.5.4' ],
+482 silly audit   '@firebase/app-compat': [ '0.5.12' ],
+482 silly audit   '@firebase/app-types': [ '0.9.5' ],
+482 silly audit   '@firebase/auth': [ '1.13.1' ],
+482 silly audit   '@firebase/auth-compat': [ '0.6.6' ],
+482 silly audit   '@firebase/auth-interop-types': [ '0.2.5' ],
+482 silly audit   '@firebase/auth-types': [ '0.13.1' ],
+482 silly audit   '@firebase/component': [ '0.7.3' ],
+482 silly audit   '@firebase/data-connect': [ '0.7.0' ],
+482 silly audit   '@firebase/database': [ '1.1.3' ],
+482 silly audit   '@firebase/database-compat': [ '2.1.4' ],
+482 silly audit   '@firebase/database-types': [ '1.0.20' ],
+482 silly audit   '@firebase/firestore': [ '4.14.1' ],
+482 silly audit   '@firebase/firestore-compat': [ '0.4.9' ],
+482 silly audit   '@firebase/firestore-types': [ '3.0.4' ],
+482 silly audit   '@firebase/functions': [ '0.13.4' ],
+482 silly audit   '@firebase/functions-compat': [ '0.4.4' ],
+482 silly audit   '@firebase/functions-types': [ '0.6.4' ],
+482 silly audit   '@firebase/installations': [ '0.6.22' ],
+482 silly audit   '@firebase/installations-compat': [ '0.2.22' ],
+482 silly audit   '@firebase/installations-types': [ '0.5.4' ],
+482 silly audit   '@firebase/logger': [ '0.5.1' ],
+482 silly audit   '@firebase/messaging': [ '0.12.26' ],
+482 silly audit   '@firebase/messaging-compat': [ '0.2.26' ],
+482 silly audit   '@firebase/messaging-interop-types': [ '0.2.4' ],
+482 silly audit   '@firebase/performance': [ '0.7.12' ],
+482 silly audit   '@firebase/performance-compat': [ '0.2.25' ],
+482 silly audit   '@firebase/performance-types': [ '0.2.4' ],
+482 silly audit   '@firebase/remote-config': [ '0.8.3' ],
+482 silly audit   '@firebase/remote-config-compat': [ '0.2.24' ],
+482 silly audit   '@firebase/remote-config-types': [ '0.5.1' ],
+482 silly audit   '@firebase/storage': [ '0.14.3' ],
+482 silly audit   '@firebase/storage-compat': [ '0.4.3' ],
+482 silly audit   '@firebase/storage-types': [ '0.8.4' ],
+482 silly audit   '@firebase/util': [ '1.15.1' ],
+482 silly audit   '@firebase/webchannel-wrapper': [ '1.0.6' ],
+482 silly audit   '@grpc/grpc-js': [ '1.9.15' ],
+482 silly audit   '@grpc/proto-loader': [ '0.7.15' ],
+482 silly audit   '@protobufjs/aspromise': [ '1.1.2' ],
+482 silly audit   '@protobufjs/base64': [ '1.1.2' ],
+482 silly audit   '@protobufjs/codegen': [ '2.0.5' ],
+482 silly audit   '@protobufjs/eventemitter': [ '1.1.0' ],
+482 silly audit   '@protobufjs/fetch': [ '1.1.0' ],
+482 silly audit   '@protobufjs/float': [ '1.0.2' ],
+482 silly audit   '@protobufjs/inquire': [ '1.1.1' ],
+482 silly audit   '@protobufjs/path': [ '1.1.2' ],
+482 silly audit   '@protobufjs/pool': [ '1.1.0' ],
+482 silly audit   '@protobufjs/utf8': [ '1.1.1' ],
+482 silly audit   '@types/node': [ '25.8.0' ],
+482 silly audit   'form-data': [ '4.0.5' ],
+482 silly audit   'mime-db': [ '1.52.0', '1.54.0' ],
+482 silly audit   'mime-types': [ '2.1.35', '3.0.2' ],
+482 silly audit   accepts: [ '2.0.0' ],
+482 silly audit   'agent-base': [ '6.0.2' ],
+482 silly audit   'ansi-regex': [ '5.0.1' ],
+482 silly audit   'ansi-styles': [ '4.3.0' ],
+482 silly audit   asynckit: [ '0.4.0' ],
+482 silly audit   axios: [ '1.16.1' ],
+482 silly audit   'body-parser': [ '2.2.2' ],
+482 silly audit   bytes: [ '3.1.2' ],
+482 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+482 silly audit   'call-bound': [ '1.0.4' ],
+482 silly audit   cliui: [ '8.0.1' ],
+482 silly audit   'color-convert': [ '2.0.1' ],
+482 silly audit   'color-name': [ '1.1.4' ],
+482 silly audit   'combined-stream': [ '1.0.8' ],
+482 silly audit   'content-disposition': [ '1.1.0' ],
+482 silly audit   'content-type': [ '1.0.5' ],
+482 silly audit   cookie: [ '1.1.1', '0.7.2' ],
+482 silly audit   'cookie-signature': [ '1.2.2' ],
+482 silly audit   cors: [ '2.8.6' ],
+482 silly audit   debug: [ '4.4.3' ],
+482 silly audit   'delayed-stream': [ '1.0.0' ],
+482 silly audit   depd: [ '2.0.0' ],
+482 silly audit   'detect-libc': [ '2.1.2' ],
+482 silly audit   'dunder-proto': [ '1.0.1' ],
+482 silly audit   'ee-first': [ '1.1.1' ],
+482 silly audit   'emoji-regex': [ '8.0.0' ],
+482 silly audit   encodeurl: [ '2.0.0' ],
+482 silly audit   'es-define-property': [ '1.0.1' ],
+482 silly audit   'es-errors': [ '1.3.0' ],
+482 silly audit   'es-object-atoms': [ '1.1.1' ],
+482 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+482 silly audit   escalade: [ '3.2.0' ],
+482 silly audit   'escape-html': [ '1.0.3' ],
+482 silly audit   etag: [ '1.8.1' ],
+482 silly audit   express: [ '5.2.1' ],
+482 silly audit   'faye-websocket': [ '0.11.4' ],
+482 silly audit   fdir: [ '6.5.0' ],
+482 silly audit   finalhandler: [ '2.1.1' ],
+482 silly audit   firebase: [ '12.13.0' ],
+482 silly audit   'follow-redirects': [ '1.16.0' ],
+482 silly audit   forwarded: [ '0.2.0' ],
+482 silly audit   'framer-motion': [ '12.38.0' ],
+482 silly audit   fresh: [ '2.0.0' ],
+482 silly audit   fsevents: [ '2.3.3' ],
+482 silly audit   'function-bind': [ '1.1.2' ],
+482 silly audit   'https-proxy-agent': [ '5.0.1' ],
+482 silly audit   'get-caller-file': [ '2.0.5' ],
+482 silly audit   'get-intrinsic': [ '1.3.0' ],
+482 silly audit   'get-proto': [ '1.0.1' ],
+482 silly audit   gopd: [ '1.2.0' ],
+482 silly audit   'has-symbols': [ '1.1.0' ],
+482 silly audit   'has-tostringtag': [ '1.0.2' ],
+482 silly audit   hasown: [ '2.0.3' ],
+482 silly audit   'http-errors': [ '2.0.1' ],
+482 silly audit   'http-parser-js': [ '0.5.10' ],
+482 silly audit   'iconv-lite': [ '0.7.2' ],
+482 silly audit   idb: [ '7.1.1' ],
+482 silly audit   inherits: [ '2.0.4' ],
+482 silly audit   'ipaddr.js': [ '1.9.1' ],
+482 silly audit   'is-fullwidth-code-point': [ '3.0.0' ],
+482 silly audit   'is-promise': [ '4.0.0' ],
+482 silly audit   jiti: [ '2.6.1' ],
+482 silly audit   lightningcss: [ '1.32.0' ],
+482 silly audit   'lightningcss-android-arm64': [ '1.32.0' ],
+482 silly audit   'lightningcss-darwin-arm64': [ '1.32.0' ],
+482 silly audit   'lightningcss-darwin-x64': [ '1.32.0' ],
+482 silly audit   'lightningcss-freebsd-x64': [ '1.32.0' ],
+482 silly audit   'lightningcss-linux-arm-gnueabihf': [ '1.32.0' ],
+482 silly audit   'lightningcss-linux-arm64-gnu': [ '1.32.0' ],
+482 silly audit   'lightningcss-linux-arm64-musl': [ '1.32.0' ],
+482 silly audit   'lightningcss-linux-x64-gnu': [ '1.32.0' ],
+482 silly audit   'lightningcss-linux-x64-musl': [ '1.32.0' ],
+482 silly audit   'lightningcss-win32-arm64-msvc': [ '1.32.0' ],
+482 silly audit   'lightningcss-win32-x64-msvc': [ '1.32.0' ],
+482 silly audit   'lodash.camelcase': [ '4.3.0' ],
+482 silly audit   long: [ '5.3.2' ],
+482 silly audit   'lucide-react': [ '1.8.0' ],
+482 silly audit   'math-intrinsics': [ '1.1.0' ],
+482 silly audit   'media-typer': [ '1.1.0' ],
+482 silly audit   'merge-descriptors': [ '2.0.0' ],
+482 silly audit   motion: [ '12.38.0' ],
+482 silly audit   'motion-dom': [ '12.38.0' ],
+482 silly audit   'motion-utils': [ '12.36.0' ],
+482 silly audit   ms: [ '2.1.3' ],
+482 silly audit   negotiator: [ '1.0.0' ],
+482 silly audit   'object-assign': [ '4.1.1' ],
+482 silly audit   'object-inspect': [ '1.13.4' ],
+482 silly audit   'on-finished': [ '2.4.1' ],
+482 silly audit   once: [ '1.4.0' ],
+482 silly audit   parseurl: [ '1.3.3' ],
+482 silly audit   'path-to-regexp': [ '8.4.2' ],
+482 silly audit   picomatch: [ '4.0.4' ],
+482 silly audit   protobufjs: [ '7.5.8' ],
+482 silly audit   'proxy-addr': [ '2.0.7' ],
+482 silly audit   'proxy-from-env': [ '2.1.0' ],
+482 silly audit   qs: [ '6.15.1' ],
+482 silly audit   'range-parser': [ '1.2.1' ],
+482 silly audit   'raw-body': [ '3.0.2' ],
+482 silly audit   react: [ '19.2.5' ],
+482 silly audit   'react-dom': [ '19.2.5' ],
+482 silly audit   'react-router': [ '7.14.0' ],
+482 silly audit   'react-router-dom': [ '7.14.0' ],
+482 silly audit   'require-directory': [ '2.1.1' ],
+482 silly audit   router: [ '2.2.0' ],
+482 silly audit   'safe-buffer': [ '5.2.1' ],
+482 silly audit   'safer-buffer': [ '2.1.2' ],
+482 silly audit   scheduler: [ '0.27.0' ],
+482 silly audit   send: [ '1.2.1' ],
+482 silly audit   'serve-static': [ '2.2.1' ],
+482 silly audit   'set-cookie-parser': [ '2.7.2' ],
+482 silly audit   setprototypeof: [ '1.2.0' ],
+482 silly audit   'side-channel': [ '1.1.0' ],
+482 silly audit   'side-channel-list': [ '1.0.1' ],
+482 silly audit   'side-channel-map': [ '1.0.1' ],
+482 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+482 silly audit   statuses: [ '2.0.2' ],
+482 silly audit   'string-width': [ '4.2.3' ],
+482 silly audit   'strip-ansi': [ '6.0.1' ],
+482 silly audit   tinyglobby: [ '0.2.16' ],
+482 silly audit   toidentifier: [ '1.0.1' ],
+482 silly audit   tslib: [ '2.8.1' ],
+482 silly audit   'tw-animate-css': [ '1.4.0' ],
+482 silly audit   'type-is': [ '2.0.1' ],
+482 silly audit   'undici-types': [ '7.24.6' ],
+482 silly audit   unpipe: [ '1.0.0' ],
+482 silly audit   vary: [ '1.1.2' ],
+482 silly audit   'web-vitals': [ '4.2.4' ],
+482 silly audit   'websocket-driver': [ '0.7.4' ],
+482 silly audit   'websocket-extensions': [ '0.1.4' ],
+482 silly audit   'wrap-ansi': [ '7.0.0' ],
+482 silly audit   wrappy: [ '1.0.2' ],
+482 silly audit   y18n: [ '5.0.8' ],
+482 silly audit   yargs: [ '17.7.2' ],
+482 silly audit   'yargs-parser': [ '21.1.1' ],
+482 silly audit   '@tailwindcss/vite': [ '4.3.0' ],
+482 silly audit   '@vitejs/plugin-react': [ '6.0.2' ],
+482 silly audit   tailwindcss: [ '4.3.0' ],
+482 silly audit   vite: [ '8.0.13' ],
+482 silly audit   '@tailwindcss/node': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide': [ '4.3.0' ],
+482 silly audit   '@jridgewell/remapping': [ '2.3.5' ],
+482 silly audit   'enhanced-resolve': [ '5.21.3' ],
+482 silly audit   'magic-string': [ '0.30.21' ],
+482 silly audit   'source-map-js': [ '1.2.1' ],
+482 silly audit   '@jridgewell/gen-mapping': [ '0.3.13' ],
+482 silly audit   '@jridgewell/trace-mapping': [ '0.3.31' ],
+482 silly audit   '@jridgewell/sourcemap-codec': [ '1.5.5' ],
+482 silly audit   '@jridgewell/resolve-uri': [ '3.1.2' ],
+482 silly audit   '@tailwindcss/oxide-android-arm64': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-darwin-arm64': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-darwin-x64': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-freebsd-x64': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-linux-arm-gnueabihf': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-linux-arm64-gnu': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-linux-arm64-musl': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-linux-x64-gnu': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-linux-x64-musl': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-wasm32-wasi': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-win32-arm64-msvc': [ '4.3.0' ],
+482 silly audit   '@tailwindcss/oxide-win32-x64-msvc': [ '4.3.0' ],
+482 silly audit   '@rolldown/pluginutils': [ '1.0.1' ],
+482 silly audit   'graceful-fs': [ '4.2.11' ],
+482 silly audit   tapable: [ '2.3.3' ],
+482 silly audit   postcss: [ '8.5.14' ],
+482 silly audit   rolldown: [ '1.0.1' ],
+482 silly audit   nanoid: [ '3.3.12' ],
+482 silly audit   picocolors: [ '1.1.1' ],
+482 silly audit   '@oxc-project/types': [ '0.130.0' ],
+482 silly audit   '@rolldown/binding-android-arm64': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-darwin-arm64': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-darwin-x64': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-freebsd-x64': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-arm-gnueabihf': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-arm64-gnu': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-arm64-musl': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-ppc64-gnu': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-s390x-gnu': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-x64-gnu': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-linux-x64-musl': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-openharmony-arm64': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-wasm32-wasi': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-win32-arm64-msvc': [ '1.0.1' ],
+482 silly audit   '@rolldown/binding-win32-x64-msvc': [ '1.0.1' ],
+482 silly audit   '@emnapi/core': [ '1.10.0' ],
+482 silly audit   '@emnapi/runtime': [ '1.10.0' ],
+482 silly audit   '@napi-rs/wasm-runtime': [ '1.1.4' ],
+482 silly audit   '@emnapi/wasi-threads': [ '1.2.1' ],
+482 silly audit   '@tybys/wasm-util': [ '0.10.2' ]
+482 silly audit }
+483 http cache rolldown@https://registry.npmjs.org/rolldown/-/rolldown-1.0.1.tgz 1ms (cache hit)
+484 http cache tapable@https://registry.npmjs.org/tapable/-/tapable-2.3.3.tgz 0ms (cache hit)
+485 http cache vite@https://registry.npmjs.org/vite/-/vite-8.0.13.tgz 0ms (cache hit)
+486 http cache tailwindcss@https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.0.tgz 0ms (cache hit)
+487 http cache nanoid@https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz 0ms (cache hit)
+488 silly tarball no local data for rolldown@https://registry.npmjs.org/rolldown/-/rolldown-1.0.1.tgz. Extracting by manifest.
+489 http cache postcss@https://registry.npmjs.org/postcss/-/postcss-8.5.14.tgz 0ms (cache hit)
+490 http cache enhanced-resolve@https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.21.3.tgz 0ms (cache hit)
+491 http cache @tybys/wasm-util@https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.2.tgz 0ms (cache hit)
+492 http cache @tailwindcss/node@https://registry.npmjs.org/@tailwindcss/node/-/node-4.3.0.tgz 0ms (cache hit)
+493 http cache @tailwindcss/vite@https://registry.npmjs.org/@tailwindcss/vite/-/vite-4.3.0.tgz 0ms (cache hit)
+494 http cache @tailwindcss/oxide@https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.3.0.tgz 0ms (cache hit)
+495 http cache @tailwindcss/oxide-win32-x64-msvc@https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.3.0.tgz 0ms (cache hit)
+496 http cache @vitejs/plugin-react@https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz 0ms (cache hit)
+497 http cache @oxc-project/types@https://registry.npmjs.org/@oxc-project/types/-/types-0.130.0.tgz 0ms (cache hit)
+498 http cache @rolldown/binding-win32-x64-msvc@https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.1.tgz 0ms (cache hit)
+499 http cache @napi-rs/wasm-runtime@https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz 0ms (cache hit)
+500 http cache @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz 0ms (cache hit)
+501 silly tarball no local data for tapable@https://registry.npmjs.org/tapable/-/tapable-2.3.3.tgz. Extracting by manifest.
+502 silly tarball no local data for vite@https://registry.npmjs.org/vite/-/vite-8.0.13.tgz. Extracting by manifest.
+503 silly tarball no local data for tailwindcss@https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.0.tgz. Extracting by manifest.
+504 http cache @emnapi/core@https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz 0ms (cache hit)
+505 http cache @emnapi/runtime@https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz 0ms (cache hit)
+506 silly tarball no local data for nanoid@https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz. Extracting by manifest.
+507 silly tarball no local data for postcss@https://registry.npmjs.org/postcss/-/postcss-8.5.14.tgz. Extracting by manifest.
+508 silly tarball no local data for enhanced-resolve@https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.21.3.tgz. Extracting by manifest.
+509 silly tarball no local data for @tybys/wasm-util@https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.2.tgz. Extracting by manifest.
+510 silly tarball no local data for @tailwindcss/node@https://registry.npmjs.org/@tailwindcss/node/-/node-4.3.0.tgz. Extracting by manifest.
+511 silly tarball no local data for @tailwindcss/vite@https://registry.npmjs.org/@tailwindcss/vite/-/vite-4.3.0.tgz. Extracting by manifest.
+512 silly tarball no local data for @tailwindcss/oxide@https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.3.0.tgz. Extracting by manifest.
+513 silly tarball no local data for @tailwindcss/oxide-win32-x64-msvc@https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.3.0.tgz. Extracting by manifest.
+514 silly tarball no local data for @vitejs/plugin-react@https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz. Extracting by manifest.
+515 silly tarball no local data for @oxc-project/types@https://registry.npmjs.org/@oxc-project/types/-/types-0.130.0.tgz. Extracting by manifest.
+516 silly tarball no local data for @rolldown/binding-win32-x64-msvc@https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.1.tgz. Extracting by manifest.
+517 silly tarball no local data for @napi-rs/wasm-runtime@https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz. Extracting by manifest.
+518 silly tarball no local data for @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz. Extracting by manifest.
+519 silly tarball no local data for @emnapi/core@https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz. Extracting by manifest.
+520 silly tarball no local data for @emnapi/runtime@https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz. Extracting by manifest.
+521 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 314ms
+522 silly audit report {}
+523 http fetch GET 200 https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz 336ms (cache miss)
+524 http fetch GET 200 https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz 396ms (cache miss)
+525 http fetch GET 200 https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.3.0.tgz 562ms (cache miss)
+526 http fetch GET 200 https://registry.npmjs.org/@tailwindcss/vite/-/vite-4.3.0.tgz 621ms (cache miss)
+527 http fetch GET 200 https://registry.npmjs.org/@oxc-project/types/-/types-0.130.0.tgz 690ms (cache miss)
+528 http fetch GET 200 https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz 950ms (cache miss)
+529 http fetch GET 200 https://registry.npmjs.org/@tailwindcss/node/-/node-4.3.0.tgz 1177ms (cache miss)
+530 http fetch GET 200 https://registry.npmjs.org/tapable/-/tapable-2.3.3.tgz 1201ms (cache miss)
+531 http fetch GET 200 https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz 1287ms (cache miss)
+532 http fetch GET 200 https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz 1637ms (cache miss)
+533 http fetch GET 200 https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.0.tgz 1730ms (cache miss)
+534 http fetch GET 200 https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.3.0.tgz 1951ms (cache miss)
+535 http fetch GET 200 https://registry.npmjs.org/postcss/-/postcss-8.5.14.tgz 2127ms (cache miss)
+536 http fetch GET 200 https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-1.1.4.tgz 2279ms (cache miss)
+537 http fetch GET 200 https://registry.npmjs.org/rolldown/-/rolldown-1.0.1.tgz 2319ms (cache miss)
+538 http fetch GET 200 https://registry.npmjs.org/vite/-/vite-8.0.13.tgz 2368ms (cache miss)
+539 http fetch GET 200 https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.21.3.tgz 2365ms (cache miss)
+540 http fetch GET 200 https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.2.tgz 2395ms (cache miss)
+541 http fetch GET 200 https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.0.1.tgz 2929ms (cache miss)
+542 warn cleanup Failed to remove some directories [
+542 warn cleanup   [
+542 warn cleanup     'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\.binding-win32-x64-msvc-O8HQUmgL',
+542 warn cleanup     [Error: EPERM: operation not permitted, unlink 'C:\Users\resar\OneDrive\Desktop\Capstone_Project\node_modules\@rolldown\.binding-win32-x64-msvc-O8HQUmgL\rolldown-binding.win32-x64-msvc.node'] {
+542 warn cleanup       errno: -4048,
+542 warn cleanup       code: 'EPERM',
+542 warn cleanup       syscall: 'unlink',
+542 warn cleanup       path: 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@rolldown\\.binding-win32-x64-msvc-O8HQUmgL\\rolldown-binding.win32-x64-msvc.node'
+542 warn cleanup     }
+542 warn cleanup   ],
+542 warn cleanup   [
+542 warn cleanup     'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\.oxide-win32-x64-msvc-PDQLuytC',
+542 warn cleanup     [Error: EPERM: operation not permitted, unlink 'C:\Users\resar\OneDrive\Desktop\Capstone_Project\node_modules\@tailwindcss\.oxide-win32-x64-msvc-PDQLuytC\tailwindcss-oxide.win32-x64-msvc.node'] {
+542 warn cleanup       errno: -4048,
+542 warn cleanup       code: 'EPERM',
+542 warn cleanup       syscall: 'unlink',
+542 warn cleanup       path: 'C:\\Users\\resar\\OneDrive\\Desktop\\Capstone_Project\\node_modules\\@tailwindcss\\.oxide-win32-x64-msvc-PDQLuytC\\tailwindcss-oxide.win32-x64-msvc.node'
+542 warn cleanup     }
+542 warn cleanup   ]
+542 warn cleanup ]
+543 silly REMOVE node_modules/yocto-queue
+544 silly REMOVE node_modules/yallist
+545 silly REMOVE node_modules/xml-naming
+546 silly REMOVE node_modules/whatwg-url
+547 silly REMOVE node_modules/webidl-conversions
+548 silly REMOVE node_modules/web-streams-polyfill
+549 silly CHANGE node_modules/vite
+550 silly REMOVE node_modules/uuid
+551 silly REMOVE node_modules/util-deprecate
+552 silly REMOVE node_modules/tr46
+553 silly REMOVE node_modules/teeny-request
+554 silly REMOVE node_modules/teeny-request/node_modules/uuid
+555 silly CHANGE node_modules/tapable
+556 silly CHANGE node_modules/tailwindcss
+557 silly REMOVE node_modules/stubs
+558 silly REMOVE node_modules/strnum
+559 silly REMOVE node_modules/string_decoder
+560 silly REMOVE node_modules/stream-shift
+561 silly REMOVE node_modules/stream-events
+562 silly REMOVE node_modules/semver
+563 silly CHANGE node_modules/rolldown
+564 silly REMOVE node_modules/rolldown/node_modules/@rolldown/pluginutils
+565 silly REMOVE node_modules/retry-request
+566 silly REMOVE node_modules/retry
+567 silly REMOVE node_modules/readable-stream
+568 silly REMOVE node_modules/proto3-json-serializer
+569 silly CHANGE node_modules/postcss
+570 silly REMOVE node_modules/path-expression-matcher
+571 silly REMOVE node_modules/p-limit
+572 silly REMOVE node_modules/object-hash
+573 silly REMOVE node_modules/node-fetch
+574 silly REMOVE node_modules/node-domexception
+575 silly CHANGE node_modules/nanoid
+576 silly REMOVE node_modules/mime
+577 silly REMOVE node_modules/lru-memoizer
+578 silly REMOVE node_modules/lru-cache
+579 silly REMOVE node_modules/lodash.once
+580 silly REMOVE node_modules/lodash.isstring
+581 silly REMOVE node_modules/lodash.isplainobject
+582 silly REMOVE node_modules/lodash.isnumber
+583 silly REMOVE node_modules/lodash.isinteger
+584 silly REMOVE node_modules/lodash.isboolean
+585 silly REMOVE node_modules/lodash.includes
+586 silly REMOVE node_modules/lodash.clonedeep
+587 silly REMOVE node_modules/limiter
+588 silly REMOVE node_modules/jws
+589 silly REMOVE node_modules/jwks-rsa
+590 silly REMOVE node_modules/jwa
+591 silly REMOVE node_modules/jsonwebtoken
+592 silly REMOVE node_modules/json-bigint
+593 silly REMOVE node_modules/jose
+594 silly REMOVE node_modules/is-stream
+595 silly REMOVE node_modules/http-proxy-agent
+596 silly REMOVE node_modules/html-entities
+597 silly REMOVE node_modules/gtoken
+598 silly REMOVE node_modules/google-logging-utils
+599 silly REMOVE node_modules/google-gax
+600 silly REMOVE node_modules/google-gax/node_modules/uuid
+601 silly REMOVE node_modules/google-gax/node_modules/google-logging-utils
+602 silly REMOVE node_modules/google-gax/node_modules/google-auth-library
+603 silly REMOVE node_modules/google-gax/node_modules/gcp-metadata
+604 silly REMOVE node_modules/google-gax/node_modules/@grpc/grpc-js
+605 silly REMOVE node_modules/google-gax/node_modules/@grpc/grpc-js/node_modules/@grpc/proto-loader
+606 silly REMOVE node_modules/google-auth-library
+607 silly REMOVE node_modules/google-auth-library/node_modules/node-fetch
+608 silly REMOVE node_modules/google-auth-library/node_modules/https-proxy-agent
+609 silly REMOVE node_modules/google-auth-library/node_modules/gaxios
+610 silly REMOVE node_modules/google-auth-library/node_modules/agent-base
+611 silly REMOVE node_modules/gcp-metadata
+612 silly REMOVE node_modules/gcp-metadata/node_modules/node-fetch
+613 silly REMOVE node_modules/gcp-metadata/node_modules/https-proxy-agent
+614 silly REMOVE node_modules/gcp-metadata/node_modules/gaxios
+615 silly REMOVE node_modules/gcp-metadata/node_modules/agent-base
+616 silly REMOVE node_modules/gaxios
+617 silly REMOVE node_modules/gaxios/node_modules/uuid
+618 silly REMOVE node_modules/gaxios/node_modules/https-proxy-agent
+619 silly REMOVE node_modules/gaxios/node_modules/agent-base
+620 silly REMOVE node_modules/functional-red-black-tree
+621 silly REMOVE node_modules/formdata-polyfill
+622 silly REMOVE node_modules/firebase-admin
+623 silly REMOVE node_modules/fetch-blob
+624 silly REMOVE node_modules/fast-xml-parser
+625 silly REMOVE node_modules/fast-xml-builder
+626 silly REMOVE node_modules/fast-deep-equal
+627 silly REMOVE node_modules/farmhash-modern
+628 silly REMOVE node_modules/extend
+629 silly REMOVE node_modules/event-target-shim
+630 silly CHANGE node_modules/enhanced-resolve
+631 silly REMOVE node_modules/end-of-stream
+632 silly REMOVE node_modules/ecdsa-sig-formatter
+633 silly REMOVE node_modules/duplexify
+634 silly REMOVE node_modules/data-uri-to-buffer
+635 silly REMOVE node_modules/buffer-equal-constant-time
+636 silly REMOVE node_modules/bignumber.js
+637 silly REMOVE node_modules/base64-js
+638 silly REMOVE node_modules/async-retry
+639 silly REMOVE node_modules/arrify
+640 silly REMOVE node_modules/abort-controller
+641 silly CHANGE node_modules/@vitejs/plugin-react
+642 silly REMOVE node_modules/@types/tough-cookie
+643 silly REMOVE node_modules/@types/request
+644 silly REMOVE node_modules/@types/request/node_modules/mime-types
+645 silly REMOVE node_modules/@types/request/node_modules/mime-db
+646 silly REMOVE node_modules/@types/request/node_modules/form-data
+647 silly REMOVE node_modules/@types/ms
+648 silly REMOVE node_modules/@types/long
+649 silly REMOVE node_modules/@types/jsonwebtoken
+650 silly REMOVE node_modules/@types/caseless
+651 silly CHANGE node_modules/@tybys/wasm-util
+652 silly REMOVE node_modules/@tootallnate/once
+653 silly CHANGE node_modules/@tailwindcss/vite
+654 silly CHANGE node_modules/@tailwindcss/oxide-win32-x64-msvc
+655 silly CHANGE node_modules/@tailwindcss/oxide
+656 silly CHANGE node_modules/@tailwindcss/node
+657 silly CHANGE node_modules/@rolldown/pluginutils
+658 silly CHANGE node_modules/@rolldown/binding-win32-x64-msvc
+659 silly CHANGE node_modules/@oxc-project/types
+660 silly REMOVE node_modules/@opentelemetry/api
+661 silly REMOVE node_modules/@nodable/entities
+662 silly CHANGE node_modules/@napi-rs/wasm-runtime
+663 silly REMOVE node_modules/@js-sdsl/ordered-map
+664 silly REMOVE node_modules/@google-cloud/storage
+665 silly REMOVE node_modules/@google-cloud/storage/node_modules/google-logging-utils
+666 silly REMOVE node_modules/@google-cloud/storage/node_modules/google-auth-library
+667 silly REMOVE node_modules/@google-cloud/storage/node_modules/gcp-metadata
+668 silly REMOVE node_modules/@google-cloud/promisify
+669 silly REMOVE node_modules/@google-cloud/projectify
+670 silly REMOVE node_modules/@google-cloud/paginator
+671 silly REMOVE node_modules/@google-cloud/firestore
+672 silly REMOVE node_modules/@fastify/busboy
+673 silly CHANGE node_modules/@emnapi/runtime
+674 silly CHANGE node_modules/@emnapi/core
+675 verbose cwd C:\Users\resar\OneDrive\Desktop\Capstone_Project
+676 verbose os Windows_NT 10.0.26200
+677 verbose node v24.14.1
+678 verbose npm  v11.11.0
+679 notice
+679 notice New minor version of npm available! 11.11.0 -> 11.14.1
+679 notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1
+679 notice To update run: npm install -g npm@11.14.1
+679 notice  { force: true, Symbol(proc-log.meta): true }
+680 verbose exit 0
+681 info ok

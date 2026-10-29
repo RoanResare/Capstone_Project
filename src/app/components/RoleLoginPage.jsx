@@ -1,0 +1,315 @@
+import { useAttemptLock } from "../utils/useAttemptLock.js";
+import { useState } from "react";
+import { motion } from "motion/react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
+import { useRememberedLogin } from "../utils/useRememberedLogin.js";
+import { clearRememberedPortalLogin } from "../utils/portalRememberMe.js";
+import {
+  createAccessDeniedState,
+  normalizeRole,
+  resolveAuthorizedPath,
+} from "../utils/roleUtils.js";
+
+function supportLinks(role) {
+  if (role === "admin") {
+    return {
+      alternateLabel: "Staff login",
+      alternatePath: "/staff/login",
+    };
+  }
+
+  return {
+    alternateLabel: "Admin login",
+    alternatePath: "/admin/login",
+  };
+}
+
+export function RoleLoginPage({
+  role,
+  eyebrow,
+  title,
+  description,
+  submitLabel,
+  loginPath,
+}) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    beginLogin,
+    currentUser,
+    supabaseConfigError,
+    isAuthenticated,
+    isLoading,
+    isOnline,
+  } = useAuth();
+  const { error: showErrorToast, success: showSuccessToast, info: showInfoToast } = useToast();
+  const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
+  const [showPassword, setShowPassword] = useState(false);
+  const links = supportLinks(role);
+  const expectedRole = normalizeRole(role);
+  const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
+  useRememberedLogin(expectedRole, setForm, setFeedback, showInfoToast);
+
+  if (!isLoading && isAuthenticated && currentUser) {
+    const actualRole = normalizeRole(currentUser.role);
+
+    if (actualRole !== expectedRole) {
+      return (
+        <Navigate
+          to="/unauthorized"
+          replace
+          state={createAccessDeniedState({
+            actualRole,
+            allowedRoles: [expectedRole],
+            requestedPath: loginPath,
+          })}
+        />
+      );
+    }
+
+    return <Navigate to={resolveAuthorizedPath(actualRole, requestedPath)} replace />;
+  }
+  const crossRoleState =
+    typeof location.state?.from === "string" && location.state.from
+      ? { from: location.state.from }
+      : undefined;
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (isSubmitting || lockSeconds > 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFeedback({ type: "", message: "" });
+
+    try {
+      const result = await beginLogin({
+        identifier: form.identifier.trim(),
+        password: form.password,
+        requestedPath,
+        rememberDevice: form.rememberDevice,
+        role,
+      });
+
+      if (!result.ok) {
+        applyLock(result);
+        setFeedback({ type: "error", message: result.error });
+        showErrorToast(result.error);
+        return;
+      }
+
+      if (result.requiresTwoFactor) {
+        showSuccessToast(result.message || "Verification code sent to your email.");
+        navigate(result.verificationPath || "/verify-otp", {
+          replace: true,
+        });
+        return;
+      }
+
+      navigate(resolveAuthorizedPath(result.user.role, requestedPath), {
+        replace: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10 lg:py-18">
+      <div className="mx-auto grid max-w-[1220px] items-start gap-10 lg:grid-cols-[1.02fr_0.98fr]">
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55 }}
+          className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-6 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-8"
+        >
+          <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
+            {eyebrow}
+          </p>
+          <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[3.5rem]">
+            {title}
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
+            {description}
+          </p>
+
+          <div className="mt-6 rounded-[24px] border border-white/12 bg-white/8 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/64">
+              Terms and Conditions
+            </p>
+            <div className="mt-4 space-y-3 text-sm text-white/78">
+              <p>1. Credentials are validated against Supabase Auth on the server.</p>
+              <p>
+                2. Admin and staff accounts must complete an emailed OTP unless this trusted device
+                was remembered within the last two weeks.
+              </p>
+              <p>3. Protected portal APIs accept only verified portal session tokens.</p>
+            </div>
+          </div>
+
+          <p className="mt-6 text-sm text-white/74">
+            Need a different account?{" "}
+            <Link
+              to={links.alternatePath}
+              state={crossRoleState}
+              className="font-semibold text-white underline underline-offset-4"
+            >
+              {links.alternateLabel}
+            </Link>{" "}
+            or{" "}
+            <Link
+              to="/customer/login"
+              state={crossRoleState}
+              className="font-semibold text-white underline underline-offset-4"
+            >
+              customer login
+            </Link>
+            .
+          </p>
+        </motion.div>
+
+        <motion.section
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55, delay: 0.08 }}
+          className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
+        >
+          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
+            {supabaseConfigError && (
+              <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
+                Supabase client setup is incomplete. The public site will still load, but complete
+                the `VITE_SUPABASE_*` values in the root `.env` for full login token sync.
+              </div>
+            )}
+            {!isOnline && (
+              <div className="rounded-[22px] border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-4 text-sm text-[#48656A]">
+                You are offline. Reconnect before signing in so Supabase Auth can validate your
+                password and restore the correct role-based dashboard.
+              </div>
+            )}
+
+            <div className="rounded-[24px] bg-[#F5FAFA] px-5 py-5">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#EEF6F6] text-[#2D6B73]">
+                  <LockKeyhole size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
+                    Username/email + OTP
+                  </p>
+                  <p className="mt-2 text-sm leading-5 text-[#607277]">
+                    Use the username or email registered to your portal account. The server checks
+                    the saved PostgreSQL role first, then sends a one-time password before the
+                    protected dashboard opens.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">
+                Username or email
+              </label>
+              <input
+                value={form.identifier}
+                autoComplete="off"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, identifier: event.target.value }))
+                }
+                disabled={isSubmitting || lockSeconds > 0}
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
+                placeholder="Enter your username or email"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  autoComplete="new-password"
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, password: event.target.value }))
+                  }
+                  disabled={isSubmitting || lockSeconds > 0}
+                  className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || lockSeconds > 0}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F4E55]"
+            >
+              {submitLabel}
+              <ShieldCheck size={16} />
+            </button>
+
+            <label className="flex items-start justify-end gap-3 text-right text-sm font-semibold text-[#415D62]">
+              <span>Remember me</span>
+              <input
+                type="checkbox"
+                checked={form.rememberDevice}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  if (!checked) clearRememberedPortalLogin(expectedRole);
+                  setForm((current) => ({ ...current, rememberDevice: checked }));
+                }}
+                disabled={isSubmitting || lockSeconds > 0}
+                className="mt-1 h-4 w-4 accent-[#2D9B9B]"
+              />
+            </label>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <Link
+                to="/forgot-password"
+                className="font-semibold text-[#2D6B73] underline underline-offset-4"
+              >
+                Forgot password?
+              </Link>
+              <Link
+                to="/login"
+                state={crossRoleState}
+                className="font-semibold text-[#607277] underline underline-offset-4"
+              >
+                View all login options
+              </Link>
+            </div>
+          </form>
+
+          {feedback.message && (
+            <p
+              className={`mt-5 rounded-[22px] px-4 py-2.5 text-sm font-medium ${
+                feedback.type === "error"
+                  ? "bg-[#FBECEF] text-[#B23949]"
+                  : "bg-[#EAF7F7] text-[#2D6B73]"
+              }`}
+            >
+              {feedback.message}
+            </p>
+          )}
+        </motion.section>
+      </div>
+    </div>
+  );
+}

@@ -56,9 +56,18 @@ async function createCustomerProfile(req, res) {
   await validateAccessSecurity(req);
   const challenge = await generateSupabaseEmailLink({ email, type: "signup", password,
     userMetadata: { full_name: fullName, username, phone: phone || "" } });
-  const identity = challenge.user;
+  let identity = challenge.user;
+  if (!identity?.id) identity = await findSupabaseUserByEmail(email);
   const uid = identity?.id;
-  if (!uid) throw new ApiError(503, "Supabase Auth did not create the customer identity.");
+  if (!uid) {
+    console.error("[registration] Supabase signup challenge returned no resolvable Auth user.", {
+      hasTokenHash: Boolean(challenge.tokenHash),
+      hasActionLink: Boolean(challenge.actionLink),
+    });
+    throw new ApiError(503, "Supabase Auth did not return a customer identity for the signup challenge.", {
+      code: "SUPABASE_AUTH_USER_MISSING",
+    });
+  }
   const now = new Date().toISOString();
   const profileRef = db.collection("users").doc(uid);
   const usernameRef = db.collection("usernames").doc(username);

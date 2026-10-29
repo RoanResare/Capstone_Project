@@ -8,6 +8,7 @@ function loadRegistration(options = {}) {
   const records = new Map();
   const pendingWrites = [];
   let authCreated = 0;
+  let authLookups = 0;
   const db = {
     collection(name) {
       return { doc(id) { return { id, key: `${name}/${id}` }; } };
@@ -39,10 +40,13 @@ function loadRegistration(options = {}) {
     if (id === "../services/registrationSecurity.service") return { validateRegistrationSecurity: async () => ({ registrationIp: "127.0.0.1" }) };
     if (id === "../services/sessionSecurity.service") return { validateAccessSecurity: async () => ({}) };
     if (id === "../services/supabaseAuth.service") return {
-      findSupabaseUserByEmail: async () => options.authUser || null,
+      findSupabaseUserByEmail: async () => {
+        authLookups += 1;
+        return authLookups === 1 ? options.authUser || null : options.fallbackAuthUser || null;
+      },
       generateSupabaseEmailLink: async () => {
         authCreated += 1;
-        return { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash" };
+        return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash" };
       },
       deleteSupabaseUser: async () => {}, verifySupabaseEmailToken: async () => ({}),
     };
@@ -89,6 +93,19 @@ test("a PostgreSQL duplicate profile is rejected before provisioning another Aut
   await assert.rejects(fixture.run(), (error) => error.statusCode === 409);
   assert.equal(fixture.authCreated, 0);
   assert.equal(fixture.records.size, 0);
+});
+
+test("registration resolves the Auth UUID by email when the signup challenge omits its user object", async () => {
+  const uid = "4fed59af-ea29-47ae-9b36-0ee6363f76d0";
+  const fixture = loadRegistration({
+    challenge: { tokenHash: "opaque-token-hash", actionLink: "https://auth.example/verify" },
+    fallbackAuthUser: { id: uid, email: "customer@example.com" },
+  });
+  await fixture.run();
+  const profile = fixture.records.get(`users/${uid}`);
+  assert.equal(fixture.response.statusCode, 202);
+  assert.equal(profile.uid, uid);
+  assert.equal(profile.authUserId, uid);
 });
 
 test("authentication middleware has no Firebase token fallback", async () => {

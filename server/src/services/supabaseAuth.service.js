@@ -31,9 +31,23 @@ async function authRequest(path, { method = "GET", body, admin = false, accessTo
   if (!response.ok) {
     const code = String(payload?.code || payload?.error_code || payload?.error || "");
     const message = String(payload?.msg || payload?.message || "");
+    const providerError = Object.fromEntries(
+      ["error", "error_code", "code", "error_description", "msg", "message", "hint"]
+        .filter((key) => typeof payload?.[key] === "string" && payload[key].trim())
+        .map((key) => [key, payload[key].replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[redacted-email]").slice(0, 300)]),
+    );
+    console.error("[supabase-auth] Auth request failed.", {
+      method,
+      status: response.status,
+      code: code || "SUPABASE_AUTH_REQUEST_FAILED",
+      providerError,
+    });
     const authFailure = response.status === 400 || response.status === 401 || response.status === 403;
     throw new ApiError(authFailure ? 400 : response.status >= 500 ? 503 : response.status,
-      message || "Supabase Auth request failed.", { code, error: payload?.error || "" });
+      message || "Supabase Auth request failed.", {
+        code: code || "SUPABASE_AUTH_REQUEST_FAILED",
+        providerStatus: response.status,
+      });
   }
   return payload;
 }
@@ -119,7 +133,8 @@ async function generateSupabaseEmailLink({ email, type, password, userMetadata =
   });
   const tokenHash = generated?.hashed_token || generated?.properties?.hashed_token;
   if (!tokenHash) throw new ApiError(503, "Supabase Auth did not generate an email verification challenge.");
-  return { tokenHash, user: generated.user || null, actionLink: generated.action_link || "" };
+  const user = generated.user || generated.data?.user || (generated.id ? generated : null);
+  return { tokenHash, user: user || null, actionLink: generated.action_link || generated.properties?.action_link || "" };
 }
 
 async function verifySupabaseEmailToken(tokenHash, type = "signup") {

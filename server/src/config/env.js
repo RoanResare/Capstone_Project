@@ -1,8 +1,6 @@
-const fs = require("fs");
-const path = require("path");
 const { loadEnvFiles } = require("./loadEnv");
 
-const { projectRoot, serverRoot, files: loadedEnvFiles } = loadEnvFiles();
+const { files: loadedEnvFiles } = loadEnvFiles();
 
 const missingVariables = [];
 
@@ -46,101 +44,6 @@ function readNumber(name, fallback) {
   return parsed;
 }
 
-function resolveServerPath(targetPath) {
-  if (!targetPath) {
-    return "";
-  }
-
-  if (path.isAbsolute(targetPath)) {
-    return targetPath;
-  }
-
-  const candidates = [path.resolve(projectRoot, targetPath), path.resolve(serverRoot, targetPath)];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  return candidates[0];
-}
-
-function readServiceAccountFile(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) {
-    return null;
-  }
-
-  try {
-    const stats = fs.statSync(filePath);
-    if (!stats.isFile()) {
-      return null;
-    }
-
-    const raw = fs.readFileSync(filePath, "utf8");
-    const parsed = JSON.parse(raw);
-
-    if (!parsed?.project_id || !parsed?.client_email || !parsed?.private_key) {
-      return null;
-    }
-
-    return {
-      path: filePath,
-      projectId: String(parsed.project_id).trim(),
-      clientEmail: String(parsed.client_email).trim(),
-      privateKey: String(parsed.private_key),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function loadServiceAccount() {
-  const configuredPath = readOptional(
-    "FIREBASE_SERVICE_ACCOUNT_PATH",
-    readOptional("GOOGLE_APPLICATION_CREDENTIALS"),
-  );
-  const configDir = path.join(serverRoot, "config");
-  const candidates = [];
-
-  if (configuredPath) {
-    candidates.push(resolveServerPath(configuredPath));
-  }
-
-  if (fs.existsSync(configDir)) {
-    try {
-      const stats = fs.statSync(configDir);
-      if (stats.isDirectory()) {
-        const jsonFiles = fs
-          .readdirSync(configDir)
-          .filter((entry) => entry.toLowerCase().endsWith(".json"))
-          .map((entry) => path.join(configDir, entry));
-
-        candidates.push(...jsonFiles);
-      }
-    } catch {
-      // Ignore config directory read failures and fall back to env vars only.
-    }
-  }
-
-  const seen = new Set();
-
-  for (const candidate of candidates) {
-    if (!candidate || seen.has(candidate)) {
-      continue;
-    }
-
-    seen.add(candidate);
-    const serviceAccount = readServiceAccountFile(candidate);
-    if (serviceAccount) {
-      return serviceAccount;
-    }
-  }
-
-  return null;
-}
-
-const serviceAccount = loadServiceAccount();
 const nodeEnv = readOptional("NODE_ENV", "development");
 const defaultFrontendUrl = "https://charmingfurfectionpetscareservices.online";
 const frontendSiteUrl = readOptional("FRONTEND_SITE_URL", "https://capstone-project-1-yqto.onrender.com").replace(/\/+$/, "");
@@ -162,17 +65,6 @@ const env = {
     url: readOptional("SUPABASE_URL").replace(/\/+$/, ""),
     anonKey: readOptional("SUPABASE_ANON_KEY"),
     serviceRoleKey: readOptional("SUPABASE_SERVICE_ROLE_KEY"),
-  },
-  firebase: {
-    projectId: readOptional("FIREBASE_PROJECT_ID", serviceAccount?.projectId || ""),
-    clientEmail: readOptional("FIREBASE_CLIENT_EMAIL", serviceAccount?.clientEmail || ""),
-    privateKey: readOptional("FIREBASE_PRIVATE_KEY", serviceAccount?.privateKey || "").replace(
-      /\\n/g,
-      "\n",
-    ),
-    storageBucket: readOptional("FIREBASE_STORAGE_BUCKET"),
-    webApiKey: readOptional("FIREBASE_WEB_API_KEY"),
-    serviceAccountPath: serviceAccount?.path || "",
   },
   auth: {
     jwtSecret: readRequired("JWT_SECRET"),
@@ -234,9 +126,6 @@ env.runtime = {
   resendReady: Boolean(env.mail.apiKey && env.mail.fromEmail),
   loadedEnvFiles,
   missingVariables: Array.from(new Set(missingVariables)),
-  firebaseAdminReady: Boolean(
-    env.firebase.projectId && env.firebase.clientEmail && env.firebase.privateKey,
-  ),
   supabaseAuthReady: Boolean(env.supabase.url && env.supabase.anonKey),
   supabaseAdminReady: Boolean(env.supabase.url && env.supabase.serviceRoleKey),
   jwtReady: Boolean(

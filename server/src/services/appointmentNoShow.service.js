@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 
 const ACTIVE_BOOKING_STATUSES = [
   "Pending", "Approved", "Accepted", "Confirmed",

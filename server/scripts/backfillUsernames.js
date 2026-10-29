@@ -1,5 +1,4 @@
-const { db } = require("../src/config/firebaseAdmin");
-const { env } = require("../src/config/env");
+const { db } = require("../src/config/postgresDatabase");
 
 function normalizeUsername(username = "") {
   return typeof username === "string" ? username.trim().toLowerCase() : "";
@@ -15,10 +14,6 @@ function isValidUsername(username = "") {
 }
 
 async function main() {
-  if (!env.runtime.firebaseAdminReady || !db) {
-    throw new Error("Firebase Admin credentials are not configured in the server environment.");
-  }
-
   const usersSnapshot = await db.collection("users").get();
 
   if (usersSnapshot.empty) {

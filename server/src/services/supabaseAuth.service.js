@@ -59,9 +59,14 @@ async function signInWithSupabasePassword(email, password) {
 async function findSupabaseUserByEmail(email) {
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return null;
-  const payload = await authRequest(`/admin/users?page=1&per_page=100&filter=${encodeURIComponent(normalized)}`, { admin: true });
-  const users = Array.isArray(payload?.users) ? payload.users : [];
-  return users.find((user) => String(user.email || "").trim().toLowerCase() === normalized) || null;
+  for (let page = 1; page <= 1000; page += 1) {
+    const payload = await authRequest(`/admin/users?page=${page}&per_page=100&filter=${encodeURIComponent(normalized)}`, { admin: true });
+    const users = Array.isArray(payload?.users) ? payload.users : [];
+    const match = users.find((user) => String(user.email || "").trim().toLowerCase() === normalized);
+    if (match) return match;
+    if (users.length < 100) return null;
+  }
+  throw new ApiError(503, "Could not complete the Supabase duplicate-account check.", { code: "SUPABASE_USER_LOOKUP_INCOMPLETE" });
 }
 
 async function createSupabaseSessionForUser(email) {

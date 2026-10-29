@@ -110,7 +110,7 @@ function createReminderWorker({ db, sendReminder, clock = Date.now }) {
 }
 
 function startAppointmentReminders() {
-  const { db } = require("../config/firebaseAdmin");
+  const { db } = require("../config/postgresDatabase");
   if (!db || db.provider !== "postgres") {
     throw new Error("Appointment reminders require the PostgreSQL database adapter.");
   }

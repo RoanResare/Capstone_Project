@@ -1,4 +1,3 @@
-const { auth: firebaseAdminAuth } = require("../config/firebaseAdmin");
 const { env } = require("../config/env");
 const { verifyAccessToken } = require("../services/token.service");
 const { validateSessionSecurity } = require("../services/sessionSecurity.service");
@@ -7,23 +6,7 @@ const { FRAUD_STATUSES, USER_STATUSES } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
 const { isSupabaseAccessToken, verifySupabaseAccessToken } = require("../services/supabaseAuth.service");
 
-async function verifyFirebaseIdToken(token) {
-  if (!firebaseAdminAuth || !env.runtime.firebaseAdminReady) {
-    throw new ApiError(401, "This legacy Firebase session is no longer accepted. Sign in again with Supabase Auth.", { code: "LEGACY_AUTH_DISABLED" });
-  }
-
-  try {
-    return await firebaseAdminAuth.verifyIdToken(token, true);
-  } catch (_error) {
-    if (_error?.code === "auth/id-token-revoked") {
-      throw new ApiError(401, "Your session was revoked for security. Please sign in again.",
-        { code: "SESSION_SECURITY_VIOLATION" });
-    }
-    throw new ApiError(401, "The Firebase session token is invalid or has expired.");
-  }
-}
-
-function tryVerifyLegacyAccessToken(token) {
+function tryVerifyServerAccessToken(token) {
   if (!env.auth.jwtSecret) {
     return null;
   }
@@ -94,19 +77,19 @@ async function attachAuthenticatedUser(req, token, claims, provider) {
 async function verifyToken(req, _res, next) {
   try {
     const token = extractBearerToken(req);
-    const legacyPayload = tryVerifyLegacyAccessToken(token);
+    const serverPayload = tryVerifyServerAccessToken(token);
 
-    if (legacyPayload) {
-      await attachAuthenticatedUser(req, token, legacyPayload, "server-jwt");
+    if (serverPayload) {
+      await attachAuthenticatedUser(req, token, serverPayload, "server-jwt");
       await validateSessionSecurity(req);
       return next();
     }
 
-    const usesSupabase = isSupabaseAccessToken(token);
-    const claims = usesSupabase
-      ? await verifySupabaseAccessToken(token)
-      : await verifyFirebaseIdToken(token);
-    await attachAuthenticatedUser(req, token, claims, usesSupabase ? "supabase-auth" : "firebase-id-token");
+    if (!isSupabaseAccessToken(token)) {
+      throw new ApiError(401, "A valid Supabase session token is required.");
+    }
+    const claims = await verifySupabaseAccessToken(token);
+    await attachAuthenticatedUser(req, token, claims, "supabase-auth");
     await validateSessionSecurity(req);
     return next();
   } catch (error) {

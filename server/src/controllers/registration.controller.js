@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 const { validateRegistrationSecurity } = require("../services/registrationSecurity.service");
@@ -8,7 +8,7 @@ const { sendEmailVerificationLink } = require("../services/mail.service");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { hashPassword, assertStrongPassword } = require("../utils/password");
-const { assertValidUsername, getUserByEmail, getUsernameOwner } = require("../services/user.service");
+const { assertValidUsername, findUserByEmailCaseInsensitive, getUsernameOwner } = require("../services/user.service");
 
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_CODE_LENGTH = 4096;
@@ -41,15 +41,20 @@ async function createCustomerProfile(req, res) {
   try { assertAppropriateText({ fullName, username, email }, ACCOUNT_TEXT_FIELDS); }
   catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
   if (!env.runtime.mailDeliveryReady) throw new ApiError(503, "Activation email delivery is not configured.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
-  const existingUser = await findSupabaseUserByEmail(email);
-  if (existingUser || await getUserByEmail(email)) throw new ApiError(409, "Email is already associated with another account.");
+  if (await findUserByEmailCaseInsensitive(email)) {
+    throw new ApiError(409, "Email is already associated with another account.");
+  }
+  if (await findSupabaseUserByEmail(email)) {
+    throw new ApiError(409, "Email is already associated with another account.");
+  }
   const owner = await getUsernameOwner(username);
   if (owner) throw new ApiError(409, "That username is already in use.");
   if (phone && (await findPhoneAccounts(phone)).length >= PHONE_ACCOUNT_LIMIT) throw new ApiError(409, PHONE_ACCOUNT_LIMIT_MESSAGE);
 
   const registrationSecurity = await validateRegistrationSecurity(req, email);
   await validateAccessSecurity(req);
-  const challenge = await generateSupabaseEmailLink({ email, type: "signup", password, userMetadata: { full_name: fullName, username } });
+  const challenge = await generateSupabaseEmailLink({ email, type: "signup", password,
+    userMetadata: { full_name: fullName, username, phone: phone || "" } });
   const identity = challenge.user;
   const uid = identity?.id;
   if (!uid) throw new ApiError(503, "Supabase Auth did not create the customer identity.");
@@ -92,7 +97,7 @@ async function createCustomerProfile(req, res) {
       if (lock?.exists) transaction.set(phoneRef, { accountIds: (lock.data()?.accountIds || []).filter((accountId) => accountId !== uid), updatedAt: new Date().toISOString() });
     }).catch(() => {});
     await deleteSupabaseUser(uid).catch(() => {});
-    if (error?.code === "23505") {
+    if (error?.code === "23505" || error?.cause?.code === "23505" || error?.originalError?.code === "23505") {
       throw new ApiError(409, "An account with this email or username already exists.", {
         code: "REGISTRATION_IDENTITY_CONFLICT",
       });

@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { ApiError } = require("../utils/ApiError");
 
 const ACTIVE_APPOINTMENT_STATUSES = ["Pending", "Confirmed", "Accepted", "Approved"];
@@ -255,7 +255,7 @@ async function saveAppointment(req, res) {
         const sameSlot = appointment.slotId === nextAppointment.slotId || Boolean(nextAppointment.scheduleDate && nextAppointment.scheduleTime &&
           appointment.scheduleDate === nextAppointment.scheduleDate && appointment.scheduleTime?.slice(0, 5) === nextAppointment.scheduleTime.slice(0, 5));
         if (!sameSlot) continue;
-        // Firestore document IDs are booking identities. Two bookings for the
+        // Stable database document IDs are booking identities. Two bookings for the
         // same customer, pet, and slot still reserve two openings.
         activeAppointments.set(entry.id, appointment);
       }

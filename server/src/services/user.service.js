@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { createSupabaseUser, deleteSupabaseUser, findSupabaseUserByEmail, getSupabaseUserById, updateSupabaseUser } = require("./supabaseAuth.service");
 const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
@@ -361,7 +361,7 @@ async function findUserByEmailCaseInsensitive(email) {
     return exactUser;
   }
 
-  const snapshot = await db.collection(USERS_COLLECTION).limit(200).get();
+  const snapshot = await db.collection(USERS_COLLECTION).get();
   const document = snapshot.docs.find(
     (doc) => normalizeString(doc.data()?.email).toLowerCase() === normalizedEmail,
   );
@@ -636,7 +636,7 @@ async function createPortalUser(payload) {
   };
 
   try {
-    logPortalUserOperation("Firestore profile create started", {
+    logPortalUserOperation("PostgreSQL profile create started", {
       uid: authUser.id,
       username,
     });
@@ -657,7 +657,7 @@ async function createPortalUser(payload) {
         updatedAt: timestamp,
       });
     });
-    logPortalUserOperation("Firestore profile create succeeded", {
+    logPortalUserOperation("PostgreSQL profile create succeeded", {
       uid: authUser.id,
       username,
     });
@@ -772,7 +772,7 @@ async function updatePortalUser(uid, updates) {
   }
 
   try {
-    logPortalUserOperation("Firestore profile update started", {
+    logPortalUserOperation("PostgreSQL profile update started", {
       uid,
       username: nextUser.username,
     });
@@ -821,7 +821,7 @@ async function updatePortalUser(uid, updates) {
         transaction.delete(db.collection(USERNAMES_COLLECTION).doc(existingUser.username));
       }
     });
-    logPortalUserOperation("Firestore profile update succeeded", { uid });
+    logPortalUserOperation("PostgreSQL profile update succeeded", { uid });
     await setCustomClaims(nextUser);
     logPortalUserOperation("role claims synchronized", {
       uid,
@@ -1064,7 +1064,7 @@ async function deletePortalUser(uid) {
   });
 
   await batch.commit();
-  logPortalUserOperation("Firestore profile and username index delete succeeded", {
+  logPortalUserOperation("PostgreSQL profile and username index delete succeeded", {
     uid: normalizedUid,
     username: existingUser?.username || "",
     usernameIndexCount: usernameIndexDocs.length,

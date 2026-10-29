@@ -1,6 +1,6 @@
 const { prescreenPetImage } = require("../services/huggingFace.service");
 const { validateImage } = require("../utils/pricelistImage");
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { assertAppropriateText, PET_TEXT_FIELDS } = require("../../../shared/textModeration.mjs");
 const { ApiError } = require("../utils/ApiError");
 

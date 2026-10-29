@@ -35,7 +35,7 @@ async function exportFirestore(filename) {
   const output = externalFile(filename);
   // Configuration initializes Firebase Auth only as needed; the export always
   // uses the explicit Firestore instance, never the selected runtime adapter.
-  require("../src/config/firebaseAdmin");
+  require("../src/config/postgresDatabase");
   const { getFirestore } = require("firebase-admin/firestore");
   const firestore = getFirestore();
   const stream = fs.createWriteStream(output, { flags: "wx", mode: 0o600 });

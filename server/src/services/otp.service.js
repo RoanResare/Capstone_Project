@@ -1,5 +1,5 @@
 const { attemptReference, lockError, failedAttempt, assertAttemptsAllowed, MAX_FAILED_ATTEMPTS } = require("./authAttempts.service");
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { Timestamp } = require("../database/values");
 const { env } = require("../config/env");
 const { OTP_COLLECTION } = require("../constants/auth");

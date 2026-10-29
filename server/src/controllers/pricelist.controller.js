@@ -1,4 +1,4 @@
-const {db}=require("../config/firebaseAdmin");
+const {db}=require("../config/postgresDatabase");
 const {ApiError}=require("../utils/ApiError");
 const {validateImage}=require("../utils/pricelistImage");
 async function listPricelists(req,res) {

@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { ApiError } = require("../utils/ApiError");
 
 async function saveKaponPromo(req, res) {

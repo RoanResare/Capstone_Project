@@ -1,6 +1,6 @@
 const crypto = require("node:crypto");
 const net = require("node:net");
-const { db, auth } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
 
@@ -171,7 +171,7 @@ async function lookupIpSecurity(ip) {
   }
 }
 
-async function revokeUserSession(uid, details = {}, claims = {}, provider = "firebase-id-token") {
+async function revokeUserSession(uid, details = {}, claims = {}) {
   const now = Date.now();
   const reference = db.collection(SECURITY_COLLECTION).doc(uid);
   const cutoff = Math.max(Math.floor(now / 1000), getTokenIssuedAt(claims));
@@ -189,7 +189,6 @@ async function revokeUserSession(uid, details = {}, claims = {}, provider = "fir
   });
   if (!started) return;
   try {
-    if (provider !== "supabase-auth") await auth.revokeRefreshTokens(uid);
     await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (snapshot.data()?.revocationPending && Number(snapshot.data()?.revokedBefore || 0) === cutoff) {
@@ -293,7 +292,7 @@ async function validateSessionSecurity(req) {
   }
 }
 
-// Login-only recovery for historic revocations still enforced by Firebase and Firestore rules.
+// Clear an interrupted revocation after its cutoff has expired.
 async function waitForFreshSession(uid, { now = Date.now, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {}) {
   const reference = db.collection(SECURITY_COLLECTION).doc(uid);
   const deadline = now() + 10000;
@@ -301,8 +300,6 @@ async function waitForFreshSession(uid, { now = Date.now, sleep = (ms) => new Pr
   while (snapshot.data()?.revocationPending) {
     const cutoff = Number(snapshot.data().revokedBefore || 0);
     if (now() - cutoff * 1000 >= 30000) {
-      try { await auth.revokeRefreshTokens(uid); }
-      catch (_error) { throw new ApiError(503, "Unable to reset the previous session right now. Please try again shortly."); }
       await db.runTransaction(async (transaction) => {
         const latest = await transaction.get(reference);
         if (latest.data()?.revocationPending && Number(latest.data().revokedBefore || 0) === cutoff) {
@@ -317,7 +314,7 @@ async function waitForFreshSession(uid, { now = Date.now, sleep = (ms) => new Pr
     await sleep(100);
     snapshot = await reference.get();
   }
-  // Firebase auth_time and JWT iat use seconds. A fresh login must clear the old cutoff.
+  // Supabase auth_time and JWT iat use seconds. A fresh login must clear the old cutoff.
   const remainingMs = (Number(snapshot.data()?.revokedBefore || 0) + 1) * 1000 - now();
   if (remainingMs > 0) await sleep(remainingMs);
 }

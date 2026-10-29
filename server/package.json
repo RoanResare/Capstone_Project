@@ -7,7 +7,6 @@
     "build": "node scripts/verifyBackendBuild.js",
     "dev": "node ../scripts/dev-server.mjs",
     "start": "node server.js",
-    "repair:profiles": "node scripts/repairUserProfiles.js",
     "repair:usernames": "node scripts/backfillUsernames.js",
     "auth:provision-staff": "node scripts/provisionSupabaseStaffAccounts.js",
     "update:disposable-domains": "node scripts/updateDisposableEmailDomains.js",

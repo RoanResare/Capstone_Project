@@ -1,6 +1,6 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const { db, auth } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { ApiError } = require("../utils/ApiError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { verifyToken } = require("../middlewares/authenticate");
@@ -10,6 +10,7 @@ const { listRecords } = require("../services/scheduleRecords.service");
 const { assertRead, assertWrite } = require("../database/browserAccess");
 const { encode, decode, deepMerge } = require("../database/values");
 const { isSupabaseAccessToken, verifySupabaseAccessToken } = require("../services/supabaseAuth.service");
+const { verifyAccessToken } = require("../services/token.service");
 const router = express.Router();
 router.use((_req, _res, next) => db?.provider === "postgres" ? next() : next(new ApiError(404, "PostgreSQL API is disabled.")));
 router.get("/token", verifyToken, asyncHandler(async (req, res) => {
@@ -25,13 +26,12 @@ router.use(asyncHandler(async (req, _res, next) => {
   const token = req.headers.authorization?.replace(/^Bearer /, "");
   if (!token) { req.databaseIdentity = { uid: "", claims: {} }; return next(); }
   let claims;
-  let provider = "firebase-id-token";
+  let provider = "server-jwt";
   if (isSupabaseAccessToken(token)) {
     claims = await verifySupabaseAccessToken(token);
     provider = "supabase-auth";
   } else {
-    try { claims = await auth.verifyIdToken(token, true); }
-    catch (_error) { throw new ApiError(401, "A valid Supabase or Firebase session is required."); }
+    claims = verifyAccessToken(token);
   }
   const uid = claims.uid || claims.sub;
   const user = provider === "supabase-auth" ? await getUserByAuthId(uid) : await getUserByUid(uid);

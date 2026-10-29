@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { deleteSupabaseUser } = require("./supabaseAuth.service");
 const { env } = require("../config/env");
 

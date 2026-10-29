@@ -1,5 +1,5 @@
 const { createHash } = require("node:crypto");
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { ApiError } = require("../utils/ApiError");
 
 const MAX_FAILED_ATTEMPTS = 5;

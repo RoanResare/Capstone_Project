@@ -1,4 +1,4 @@
-const { db } = require("../config/firebaseAdmin");
+const { db } = require("../config/postgresDatabase");
 const { normalizePhilippineMobileNumber } = require("../utils/phoneNumber");
 
 const PHONE_ACCOUNT_LIMIT = 3;

@@ -5,7 +5,7 @@ import { ActivateAccount } from "./components/ActivateAccount.jsx";
 import { ForgotPassword } from "./components/ForgotPassword.jsx";
 import { Layout } from "./components/Layout.jsx";
 import { Home } from "./components/Home.jsx";
-import { Login } from "./components/Login.jsx";
+import { UnifiedLogin } from "./components/UnifiedLogin.jsx";
 import { OtpVerification } from "./components/OtpVerification.jsx";
 import { ResetPassword } from "./components/ResetPassword.jsx";
 import { RouteErrorScreen } from "./components/RouteErrorScreen.jsx";
@@ -116,7 +116,7 @@ export const router = createBrowserRouter([
       },
       { path: "las-pinas-city-branch", element: <Navigate to="/#visit-info" replace /> },
       { path: "las-pinas-branch", element: <Navigate to="/#visit-info" replace /> },
-      { path: "login", element: <RouteLoader Component={Login} /> },
+      { path: "login", element: <RouteLoader Component={UnifiedLogin} /> },
       { path: "customer/login", element: <Navigate to="/login" replace /> },
       { path: "customer/signup", element: <RouteLoader Component={CustomerSignup} /> },
       { path: "admin/login", element: <Navigate to="/login" replace /> },

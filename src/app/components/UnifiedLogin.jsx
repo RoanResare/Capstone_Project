@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
 
-export function Login() {
+export function UnifiedLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const {

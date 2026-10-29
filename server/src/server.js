@@ -1,5 +1,5 @@
 const { logEnvLoadSummary } = require("./config/loadEnv");
-const { app } = require("./app");
+const { app, frontendIndexPath } = require("./app");
 const { env, validateStartupEnvironment } = require("./config/env");
 const { getMailTransportSettings } = require("./config/mailer");
 const { startDisposableEmailUpdates } = require("./services/disposableEmailDomains.service");
@@ -27,6 +27,7 @@ app.listen(env.port, () => {
   console.info("[startup] Server ready.", {
     port: env.port,
     clientUrl: env.clientUrl,
+    frontendEntryPoint: frontendIndexPath,
   });
 
   // Sending-only Resend keys cannot list account resources for an SMTP-style

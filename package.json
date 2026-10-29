@@ -7,7 +7,9 @@
     "dev": "node scripts/dev.mjs",
     "dev:client": "vite",
     "dev:server": "node scripts/dev-server.mjs",
-    "build": "vite build",
+    "build": "node scripts/buildRender.mjs",
+    "build:frontend": "vite build && node scripts/copyFrontendToServer.mjs",
+    "start": "node server/server.js",
     "preview": "vite preview"
   },
   "dependencies": {

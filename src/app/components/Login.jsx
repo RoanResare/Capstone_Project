@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, ShieldCheck, UserPlus } from "lucide-react";
 import { BrandMark } from "./BrandMark.jsx";
-import { PasswordStrengthMeter } from "./PasswordStrengthMeter.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
@@ -14,7 +13,7 @@ export function Login() {
   const {
     beginUnifiedLogin,
     currentUser,
-    firebaseConfigError,
+    supabaseConfigError,
     homePath,
     isAuthenticated,
     isLoading,
@@ -145,9 +144,9 @@ export function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {firebaseConfigError && (
+            {supabaseConfigError && (
               <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-3 text-sm text-[#8A6410]">
-                Firebase setup is incomplete. Fill the required environment values to enable login.
+                Supabase setup is incomplete. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable login.
               </div>
             )}
             {!isOnline && (
@@ -186,7 +185,6 @@ export function Login() {
                 }`}
                 placeholder="Enter your password"
               />
-              <PasswordStrengthMeter password={form.password} />
               {fieldErrors.password && (
                 <p className="mt-2 text-sm text-[#B23949]">{fieldErrors.password}</p>
               )}

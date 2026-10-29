@@ -17,18 +17,34 @@ const { getAllowedClientOrigins } = require("./config/clientOrigins");
 const app = express();
 app.set("trust proxy", getTrustedProxies(env.security.trustedProxyCidrs));
 const projectRoot = path.resolve(__dirname, "../..");
+const configuredFrontendDir = process.env.FRONTEND_DIST_DIR
+  ? path.resolve(process.env.FRONTEND_DIST_DIR)
+  : "";
+const frontendDistCandidates = [
+  configuredFrontendDir,
+  path.resolve(projectRoot, "server", "dist"),
+  path.resolve(projectRoot, "dist"),
+  path.resolve(process.cwd(), "dist"),
+  path.resolve(process.cwd(), "server", "dist"),
+].filter(Boolean);
+const frontendDistPath = frontendDistCandidates.find(candidate => fs.existsSync(path.join(candidate, "index.html"))) ||
+  path.resolve(projectRoot, "server", "dist");
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
 const frontendIndexCandidates = [
+  frontendIndexPath,
   path.join(__dirname, "../dist/index.html"),
   path.join(projectRoot, "dist/index.html"),
   path.join(process.cwd(), "../dist/index.html"),
   path.join(process.cwd(), "dist/index.html"),
 ];
-const frontendIndexPath =
-  frontendIndexCandidates.find((candidate) => fs.existsSync(candidate)) ||
-  path.join(projectRoot, "dist/index.html");
-const frontendDistPath = path.dirname(frontendIndexPath);
 const resetPasswordIndexPath =
   frontendIndexCandidates.find((candidate) => fs.existsSync(candidate)) || frontendIndexPath;
+if (!fs.existsSync(frontendIndexPath)) {
+  console.error("[frontend] SPA build is missing. Run `npm run build` from the repository root or `npm run build` from server/ before starting the service.", {
+    expectedIndexPath: frontendIndexPath,
+    checkedDirectories: frontendDistCandidates,
+  });
+}
 const allowedOrigins = getAllowedClientOrigins();
 const databaseConnectOrigins = [];
 if (process.env.DATABASE_PROVIDER === "postgres") {
@@ -169,4 +185,6 @@ app.use(errorHandler);
 
 module.exports = {
   app,
+  frontendDistPath,
+  frontendIndexPath,
 };

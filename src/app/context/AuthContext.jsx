@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { SESSION_SECURITY_EVENT } from "../services/apiClient.js";
 import { setSecuritySession } from "../utils/securitySession.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
-import { isSupabaseConfigured } from "../../firebase.js";
+import { isSupabaseConfigured } from "../services/supabaseConfig.js";
 import { auth, installSupabaseSession, loadSupabaseProfile, signOutSupabase, subscribeSupabaseAuth, getSupabaseSession, setSupabaseSessionPersistence, supabase } from "../services/supabaseSession.js";
 import { signUpCustomerWithEmailPassword, updateCustomerProfile } from "../services/customerAccount.js";
 import { updateMyProfile } from "../services/userApi.js";

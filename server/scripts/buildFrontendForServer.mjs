@@ -1,45 +1,28 @@
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const serverRoot = resolve(import.meta.dirname, "..");
 const projectRoot = resolve(serverRoot, "..");
-const frontendDist = join(projectRoot, "dist");
-const serverDist = join(serverRoot, "dist");
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, {
+function run(args, cwd) {
+  const result = spawnSync(npmCommand, args, {
     cwd,
     stdio: "inherit",
     shell: process.platform === "win32",
   });
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  if (result.status !== 0) {
-    process.exit(result.status || 1);
-  }
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status || 1);
 }
 
 const calendarPackages = ["react", "daygrid", "timegrid", "interaction"];
 if (!existsSync(join(projectRoot, "node_modules", ".bin", "vite")) ||
-    calendarPackages.some((name) => !existsSync(join(projectRoot, "node_modules", "@fullcalendar", name, "package.json")))) {
-  run(npmCommand, ["install", "--no-audit", "--no-fund"], projectRoot);
+    calendarPackages.some(name => !existsSync(join(projectRoot, "node_modules", "@fullcalendar", name, "package.json")))) {
+  run(["install", "--no-audit", "--no-fund"], projectRoot);
 }
 
-run(npmCommand, ["run", "build"], projectRoot);
+run(["run", "build"], projectRoot);
 
-if (!existsSync(join(frontendDist, "index.html"))) {
-  throw new Error(`Frontend build did not produce ${join(frontendDist, "index.html")}.`);
-}
-
-// Remove previous bundles so obsolete API URLs cannot remain in served assets.
-if (serverDist !== resolve(projectRoot, "server", "dist")) {
-  throw new Error("Refusing to replace an unexpected frontend output directory.");
-}
-rmSync(serverDist, { recursive: true, force: true });
-cpSync(frontendDist, serverDist, { recursive: true, force: true });
-console.info(`[build] Frontend bundle copied to ${serverDist}`);
+const serverIndex = join(serverRoot, "dist", "index.html");
+if (!existsSync(serverIndex)) throw new Error(`Frontend build did not produce ${serverIndex}.`);

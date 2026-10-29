@@ -14,7 +14,7 @@ import {
   where,
   isPostgresEnabled,
 } from "./database.js";
-import { db, isSupabaseConfigured } from "../../firebase.js";
+import { db, isSupabaseConfigured } from "./postgresCompat.js";
 import { auth, getSupabaseAccessToken, waitForSupabaseUserSession } from "./supabaseSession.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";

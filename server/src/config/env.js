@@ -142,7 +142,7 @@ function loadServiceAccount() {
 
 const serviceAccount = loadServiceAccount();
 const nodeEnv = readOptional("NODE_ENV", "development");
-const defaultFrontendUrl = "https://capstone-project-1-yqto.onrender.com";
+const defaultFrontendUrl = "https://charmingfurfectionpetscareservices.online";
 const frontendUrl = readOptional("FRONTEND_URL", defaultFrontendUrl).replace(/\/+$/, "");
 const defaultPasswordResetUrl = frontendUrl.endsWith("/reset-password")
   ? frontendUrl
@@ -155,7 +155,7 @@ const defaultEmailVerificationUrl = frontendUrl.endsWith("/activate-account")
 const env = {
   nodeEnv,
   port: readNumber("PORT", 5000),
-  clientUrl: readOptional("CLIENT_URL", "http://localhost:5173"),
+  clientUrl: readOptional("CLIENT_URL", `${defaultFrontendUrl},https://www.charmingfurfectionpetscareservices.online,http://localhost:5173`),
   supabase: {
     url: readOptional("SUPABASE_URL", readOptional("VITE_SUPABASE_URL")).replace(/\/+$/, ""),
     anonKey: readOptional("SUPABASE_ANON_KEY", readOptional("VITE_SUPABASE_ANON_KEY")),

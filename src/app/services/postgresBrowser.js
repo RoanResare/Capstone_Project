@@ -1,5 +1,6 @@
 import { apiClient, buildAuthHeaders } from "./apiClient.js";
 import { getApplicationAccessToken, getApplicationIdentity } from "./databaseToken.js";
+import { auth } from "./supabaseSession.js";
 
 const TYPE = "__furfection_type__";
 const documentCaches = new Map();

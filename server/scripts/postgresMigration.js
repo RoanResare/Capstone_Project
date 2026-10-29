@@ -1,4 +1,4 @@
-/* Read-only Firestore export; explicit, staged PostgreSQL import/verification.
+/* Staged PostgreSQL import/verification for previously prepared migration files.
  * Customer-bearing files MUST be outside the checkout. Never prints records,
  * document paths, connection strings or raw driver errors.
  */
@@ -7,9 +7,7 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const readline = require("node:readline");
 const crypto = require("node:crypto");
-const { once } = require("node:events");
 const { COLLECTION_TABLES, RELATIONAL_COLLECTIONS, tableFor } = require("../src/database/collections");
-const { encode } = require("../src/database/values");
 const { loadEnvFiles, projectRoot } = require("../src/config/loadEnv");
 loadEnvFiles();
 
@@ -30,46 +28,6 @@ function digest(value) { return crypto.createHash("sha256").update(JSON.stringif
 function runtimeTable(documentPath) {
   const parts = documentPath.split("/");
   return parts.length === 2 && Object.hasOwn(COLLECTION_TABLES, parts[0]) ? { collection: parts[0], table: tableFor(parts[0]), id: parts[1] } : null;
-}
-async function exportFirestore(filename) {
-  const output = externalFile(filename);
-  // Configuration initializes Firebase Auth only as needed; the export always
-  // uses the explicit Firestore instance, never the selected runtime adapter.
-  require("../src/config/postgresDatabase");
-  const { getFirestore } = require("firebase-admin/firestore");
-  const firestore = getFirestore();
-  const stream = fs.createWriteStream(output, { flags: "wx", mode: 0o600 });
-  await once(stream, "open");
-  const hash = crypto.createHash("sha256");
-  const counts = { documents: 0, runtimeDocuments: 0, archivedDocuments: 0, collections: {} };
-  async function visit(collection) {
-    // listDocuments includes missing ancestors with orphaned subcollections.
-    const references = await collection.listDocuments();
-    for (const reference of references) {
-      const snapshot = await reference.get();
-      if (snapshot.exists) {
-        const row = { path: reference.path, data: encode(snapshot.data()) };
-        const line = JSON.stringify(row) + "\n";
-        hash.update(line);
-        if (!stream.write(line)) await once(stream, "drain");
-        counts.documents++;
-        if (runtimeTable(row.path)) {
-          counts.runtimeDocuments++;
-          const name = row.path.split("/")[0];
-          counts.collections[name] = (counts.collections[name] || 0) + 1;
-        } else counts.archivedDocuments++;
-      }
-      for (const child of await reference.listCollections()) await visit(child);
-    }
-  }
-  try {
-    for (const collection of await firestore.listCollections()) await visit(collection);
-    stream.end(); await once(stream, "finish");
-    const manifest = { formatVersion: 1, exportedAt: new Date().toISOString(), ...counts, sha256: hash.digest("hex"),
-      consistency: "Requires a write freeze or point-in-time source backup for cutover; this is a sequential read-only export." };
-    await fsp.writeFile(output + ".manifest.json", JSON.stringify(manifest, null, 2), { flag: "wx", mode: 0o600 });
-    return manifest;
-  } catch (error) { stream.destroy(); throw error; }
 }
 async function* readExport(filename) {
   const stream = fs.createReadStream(externalFile(filename));
@@ -160,8 +118,7 @@ async function validateRelationships(pool) {
 }
 async function main() {
   const [command, filename] = process.argv.slice(2);
-  if (command === "export") return exportFirestore(filename);
-  if (!["import", "validate", "schema"].includes(command)) throw new Error("Use export, schema, import or validate.");
+  if (!["import", "validate", "schema"].includes(command)) throw new Error("Use schema, import or validate.");
   if (process.env.MIGRATION_TARGET !== "staging") throw new Error("MIGRATION_TARGET=staging is required. Production migration is not enabled by this tool.");
   if (!process.env.DATABASE_URL) throw new Error("Set the staging DATABASE_URL privately.");
   const { Pool } = require("pg");
@@ -180,4 +137,4 @@ async function main() {
 }
 if (require.main === module) main().then(report => { console.log(JSON.stringify(report, null, 2)); if (report.valid === false) process.exitCode = 1; })
   .catch(() => { console.error("Migration stopped. Check configuration, backup integrity and staging permissions; no credentials or record details are printed."); process.exitCode = 1; });
-module.exports = { externalFile, canonical, digest, runtimeTable, exportFirestore, readExport, assertManifest, importRows, validateRows, validateRelationships };
+module.exports = { externalFile, canonical, digest, runtimeTable, readExport, assertManifest, importRows, validateRows, validateRelationships };

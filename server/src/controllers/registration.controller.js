@@ -7,8 +7,9 @@ const { generateSupabaseEmailLink, deleteSupabaseUser, verifySupabaseEmailToken,
 const { sendEmailVerificationLink } = require("../services/mail.service");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
-const { hashPassword, assertStrongPassword } = require("../utils/password");
-const { assertValidUsername, findUserByEmailCaseInsensitive, getUsernameOwner } = require("../services/user.service");
+const { assertValidEmail } = require("../utils/emailValidation");
+const { assertStrongPassword } = require("../utils/password");
+const { assertValidUsername, findUserByEmailCaseInsensitive, getUserByEmail, getUsernameOwner } = require("../services/user.service");
 
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_CODE_LENGTH = 4096;
@@ -32,7 +33,7 @@ async function createCustomerProfile(req, res) {
   const username = assertValidUsername(String(payload.username || "").trim().toLowerCase());
   const password = typeof payload.password === "string" ? payload.password : "";
   const phone = normalizePhilippineMobileNumber(String(payload.phone || "").trim());
-  if (!email || !email.includes("@")) throw new ApiError(400, "Enter a valid email address.");
+  assertValidEmail(email);
   if (!fullName) throw new ApiError(400, "Full name is required.");
   if (!password) throw new ApiError(400, "Password is required.");
   assertStrongPassword(password);
@@ -78,7 +79,7 @@ async function createCustomerProfile(req, res) {
       transaction.set(profileRef, {
         uid, authUserId: uid, email, fullName, username, phone: phone || "", role: "customer",
         accountStatus: "inactive", status: "inactive", emailVerified: false,
-        verificationStatus: "pending", passwordHash: hashPassword(password),
+        verificationStatus: "pending",
         registrationIp: registrationSecurity.registrationIp || "",
         verificationSentAt: now, verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), createdAt: now, updatedAt: now,
       });

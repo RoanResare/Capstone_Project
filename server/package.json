@@ -12,7 +12,6 @@
     "update:disposable-domains": "node scripts/updateDisposableEmailDomains.js",
     "test": "echo \"No backend tests configured yet\"",
     "db:schema:staging": "node scripts/postgresMigration.js schema",
-    "db:export": "node scripts/postgresMigration.js export",
     "db:import:staging": "node scripts/postgresMigration.js import",
     "db:validate:staging": "node scripts/postgresMigration.js validate"
   },
@@ -25,7 +24,6 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
-    "firebase-admin": "^14.1.0",
     "groq-sdk": "^1.6.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",

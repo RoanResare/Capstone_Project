@@ -68,7 +68,7 @@ function loadRegistration(options = {}) {
   };
 }
 
-test("customer registration creates a Supabase identity and a complete PostgreSQL profile payload", async () => {
+test("customer registration creates a Supabase identity and a complete PostgreSQL profile payload without a second password hash", async () => {
   const fixture = loadRegistration();
   await fixture.run();
   const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
@@ -79,7 +79,7 @@ test("customer registration creates a Supabase identity and a complete PostgreSQ
   assert.equal(profile.authUserId, "7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
   assert.equal(profile.role, "customer");
   assert.equal(profile.accountStatus, "inactive");
-  assert.equal(profile.passwordHash, "scrypt-hash");
+  assert.equal(Object.hasOwn(profile, "passwordHash"), false);
   assert.equal(fixture.records.get("usernames/survey_customer").uid, profile.uid);
   assert.equal(fixture.authCreated, 1);
 });

@@ -374,6 +374,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss(), createGroqProxyPlugin(env)],
+    // Explicitly bind the public Supabase settings from Render's build
+    // environment into the browser bundle. The build script also validates
+    // these values before Vite runs, without logging either value.
+    define: {
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(getEnvValue(env, "VITE_SUPABASE_URL")),
+      "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(getEnvValue(env, "VITE_SUPABASE_ANON_KEY")),
+    },
     server: {
       host: true,
       port: devPort,

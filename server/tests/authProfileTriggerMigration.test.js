@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { PGlite } = require("@electric-sql/pglite");
 
-const migrationPath = path.resolve(__dirname, "../../supabase/migrations/202611010001_disable_auth_profile_autoprovision.sql");
+const migrationPath = path.resolve(__dirname, "../../supabase/migrations/202611020001_disable_auth_profile_autoprovision.sql");
 const migrationSql = fs.readFileSync(migrationPath, "utf8");
 
 test("Auth profile migration is idempotent, preserves rows, and leaves profile provisioning to backend workflows", async (t) => {

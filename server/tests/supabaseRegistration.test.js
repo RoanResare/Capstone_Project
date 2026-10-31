@@ -157,7 +157,7 @@ test("registration completes the matching profile created by an Auth INSERT trig
 });
 
 test("the corrected Auth trigger is side-effect-free and registration creates its own pending customer profile", async () => {
-  const triggerMigration = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/202611010001_disable_auth_profile_autoprovision.sql"), "utf8");
+  const triggerMigration = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/202611020001_disable_auth_profile_autoprovision.sql"), "utf8");
   assert.match(triggerMigration, /CREATE OR REPLACE FUNCTION public\.handle_new_user\(\)[\s\S]*?RETURN NEW;/);
   assert.doesNotMatch(triggerMigration, /INSERT\s+INTO\s+(?:public\.)?users/i);
   assert.doesNotMatch(triggerMigration, /ELSE\s+'staff'/i);

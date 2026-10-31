@@ -241,8 +241,9 @@ function employeeStatusClasses(status) {
   return "bg-[#FCE8EB] text-[#B23949]";
 }
 
-function formatRoleLabel(role = "staff") {
-  const normalized = typeof role === "string" ? role.trim().toLowerCase() : "staff";
+function formatRoleLabel(role = "") {
+  const normalized = typeof role === "string" ? role.trim().toLowerCase() : "";
+  if (!["admin", "staff"].includes(normalized)) return "Unknown role";
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
@@ -413,7 +414,7 @@ function buildPortalUserForm(user = null) {
     email: typeof current.email === "string" ? current.email : "",
     username: typeof current.username === "string" ? current.username : "",
     password: "",
-    role: typeof current.role === "string" ? current.role : "staff",
+    role: typeof current.role === "string" ? current.role : "",
   };
 }
 

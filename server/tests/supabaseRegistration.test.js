@@ -238,6 +238,14 @@ test("a matching pending customer registration safely sends a new link without c
   assert.equal(fixture.authDeleted, 0);
 });
 
+test("customer signup ignores a client-supplied staff role and stores customer in Auth metadata and profile", async () => {
+  const fixture = loadRegistration({ payload: { role: "staff", user_metadata: { role: "admin" } } });
+  await fixture.run();
+  const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+  assert.equal(fixture.signupMetadata.role, "customer");
+  assert.equal(profile.role, "customer");
+});
+
 test("wrong codes and mismatched verification identities cannot activate the profile", async () => {
   for (const options of [{}, { verifiedEmail: "other@example.com" }]) {
     const fixture = loadRegistration(options);

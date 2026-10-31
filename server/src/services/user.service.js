@@ -598,6 +598,9 @@ async function createPortalUser(payload) {
   const password = payload.password;
   const username = assertValidUsername(payload.username || deriveUsernameFromEmail(email));
   const role = normalizeRole(payload.role);
+  if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(role)) {
+    throw new ApiError(400, "Employee roles must be admin or staff.");
+  }
   const accountStatus = USER_STATUSES.ACTIVE;
 
   logPortalUserOperation("create request validated", {
@@ -687,12 +690,18 @@ async function createPortalUser(payload) {
 }
 
 async function updatePortalUser(uid, updates) {
-  await assertAccountText(updates);
   const existingUser = await getUserByUid(uid);
 
   if (!existingUser) {
     throw new ApiError(404, "The selected employee account was not found.");
   }
+  if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(existingUser.role)) {
+    throw new ApiError(400, "Only admin and staff accounts can be changed through employee management.");
+  }
+  if (Object.hasOwn(updates || {}, "role") && ![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(String(updates.role || "").trim().toLowerCase())) {
+    throw new ApiError(400, "Employee roles must be admin or staff.");
+  }
+  await assertAccountText(updates);
 
   const nextEmail =
     typeof updates.email === "string" && updates.email.trim()
@@ -912,12 +921,16 @@ async function purgeExpiredInactivePortalUsers() {
 }
 
 async function updateOwnUser(uid, updates) {
-  await assertAccountText(updates);
   const existingUser = await getUserByUid(uid);
 
   if (!existingUser) {
     throw new ApiError(404, "The user profile could not be found.");
   }
+  if (Object.hasOwn(updates || {}, "role") || Object.hasOwn(updates || {}, "accountStatus")
+    || Object.hasOwn(updates || {}, "status") || Object.hasOwn(updates || {}, "fraudStatus")) {
+    throw new ApiError(400, "Profile updates cannot change account role or access status.");
+  }
+  await assertAccountText(updates);
 
   const nextEmail =
     typeof updates.email === "string" && updates.email.trim()
@@ -979,8 +992,10 @@ async function ensureAdminCanMutateTarget(
     throw new ApiError(404, "The selected employee account was not found.");
   }
 
-  const targetRole =
-    targetUser?.role || normalizeRole(targetAuthUser?.user_metadata?.role || "");
+  if (targetUser && ![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(targetUser.role)) {
+    throw new ApiError(400, "Only admin and staff accounts can be managed here.");
+  }
+  const targetRole = targetUser?.role || normalizeRole(targetAuthUser?.user_metadata?.role || "");
 
   if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(targetRole)) {
     throw new ApiError(400, "Only admin and staff accounts can be managed here.");

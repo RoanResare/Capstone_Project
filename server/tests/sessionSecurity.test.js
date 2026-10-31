@@ -573,6 +573,22 @@ test("backend account creation rejects disposable email before checking duplicat
   }
 });
 
+test("employee account creation fails closed for customer or unknown roles", async () => {
+  const registration = registrationService();
+  const service = loadService("user.service.js", {
+    "../config/env": { env: { nodeEnv: "test" } },
+    "../config/firebaseAdmin": { auth: { createUser: () => assert.fail("Invalid role must not provision Auth") }, db: { collection: () => assert.fail("Invalid role must fail before database access") } },
+    "../constants/auth": require("../src/constants/auth"),
+    "../utils/phoneNumber": require("../src/utils/phoneNumber"),
+    "./registrationSecurity.service": registration,
+  });
+  for (const role of ["customer", "unknown", ""]) {
+    await assert.rejects(service.createPortalUser({
+      email: "person@example.com", fullName: "Person", username: "person", password: "Test123!", role,
+    }), { statusCode: 400, message: "Employee roles must be admin or staff." });
+  }
+});
+
 test("unknown email domains require mail records; DNS outages are not mislabeled as fake emails", async () => {
   for (const [records, code, statusCode] of [[[{ exchange: "mx.example.org" }], null, null],
     [[], null, 400], [[{ exchange: "." }], null, 400], [null, "ENOTFOUND", 400], [null, "ETIMEOUT", 503]]) {

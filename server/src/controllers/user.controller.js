@@ -119,6 +119,10 @@ async function updateUser(req, res) {
   assertAuthSetupReady();
   if (req.body?.accountStatus || req.body?.status) await confirmAccountHolderPassword(req);
   const targetUid = req.params.uid;
+  if (req.body && Object.hasOwn(req.body, "role") && typeof req.body.role === "string"
+    && ![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(req.body.role.trim().toLowerCase())) {
+    throw new ApiError(400, "Employee roles must be admin or staff.");
+  }
   const nextRole = req.body?.role ? normalizePortalRole(req.body.role) : "";
   const nextAccountStatus =
     req.body?.accountStatus || req.body?.status

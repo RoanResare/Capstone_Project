@@ -102,9 +102,9 @@ function isNotificationTargetRole(role) {
   return NOTIFICATION_TARGET_ROLES.includes(role);
 }
 
-function normalizePortalRole(role = "staff") {
+function normalizePortalRole(role = "") {
   const normalized = typeof role === "string" ? role.trim().toLowerCase() : "";
-  return isPortalUserRole(normalized) ? normalized : "staff";
+  return isPortalUserRole(normalized) ? normalized : "";
 }
 
 function normalizePortalStatus(status = "active") {
@@ -2155,6 +2155,7 @@ export function AppProvider({ children }) {
       if (!name || !email || !username || !password) {
         return { ok: false, error: "Name, email, username, password, and role are required." };
       }
+      if (!role) return { ok: false, error: "Choose either an admin or staff role." };
 
       if (!isValidUsername(username)) {
         return {
@@ -2238,6 +2239,9 @@ export function AppProvider({ children }) {
       const normalizedRole = updates.role
         ? normalizePortalRole(updates.role)
         : targetUser.role;
+      if (!isPortalUserRole(normalizedRole)) {
+        return { ok: false, error: "Employee roles must be admin or staff." };
+      }
       const normalizedStatus = updates.status
         ? normalizePortalStatus(updates.status)
         : targetUser.status;

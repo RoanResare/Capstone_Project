@@ -59,6 +59,16 @@ test("new employee password validation and separate destructive confirmations re
   assert.equal(writes.length, 0);
 });
 
+test("employee create and update reject the customer role instead of coercing or storing it", async () => {
+  const { controller, req, res, writes } = fixture();
+  req.body.role = "customer";
+  req.body.password = "Employee123!";
+  await assert.rejects(controller.createUser(req, res), error => error.statusCode === 400);
+  req.params.uid = "customer-profile";
+  await assert.rejects(controller.updateUser(req, res), error => error.statusCode === 400);
+  assert.equal(writes.length, 0);
+});
+
 test("ordinary frontend employee edits reach the backend without a status-confirmation password", async () => {
   const { controller, req, res, writes } = fixture();
   const source = readFileSync(require.resolve("../../src/app/context/AppContext.jsx"), "utf8");
@@ -69,6 +79,7 @@ test("ordinary frontend employee edits reach the backend without a status-confir
     currentUser: { id: "admin", role: "admin" }, accessToken: "authenticated-token",
     state: { users: [employee] }, normalizeEmail: value => value.toLowerCase(),
     normalizeUsername: value => value, normalizePortalRole: value => value,
+    isPortalUserRole: value => ["admin", "staff"].includes(value),
     normalizePortalStatus: value => value, isValidUsername: () => true,
     isStrongPassword: () => true, dispatch() {}, invalidatePortalUsersCache() {},
     userApi: { updateUser: async (_token, id, payload) => {
@@ -87,4 +98,10 @@ test("ordinary frontend employee edits reach the backend without a status-confir
   assert.equal(statusChange.ok, false);
   assert.match(statusChange.error, /current password/);
   assert.equal(writes.length, 1);
+});
+
+test("employee role normalization never defaults a missing role to staff", () => {
+  const source = readFileSync(require.resolve("../../src/app/context/AppContext.jsx"), "utf8");
+  assert.match(source, /function normalizePortalRole\(role = ""\)/);
+  assert.match(source, /return isPortalUserRole\(normalized\) \? normalized : "";/);
 });

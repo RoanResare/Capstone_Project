@@ -69,6 +69,14 @@ async function createCustomerProfile(req, res) {
     && storedEmailUser.accountStatus === "inactive"
     && storedEmailUser.emailVerified !== true
     && (!storedEmailUser.username || storedEmailUser.username === username);
+  if (authEmailMatches && !existingPending) {
+    console.warn("[registration] Customer signup rejected an existing Supabase identity.", {
+      code: "REGISTRATION_AUTH_IDENTITY_EXISTS",
+      hasProfile: Boolean(storedEmailMatches),
+      profileRole: storedEmailMatches ? storedEmailUser.role || "unassigned" : "none",
+      authIdentityLinked: Boolean(storedEmailMatches && storedEmailUser.authUserId === authUser.id),
+    });
+  }
   if ((storedEmailMatches || authEmailMatches) && !existingPending) {
     throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
   }

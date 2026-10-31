@@ -198,6 +198,14 @@ async function revokeUserSession(uid, details = {}, claims = {}) {
   });
   if (!started) return;
   try {
+    await require("./trustedDevice.service").revokeTrustedDevicesForUser(uid, details.reason || "session-security");
+  } catch (error) {
+    console.warn("[session-security] Trusted-device revocation failed.", {
+      uid,
+      error: error instanceof Error ? error.message : String(error || "Unknown error"),
+    });
+  }
+  try {
     await db.runTransaction(async (transaction) => {
       const snapshot = await transaction.get(reference);
       if (snapshot.data()?.revocationPending && Number(snapshot.data()?.revokedBefore || 0) === cutoff) {

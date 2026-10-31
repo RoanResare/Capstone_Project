@@ -12,6 +12,14 @@ function loadService(filename, dependencies, globals = {}) {
       if (name === "../utils/ApiError") return { ApiError };
       if (name === "../utils/emailValidation") return require("../src/utils/emailValidation");
       if (name === "./disposableEmailDomains.service") return require("../src/services/disposableEmailDomains.service");
+      // The application now uses the Postgres document adapter. Most fixtures
+      // in this legacy suite model its collection/transaction interface through
+      // the old Firebase-shaped `db` test double, so route the current import to
+      // that same fixture unless a test supplies an explicit Postgres adapter.
+      if (name === "../config/postgresDatabase" && !(name in dependencies)) {
+        const legacyDb = dependencies["../config/firebaseAdmin"]?.db;
+        if (legacyDb) return { db: legacyDb };
+      }
       if (name.startsWith("node:") && !(name in dependencies)) return require(name);
       if (!(name in dependencies)) throw new Error(`Unexpected dependency: ${name}`);
       return dependencies[name];
@@ -67,7 +75,8 @@ function sessionSecurityService({ fetch = async () => response({ country: "Phili
     },
   };
   return loadService("sessionSecurity.service.js", {
-    "../config/firebaseAdmin": { db, auth: { revokeRefreshTokens: async (uid) => { revocations.push(uid); } } },
+    "../config/firebaseAdmin": { db },
+    "./trustedDevice.service": { revokeTrustedDevicesForUser: async (uid) => { revocations.push(uid); } },
     "../config/env": { env: { security: {
       geoLookupUrl: "https://api.ipapi.is/?q={ip}&key={api_key}",
       geoLookupApiKey: "test-key",
@@ -387,16 +396,19 @@ test("login, OTP, and session middleware create and validate clean session bindi
   assert.match(source, /sessionConnections/);
 });
 
-function middlewareFor(user, claims, firebase = false) {
+function middlewareFor(user, claims, supabase = false) {
   return loadService("../middlewares/authenticate.js", {
-    "../config/firebaseAdmin": { auth: { verifyIdToken: async () => claims } },
     "../config/env": { env: { auth: { jwtSecret: "test" }, runtime: { firebaseAdminReady: true } } },
     "../services/token.service": { verifyAccessToken: () => {
-      if (firebase) throw new ApiError(401, "Not a server token");
+      if (supabase) throw new ApiError(401, "Not a server token");
       return claims;
     } },
-    "../services/user.service": { getUserByUid: async () => user, toPublicUser: (value) => value },
+    "../services/user.service": { getUserByUid: async () => user, getUserByAuthId: async () => user, toPublicUser: (value) => value },
     "../services/sessionSecurity.service": { validateSessionSecurity: async () => {} },
+    "../services/supabaseAuth.service": {
+      isSupabaseAccessToken: (token) => token === "supabase-token",
+      verifySupabaseAccessToken: async () => claims,
+    },
     "../constants/auth": { USER_STATUSES: { ACTIVE: "active" }, FRAUD_STATUSES: { SUSPENDED: "suspended", BANNED: "banned" } },
   });
 }
@@ -406,10 +418,10 @@ test("both token types authorize every role after session security passes", asyn
     const claims = { sub: role, role, email: role + "@gmail.com", accountStatus: "active",
       connectionIp: "9.9.9.9", sessionId: "historic-session" };
     const user = { uid: role, ...claims };
-    for (const firebase of [false, true]) {
-      const middleware = middlewareFor(user, claims, firebase);
+    for (const supabase of [false, true]) {
+      const middleware = middlewareFor(user, claims, supabase);
       for (const ip of ["1.2.3.4", "5.6.7.8", "::1", "unknown"]) {
-        const req = { ip, headers: { authorization: "Bearer test" } };
+        const req = { ip, headers: { authorization: `Bearer ${supabase ? "supabase-token" : "test"}` } };
         let called = false;
         await middleware.verifyToken(req, {}, (error) => { assert.equal(error, undefined); called = true; });
         assert.equal(called, true);
@@ -436,7 +448,7 @@ test("authentication still rejects missing tokens and banned/inactive accounts",
   await middleware.verifyToken({ headers: {} }, {}, (error) => assert.equal(error.statusCode, 401));
 });
 
-test("historic pending revocations recover at login", async () => {
+test("historic pending Supabase session revocations recover at login without Firebase token calls", async () => {
   let time = 200250;
   let revocations = 0;
   const records = new Map([["user", { revokedBefore: 100, revocationPending: true }]]);
@@ -460,9 +472,9 @@ test("historic pending revocations recover at login", async () => {
   assert.equal(records.get("user").revocationPending, false);
   assert.equal(records.get("user").revokedBefore, 200);
   assert.equal(time, 201000);
-  assert.equal(revocations, 1);
+  assert.equal(revocations, 0);
   await service.waitForFreshSession("user", { now: () => time, sleep: async () => assert.fail("Recovered login must not wait again") });
-  assert.equal(revocations, 1);
+  assert.equal(revocations, 0);
 });
 
 test("malformed email errors retain the validation message", async () => {
@@ -559,6 +571,10 @@ test("backend account creation rejects disposable email before checking duplicat
       auth: { createUser: () => assert.fail("A disposable address must not create an identity") },
       db: { collection: () => assert.fail("Disposable validation must precede duplicate checks") },
     },
+    "./supabaseAuth.service": {
+      createSupabaseUser: () => assert.fail("A disposable address must not create an identity"),
+      findSupabaseUserByEmail: () => assert.fail("Disposable validation must precede duplicate checks"),
+    },
     "../constants/auth": require("../src/constants/auth"),
     "../utils/phoneNumber": require("../src/utils/phoneNumber"),
     "./registrationSecurity.service": registration,
@@ -578,13 +594,14 @@ test("employee account creation fails closed for customer or unknown roles", asy
   const service = loadService("user.service.js", {
     "../config/env": { env: { nodeEnv: "test" } },
     "../config/firebaseAdmin": { auth: { createUser: () => assert.fail("Invalid role must not provision Auth") }, db: { collection: () => assert.fail("Invalid role must fail before database access") } },
+    "./supabaseAuth.service": { createSupabaseUser: () => assert.fail("Invalid role must fail before Auth provisioning") },
     "../constants/auth": require("../src/constants/auth"),
     "../utils/phoneNumber": require("../src/utils/phoneNumber"),
     "./registrationSecurity.service": registration,
   });
   for (const role of ["customer", "unknown", ""]) {
     await assert.rejects(service.createPortalUser({
-      email: "person@example.com", fullName: "Person", username: "person", password: "Test123!", role,
+      email: "person@gmail.com", fullName: "Person", username: "person", password: "Test123!", role,
     }), { statusCode: 400, message: "Employee roles must be admin or staff." });
   }
 });
@@ -721,7 +738,7 @@ test("Pending appointments reserve slot capacity and cancellations free the slot
   assert.equal(released.writes.length, 2);
   assert.equal(released.writes[0].reservationVersion, 1);
 
-  const reactivated = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, existing: { status: "Cancelled" }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
-  await assert.rejects(reactivated.save({ status: "Pending" }, "staff"), { statusCode: 409 });
-  assert.equal(reactivated.writes.length, 0);
+  const cancelled = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, existing: { status: "Cancelled" }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });
+  await assert.rejects(cancelled.save({ status: "Pending" }, "staff"), { statusCode: 400 });
+  assert.equal(cancelled.writes.length, 0);
 });

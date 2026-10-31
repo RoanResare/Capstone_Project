@@ -87,6 +87,8 @@ function fixture() {
         if (id === "../services/supabaseAuth.service") return mocks[id];
         if (id === "../services/phoneAccounts.service") return {};
         if (id === "../services/sessionSecurity.service") return {};
+        if (id === "../services/trustedDevice.service") return { isTrustedDevice: async () => false,
+          issueTrustedDevice: async () => "", revokeCurrentTrustedDevice: async () => {}, revokeTrustedDevicesForUser: async () => 0 };
         return mocks[id] || localRequire(id);
       } };
     vm.runInNewContext(fs.readFileSync(filename, "utf8") + extra, context, { filename });

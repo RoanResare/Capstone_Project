@@ -30,8 +30,10 @@ export function useRememberedLogin(role, setForm, setFeedback, notify) {
     setForm((current) => ({ ...current,
       identifier: current.identifier || remembered.credentials.identifier,
       password: current.password,
-      rememberDevice: true }));
-    const timeout = window.setTimeout(expire, remembered.credentials.expiresAt - Date.now());
+      rememberDevice: remembered.role === "customer" || remembered.credentials.rememberDevice === true }));
+    const expiresAt = remembered.credentials.expiresAt || remembered.credentials.trustedUntil || 0;
+    if (!expiresAt) return undefined;
+    const timeout = window.setTimeout(expire, expiresAt - Date.now());
     return () => window.clearTimeout(timeout);
   }, [role]);
 }

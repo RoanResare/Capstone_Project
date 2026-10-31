@@ -11,10 +11,9 @@ import { useToast } from "../context/ToastContext.jsx";
 import { branchDetails } from "../data/systemData.js";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
-import { clearRememberedPortalLogin } from "../utils/portalRememberMe.js";
+import { revokePortalTrustedDevice } from "../services/authApi.js";
 import {
   clearRememberedCustomerLogin,
-  readRememberedCustomerLogin,
 } from "../utils/customerRememberMe.js";
 
 export function UnifiedLogin() {
@@ -222,8 +221,11 @@ export function UnifiedLogin() {
                 onChange={(event) => {
                   const checked = event.target.checked;
                   if (!checked) {
-                    clearRememberedPortalLogin();
-                    const remembered = readRememberedCustomerLogin();
+                    Promise.allSettled([revokePortalTrustedDevice("admin"), revokePortalTrustedDevice("staff")])
+                      .then((results) => {
+                        const failed = results.find((result) => result.status === "rejected");
+                        if (failed) showErrorToast(failed.reason?.message || "Unable to remove this trusted device right now.");
+                      });
                     clearRememberedCustomerLogin();
                     setForm((current) => ({
                       ...current,

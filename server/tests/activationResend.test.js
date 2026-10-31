@@ -14,26 +14,23 @@ function fixture(options = {}) {
   controller.paths = module.paths;
   const realRequire = controller.require.bind(controller);
   controller.require = id => {
-    if (id === "../config/env") return { env: { runtime: { mailDeliveryReady: !options.noMail }, auth: {
+    if (id === "../config/env") return { env: { runtime: { mailDeliveryReady: !options.noMail, supabaseAdminReady: !options.noSupabase }, auth: {
       emailVerificationUrl: "https://capstone-project-1-yqto.onrender.com/activate-account",
     } } };
-    if (id === "../config/firebaseAdmin") return {
-      auth: { async getUserByEmail(email) {
-        assert.equal(email, "customer@example.com");
-        if (options.lookupError) throw options.lookupError;
-        return { uid: "uid-1", emailVerified: false };
-      } },
-      db: { collection: () => ({ doc: uid => {
-        assert.equal(uid, "uid-1");
-        const ref = { async update() { if (options.metadataError) throw options.metadataError; } };
-        return { get: async () => ({ ref, exists: !options.missing, data: () => ({
-          email: "Customer@Example.com", verificationStatus: "pending", accountStatus: "inactive",
-          ...options.profile,
-        }) }) };
-      } }) },
-    };
-    if (id === "../services/firebaseAuth.service") return { async generateEmailVerificationLink() {
-      generated++; return "https://example.com/action?oobCode=example-code";
+    if (id === "../config/postgresDatabase") return { db: { collection: name => ({ doc: uid => {
+      assert.equal(name, "users"); assert.equal(uid, "uid-1");
+      return { async update() { if (options.metadataError) throw options.metadataError; } };
+    } }) } };
+    if (id === "../services/user.service") return { getUserByEmail: async email => {
+      assert.equal(email, "customer@example.com");
+      if (options.lookupError) throw options.lookupError;
+      return options.missing ? null : { uid: "uid-1", authUserId: "uid-1", email: "Customer@Example.com",
+        fullName: "Customer", username: "customer", verificationStatus: "pending", accountStatus: "inactive", ...options.profile };
+    } };
+    if (id === "../services/sessionSecurity.service") return { validateAccessSecurity: async () => {} };
+    if (id === "../services/phoneAccounts.service") return { findPhoneAccounts: async () => [], PHONE_ACCOUNT_LIMIT: 3 };
+    if (id === "../services/supabaseAuth.service") return { async generateSupabaseEmailLink() {
+      generated++; return { actionLink: "https://example.supabase.co/auth/v1/verify?token=example-code", tokenHash: "example-code", user: { id: "uid-1" } };
     } };
     if (id === "../services/mail.service") return { async sendEmailVerificationLink(value) {
       sent++; payload = value;
@@ -52,14 +49,14 @@ function fixture(options = {}) {
   } };
 }
 
-test("pending profile resolved by UID generates a link and invokes Resend before reporting sent", async () => {
+test("pending Supabase profile generates an activation link and invokes Resend before reporting sent", async () => {
   const { result, sent, generated, payload } = await fixture().run();
   assert.equal(sent, 1);
   assert.equal(generated, 1);
   assert.equal(result.deliveryStatus, "sent");
   assert.equal(result.messageId, "resend-id");
   assert.equal(payload.to, "customer@example.com");
-  assert.equal(new URL(payload.verificationLink).searchParams.get("oobCode"), "example-code");
+  assert.equal(new URL(payload.verificationLink).searchParams.get("token_hash"), "example-code");
 });
 
 test("missing and ineligible profiles never claim an email was sent", async () => {

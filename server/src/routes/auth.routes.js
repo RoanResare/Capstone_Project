@@ -7,6 +7,7 @@ const {
   logout,
   me,
   resetPassword,
+  revokePortalTrustedDevice,
   sessionSecurity,
   validateResetCode,
   validateEmail,
@@ -38,6 +39,7 @@ router.post("/forgot-password", authRateLimiter, asyncHandler(forgotPassword));
 router.post("/change-password", verifyToken, authRateLimiter, asyncHandler(changePassword));
 router.post("/register/check", authRateLimiter, asyncHandler(checkCustomerRegistrationAvailability));
 router.post("/login", authRateLimiter, asyncHandler(loginUnified));
+router.post("/trusted-device/revoke", authRateLimiter, asyncHandler(revokePortalTrustedDevice));
 router.post("/validate-reset-code", authRateLimiter, asyncHandler(validateResetCode));
 router.post("/reset-password", authRateLimiter, asyncHandler(resetPassword));
 router.get("/pricelists", verifyToken, verifyRole(["admin", "staff", "customer"]), asyncHandler(require("../controllers/pricelist.controller").listPricelists));

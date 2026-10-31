@@ -6,7 +6,7 @@ import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
-import { clearRememberedPortalLogin } from "../utils/portalRememberMe.js";
+import { revokePortalTrustedDevice } from "../services/authApi.js";
 import {
   createAccessDeniedState,
   normalizeRole,
@@ -273,7 +273,7 @@ export function RoleLoginPage({
                 checked={form.rememberDevice}
                 onChange={(event) => {
                   const checked = event.target.checked;
-                  if (!checked) clearRememberedPortalLogin(expectedRole);
+                  if (!checked) revokePortalTrustedDevice(expectedRole).catch((error) => showErrorToast(error.message));
                   setForm((current) => ({ ...current, rememberDevice: checked }));
                 }}
                 disabled={isSubmitting || lockSeconds > 0}

@@ -4,6 +4,7 @@ import { resolveApiBaseUrl } from "../utils/apiBaseUrl.js";
 
 export const apiClient = axios.create({
   timeout: 60000,
+  withCredentials: true,
   baseURL: resolveApiBaseUrl(
     import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL,
     import.meta.env.PROD,

@@ -40,6 +40,8 @@ function fixture(options = {}) {
     "../services/mail.service": { sendOtpEmail: async () => ({ deliveryMode: "resend" }) },
     "../utils/password": { verifyPasswordHash: () => true },
     "../services/registrationSecurity.service": { assertEmailIsDeliverable: async () => assert.fail("Login must not run signup DNS checks") },
+    "../services/trustedDevice.service": { isTrustedDevice: async () => false,
+      issueTrustedDevice: async () => "", revokeCurrentTrustedDevice: async () => {}, revokeTrustedDevicesForUser: async () => 0 },
     "../config/clientOrigins": {}, "../services/phoneAccounts.service": {},
   };
   const filename = path.resolve(__dirname, "../src/controllers/auth.controller.js");

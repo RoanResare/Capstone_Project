@@ -14,6 +14,7 @@ const {
 const { ApiError } = require("../utils/ApiError");
 const { hashPassword, assertStrongPassword, verifyPasswordHash } = require("../utils/password");
 const { assertAuthSetupReady } = require("../utils/setupGuard");
+const { revokeTrustedDevicesForUser } = require("../services/trustedDevice.service");
 
 function normalizePortalRole(role = "") {
   const value = typeof role === "string" ? role.trim().toLowerCase() : "";
@@ -95,6 +96,7 @@ async function createUser(req, res) {
     throw new ApiError(400, "Full name, email, password, and role are required.");
   }
 
+  await confirmAccountHolderPassword(req);
   assertStrongPassword(password);
   logAdminUserRequest(req, "create", { email, role, accountStatus });
 
@@ -117,7 +119,9 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   assertAuthSetupReady();
-  if (req.body?.accountStatus || req.body?.status) await confirmAccountHolderPassword(req);
+  if (req.body?.accountStatus || req.body?.status || req.body?.password || req.body?.role || req.body?.fraudStatus) {
+    await confirmAccountHolderPassword(req);
+  }
   const targetUid = req.params.uid;
   if (req.body && Object.hasOwn(req.body, "role") && typeof req.body.role === "string"
     && ![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(req.body.role.trim().toLowerCase())) {
@@ -167,6 +171,13 @@ async function updateUser(req, res) {
     fraudReason: typeof req.body?.fraudReason === "string" ? req.body.fraudReason : undefined,
   });
 
+  const isSecurityChange = Boolean(nextPassword || nextRole || nextFraudStatus
+    || [USER_STATUSES.INACTIVE, USER_STATUSES.SUSPENDED].includes(nextAccountStatus)
+    || [FRAUD_STATUSES.SUSPENDED, FRAUD_STATUSES.BANNED].includes(nextFraudStatus));
+  if (isSecurityChange) {
+    await revokeTrustedDevicesForUser(targetUid, nextPassword ? "password-change" : "account-security-change");
+  }
+
   return res.status(200).json({
     success: true,
     user: toPublicUser(user),
@@ -179,6 +190,7 @@ async function removeUser(req, res) {
   const targetUid = req.params.uid;
   logAdminUserRequest(req, "delete", { targetUid });
   await ensureAdminCanMutateTarget(req.auth.user, targetUid, "", "", true);
+  await revokeTrustedDevicesForUser(targetUid, "account-deleted");
   await deletePortalUser(targetUid);
 
   return res.status(200).json({

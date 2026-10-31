@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { createServer } from "vite";
 
-const state = { auth: { currentUser: null }, values: [], effects: [], profiles: [], profileCalls: 0 };
+const state = { session: null, values: [], effects: [], profiles: [], profileCalls: 0 };
 const previousWindow = globalThis.window;
 function storage() { const values = new Map(); return { getItem: (key) => values.get(key) ?? null,
   setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) }; }
@@ -18,19 +18,18 @@ const mocks = {
     export function useState(initial) { const i = s.values.length;
       s.values.push(typeof initial === 'function' ? initial() : initial);
       return [s.values[i], (value) => { s.values[i] = typeof value === 'function' ? value(s.values[i]) : value; }]; }`,
-  "firebase.js": `export const auth = globalThis.__authRecovery.auth, firebaseConfigError = '', isFirebaseConfigured = true;`,
-  "test-firebase-auth": `const s = globalThis.__authRecovery;
-    export const browserLocalPersistence = {}, browserSessionPersistence = {};
-    export const onAuthStateChanged = (_auth, callback) => { s.listener = callback; return () => {}; };
-    export async function signOut() { s.auth.currentUser = null; await s.listener(null); }
-    export async function signInWithCustomToken() { return s.signIn(); }
-    export async function setPersistence() {}`,
+  "supabaseConfig.js": "export const isSupabaseConfigured = true;",
+  "supabaseSession.js": `const s = globalThis.__authRecovery;
+    export const auth = { get currentUser() { return s.session?.user || null; } };
+    export const supabase = {};
+    export function subscribeSupabaseAuth(callback) { s.listener = callback; return () => {}; }
+    export async function getSupabaseSession() { return s.session; }
+    export async function loadSupabaseProfile() { s.profileCalls++; return s.profiles.shift().promise; }
+    export async function installSupabaseSession(session) { s.session = session; return session; }
+    export async function signOutSupabase() { s.session = null; if (s.listener) await s.listener('SIGNED_OUT', null); }
+    export function setSupabaseSessionPersistence() {}`,
   "apiClient.js": "export const SESSION_SECURITY_EVENT = 'security-event';",
-  "firebaseSession.js": "export const waitForFirebaseUserSession = async () => globalThis.__authRecovery.auth.currentUser;",
-  "firebaseAuth.js": `export const formatFirebaseAuthError = (e) => e.message, isFirebaseConnectionIssue = () => false;
-    export function loadExistingUserProfile() { const s = globalThis.__authRecovery; s.profileCalls++; return s.profiles.shift().promise; }
-    export async function signInWithEmailPassword() {}
-    export async function updateFirebaseUserProfile() {}`,
+  "apiClient.js": "export const SESSION_SECURITY_EVENT = 'security-event';",
   "customerAccount.js": `export function loadOrCreateCustomerProfile() { const s = globalThis.__authRecovery; s.profileCalls++; return s.profiles.shift().promise; }
     export async function signInCustomerWithEmailPassword() {}
     export async function signUpCustomerWithEmailPassword() { throw new Error('Temporary or disposable email addresses are not allowed'); }
@@ -42,7 +41,7 @@ const mocks = {
 const server = await createServer({ configFile: false, server: { middlewareMode: true }, appType: "custom", logLevel: "silent",
   plugins: [{ name: "auth-recovery-test", enforce: "pre",
     transform(code, id) { if (id.replaceAll("\\", "/").endsWith("/context/AuthContext.jsx")) return code
-      .replace('from "react"', 'from "test-auth-hooks"').replace('from "firebase/auth"', 'from "test-firebase-auth"'); },
+      .replace('from "react"', 'from "test-auth-hooks"'); },
     resolveId(source) { const key = Object.keys(mocks).find((value) => source === value || source.endsWith(`/${value}`));
       if (key) return `\0auth-recovery:${key}`; },
     load(id) { if (id.startsWith("\0auth-recovery:")) return mocks[id.slice("\0auth-recovery:".length)]; },
@@ -59,18 +58,16 @@ after(() => {
 function deferred() { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; }
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-test("late hydration cannot overwrite fresh credentials even when Firebase reuses the same user object", async () => {
+test("late Supabase profile hydration cannot overwrite a newer session for the same identity", async () => {
   const old = deferred(); const fresh = deferred();
   state.profiles.push(old, fresh);
-  let token = "old-token";
-  const user = { uid: "customer", email: "customer@gmail.com", getIdToken: async () => token,
-    getIdTokenResult: async () => ({ claims: { role: "customer" } }) };
-  state.auth.currentUser = user;
-  const pendingOld = state.listener(user);
+  const user = { id: "customer", email: "customer@gmail.com" };
+  state.session = { user, access_token: "old-token", refresh_token: "refresh-old" };
+  const pendingOld = state.listener("TOKEN_REFRESHED", state.session);
   await flush();
   assert.equal(state.profileCalls, 1);
-  token = "fresh-token";
-  const pendingFresh = state.listener(user);
+  state.session = { user, access_token: "fresh-token", refresh_token: "refresh-fresh" };
+  const pendingFresh = state.listener("TOKEN_REFRESHED", state.session);
   await flush();
   fresh.resolve({ uid: "customer", role: "customer", name: "Fresh" });
   await pendingFresh;
@@ -80,12 +77,11 @@ test("late hydration cannot overwrite fresh credentials even when Firebase reuse
   assert.equal(state.values[1], "fresh-token");
 });
 
-test("logout clears state before pending hydration can restore a cached session", async () => {
+test("logout clears state before pending Supabase profile hydration can restore a cached session", async () => {
   const pending = deferred(); state.profiles.push(pending);
-  const user = { uid: "customer", email: "customer@gmail.com", getIdToken: async () => "stale-token",
-    getIdTokenResult: async () => ({ claims: { role: "customer" } }) };
-  state.auth.currentUser = user;
-  const hydration = state.listener(user);
+  const user = { id: "customer", email: "customer@gmail.com" };
+  state.session = { user, access_token: "stale-token", refresh_token: "stale-refresh" };
+  const hydration = state.listener("SIGNED_IN", state.session);
   await flush();
   await value.signOut();
   pending.resolve({ uid: "customer", role: "customer" });
@@ -94,37 +90,50 @@ test("logout clears state before pending hydration can restore a cached session"
   assert.equal(state.values[1], "");
 });
 
-test("verified fresh login replaces cached tokens and warnings for every role despite delayed null callbacks", async () => {
+test("verified fresh Supabase login replaces cached tokens and warnings for every role", async () => {
   for (const role of ["customer", "admin", "staff"]) {
-    const token = `test.${Buffer.from(JSON.stringify({ sub: role, role, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.signature`;
-    state.loginResponse = { user: { uid: role, role }, accessToken: token, firebaseCustomToken: "new-custom-token" };
+    const token = "new-supabase-access-token";
+    const user = { id: role, email: `${role}@gmail.com` };
+    state.loginResponse = { user: { uid: role, role, email: user.email },
+      supabaseSession: { user, access_token: token, refresh_token: `refresh-${role}` } };
     window.localStorage.setItem("furfection-portal-session", "stale-token");
     window.sessionStorage.setItem("furfection-portal-session", "stale-token");
     for (const area of [window.localStorage, window.sessionStorage]) area.setItem("furfection-security-warning", "old restriction");
-    let refreshed = false;
-    const user = { uid: role, email: `${role}@gmail.com`, getIdToken: async (force) => { if (force) refreshed = true; return "new-id-token"; },
-      getIdTokenResult: async () => ({ claims: { role } }) };
     state.profiles.push({ promise: Promise.resolve({ uid: role, role }) });
-    state.signIn = async () => {
-      // Reproduce a late sign-out event after the new portal token has been persisted.
-      await state.listener(null);
-      if (role !== "customer") assert.ok(window.localStorage.getItem("furfection-portal-session"));
-      state.auth.currentUser = user;
-      await state.listener(user);
-      return { user };
-    };
     const result = await value.beginUnifiedLogin({ identifier: user.email, password: "Password!" });
     assert.equal(result.ok, true, result.error);
     assert.equal(state.values[0].role, role);
-    assert.equal(state.values[1], role === "customer" ? "new-id-token" : token);
-    assert.equal(refreshed, true);
+    assert.equal(state.values[1], token);
     assert.equal(window.sessionStorage.getItem("furfection-portal-session"), null);
     for (const area of [window.localStorage, window.sessionStorage]) assert.equal(area.getItem("furfection-security-warning"), null);
   }
 });
 
+test("Customer Remember Me ON stores only the identifier and OFF clears it", async () => {
+  const key = "furfection-customer-remember-me-v1";
+  for (const rememberDevice of [true, false]) {
+    window.localStorage.removeItem(key);
+    const user = { id: "customer-remember", email: "customer@gmail.com" };
+    state.loginResponse = {
+      user: { uid: user.id, role: "customer", email: user.email },
+      supabaseSession: { user, access_token: "customer-access", refresh_token: "customer-refresh" },
+    };
+    state.profiles.push({ promise: Promise.resolve({ uid: user.id, role: "customer", email: user.email }) });
+    const result = await value.beginUnifiedLogin({ identifier: user.email, password: "Password!", rememberDevice });
+    assert.equal(result.ok, true, result.error);
+    const saved = window.localStorage.getItem(key);
+    assert.equal(Boolean(saved), rememberDevice);
+    if (rememberDevice) {
+      const record = JSON.parse(saved);
+      assert.equal(record.identifier, user.email);
+      assert.equal(record.rememberConsent, true);
+      assert.equal("password" in record, false);
+    }
+  }
+});
+
 test("rejected signup leaves the existing identity, token, and stored session untouched", async () => {
-  const existingUser = state.auth.currentUser;
+  const existingSession = state.session;
   const existingProfile = state.values[0];
   const existingToken = state.values[1];
   window.localStorage.setItem("furfection-portal-session", "existing-session");
@@ -134,21 +143,20 @@ test("rejected signup leaves the existing identity, token, and stored session un
     assert.equal(result.ok, false);
     assert.equal(result.error, "Temporary or disposable email addresses are not allowed");
   }
-  assert.equal(state.auth.currentUser, existingUser);
+  assert.equal(state.session, existingSession);
   assert.equal(state.values[0], existingProfile);
   assert.equal(state.values[1], existingToken);
   assert.equal(window.localStorage.getItem("furfection-portal-session"), "existing-session");
 });
 
-test("OTP handoff survives stale Firebase hydration for admin and staff through both login entry points", async () => {
+test("OTP handoff survives stale Supabase hydration for admin and staff through both login entry points", async () => {
   for (const role of ["admin", "staff"]) {
     for (const entry of ["beginUnifiedLogin", "beginLogin"]) {
       const pending = deferred();
       state.profiles.push(pending);
-      const oldUser = { uid: "old-customer", email: "old@gmail.com",
-        getIdToken: async () => "old-token", getIdTokenResult: async () => ({ claims: { role: "customer" } }) };
-      state.auth.currentUser = oldUser;
-      const hydration = state.listener(oldUser);
+      const oldUser = { id: "old-customer", email: "old@gmail.com" };
+      state.session = { user: oldUser, access_token: "old-token", refresh_token: "old-refresh" };
+      const hydration = state.listener("SIGNED_IN", state.session);
       await flush();
       const ticket = `test.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 600 })).toString("base64url")}.signature`;
       state.loginResponse = { requiresTwoFactor: true, user: { role, email: `${role}@gmail.com` },
@@ -158,7 +166,7 @@ test("OTP handoff survives stale Firebase hydration for admin and staff through 
       pending.resolve({ uid: "old-customer", role: "customer" });
       await hydration;
       // A delayed signed-out callback must restore, rather than erase, the challenge.
-      await state.listener(null);
+      await state.listener("SIGNED_OUT", null);
       assert.equal(result.ok, true, result.error);
       assert.equal(result.verificationPath, "/verify-otp");
       assert.equal(state.values[0], null);
@@ -172,17 +180,17 @@ test("OTP handoff survives stale Firebase hydration for admin and staff through 
   }
 });
 
-test("a stored OTP challenge wins over an old Firebase identity on reload", async () => {
+test("a stored OTP challenge wins over an old Supabase identity on reload", async () => {
   for (const role of ["admin", "staff"]) {
     value.clearPendingOtp();
     const ticket = `test.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 600 })).toString("base64url")}.signature`;
     window.sessionStorage.setItem("furfection-pending-otp", JSON.stringify({ role, otpTicket: ticket,
       email: `${role}@gmail.com`, otpExpiresAt: new Date(Date.now() + 300000).toISOString() }));
     const profileCalls = state.profileCalls;
-    state.auth.currentUser = { uid: "old-identity" };
-    await state.listener(state.auth.currentUser);
+    state.session = { user: { id: "old-identity" }, access_token: "old", refresh_token: "old-refresh" };
+    await state.listener("SIGNED_IN", state.session);
     assert.equal(state.profileCalls, profileCalls, "must not hydrate the old profile or clear the challenge");
-    assert.equal(state.auth.currentUser, null);
+    assert.equal(state.session, null);
     assert.equal(state.values[0], null);
     assert.equal(value.restorePendingOtpSession().otpTicket, ticket);
     assert.equal(JSON.parse(window.sessionStorage.getItem("furfection-pending-otp")).otpTicket, ticket);
@@ -194,7 +202,7 @@ test("a delayed signed-out event preserves the in-memory challenge when browser 
   const challenge = value.restorePendingOtpSession();
   window.sessionStorage.removeItem("furfection-pending-otp");
   window.localStorage.removeItem("furfection-pending-otp");
-  await state.listener(null);
+  await state.listener("SIGNED_OUT", null);
   assert.equal(state.values.at(-1).otpTicket, challenge.otpTicket);
   assert.equal(value.restorePendingOtpSession().otpTicket, challenge.otpTicket);
   value.clearPendingOtp();

@@ -13,6 +13,7 @@ import {
   loginUnifiedUser,
   loginPortalUser,
   requestBackendPasswordReset,
+  revokePortalTrustedDevice,
   resendPortalOtp,
   validateBackendPasswordResetCode,
   verifyPortalOtp,
@@ -60,26 +61,6 @@ function isAuthConnectionIssue(error) {
 }
 
 const AuthContext = createContext(null);
-function readRememberDeviceToken(role = "") {
-  return readRememberedPortalLogin(role).token || "";
-}
-
-function persistRememberDeviceToken(role = "", token = "", identifier = "") {
-  const normalizedRole = normalizeRole(role);
-  const value = typeof token === "string" ? token.trim() : "";
-
-  if (!normalizedRole) {
-    return;
-  }
-
-  if (value) {
-    persistRememberedPortalLogin(normalizedRole, value, identifier);
-    return;
-  }
-
-  clearRememberedPortalLogin(normalizedRole);
-}
-
 function isTimestampExpired(value = "") {
   const timestamp = typeof value === "string" ? value.trim() : "";
 
@@ -535,13 +516,13 @@ export function AuthProvider({ children }) {
           role: normalizedRole,
           identifierType: identifier.includes("@") ? "email" : "username",
         });
-        if (!rememberDevice) clearRememberedPortalLogin(normalizedRole);
         const response = await loginPortalUser(normalizedRole, {
           identifier: identifier.trim(),
           password,
           rememberDevice,
-          rememberDeviceToken: rememberDevice ? readRememberDeviceToken(normalizedRole) : "",
         });
+        persistRememberedPortalLogin(normalizedRole, identifier.trim(), rememberDevice,
+          response.trustedDeviceExpiresAt || 0);
 
         clearPortalSession();
         clearPendingOtpSession();
@@ -695,20 +676,17 @@ export function AuthProvider({ children }) {
     setAuthHydrationError("");
 
     try {
-      if (!rememberDevice) {
-        clearRememberedCustomerLogin();
-        clearRememberedPortalLogin();
-      }
+      if (!rememberDevice) clearRememberedCustomerLogin();
       const response = await loginUnifiedUser({
         identifier: identifier.trim(),
         password,
         rememberDevice,
-        rememberDeviceTokens: {
-          admin: rememberDevice ? readRememberDeviceToken("admin") : "",
-          staff: rememberDevice ? readRememberDeviceToken("staff") : "",
-        },
       });
       const responseRole = normalizeRole(response.user?.role);
+      if (isPortalRole(responseRole)) {
+        persistRememberedPortalLogin(responseRole, identifier.trim(), rememberDevice,
+          response.trustedDeviceExpiresAt || 0);
+      }
 
       clearPortalSession();
       clearPendingOtpSession();
@@ -1056,11 +1034,10 @@ export function AuthProvider({ children }) {
     const hydratedSession = await installFreshSupabaseSession(supabaseSession,
       pendingSession?.rememberDevice === true);
 
-    persistRememberDeviceToken(
-      hydratedSession.user.role,
-      pendingSession?.rememberDevice ? response?.rememberDeviceToken || "" : "",
+    persistRememberedPortalLogin(hydratedSession.user.role,
       pendingSession?.identifier || hydratedSession.user.email,
-    );
+      pendingSession?.rememberDevice === true,
+      response?.trustedDeviceExpiresAt || 0);
     clearPendingOtpSession();
     setPendingOtp(null);
     setCurrentUser(hydratedSession.user);

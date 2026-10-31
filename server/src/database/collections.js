@@ -6,6 +6,7 @@ const COLLECTION_TABLES = Object.freeze({
   lowCostKaponPromo: "low_cost_kapon_promo", promotionDetails: "promotion_details",
   servicePricelists: "service_pricelists", sessionSecurity: "session_security",
   sessionConnections: "session_connections", authenticationAttempts: "authentication_attempts",
+  trustedDevices: "trusted_devices",
   phoneAccountLimits: "phone_account_limits", admin_staff_otp: "admin_staff_otp",
   appointmentReminders: "appointment_reminders",
   customers: "customers", chatbot_faqs: "chatbot_faqs", services: "services",

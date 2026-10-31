@@ -6,7 +6,7 @@ import {
   readRememberedPortalLogin,
 } from "../src/app/utils/portalRememberMe.js";
 
-test("portal trust survives logout reads, keeps a fixed deadline, and clears on opting out", () => {
+test("portal Remember Me stores only the identifier and consent while server-side trust expires", () => {
   const storage = new Map();
   const originalNow = Date.now;
   let timestamp = 1_800_000_000_000;
@@ -17,24 +17,25 @@ test("portal trust survives logout reads, keeps a fixed deadline, and clears on 
   } };
   Date.now = () => timestamp;
   const expiresAt = timestamp + 14 * 24 * 60 * 60 * 1000;
-  const token = `header.${Buffer.from(JSON.stringify({
-    role: "staff", type: "remember_device", email: "staff@example.test",
-    exp: expiresAt / 1000, iat: timestamp / 1000,
-  })).toString("base64url")}.signature`;
   try {
-    persistRememberedPortalLogin("staff", token, "staff_username");
+    persistRememberedPortalLogin("staff", "staff_username", true, new Date(expiresAt).toISOString());
     timestamp += 30 * 60 * 1000;
-    assert.equal(readRememberedPortalLogin("staff").token, token);
-    persistRememberedPortalLogin("staff", token, "staff_username");
-    assert.equal(readRememberedPortalLogin("staff").credentials.expiresAt, expiresAt);
+    assert.equal(readRememberedPortalLogin("staff").token, "");
+    assert.equal(readRememberedPortalLogin("staff").credentials.identifier, "staff_username");
+    assert.equal(readRememberedPortalLogin("staff").credentials.rememberDevice, true);
+    assert.equal(readRememberedPortalLogin("staff").credentials.trustedUntil, expiresAt);
+    assert.equal([...storage.values()].some((value) => value.includes("signature") || value.includes("secret")), false);
     timestamp = expiresAt;
     const expired = readRememberedPortalLogin("staff");
     assert.equal(expired.status, "expired");
     assert.equal(expired.token, "");
     assert.equal(expired.credentials.identifier, "staff_username");
     assert.equal(expired.credentials.password, "");
-    assert.equal(storage.has("furfection-remember-device-staff"), false);
+    assert.equal(storage.has("furfection-remember-login-staff"), true);
     assert.equal(readRememberedPortalLogin("staff").status, "expired");
+    persistRememberedPortalLogin("staff", "staff_username", false);
+    assert.equal(readRememberedPortalLogin("staff").status, "active");
+    assert.equal(readRememberedPortalLogin("staff").credentials.rememberDevice, false);
     clearRememberedPortalLogin("staff");
     assert.equal(readRememberedPortalLogin("staff").status, "empty");
     assert.equal(storage.size, 0);

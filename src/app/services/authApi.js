@@ -179,3 +179,12 @@ export async function verifyPortalOtp(role, otpTicket, otpCode, options = {}) {
     );
   }
 }
+
+export async function revokePortalTrustedDevice(role) {
+  try {
+    const response = await apiClient.post("/auth/trusted-device/revoke", { role });
+    return response.data;
+  } catch (error) {
+    throw createApiRequestError(error, "Unable to remove this trusted device right now.", `${normalizePortalRole(role)}-trusted-device-revoke`);
+  }
+}

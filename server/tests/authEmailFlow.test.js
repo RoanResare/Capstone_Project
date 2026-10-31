@@ -9,10 +9,18 @@ const { ApiError } = require("../src/utils/ApiError");
 function loadController(send) {
   const filename = path.resolve(__dirname, "../src/controllers/auth.controller.js");
   const localRequire = createRequire(filename);
-  const user = { uid: "test-user", email: "customer@example.com", role: "admin", accountStatus: "active" };
-  const context = { module: { exports: {} }, console: { info() {}, warn() {}, error() {} }, URL,
+  const user = { uid: "test-user", authUserId: "auth-test-user", email: "customer@example.com", role: "admin", accountStatus: "active" };
+  const supabaseUser = { id: user.authUserId, email: user.email, user_metadata: { full_name: "Customer" } };
+  const context = { module: { exports: {} }, Buffer, console: { info() {}, warn() {}, error() {} }, URL,
     require(id) {
-      if (id === "../config/firebaseAdmin") return { auth: { getUserByEmail: async () => user } };
+      if (id === "../services/authAttempts.service") return { MAX_FAILED_ATTEMPTS: 5 };
+      if (id === "../services/phoneAccounts.service") return {};
+      if (id === "../services/sessionSecurity.service") return { validateAccessSecurity: async () => {}, waitForFreshSession: async () => {}, createFreshSessionBinding: async () => ({ ip: "127.0.0.1", sessionId: "test-session" }) };
+      if (id === "../config/env") return { env: { nodeEnv: "test", otp: { ttlMinutes: 5 },
+        passwordReset: { ttlMinutes: 30 }, auth: { jwtSecret: "test-secret", passwordResetUrl: "https://example.test/reset-password" } } };
+      if (id === "../config/clientOrigins") return { getAllowedClientOrigins: () => [
+        "https://capstone-project-1-yqto.onrender.com", "https://www.charmingfurfectionpetscareservices.online",
+      ] };
       if (id === "../utils/setupGuard") return { assertAuthSetupReady() {} };
       if (id === "../services/registrationSecurity.service") return { assertEmailIsDeliverable: async () => {} };
       if (id === "../services/mail.service") return { sendOtpEmail: send, sendPasswordResetEmail: send };
@@ -20,16 +28,19 @@ function loadController(send) {
         otpId: "otp-1", otpCode: "012345", expiresAt: new Date(), resendAvailableAt: new Date(),
       }) };
       if (id === "../services/user.service") return {
-        findUserByEmailCaseInsensitive: async () => user, getUserByUid: async () => user, toPublicUser: () => user,
+        findUserByEmailCaseInsensitive: async () => user, getUserByUid: async () => user,
+        getUserByEmail: async () => user, toPublicUser: () => user,
       };
       if (id === "../services/token.service") return { signOtpTicket: () => "signed-ticket" };
-      if (id === "../services/firebaseAuth.service") return {
-        generatePasswordResetLink: async () => "https://example.com/reset?oobCode=test-code",
+      if (id === "../services/supabaseAuth.service") return {
+        findSupabaseUserByEmail: async () => supabaseUser,
+        generateSupabaseRecoveryToken: async () => ({ tokenHash: "test-recovery-token-hash" }),
       };
+      if (id === "../services/trustedDevice.service") return { revokeTrustedDevicesForUser: async () => 0 };
       return localRequire(id);
     },
   };
-  vm.runInNewContext(fs.readFileSync(filename, "utf8") + "\nmodule.exports.challenge = createOtpChallengeResponse; module.exports.resetLink = buildAppPasswordResetLink;", context, { filename });
+  vm.runInNewContext(fs.readFileSync(filename, "utf8") + "\nmodule.exports.challenge = createOtpChallengeResponse; module.exports.resetLink = buildPasswordResetUrl;", context, { filename });
   return { controller: context.module.exports, user };
 }
 
@@ -53,14 +64,23 @@ test("password reset surfaces mail failures instead of claiming a link was sent"
   await assert.rejects(controller.forgotPassword(req, { status() { assert.fail("Must not return success"); } }), error => error === failure);
 });
 
-test("reset links return to either supported frontend and preserve the provider code", () => {
-  const { controller } = loadController(async () => {});
+test("password reset links use an allowlisted frontend and seal the Supabase recovery token", async () => {
   for (const origin of ["https://capstone-project-1-yqto.onrender.com",
     "https://www.charmingfurfectionpetscareservices.online"]) {
-    const link = new URL(controller.resetLink({ headers: { origin } },
-      "https://example.com/action?mode=resetPassword&oobCode=example-code&lang=en"));
+    let mail;
+    const { controller } = loadController(async value => { mail = value; return { deliveryMode: "resend" }; });
+    controller.resetDependencies = true;
+    const res = { status() { return this; }, json(value) { this.body = value; return this; } };
+    await controller.forgotPassword({ body: { identifier: "customer@example.com" }, headers: { origin } }, res);
+    const link = new URL(mail.resetLink);
     assert.equal(link.origin, origin);
     assert.equal(link.pathname, "/reset-password");
-    assert.equal(link.searchParams.get("oobCode"), "example-code");
+    const challenge = link.searchParams.get("oobCode");
+    assert.ok(challenge);
+    const [payload] = challenge.split(".");
+    const record = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    assert.equal(record.type, "recovery");
+    assert.equal(record.email, "customer@example.com");
+    assert.equal(record.tokenHash, "test-recovery-token-hash");
   }
 });

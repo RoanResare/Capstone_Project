@@ -34,9 +34,7 @@ const {
 } = require("../services/user.service");
 const {
   signAccessToken,
-  signRememberDeviceToken,
   signOtpTicket,
-  verifyRememberDeviceToken,
   verifyOtpTicket,
 } = require("../services/token.service");
 const { ApiError } = require("../utils/ApiError");
@@ -53,6 +51,12 @@ const {
   assertEmailIsDeliverable,
   validateRegistrationSecurity,
 } = require("../services/registrationSecurity.service");
+const {
+  isTrustedDevice,
+  issueTrustedDevice,
+  revokeCurrentTrustedDevice,
+  revokeTrustedDevicesForUser,
+} = require("../services/trustedDevice.service");
 
 function normalizeEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -492,9 +496,7 @@ async function createSessionResponse(user, options = {}, req, supabaseSession = 
         user_metadata: { ...(supabaseSession.user?.user_metadata || {}), full_name: user.fullName, role: user.role },
       },
     },
-    rememberDeviceToken: options.rememberDevice
-      ? options.rememberDeviceToken || signRememberDeviceToken(user)
-      : "",
+    trustedDeviceExpiresAt: options.trustedDeviceExpiresAt || "",
     user: {
       ...safeUser,
       role: safeUser.role,
@@ -513,27 +515,20 @@ async function validateEmail(req, res) {
 }
 
 function readRememberDeviceRequest(req, role) {
-  const token = req.body?.rememberDeviceTokens?.[role] ?? req.body?.rememberDeviceToken;
   return {
-    rememberDevice: req.body?.rememberDevice === true,
-    rememberDeviceToken:
-      typeof token === "string" ? token.trim() : "",
+    rememberDevice: (role === USER_ROLES.ADMIN || role === USER_ROLES.STAFF)
+      && req.body?.rememberDevice === true,
   };
 }
 
-function isRememberedPortalDevice(user, token) {
-  if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(user?.role)) {
-    return false;
+async function portalDeviceLoginDecision(req, res, user, rememberDevice) {
+  if (rememberDevice) {
+    const trustedUntil = await isTrustedDevice(req, user, user.role, res);
+    if (trustedUntil) return { trustedDeviceExpiresAt: new Date(trustedUntil).toISOString() };
+    return null;
   }
-
-  const payload = verifyRememberDeviceToken(token);
-
-  return Boolean(
-    payload &&
-      payload.sub === user.uid &&
-      payload.role === user.role &&
-      normalizeEmail(payload.email || "") === normalizeEmail(user.email || ""),
-  );
+  await revokeCurrentTrustedDevice(req, res, user.role, user.uid);
+  return null;
 }
 
 async function createOtpChallengeResponse(user, message, options = {}) {
@@ -664,11 +659,12 @@ function createRoleBoundLoginHandler(expectedRole) {
       );
     }
 
-    if (rememberDeviceRequest.rememberDevice && isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
+    const trustedDevice = await portalDeviceLoginDecision(req, res, user, rememberDeviceRequest.rememberDevice);
+    if (trustedDevice) {
       return res.status(200).json(
         await createSessionResponse(user, {
           rememberDevice: true,
-          rememberDeviceToken: rememberDeviceRequest.rememberDeviceToken,
+          trustedDeviceExpiresAt: trustedDevice.trustedDeviceExpiresAt,
         }, req, signInPayload),
       );
     }
@@ -762,7 +758,18 @@ function createRoleBoundVerifyOtpHandler(expectedRole) {
     assertActiveAccount(linkedUser);
     assertOtpRouteMatchesRole(linkedUser, ticket, routeRole);
     assertFraudAccess(linkedUser);
-    return res.status(200).json(await createSessionResponse(linkedUser, { rememberDevice }, req, supabaseSession));
+    let trustedDeviceExpiresAt = "";
+    if (routeRole === USER_ROLES.ADMIN || routeRole === USER_ROLES.STAFF) {
+      if (rememberDevice) {
+        await revokeCurrentTrustedDevice(req, res, routeRole, linkedUser.uid, "trusted-device-replaced");
+        trustedDeviceExpiresAt = await issueTrustedDevice(linkedUser, routeRole, res);
+      }
+      else await revokeCurrentTrustedDevice(req, res, routeRole, linkedUser.uid);
+    }
+    return res.status(200).json(await createSessionResponse(linkedUser, {
+      rememberDevice: routeRole === USER_ROLES.ADMIN || routeRole === USER_ROLES.STAFF ? rememberDevice : false,
+      trustedDeviceExpiresAt,
+    }, req, supabaseSession));
   };
 }
 
@@ -810,11 +817,12 @@ async function loginUnified(req, res) {
 
   if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.STAFF) {
     assertAuthSetupReady({ requireOtp: true });
-    if (rememberDeviceRequest.rememberDevice && isRememberedPortalDevice(user, rememberDeviceRequest.rememberDeviceToken)) {
+    const trustedDevice = await portalDeviceLoginDecision(req, res, user, rememberDeviceRequest.rememberDevice);
+    if (trustedDevice) {
       return res.status(200).json(
         await createSessionResponse(user, {
           rememberDevice: true,
-          rememberDeviceToken: rememberDeviceRequest.rememberDeviceToken,
+          trustedDeviceExpiresAt: trustedDevice.trustedDeviceExpiresAt,
         }, req, signInPayload),
       );
     }
@@ -957,6 +965,7 @@ async function resetPassword(req, res) {
     const passwordHash = hashPassword(newPassword);
     await updateStoredPasswordHash(user.uid, passwordHash);
     await invalidateOpenOtpsForUser(user.uid);
+    await revokeTrustedDevicesForUser(user.uid, "password-reset");
   } else {
     console.warn("[auth] Password reset completed without a matching PostgreSQL user profile.", {
       email: maskEmail(confirmedEmail),
@@ -985,6 +994,7 @@ async function changePassword(req, res) {
   await updateSupabasePassword(req.auth.token, newPassword);
   await updateStoredPasswordHash(user.uid, hashPassword(newPassword));
   await invalidateOpenOtpsForUser(user.uid);
+  await revokeTrustedDevicesForUser(user.uid, "password-change");
   return res.status(200).json({ success: true, message: "Your password has been updated successfully." });
 }
 
@@ -995,6 +1005,17 @@ async function logout(req, res) {
     success: true,
     message: `Signed out${req.auth?.user?.email ? ` ${req.auth.user.email}` : ""} successfully.`,
   });
+}
+
+async function revokePortalTrustedDevice(req, res) {
+  const origin = normalizeOriginCandidate(req.headers.origin || "");
+  if (!isAllowedClientOrigin(origin)) throw new ApiError(403, "This request origin is not allowed.");
+  const role = normalizeExpectedRole(req.body?.role);
+  if (![USER_ROLES.ADMIN, USER_ROLES.STAFF].includes(role)) {
+    throw new ApiError(400, "A portal role is required.");
+  }
+  await revokeCurrentTrustedDevice(req, res, role);
+  return res.status(200).set("Cache-Control", "no-store").json({ success: true });
 }
 
 async function sessionSecurity(req, res) {
@@ -1022,6 +1043,7 @@ module.exports = {
   logout,
   me,
   resetPassword,
+  revokePortalTrustedDevice,
   sendAdminOtp,
   sendStaffOtp,
   sessionSecurity,

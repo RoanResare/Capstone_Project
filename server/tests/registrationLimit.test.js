@@ -2,22 +2,25 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const fs = require("node:fs");
 const path = require("node:path");
-const vm = require("node:vm");
+const Module = require("node:module");
 const { ApiError } = require("../src/utils/ApiError");
 const phoneUtils = require("../src/utils/phoneNumber");
 
 function fixture(initial = {}) {
   const records = new Map(Object.entries(initial));
   let queue = Promise.resolve();
+  const queryFor = name => ({ name, async get() {
+    return { docs: [...records].filter(([key]) => key.startsWith(`${name}/`))
+      .map(([key, value]) => ({ id: key.split("/")[1], data: () => value })) };
+  } });
   const db = {
-    collection: (name) => ({ name, doc: (id) => ({ key: `${name}/${id}` }) }),
+    collection: (name) => ({ ...queryFor(name), doc: (id) => ({ key: `${name}/${id}`, id }) }),
     runTransaction(action) {
       const run = queue.then(async () => {
         const writes = [];
         const transaction = {
-          get: async (ref) => ref.key ? { exists: records.has(ref.key), data: () => records.get(ref.key) } : {
-            docs: [...records].filter(([key]) => key.startsWith(`${ref.name}/`)).map(([key, value]) => ({ id: key.split("/")[1], data: () => value })),
-          },
+          get: async (ref) => ref.key ? { exists: records.has(ref.key), data: () => records.get(ref.key) }
+            : { docs: [...records].filter(([key]) => key.startsWith(`${ref.name}/`)).map(([key, value]) => ({ id: key.split("/")[1], data: () => value })) },
           set: (ref, data) => writes.push([ref.key, data]),
         };
         await action(transaction);
@@ -28,21 +31,40 @@ function fixture(initial = {}) {
     },
   };
   function load(relative, extra = {}) {
-    const context = { module: { exports: {} }, require(id) {
-      if (id === "../config/firebaseAdmin") return { db, auth: { verifyIdToken: async (uid) => ({ uid, email: `${uid}@example.test` }) } };
+    const filename = path.resolve(__dirname, "../src", relative);
+    const controller = new Module(filename, module);
+    controller.filename = filename;
+    controller.paths = module.paths;
+    controller.require = id => {
+      if (id.startsWith("node:")) return require(id);
+      if (id === "../config/postgresDatabase") return { db };
+      if (id === "../config/env") return { env: { runtime: { supabaseAdminReady: true, mailDeliveryReady: true }, auth: { emailVerificationUrl: "https://example.test/activate-account" } } };
+      if (id === "../services/supabaseAuth.service") return {
+        generateSupabaseEmailLink: async ({ email }) => ({ actionLink: "https://supabase.test/verify", tokenHash: "hash",
+          user: { id: email.split("@")[0], email } }),
+        findSupabaseUserByEmail: async () => null, deleteSupabaseUser: async () => {},
+      };
+      if (id === "../services/token.service") return { signCustomerVerificationStatusToken: () => "status" };
+      if (id === "../services/mail.service") return { sendEmailVerificationLink: async () => ({ messageId: "mail" }) };
       if (id === "../utils/ApiError") return { ApiError };
       if (id === "../utils/phoneNumber") return phoneUtils;
+      if (id === "../utils/emailValidation") return { assertValidEmail() {} };
+      if (id === "../utils/password") return { assertStrongPassword() {} };
+      if (id === "../services/user.service") return { assertValidUsername: value => value,
+        findUserByEmailCaseInsensitive: async () => null, getUsernameOwner: async () => null };
       if (id === "../services/registrationSecurity.service") return { validateRegistrationSecurity: async () => ({ registrationIp: "test" }) };
       if (id === "../services/sessionSecurity.service") return { validateAccessSecurity: async () => {} };
       if (extra[id]) return extra[id];
       throw new Error(id);
-    } };
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../src", relative), "utf8"), context);
-    return context.module.exports;
+    };
+    controller._compile(fs.readFileSync(filename, "utf8"), filename);
+    return controller.exports;
   }
   const service = load("services/phoneAccounts.service.js");
   const { createCustomerProfile } = load("controllers/registration.controller.js", { "../services/phoneAccounts.service": service });
-  return { records, register: (uid, phone) => createCustomerProfile({ headers: { authorization: `Bearer ${uid}` }, body: { fullName: "Customer", username: uid, phone } }, { status() { return this; }, json() {} }) };
+  return { records, register: (uid, phone) => createCustomerProfile({ headers: {}, body: {
+    email: `${uid}@example.test`, password: "Valid!Password1", fullName: "Customer", username: uid, phone,
+  } }, { status() { return this; }, json() {} }) };
 }
 
 test("registration permits three normalized phone accounts and rejects a fourth", async () => {

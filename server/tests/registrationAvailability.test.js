@@ -39,6 +39,7 @@ function loadCheck(options = {}) {
     };
     if (["../services/authAttempts.service", "../config/clientOrigins", "../config/env",
       "../services/mail.service", "../services/otp.service", "../services/token.service", "../utils/password"].includes(id)) return {};
+    if (id === "../services/trustedDevice.service") return { revokeTrustedDevicesForUser: async () => 0 };
     throw new Error(`Unexpected dependency in read-only availability check: ${id}`);
   };
   controller._compile(fs.readFileSync(filename, "utf8"), filename);

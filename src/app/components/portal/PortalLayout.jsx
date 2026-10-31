@@ -220,8 +220,8 @@ export function PortalLayout() {
 
   return (
     <div className="min-h-screen bg-[#F7F1E8] px-4 py-5 md:px-6">
-      <div className="mx-auto grid max-w-[1440px] gap-4 xl:h-[calc(100vh-2.5rem)] xl:grid-cols-[216px_minmax(0,1fr)]">
-        <aside className="rounded-[24px] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] xl:sticky xl:top-5 xl:h-[calc(100vh-2.5rem)]">
+      <div className="mx-auto grid max-w-[1440px] gap-4 xl:h-[calc(100dvh-2.5rem)] xl:grid-cols-[216px_minmax(0,1fr)]">
+        <aside className="rounded-[24px] border border-[#E7ECE9] bg-white p-4 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-5 xl:sticky xl:top-5 xl:h-[calc(100dvh-2.5rem)]">
           <div className="flex min-w-0 items-center gap-2 border-b border-[#EAE5DC] pb-5">
             <BrandMark className="h-10 w-10 flex-shrink-0" />
             <div>
@@ -257,7 +257,7 @@ export function PortalLayout() {
         </aside>
 
         <section className="min-w-0 space-y-4 xl:min-h-0 xl:overflow-y-auto xl:px-1 xl:pb-4 [scrollbar-gutter:stable]">
-          <header className="flex flex-col gap-4 rounded-[24px] bg-white px-6 py-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] md:flex-row md:items-center md:justify-between">
+          <header className="flex min-w-0 flex-col gap-4 rounded-[24px] border border-[#E7ECE9] bg-white px-4 py-4 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:px-6 sm:py-5 md:flex-row md:items-center md:justify-between">
             <div>
               <Link
                 to={resolveHomePath(currentUser.role)}

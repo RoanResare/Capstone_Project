@@ -78,7 +78,7 @@ export function Home() {
             transition={{ duration: 0.6 }}
             className="grid items-stretch gap-4 lg:grid-cols-[1.2fr_0.9fr]"
           >
-            <div className="flex min-h-[280px] flex-col justify-between rounded-lg border border-[#205A60] bg-[#173E44]/92 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[320px] md:p-5">
+            <div className="flex min-h-[280px] flex-col justify-between rounded-[24px] border border-[#205A60] bg-[#173E44]/92 p-5 text-white shadow-[0_20px_46px_rgba(14,39,43,0.2)] md:min-h-[320px] md:p-5">
               <div>
                 <p className="inline-flex rounded-full border border-[#F4C16A]/50 bg-[#245B62] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#FFF4D8]">
                   {businessBranchDetails.name}
@@ -98,7 +98,7 @@ export function Home() {
                   <button
                     type="button"
                     onClick={openCustomerBooking}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#F4C16A] px-5 py-2.5 text-sm font-semibold text-[#173E44] transition hover:bg-[#F8CD82]"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C16A] px-5 py-2.5 text-sm font-semibold text-[#173E44] transition hover:bg-[#F8CD82]"
                   >
                     Start booking
                     <ArrowRight size={16} />
@@ -111,7 +111,7 @@ export function Home() {
               initial={{ opacity: 0, x: 26 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.65, delay: 0.12 }}
-              className="flex h-full min-h-[320px] flex-col rounded-lg bg-[#FFFDFC]/92 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[350px] md:p-5"
+              className="flex h-full min-h-[320px] flex-col rounded-[24px] bg-[#FFFDFC]/92 p-5 shadow-[0_14px_28px_rgba(94,81,60,0.12)] backdrop-blur-[2px] md:min-h-[350px] md:p-5"
             >
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
                 Branch details
@@ -141,7 +141,7 @@ export function Home() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.1 }}
-            className="relative isolate mt-5 rounded-lg bg-white/88 p-4 shadow-[0_16px_34px_rgba(94,81,60,0.12)] backdrop-blur-[3px] md:p-5"
+            className="relative isolate mt-5 rounded-[22px] bg-white/88 p-4 shadow-[0_16px_34px_rgba(94,81,60,0.12)] backdrop-blur-[3px] md:p-5"
           >
             <div className="relative z-10">
               <div className="flex min-w-0 flex-col">

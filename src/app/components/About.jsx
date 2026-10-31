@@ -26,18 +26,18 @@ const values = [
 
 export function About() {
   return (
-    <div className="min-h-[calc(100vh-5rem)] py-12 px-6">
+    <div className="min-h-[calc(100vh-5rem)] px-4 py-8 sm:px-6 sm:py-12">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-5xl font-bold text-[#2D9B9B] mb-6 text-center">
+          <h1 className="mb-6 text-center text-3xl font-bold text-[#2D9B9B] sm:text-4xl md:text-5xl">
             About Charming Fur-fection
           </h1>
 
-          <div className="bg-white rounded-3xl shadow-xl p-8 space-y-5">
+          <div className="space-y-5 rounded-3xl border border-[#E6EFEE] bg-white p-5 shadow-[0_16px_36px_rgba(54,67,62,0.1)] sm:p-8">
             <p className="text-lg text-gray-700 leading-relaxed">
               Welcome to{" "}
               <span className="font-semibold text-[#2D9B9B]">

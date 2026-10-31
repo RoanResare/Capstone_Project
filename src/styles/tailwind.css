@@ -25,5 +25,6 @@
 }
 
 @utility app-card {
-  @apply min-w-0 rounded-2xl border border-[#E2EBEB] p-4 sm:p-5;
+  @apply min-w-0 rounded-2xl border border-[#E2EBEB] bg-white p-4 sm:p-5;
+  box-shadow: var(--shadow-card);
 }

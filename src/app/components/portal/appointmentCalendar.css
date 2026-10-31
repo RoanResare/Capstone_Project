@@ -8,7 +8,7 @@
 }
 
 .appointment-calendar .fc {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .appointment-calendar .fc-col-header-cell {
@@ -106,17 +106,25 @@
 
 @media (max-width: 640px) {
   .appointment-calendar .fc {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .appointment-calendar .calendar-event-content {
     padding: 3px;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.25;
   }
 
   .appointment-calendar .fc-timegrid-axis,
   .appointment-calendar .fc-timegrid-slot-label {
     width: 40px;
+  }
+
+  .appointment-calendar .fc-daygrid-day-number {
+    padding: 4px;
+  }
+
+  .appointment-calendar .fc-toolbar-chunk {
+    min-width: 0;
   }
 }

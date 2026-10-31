@@ -125,7 +125,7 @@ export function Layout() {
         <div className="mx-auto flex max-w-[1260px] items-center justify-between px-4 py-2 md:px-7">
           <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
             <BrandMark className="h-10 w-10 flex-shrink-0" />
-            <span className="text-sm font-semibold leading-tight text-white md:text-base lg:text-[1.05rem]">
+            <span className="min-w-0 max-w-[calc(100vw-8rem)] truncate text-sm font-semibold leading-tight text-white md:max-w-none md:text-base lg:text-[1.05rem]">
               {branchDetails.name}
             </span>
           </Link>

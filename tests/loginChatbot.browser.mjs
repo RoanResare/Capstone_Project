@@ -88,6 +88,14 @@ try {
   const heading = await page.getByRole("heading",{name:"Welcome Back!"}).boundingBox();
   assert.ok(heading.x > 700, "Desktop login remains beside the existing hero");
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false);
+  for (const width of [320, 375, 390, 768, 1024, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+      false,
+      `Login must not overflow horizontally at ${width}px`,
+    );
+  }
 
   const requests=[];
   console.log("Login passed; testing contextual Groq requests.");
@@ -121,6 +129,14 @@ try {
   await page.getByText("Live chat is unavailable. Please try again.",{exact:true}).waitFor();
   assert.equal(await page.evaluate(() => window.chatLogs.at(-1).provider),"fallback");
   assert.equal(requests.some(request => "apiKey" in request || "GROQ_API_KEY" in request),false);
+  for (const width of [320, 375, 390, 768, 1024, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+      false,
+      `Chat interface must not overflow horizontally at ${width}px`,
+    );
+  }
   assert.deepEqual(errors,[]);
   console.log("PASS: responsive login, autofill validation, verification feedback, contextual Groq requests, duplicate prevention, booking link and outage fallback.");
 } finally {

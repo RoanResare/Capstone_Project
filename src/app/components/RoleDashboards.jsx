@@ -12,7 +12,7 @@ function DashboardCard({ title, value, description, tone = "teal" }) {
   };
 
   return (
-    <div className={`rounded-[20px] px-5 py-5 ${toneClasses[tone]}`}>
+    <div className={`rounded-[20px] border border-white/70 px-5 py-5 shadow-[0_10px_24px_rgba(54,67,62,0.06),inset_0_1px_0_rgba(255,255,255,0.75)] ${toneClasses[tone]}`}>
       <p className="text-sm font-semibold uppercase tracking-[0.16em] opacity-80">{title}</p>
       <p className="mt-3 text-4xl font-bold">{value}</p>
       <p className="mt-2 text-sm leading-5 opacity-80">{description}</p>
@@ -24,7 +24,7 @@ function QuickLink({ to, icon: Icon, title, description }) {
   return (
     <Link
       to={to}
-      className="flex h-full flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FCFEFE] p-5 transition hover:-translate-y-1 hover:border-[#BDD9D7]"
+      className="flex h-full flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FCFEFE] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-[#BDD9D7] hover:shadow-[0_12px_26px_rgba(54,67,62,0.09)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#EAF6F6] text-[#2D6B73]">
         <Icon size={22} />
@@ -49,7 +49,7 @@ function DashboardShell({ role }) {
   const employeeCount = state.users.filter((user) => ["admin", "staff"].includes(user.role)).length;
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-[1240px] space-y-6">
         <section
           aria-label="Account verification status"

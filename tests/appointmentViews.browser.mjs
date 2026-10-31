@@ -72,6 +72,8 @@ try {
   const errors = [];
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, timezoneId: "Asia/Manila" });
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1"
+    ? route.continue() : route.abort());
   await page.goto(`${server.resolvedUrls.local[0]}__appointment_test`);
   await page.locator(".fc-event").first().waitFor();
   assert.equal(await page.locator(".fc-event").count(), 8);
@@ -82,6 +84,20 @@ try {
   assert.equal(await page.locator(".fc-event").count(), 8, "List filters must not hide appointments from the calendar");
   await mkdir("artifacts/appointment-views", { recursive: true });
   await page.screenshot({ path: "artifacts/appointment-views/staff-desktop.png", fullPage: true });
+  for (const width of [320, 375, 390, 768, 1024, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.waitForFunction(() => {
+      const calendar = document.querySelector('.appointment-calendar')?.getBoundingClientRect();
+      const lastDay = [...document.querySelectorAll('.fc-col-header-cell')].at(-1)?.getBoundingClientRect();
+      return calendar && lastDay && lastDay.right <= calendar.right + 1;
+    });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
+      false,
+      `Staff appointment workspace must not overflow horizontally at ${width}px`,
+    );
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.locator('.appointment-calendar .fc-event[title*="Earlier"]').click();
   const dialog = page.getByRole("dialog", { name: "Appointment details", exact: true });
   await dialog.waitFor();

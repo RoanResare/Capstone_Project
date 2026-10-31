@@ -38,7 +38,7 @@ export function Products() {
       : products.filter((product) => product.category === selectedCategory);
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F5F0E8] py-10 px-6">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F5F0E8] px-4 py-8 sm:px-6 sm:py-10">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -46,7 +46,7 @@ export function Products() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h1 className="text-5xl font-bold text-[#2D9B9B] mb-4">Pet Products</h1>
+          <h1 className="mb-4 text-3xl font-bold text-[#2D9B9B] sm:text-4xl md:text-5xl">Pet Products</h1>
           <p className="text-xl text-gray-700">Quality products for your beloved pets</p>
         </motion.div>
 
@@ -104,14 +104,13 @@ export function Products() {
                 transition={{ duration: 0.4 }}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
               >
-                {filteredProducts.map((product, index) => (
+                {filteredProducts.map((product) => (
                   <motion.div
                     key={product.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    whileHover={{ scale: 1.05, boxShadow: "0 10px 30px rgba(45, 155, 155, 0.2)" }}
-                    className="bg-white rounded-2xl overflow-hidden shadow-lg cursor-pointer transition-all"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="overflow-hidden rounded-2xl border border-[#E6EFEE] bg-white shadow-[0_10px_24px_rgba(54,67,62,0.08)]"
                   >
                     <div className="h-48 bg-gradient-to-br from-[#E8F5F5] to-white flex items-center justify-center">
                       <span className="text-7xl">{product.image}</span>

@@ -720,7 +720,7 @@ function AppointmentDetailDialog({ appointment, currentUser, staffOptions, updat
   const dialog = (
     <dialog ref={dialogRef} aria-label="Appointment details" aria-modal="true"
       onCancel={(event) => { event.preventDefault(); if (!isSaving) onBack(); }}
-      className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl overflow-y-auto rounded-lg border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-black/40 sm:p-5">
+      className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-white p-4 shadow-[0_24px_56px_rgba(20,43,46,0.2)] backdrop:bg-black/40 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:p-5">
       <button type="button" aria-label="Close appointment details" title="Close" disabled={isSaving} onClick={onBack} className="mb-2 ml-auto flex h-8 w-8 items-center justify-center text-[#607277] disabled:opacity-50"><X size={20} /></button>
       <AppointmentDetailPanel appointment={appointment} currentUser={currentUser} staffOptions={staffOptions}
         updateAppointment={save} onBack={onBack} isSaving={isSaving} />

@@ -206,12 +206,12 @@ export function CustomerSignup() {
         </div>
       )}
       <AuthPageBackdrop />
-      <div className="relative z-10 mx-auto grid max-w-[1320px] items-start gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-6">
+      <div className="relative z-10 mx-auto grid w-full min-w-0 max-w-[1320px] items-start gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-6">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55 }}
-          className="order-1 lg:order-1"
+          className="order-1 min-w-0 lg:order-1"
         >
           <AuthHeroPanel />
         </motion.div>
@@ -220,7 +220,7 @@ export function CustomerSignup() {
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, delay: 0.08 }}
-          className="order-2 rounded-[24px] bg-white p-5 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-6 lg:order-2 lg:p-7"
+          className="order-2 min-w-0 rounded-[24px] bg-white p-5 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-6 lg:order-2 lg:p-7"
         >
           <div className="mb-5 text-center">
             <h1 className="text-3xl font-extrabold text-[#07545A]">Create Account</h1>

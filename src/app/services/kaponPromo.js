@@ -14,12 +14,44 @@ export function subscribeKaponPromo(onChange, onError) {
     return () => {};
   }
   if (isPostgresEnabled) {
-    return onSnapshot(doc(db, "lowCostKaponPromo", "low-cost-kapon"), snapshot => {
+    const reference = doc(db, "lowCostKaponPromo", "low-cost-kapon");
+    let disposed = false;
+    let readVersion = 0;
+    const apply = snapshot => {
+      if (disposed) return;
       const promo = snapshot.exists() ? snapshot.data() : null;
       if (promo) writeJsonCache(KAPON_PROMO_CACHE_KEY, promo);
       else removeJsonCache(KAPON_PROMO_CACHE_KEY);
       onChange(promo);
-    }, onError);
+    };
+    const refresh = async () => {
+      if (disposed) return;
+      const version = ++readVersion;
+      try {
+        const snapshot = await getDoc(reference);
+        if (!disposed && version === readVersion) apply(snapshot);
+      } catch (error) {
+        if (!disposed && version === readVersion) onError(new Error(extractApiError(error, "Unable to load promotion availability.")));
+      }
+    };
+    // Realtime is an update channel, not a prerequisite for managing the promo.
+    // All fallback reads use the same authenticated API and access checks.
+    void refresh();
+    const unsubscribe = onSnapshot(reference, snapshot => {
+      readVersion++;
+      apply(snapshot);
+    }, () => { void refresh(); });
+    const refreshOnFocus = () => { if (document.visibilityState !== "hidden") void refresh(); };
+    const interval = setInterval(refreshOnFocus, 30000);
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshOnFocus);
+    return () => {
+      disposed = true;
+      clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+      unsubscribe();
+    };
   }
   const cachedPromo = readJsonCache(KAPON_PROMO_CACHE_KEY, KAPON_PROMO_CACHE_TTL_MS);
   if (cachedPromo) onChange(cachedPromo);

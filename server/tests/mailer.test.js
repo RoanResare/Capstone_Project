@@ -42,7 +42,7 @@ test('all email flows use Resend HTTPS, preserve IDs and handle provider failure
     const {sendAppointmentReminder} = require('../src/services/reminderMail.service');
     const appointment = {customerEmail: 'test@example.com', scheduleDate: '2026-10-22', scheduleTime: '09:00'};
     await sendAppointmentReminder(appointment, 'appointment-1');
-    assert.match(request.payload.text, /09:00 AM/);
+    assert.match(request.payload.text, /at 9:00 AM \(Asia\/Manila\)/);
     const id = request.headers.get('idempotency-key');
     assert.ok(id);
     assert.ok(id.length <= 256);

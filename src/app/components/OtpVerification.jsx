@@ -74,7 +74,7 @@ export function OtpVerification() {
 
   if (isCheckingSession || (!pendingOtp && !canShowMissingChallenge && !(isAuthenticated && currentUser))) {
     return (
-      <div role="status" aria-label="Checking verification session" aria-busy="true" className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10">
+      <div role="status" aria-label="Checking verification session" aria-busy="true" className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 sm:py-10">
         <div aria-hidden="true" className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#D9E7E7] border-t-[#2D6B73]" />
       </div>
     );
@@ -140,18 +140,18 @@ export function OtpVerification() {
 
   if (canShowMissingChallenge) {
     return (
-      <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10 lg:py-18">
+      <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 sm:py-10 lg:py-18">
         <div className="mx-auto max-w-[920px]">
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45 }}
-            className="rounded-[28px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
+            className="rounded-[28px] border border-[#E7ECE9] bg-white p-5 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-6 md:p-8"
           >
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
               Verification Required
             </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#20343B]">
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#20343B] sm:text-4xl">
               There is no active OTP challenge.
             </h1>
             <p className="mt-4 text-base leading-7 text-[#607277] md:text-lg">
@@ -180,8 +180,8 @@ export function OtpVerification() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-10 lg:py-18">
-      <div className="mx-auto grid max-w-[1120px] items-start gap-10 lg:grid-cols-[1fr_0.92fr]">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 sm:py-10 lg:py-18">
+      <div className="mx-auto grid w-full min-w-0 max-w-[1120px] items-start gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:gap-10">
         <motion.section
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
@@ -191,7 +191,7 @@ export function OtpVerification() {
           <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
             Email OTP Verification
           </p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] md:text-[4.1rem]">
+          <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl md:text-[4.1rem]">
             Finish the protected portal sign-in.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
@@ -215,7 +215,7 @@ export function OtpVerification() {
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.55, delay: 0.08 }}
-          className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
+          className="min-w-0 rounded-[24px] border border-[#E7ECE9] bg-white p-5 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-6 md:p-8"
         >
           <form onSubmit={handleVerify} className="space-y-4">
             {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Verification and resend are blocked for {formatCountdown(lockSeconds)}.</p>}

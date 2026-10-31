@@ -63,8 +63,8 @@ function RouteLoader({ Component }) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 text-[#20343B]">
-          <div className="mx-auto max-w-[1220px] rounded-[34px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)]">
+        <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 text-[#20343B] sm:px-6 sm:py-14">
+          <div className="mx-auto max-w-[1220px] rounded-[28px] border border-[#E7ECE9] bg-white p-5 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
               Loading Screen
             </p>
@@ -83,8 +83,8 @@ function DashboardRedirect() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 text-[#20343B]">
-        <div className="mx-auto max-w-[960px] rounded-[32px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)]">
+      <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 text-[#20343B] sm:px-6 sm:py-14">
+        <div className="mx-auto max-w-[960px] rounded-[28px] border border-[#E7ECE9] bg-white p-5 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
             Loading Account
           </p>

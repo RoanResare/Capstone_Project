@@ -42,11 +42,17 @@ const appMock = `
 `;
 const mocks = {
   "context/AppContext.jsx": appMock,
-  "context/AuthContext.jsx": `export function useAuth() { const view = new URLSearchParams(window.location.search).get('view') || '';
+  "context/AuthContext.jsx": `const view = new URLSearchParams(window.location.search).get('view') || '';
     const role = view.startsWith('customer') ? 'customer' : view.toLowerCase().includes('admin') ? 'admin' : 'staff';
-    const publicAuth = view === 'login' || view === 'signup';
-    return {currentUser:publicAuth ? null : {id:role,uid:role,role,name:'Test User',username:'testuser',email:'test@example.com'},
-      isAuthenticated:!publicAuth,isLoading:false,accessToken:null,signOut:async()=>{},updateProfile:async()=>{}}; }`,
+    const publicAuth = ['login','signup','forgot','reset','otp'].includes(view);
+    const mockUser = {id:role,uid:role,role,name:'Test User',username:'testuser',email:'test@example.com'};
+    const restoreOtp = () => null;
+    export function useAuth() { return {currentUser:publicAuth ? null : mockUser,
+      isAuthenticated:!publicAuth,isLoading:false,isOnline:true,accessToken:null,homePath:'',pendingOtp:null,
+      signOut:async()=>{},updateProfile:async()=>{},restorePendingOtpSession:restoreOtp,clearPendingOtp:()=>{},
+      signUp:async(form)=>form.password===form.confirmPassword?{ok:false,error:'Unexpected test submission'}:{ok:false,error:'Passwords do not match.'},
+      requestPasswordReset:async()=>({ok:true,message:'Reset link sent'}),validatePasswordResetCode:async()=>({ok:false,error:'Invalid reset link'}),
+      completePasswordReset:async()=>({ok:true,message:'Password updated'}),verifyPendingOtp:async()=>({ok:false,error:'Invalid code'}),resendOtp:async()=>({ok:false,error:'Unavailable'})}; }`,
   "context/ToastContext.jsx": "export const useToast = () => ({error() {}, success() {}, info() {}});",
   "services/customerAccount.js": "export async function changeCustomerPassword() {}",
   "services/groq.js": `export const groqSuggestionChips=[];
@@ -79,12 +85,17 @@ const server = await createServer({
         import {Home} from '/src/app/components/Home.jsx'; import {About} from '/src/app/components/About.jsx';
         import {Products} from '/src/app/components/Products.jsx'; import {UnifiedLogin} from '/src/app/components/UnifiedLogin.jsx';
         import {CustomerSignup} from '/src/app/components/CustomerSignup.jsx';
+        import {ForgotPassword} from '/src/app/components/ForgotPassword.jsx';
+        import {ResetPassword} from '/src/app/components/ResetPassword.jsx';
+        import {OtpVerification} from '/src/app/components/OtpVerification.jsx';
+        import {ActivateAccount} from '/src/app/components/ActivateAccount.jsx';
+        import {UnauthorizedPage} from '/src/app/components/UnauthorizedPage.jsx';
         import {CustomerProfile} from '/src/app/components/CustomerProfile.jsx';
         import {AdminDashboard,StaffDashboard} from '/src/app/components/RoleDashboards.jsx';
         import {PortalLayout} from '/src/app/components/portal/PortalLayout.jsx';
         import {PortalPage} from '/src/app/components/portal/PortalPage.jsx';
         const view=new URLSearchParams(window.location.search).get('view')||'home';
-        const paths={home:'/',about:'/about',products:'/products',login:'/login',signup:'/customer/signup',
+        const paths={home:'/',about:'/about',products:'/products',login:'/login',signup:'/customer/signup',forgot:'/forgot-password',reset:'/reset-password',otp:'/verify-otp',activate:'/activate-account',unauthorized:'/unauthorized',
           customer:'/customer/dashboard?tab=appointments',customerOverview:'/customer/dashboard?tab=overview',
           customerServices:'/customer/dashboard?tab=services',customerProfile:'/customer/dashboard?tab=profile',
           admin:'/admin/dashboard',staff:'/staff/dashboard',portal:'/portal/appointments',
@@ -97,6 +108,11 @@ const server = await createServer({
             React.createElement(Route,{path:'about',element:React.createElement(About)}),
             React.createElement(Route,{path:'products',element:React.createElement(Products)}),
             React.createElement(Route,{path:'login',element:React.createElement(UnifiedLogin)}),
+            React.createElement(Route,{path:'forgot-password',element:React.createElement(ForgotPassword)}),
+            React.createElement(Route,{path:'reset-password',element:React.createElement(ResetPassword)}),
+            React.createElement(Route,{path:'verify-otp',element:React.createElement(OtpVerification)}),
+            React.createElement(Route,{path:'activate-account',element:React.createElement(ActivateAccount)}),
+            React.createElement(Route,{path:'unauthorized',element:React.createElement(UnauthorizedPage)}),
             React.createElement(Route,{path:'customer/signup',element:React.createElement(CustomerSignup)}),
             React.createElement(Route,{path:'customer/dashboard',element:React.createElement(CustomerProfile)})),
           React.createElement(Route,{path:'/admin/dashboard/*',element:React.createElement(AdminDashboard)}),
@@ -126,14 +142,23 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 320, height: 720 }, timezoneId: "Asia/Manila" });
   page.setDefaultTimeout(8000);
+  page.setDefaultNavigationTimeout(30000);
   const errors = [];
+  let activeView = "fixture bootstrap";
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().includes("Failed to load resource: net::ERR_FAILED")) {
+      errors.push(`${activeView}: ${message.text()}`);
+    }
+  });
   await page.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1"
     ? route.continue() : route.abort());
   const base = server.resolvedUrls.local[0];
   const cases = [
     ["home", "Charming Fur-fection"], ["about", "About Charming Fur-fection"],
     ["products", "Pet Products"], ["login", "Welcome Back!"], ["signup", "Create Account"],
+    ["forgot", "Request a secure password reset link."], ["reset", "Choose a new password for your account."], ["otp", "There is no active OTP challenge."],
+    ["activate", "Activation link needs attention"], ["unauthorized", "Unauthorized account type."],
     ["customer", "My appointments"], ["customerOverview", "Customer Dashboard"],
     ["customerServices", "Continue to booking"], ["customerProfile", "Profile"],
     ["admin", "Admin Dashboard"], ["staff", "Staff Dashboard"], ["portal", "Manage appointments"],
@@ -144,16 +169,58 @@ try {
     ? cases.filter(([view]) => view === process.env.CAPSTONE_RESPONSIVE_VIEW)
     : cases;
   for (const [view, expectedText] of selectedCases) {
+    activeView = view;
     await page.goto(`${base}__responsive?view=${view}`, { waitUntil: "domcontentloaded" });
+    await page.setViewportSize({ width: 320, height: 720 });
     try {
       await page.getByText(expectedText, { exact: false }).first().waitFor();
     } catch (error) {
-      console.error(`Screen ${view} did not render its expected content.`, await page.locator("body").innerText());
+      console.error(`Screen ${view} did not render its expected content.`, await page.locator("body").innerText(), {url:page.url(), errors});
       throw error;
     }
     if (view === "customerServices") {
       await page.getByRole("button", { name: "Continue to booking" }).first().click();
       await page.getByRole("heading", { name: "Choose a pet, then choose the service." }).waitFor();
+    }
+    if (view === "signup") {
+      await page.getByRole("button", { name: "Toggle menu" }).click();
+      await page.getByRole("button", { name: "Home", exact: true }).last().waitFor();
+      await page.getByRole("button", { name: "Toggle menu" }).click();
+      await page.getByPlaceholder("Enter your full name").fill("Test Customer");
+      await page.getByPlaceholder("Enter your email").fill("customer@gmail.com");
+      await page.getByPlaceholder("Choose a profile username").fill("test_customer");
+      await page.getByPlaceholder("9XXXXXXXXX", { exact: true }).fill("9940702702");
+      await page.getByPlaceholder("Create a password").fill("Roanpogi03.");
+      await page.getByPlaceholder("Repeat your password").fill("Different03.");
+      await page.getByRole("button", { name: "Create account", exact: true }).click();
+      await page.getByRole("dialog").locator("div.overflow-y-auto").evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+        element.dispatchEvent(new Event("scroll"));
+      });
+      await page.getByRole("checkbox").check();
+      await page.getByRole("button", { name: "Agree and continue" }).click();
+      await page.getByRole("button", { name: "Create account", exact: true }).click();
+      await page.getByRole("alert").filter({ hasText: "Passwords do not match." }).waitFor();
+      assert.equal(await page.getByRole("alert").filter({ hasText: "Passwords do not match." }).count(), 1,
+        "Signup mismatch validation must remain visible after consent");
+    }
+    if (view === "home") {
+      await page.getByRole("button", { name: "Toggle menu" }).click();
+      await page.getByRole("button", { name: "Home", exact: true }).last().waitFor();
+      await page.getByRole("button", { name: "Toggle menu" }).click();
+    }
+    if (view === "portalUsers") {
+      const filters = page.getByRole("group", { name: "Filter employee accounts by role" });
+      await filters.getByRole("button", { name: "Staff" }).click();
+      await page.getByLabel("Staff employee accounts").waitFor();
+      await page.getByRole("link", { name: "Appointments" }).click();
+      await page.getByRole("heading", { name: "Manage appointments" }).waitFor();
+    }
+    if (view === "login") {
+      const signIn = page.getByRole("button", { name: /Log In/i }).first();
+      await signIn.focus();
+      assert.notEqual(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), "none",
+        "Keyboard focus must remain visible on the login action");
     }
     await page.waitForTimeout(650);
     for (const width of [320, 375, 390, 768, 1024, 1440, 1920]) {
@@ -181,6 +248,7 @@ try {
     }
     console.log(`PASS responsive viewport matrix: ${view}`);
   }
+  activeView = "chatbot";
   await page.goto(`${base}__responsive?view=home`, { waitUntil: "domcontentloaded" });
   await page.setViewportSize({ width: 320, height: 568 });
   await page.getByRole("button", { name: /Charming Assistant/ }).click();

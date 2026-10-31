@@ -954,7 +954,7 @@ function AppointmentsWorkspace({
         <PanelCard
           title="Manage appointments"
           description="View bookings, review customer details, and keep the queue moving."
-          className="flex h-[min(78dvh,900px)] min-h-[640px] flex-col xl:h-[clamp(600px,calc(100dvh-12rem),900px)] xl:self-start"
+          className="flex h-[min(78dvh,900px)] min-h-[min(640px,calc(100dvh-2rem))] flex-col xl:h-[clamp(600px,calc(100dvh-12rem),900px)] xl:self-start"
           bodyClassName="flex min-h-0 flex-1 flex-col"
         >
           <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -1398,7 +1398,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 message="Customer pet profiles will appear here as soon as they are created or booked."
               />
             ) : (
-              <div className="portal-scroll-panel min-h-0 h-[520px] max-h-[520px] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:flex-none">
+              <div className="portal-scroll-panel min-h-0 h-[min(520px,60dvh)] max-h-[min(520px,60dvh)] space-y-2.5 overflow-y-auto overscroll-contain pr-1 xl:h-[520px] xl:max-h-[520px] xl:flex-none">
                 {filteredPetRecords.map((record) => {
                   const appointmentCount = linkedAppointmentCount(record);
 

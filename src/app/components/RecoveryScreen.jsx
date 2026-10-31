@@ -30,12 +30,12 @@ export function RecoveryScreen({
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F0E7] px-6 py-12 text-[#20343B]">
-      <div className="mx-auto max-w-3xl rounded-[32px] bg-white p-8 shadow-[0_20px_42px_rgba(94,81,60,0.12)]">
+    <div className="min-h-screen bg-[#F6F0E7] px-4 py-8 text-[#20343B] sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-3xl rounded-[28px] border border-[#E7ECE9] bg-white p-5 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-8">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7B9A9F]">
           {eyebrow}
         </p>
-        <h1 className="mt-3 text-3xl font-semibold">{title}</h1>
+        <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">{title}</h1>
         <p className="mt-4 text-base leading-7 text-[#607277]">{message}</p>
         <div className="mt-6 rounded-[24px] bg-[#F8FBFB] px-5 py-4 text-sm text-[#4C6368]">
           {detailMessage}

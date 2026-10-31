@@ -51,13 +51,13 @@ export function UnauthorizedPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-6 py-14 lg:py-18">
+    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-8 sm:px-6 sm:py-12 lg:py-18">
       <div className="mx-auto max-w-[920px]">
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="rounded-[36px] bg-white p-8 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-10"
+          className="rounded-[28px] border border-[#E7ECE9] bg-white p-5 shadow-[0_14px_32px_rgba(54,67,62,0.09)] sm:p-8 md:p-10"
         >
           <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-[#FBECEF] text-[#B23949]">
             <ShieldAlert size={28} />
@@ -66,7 +66,7 @@ export function UnauthorizedPage() {
           <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#B23949]">
             Access Blocked
           </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-[#20343B]">
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#20343B] sm:text-4xl">
             Unauthorized account type.
           </h1>
           <p className="mt-4 text-base leading-7 text-[#607277] md:text-lg">

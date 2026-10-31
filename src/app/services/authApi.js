@@ -121,9 +121,9 @@ export async function checkCustomerRegistrationAvailability({ email, phone }) {
   }
 }
 
-export async function activateCustomerEmail(tokenHash) {
+export async function activateCustomerEmail(tokenHash, email = "", otpCode = "") {
   try {
-    const response = await apiClient.post("/auth/register/activate", { token_hash: tokenHash });
+    const response = await apiClient.post("/auth/register/activate", otpCode ? { email, otpCode } : { token_hash: tokenHash });
     return response.data;
   } catch (error) {
     throw createApiRequestError(error, "Unable to activate this account right now.", "email-activation");

@@ -1,14 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle2, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
 import { activateCustomerEmail, resendCustomerEmailVerification } from "../services/authApi.js";
 
 export function ActivateAccount() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const code = searchParams.get("token_hash") || searchParams.get("oobCode") || "";
-  const [status, setStatus] = useState(code ? "checking" : "invalid");
-  const [message, setMessage] = useState(code ? "Checking your secure activation link..." : "This activation link is missing or incomplete.");
+  const initialOtpMode = !code && searchParams.get("method") === "otp";
+  const [otpMode, setOtpMode] = useState(initialOtpMode);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const verificationInFlight = useRef(false);
+  const resendInFlight = useRef(false);
+  const [status, setStatus] = useState(code ? "checking" : initialOtpMode && location.state?.deliveryStatus !== "pending" ? "sent" : "invalid");
+  const [message, setMessage] = useState(code ? "Checking your secure activation link..." : initialOtpMode
+    ? location.state?.deliveryMessage || "Enter the verification code sent to your email. If it has not arrived, request a new code."
+    : "This activation link is missing or incomplete.");
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [resending, setResending] = useState(false);
   const attemptedCode = useRef({ code: "", request: null });
@@ -37,9 +46,34 @@ export function ActivateAccount() {
     return () => { active = false; };
   }, [code, navigate]);
 
+  const handleVerifyCode = async (event) => {
+    event.preventDefault();
+    if (verificationInFlight.current || resendInFlight.current || status === "verified") return;
+    if (!/^\d{6,10}$/.test(otpCode.trim()) || !email.trim()) {
+      setStatus("invalid");
+      setMessage("Enter your email and the verification code from your inbox.");
+      return;
+    }
+    verificationInFlight.current = true;
+    setVerifying(true);
+    try {
+      const result = await activateCustomerEmail("", email.trim(), otpCode.trim());
+      setStatus("verified");
+      setMessage(result.message || "Your email is verified. You can now sign in.");
+      setOtpCode("");
+    } catch (error) {
+      setStatus("invalid");
+      setMessage(error.message || "Unable to verify this code. Try again or request a new code.");
+    } finally {
+      verificationInFlight.current = false;
+      setVerifying(false);
+    }
+  };
+
   const handleResend = async (event) => {
     event.preventDefault();
-    if (resending || !email.trim()) return;
+    if (resendInFlight.current || verificationInFlight.current || !email.trim()) return;
+    resendInFlight.current = true;
     setResending(true);
     try {
       const result = await resendCustomerEmailVerification(email.trim());
@@ -50,11 +84,13 @@ export function ActivateAccount() {
         return;
       }
       setStatus(result.deliveryStatus === "sent" && result.messageId ? "sent" : "invalid");
+      if (result.verificationMethod === "otp") { setOtpMode(true); setOtpCode(""); }
       setMessage(result.message || "No activation email was confirmed. Please try again or contact the clinic.");
     } catch (error) {
       setStatus("invalid");
       setMessage(error.message || "Unable to request a new link right now. Please try again shortly.");
     } finally {
+      resendInFlight.current = false;
       setResending(false);
     }
   };
@@ -67,12 +103,23 @@ export function ActivateAccount() {
         </div>
         <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#7B9A9F]">Account activation</p>
         <h1 className="mt-2 text-3xl font-semibold text-[#20343B]">
-          {status === "checking" ? "Verifying your email" : status === "verified" ? "Email verified" : status === "sent" ? "Check your inbox" : "Activation link needs attention"}
+          {status === "checking" ? "Verifying your email" : status === "verified" ? "Email verified" : otpMode ? "Verify your email" : status === "sent" ? "Check your inbox" : "Activation link needs attention"}
         </h1>
         <p role="status" aria-live="polite" className={`mt-4 rounded-2xl px-4 py-2.5 text-sm leading-5 ${status === "verified" || status === "sent" ? "bg-[#EAF7F7] text-[#2D6B73]" : status === "invalid" ? "bg-[#FBECEF] text-[#9B3342]" : "bg-[#F7FAFA] text-[#526B70]"}`}>
           {message}
         </p>
 
+        {otpMode && status !== "verified" && (
+          <form onSubmit={handleVerifyCode} className="mt-5 space-y-3 text-left">
+            <label htmlFor="signup-otp" className="block text-sm font-medium text-[#415D62]">Verification code</label>
+            <input id="signup-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={10} value={otpCode}
+              onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))} disabled={verifying || resending}
+              className="min-h-12 w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 tracking-[0.2em] outline-none focus:border-[#2D9B9B]" />
+            <button type="submit" disabled={verifying || resending || !otpCode.trim()} className="min-h-12 w-full rounded-2xl bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+              {verifying ? "Verifying..." : "Verify code"}
+            </button>
+          </form>
+        )}
         {status === "verified" ? (
           <Link to="/login?emailVerified=1" className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white">Continue to sign in</Link>
         ) : status === "checking" ? null : (
@@ -80,10 +127,10 @@ export function ActivateAccount() {
             <label htmlFor="verification-email" className="block text-sm font-medium text-[#415D62]">Email used to register</label>
             <div className="flex items-center gap-3 rounded-2xl border border-[#D9E7E7] px-4 py-2.5 focus-within:border-[#2D9B9B]">
               <Mail size={17} className="shrink-0 text-[#6B898E]" />
-              <input id="verification-email" type="email" autoComplete="email" disabled readOnly value={email} className="min-w-0 flex-1 cursor-not-allowed bg-transparent text-[#20343B] opacity-100 outline-none" />
+              <input id="verification-email" type="email" autoComplete="email" disabled={resending || verifying || Boolean(code)} readOnly={Boolean(code)} value={email} onChange={(event) => setEmail(event.target.value)} className="min-w-0 flex-1 bg-transparent text-[#20343B] opacity-100 outline-none" />
             </div>
-            <button type="submit" disabled={resending || !email.trim()} className="min-h-12 w-full rounded-2xl bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-              {resending ? "Requesting a new link..." : "Request a new activation link"}
+            <button type="submit" disabled={resending || verifying || !email.trim()} className="min-h-12 w-full rounded-2xl bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+              {resending ? "Requesting a new code..." : "Request a new verification code"}
             </button>
           </form>
         )}

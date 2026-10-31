@@ -29,7 +29,7 @@ export async function signUpCustomerWithEmailPassword({ fullName, email, passwor
     const response = await apiClient.post("/auth/register/profile", {
       fullName: String(fullName || "").trim(), email: normalizeEmail(email), password, phone, username,
     });
-    return { profile: response.data.profile, message: response.data.message, deliveryStatus: response.data.deliveryStatus };
+    return { profile: response.data.profile, message: response.data.message, deliveryStatus: response.data.deliveryStatus, verificationMethod: response.data.verificationMethod };
   } catch (error) {
     throw new Error(extractApiError(error, "Unable to create your account right now."));
   }

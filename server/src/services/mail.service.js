@@ -217,9 +217,24 @@ async function sendEmailVerificationLink({ to, fullName, verificationLink }) {
   });
 }
 
+async function sendSignupVerificationCode({ to, otpCode }) {
+  if (!/^\d{6,10}$/.test(String(otpCode || ""))) throw new ApiError(503, "The signup verification code could not be generated.");
+  return deliverMail({
+    type: "email-verification",
+    to,
+    subject: "Your Charming Fur-fection verification code",
+    html: `<div style="font-family:Arial,sans-serif;color:#1f353b;max-width:560px;margin:auto;padding:32px;">
+      <h1>Verify your email</h1><p>Enter this code to activate your Charming Fur-fection customer account:</p>
+      <p style="font-size:32px;font-weight:bold;letter-spacing:6px;">${otpCode}</p>
+      <p>This code expires automatically and can only be used once. If you did not create an account, ignore this email.</p></div>`,
+    text: `Your Charming Fur-fection account verification code is ${otpCode}. Enter it on the account verification screen. This code expires automatically and can only be used once.`,
+  });
+}
+
 module.exports = {
   deliverMail,
   sendEmailVerificationLink,
+  sendSignupVerificationCode,
   sendOtpEmail,
   sendPasswordResetEmail,
 };

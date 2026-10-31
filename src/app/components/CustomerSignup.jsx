@@ -133,6 +133,12 @@ export function CustomerSignup() {
       if (result.verificationRequired) {
         registrationCompletedRef.current = true;
         setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
+        if (result.verificationMethod === "otp") {
+          navigate(`/activate-account?method=otp&email=${encodeURIComponent(result.email)}`, {
+            replace: true, state: { deliveryMessage: result.message, deliveryStatus: result.deliveryStatus },
+          });
+          return;
+        }
         setFeedback({ type: "success", message: result.message, email: result.email });
         return;
       }

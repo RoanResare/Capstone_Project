@@ -34,11 +34,15 @@ const server = await createServer({ configFile: false, logLevel: "silent", cache
     load(id) {
       if (id.startsWith("\0signup-mock:")) return mocks[id.slice("\0signup-mock:".length)];
       if (id === "\0signup-entry") return `import React from 'react';
-        import {createRoot} from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';
+        import {createRoot} from 'react-dom/client';import {MemoryRouter,Routes,Route} from 'react-router-dom';
         import {AuthProvider} from '/src/app/context/AuthContext.jsx';
         import {CustomerSignup} from '/src/app/components/CustomerSignup.jsx';
+        import {ActivateAccount} from '/src/app/components/ActivateAccount.jsx';
         createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter,null,
-          React.createElement(AuthProvider,null,React.createElement(CustomerSignup))));`;
+          React.createElement(AuthProvider,null,React.createElement(Routes,null,
+            React.createElement(Route,{path:'/',element:React.createElement(CustomerSignup)}),
+            React.createElement(Route,{path:'/activate-account',element:React.createElement(ActivateAccount)}),
+            React.createElement(Route,{path:'/login',element:React.createElement('h1',null,'Sign in')})))));`;
     },
     configureServer(vite) { vite.middlewares.use((req, res, next) => {
       if (req.url !== "/__signup_test") return next();
@@ -57,15 +61,27 @@ try {
   page.setDefaultTimeout(10000);
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1"
     ? route.continue() : route.abort());
-  const errors = [], submissions = [], checks = [];
+  const errors = [], submissions = [], checks = [], activations = [];
   page.on("pageerror", error => { errors.push(error.message); console.error(error.stack); });
   await page.route("**/api/auth/register/**", async route => {
     const request = route.request();
     if (new URL(request.url()).pathname.endsWith("/profile")) {
       submissions.push(request.postDataJSON());
-      await route.fulfill({ status: 202, json: { deliveryStatus: "pending",
+      await route.fulfill({ status: 202, json: submissions.length > 1 ? {
+        verificationMethod: "otp", deliveryStatus: "sent", message: "Verification code sent!",
+        profile: { uid: "new-customer", email: "customer@gmail.com" },
+      } : { deliveryStatus: "pending",
         message: "Your account was created, but the activation email could not be sent. Request a new activation link.",
         profile: { uid: "new-customer", email: "customer@gmail.com" } } });
+    } else if (new URL(request.url()).pathname.endsWith("/activate")) {
+      const payload = request.postDataJSON();
+      activations.push(payload);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await route.fulfill(payload.otpCode === "012345"
+        ? { status: 200, json: { success: true, email: payload.email, message: "Email verified. Your account is active; you can now sign in." } }
+        : { status: 400, json: { message: "This verification code is invalid or expired." } });
+    } else if (new URL(request.url()).pathname.endsWith("/resend-verification")) {
+      await route.fulfill({ status: 503, json: { message: "Email delivery is unavailable. Please try again." } });
     } else {
       checks.push(request.postDataJSON());
       await route.fulfill({ status: 409, json: { message: "A stale pre-check must not block signup." } });
@@ -129,11 +145,24 @@ try {
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Agree and continue" }).click();
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "Your account was created" }).waitFor();
+  await page.getByRole("heading", { name: "Verify your email", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Request a new verification code" }).click();
+  await page.getByRole("status").filter({ hasText: "Email delivery is unavailable" }).waitFor();
+  await page.getByLabel("Verification code", { exact: true }).fill("999999");
+  await page.getByRole("button", { name: "Verify code", exact: true }).click();
+  await page.getByRole("status").filter({ hasText: "invalid or expired" }).waitFor();
+  await page.getByLabel("Verification code", { exact: true }).fill("012345");
+  await page.locator("form").first().evaluate(form => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  await page.getByRole("heading", { name: "Email verified", exact: true }).waitFor();
+  assert.equal(activations.length, 2, "Duplicate code verification must be prevented");
+  assert.deepEqual(activations[1], { email: "customer@gmail.com", otpCode: "012345" });
   assert.equal(submissions.length, 2);
   assert.equal(submissions[1].fullName, "test_customer", "A missing full name must use the username");
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log("PASS: signup submits the actual name or username fallback; matching passwords submit and genuine mismatches are blocked.");
+  console.log("PASS: signup validation, duplicate prevention, OTP navigation, delivery errors, invalid codes and successful activation.");
 } finally {
   await browser?.close();
   await server.close();

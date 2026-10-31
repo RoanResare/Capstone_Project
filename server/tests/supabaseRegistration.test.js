@@ -12,6 +12,7 @@ function loadRegistration(options = {}) {
   let authLookups = 0;
   let authDeleted = 0;
   let signupMetadata;
+  let profileLookups = 0;
   const db = {
     collection(name) {
       return { doc(id) { return { id, key: `${name}/${id}`,
@@ -53,12 +54,12 @@ function loadRegistration(options = {}) {
       generateSupabaseEmailLink: async (payload) => {
         signupMetadata = payload.userMetadata;
         authCreated += 1;
-        if (options.triggerProfile) records.set("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620", {
+        if (options.triggerProfile) records.set(`users/${options.generatedProfile?.profileDocId || "7caeb3fd-d955-49cb-a8d9-17f0e75d8620"}`, {
           uid: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com",
           role: "customer", accountStatus: "active", createdAt: new Date().toISOString(),
           ...options.triggerProfile,
         });
-        return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash" };
+        return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash", emailOtp: "012345" };
       },
       deleteSupabaseUser: async () => { authDeleted += 1; },
       verifySupabaseEmailToken: async (token, type) => {
@@ -66,13 +67,17 @@ function loadRegistration(options = {}) {
         if (options.invalidToken) throw new Error("Expired token");
         return { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com" } };
       },
+      verifySupabaseEmailCode: async (email, otpCode) => {
+        assert.equal(email, "customer@example.com");
+        if (options.providerError) throw options.providerError;
+        if (otpCode !== "012345") throw new Error("Invalid code");
+        return { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: options.verifiedEmail || email } };
+      },
     };
-    if (id === "../services/mail.service") return { sendEmailVerificationLink: async (payload) => {
+    if (id === "../services/mail.service") return { sendSignupVerificationCode: async (payload) => {
       if (options.mailError) throw options.mailError;
-      const link = new URL(payload.verificationLink);
-      assert.equal(link.origin, "https://clinic.example");
-      assert.equal(link.pathname, "/activate-account");
-      assert.equal(link.searchParams.get("token_hash"), "opaque-token-hash");
+      assert.equal(payload.otpCode, "012345");
+      assert.equal(payload.to, "customer@example.com");
       return { messageId: "mail-id" };
     } };
     if (id === "../services/phoneAccounts.service") return { findPhoneAccounts: async () => [], PHONE_ACCOUNT_LIMIT: 3, PHONE_ACCOUNT_LIMIT_MESSAGE: "Phone limit reached." };
@@ -80,7 +85,7 @@ function loadRegistration(options = {}) {
     if (id === "../utils/password") return { hashPassword: () => "scrypt-hash", assertStrongPassword: () => {} };
     if (id === "../services/user.service") return {
       assertValidUsername: (value) => value,
-      findUserByEmailCaseInsensitive: async () => options.profile || null,
+      findUserByEmailCaseInsensitive: async () => ++profileLookups === 1 ? options.profile || null : options.generatedProfile || null,
       getUsernameOwner: async () => options.usernameOwner || null,
       getUserByEmail: async () => records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620"),
     };
@@ -92,6 +97,7 @@ function loadRegistration(options = {}) {
     records, response, get authCreated() { return authCreated; }, get authDeleted() { return authDeleted; },
     get signupMetadata() { return signupMetadata; },
     activate: () => controller.exports.activateCustomerEmail({ body: { token_hash: "opaque-token-hash" } }, response),
+    verifyCode: (otpCode = "012345") => controller.exports.activateCustomerEmail({ body: { email: "customer@example.com", otpCode } }, response),
     resend: () => controller.exports.resendCustomerEmailVerification({ body: { email: "customer@example.com" } }, response),
     run: () => controller.exports.createCustomerProfile({ body: {
       fullName: "Survey Customer", email: "customer@example.com", username: "survey_customer",
@@ -156,12 +162,30 @@ test("registration accepts a fresh database Timestamp and nullable status withou
   assert.equal(fixture.authDeleted, 0);
 });
 
+test("fresh native profiles keep their document ID while linking and verifying the Auth UUID", async () => {
+  const authId = "7caeb3fd-d955-49cb-a8d9-17f0e75d8620";
+  const profileId = "native-profile-id";
+  const fixture = loadRegistration({
+    generatedProfile: { email: "customer@example.com", authUserId: authId, profileDocId: profileId, uid: profileId },
+    triggerProfile: { uid: profileId, authUserId: authId },
+  });
+  await fixture.run();
+  assert.equal(fixture.response.body.profile.uid, profileId);
+  assert.equal(fixture.records.has(`users/${authId}`), false);
+  assert.equal(fixture.records.get("usernames/survey_customer").uid, profileId);
+  await fixture.verifyCode();
+  const profile = fixture.records.get(`users/${profileId}`);
+  assert.equal(profile.authUserId, authId);
+  assert.equal(profile.accountStatus, "active");
+  assert.equal(fixture.authDeleted, 0);
+});
+
 test("mail failure reports a created pending account and preserves its identity and profile", async () => {
   const fixture = loadRegistration({ mailError: new Error("Mail unavailable") });
   await fixture.run();
   assert.equal(fixture.response.statusCode, 202);
   assert.equal(fixture.response.body.deliveryStatus, "pending");
-  assert.match(fixture.response.body.message, /account was created.*email could not be sent/);
+  assert.match(fixture.response.body.message, /account was created.*code could not be sent/);
   assert.equal(fixture.authDeleted, 0);
   assert.equal(fixture.authCreated, 1);
   assert.equal(fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620").accountStatus, "inactive");
@@ -178,6 +202,37 @@ test("valid activation links activate the matching pending account with database
   assert.equal(activated.emailVerified, true);
   assert.equal(activated.accountStatus, "active");
   assert.equal(activated.authUserId, activated.uid);
+});
+
+test("signup returns an OTP screen instruction without exposing the code or activation token", async () => {
+  const fixture = loadRegistration();
+  await fixture.run();
+  assert.equal(fixture.response.body.verificationMethod, "otp");
+  assert.equal(fixture.response.body.deliveryStatus, "sent");
+  assert.match(fixture.response.body.message, /Verification code sent/);
+  assert.ok(!JSON.stringify(fixture.response.body).includes("012345"));
+  assert.ok(!JSON.stringify(fixture.response.body).includes("opaque-token-hash"));
+  await fixture.verifyCode();
+  const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+  assert.equal(profile.emailVerified, true);
+  assert.equal(profile.verificationStatus, "verified");
+  assert.equal(profile.accountStatus, "active");
+});
+
+test("wrong codes and mismatched verification identities cannot activate the profile", async () => {
+  for (const options of [{}, { verifiedEmail: "other@example.com" }]) {
+    const fixture = loadRegistration(options);
+    await fixture.run();
+    await assert.rejects(fixture.verifyCode(options.verifiedEmail ? "012345" : "999999"), error => error.statusCode === 400);
+    assert.equal(fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620").emailVerified, false);
+  }
+});
+
+test("provider outages remain service errors rather than false invalid-code errors", async () => {
+  const failure = Object.assign(new Error("Provider unavailable"), { statusCode: 503 });
+  const fixture = loadRegistration({ providerError: failure });
+  await fixture.run();
+  await assert.rejects(fixture.verifyCode(), error => error === failure);
 });
 
 test("expired or malformed database expiry timestamps cannot activate an account", async () => {

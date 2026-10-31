@@ -157,7 +157,12 @@ async function generateSupabaseEmailLink({ email, type, password, userMetadata =
   const tokenHash = generated?.hashed_token || generated?.properties?.hashed_token;
   if (!tokenHash) throw new ApiError(503, "Supabase Auth did not generate an email verification challenge.");
   const user = generated.user || generated.data?.user || (generated.id ? generated : null);
-  return { tokenHash, user: user || null, actionLink: generated.action_link || generated.properties?.action_link || "" };
+  return { tokenHash, user: user || null, actionLink: generated.action_link || generated.properties?.action_link || "",
+    emailOtp: generated.email_otp || generated.properties?.email_otp || "" };
+}
+
+async function verifySupabaseEmailCode(email, token) {
+  return authRequest("/verify", { method: "POST", body: { email, token, type: "signup" } });
 }
 
 async function verifySupabaseEmailToken(tokenHash, type = "signup") {
@@ -225,6 +230,7 @@ module.exports = {
   updateSupabasePassword,
   updateSupabaseUser,
   verifySupabaseEmailToken,
+  verifySupabaseEmailCode,
   verifySupabaseAccessToken,
   verifySupabaseRecoveryToken,
 };

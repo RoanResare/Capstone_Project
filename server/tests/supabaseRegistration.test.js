@@ -156,6 +156,24 @@ test("registration completes the matching profile created by an Auth INSERT trig
   assert.equal(fixture.authDeleted, 0);
 });
 
+test("the corrected Auth trigger is side-effect-free and registration creates its own pending customer profile", async () => {
+  const triggerMigration = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/202611010001_disable_auth_profile_autoprovision.sql"), "utf8");
+  assert.match(triggerMigration, /CREATE OR REPLACE FUNCTION public\.handle_new_user\(\)[\s\S]*?RETURN NEW;/);
+  assert.doesNotMatch(triggerMigration, /INSERT\s+INTO\s+(?:public\.)?users/i);
+  assert.doesNotMatch(triggerMigration, /ELSE\s+'staff'/i);
+
+  // Supabase Auth creation no longer inserts a profile. The registration
+  // controller writes the sole profile with a customer role and pending state.
+  const fixture = loadRegistration();
+  await fixture.run();
+  const profiles = [...fixture.records.entries()].filter(([key]) => key.startsWith("users/"));
+  assert.equal(profiles.length, 1);
+  assert.equal(profiles[0][1].role, "customer");
+  assert.equal(profiles[0][1].accountStatus, "inactive");
+  assert.equal(profiles[0][1].verificationStatus, "pending");
+  assert.equal(profiles[0][1].authUserId, profiles[0][1].uid);
+});
+
 test("registration accepts a fresh database Timestamp and nullable status without erasing trigger metadata", async () => {
   const fixture = loadRegistration({ triggerProfile: {
     createdAt: Timestamp.now(), status: null, accountStatus: null, preservedMetadata: "keep",

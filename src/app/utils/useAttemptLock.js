@@ -9,16 +9,19 @@ export function useAttemptLock(scope, identity = "") {
   const until = lock.key === key ? lock.until : Number(readSessionStorageItem(key)) || 0;
   const secondsRemaining = Math.max(0, Math.ceil((until - now) / 1000));
   useEffect(() => {
-    if (!secondsRemaining) return;
+    if (!secondsRemaining) {
+      if (until && until <= Date.now()) writeSessionStorageItem(key, "");
+      return;
+    }
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [key, until, secondsRemaining > 0]);
   const applyLock = (result) => {
     if (result?.details?.code !== "AUTH_ATTEMPTS_LOCKED") return;
-    const deadline = Date.parse(result.details.lockedUntil);
-    if (!Number.isFinite(deadline)) return;
-    writeSessionStorageItem(key, String(deadline));
-    setLock({ key, until: deadline });
+    const serverDeadline = Date.parse(result.details.lockedUntil);
+    if (!Number.isFinite(serverDeadline)) return;
+    writeSessionStorageItem(key, String(serverDeadline));
+    setLock({ key, until: serverDeadline });
     setNow(Date.now());
   };
   return { secondsRemaining, applyLock };

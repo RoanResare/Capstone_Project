@@ -44,10 +44,11 @@ function fixture() {
       return result;
     },
   };
-  const user = { uid: "actor", email: "actor@example.com", role: "admin", accountStatus: "active", passwordHash: hashPassword("Own!Password") };
+  const user = { uid: "actor", authUserId: "actor", email: "actor@example.com", role: "admin", accountStatus: "active", passwordHash: hashPassword("Own!Password") };
   let providerCalls = 0, mutations = 0, providerError = null;
   const timestamp = date => ({ toDate: () => date });
   const mocks = {
+    "../config/postgresDatabase": { db },
     "../config/firebaseAdmin": { db, admin: { firestore: { Timestamp: { now: () => timestamp(new TestDate()), fromDate: timestamp } } } },
     "../utils/ApiError": { ApiError }, "../utils/setupGuard": { assertAuthSetupReady() {} },
     "../config/env": { env: { nodeEnv: "production", otp: { ttlMinutes: 5, maxAttempts: 5, codeLength: 6, resendCooldownSeconds: 0 } } },
@@ -61,11 +62,11 @@ function fixture() {
       updatePortalUser: async (uid, value) => { mutations++; return value; },
       deletePortalUser: async () => { mutations++; },
     },
-    "../services/firebaseAuth.service": { signInWithEmailAndPassword: async (email, password) => {
+    "../services/supabaseAuth.service": { signInWithSupabasePassword: async (email, password) => {
       providerCalls++;
       if (providerError) throw providerError;
-      if (password !== "Own!Password") throw new ApiError(401, "Invalid email or password.", { firebaseCode: "INVALID_LOGIN_CREDENTIALS" });
-      return { localId: user.uid };
+      if (password !== "Own!Password") throw new ApiError(401, "Invalid email, username, or password.", { code: "INVALID_LOGIN_CREDENTIALS", supabaseCode: "INVALID_LOGIN_CREDENTIALS" });
+      return { user: { id: user.authUserId, email: user.email, email_confirmed_at: "verified" } };
     } },
   };
   const loaded = {};
@@ -77,7 +78,15 @@ function fixture() {
         if (id.endsWith("authAttempts.service")) return loaded.attempts;
         if (id === "./authAttempts.service") return loaded.attempts;
         if (id === "../config/firebaseAdmin") return mocks[id];
+        if (id === "../config/postgresDatabase") return { db };
+        if (id === "../database/values") return { Timestamp: {
+          now: () => ({ toDate: () => new TestDate() }),
+          fromDate: date => ({ toDate: () => new TestDate(date.getTime()) }),
+        } };
         if (id === "../utils/otp") return { generateOtpCode: () => "123456", hashOtpCode: value => "hash:" + value };
+        if (id === "../services/supabaseAuth.service") return mocks[id];
+        if (id === "../services/phoneAccounts.service") return {};
+        if (id === "../services/sessionSecurity.service") return {};
         return mocks[id] || localRequire(id);
       } };
     vm.runInNewContext(fs.readFileSync(filename, "utf8") + extra, context, { filename });
@@ -97,14 +106,14 @@ function fixture() {
 
 const locked = error => error.statusCode === 429 && error.details.code === "AUTH_ATTEMPTS_LOCKED" && error.details.retryAfterSeconds > 0;
 
-test("five failed logins lock both username and email for five minutes, including correct credentials", async () => {
+test("five failed logins lock both username and email for exactly one minute, including correct credentials", async () => {
   const f = fixture();
   for (let i = 0; i < 4; i++) await assert.rejects(f.controller.checkCredentials(i % 2 ? "actor" : f.user.email, "wrong"), { statusCode: 401 });
   await assert.rejects(f.controller.checkCredentials("actor", "wrong"), locked);
   assert.equal(f.providerCalls(), 5);
   await assert.rejects(f.controller.checkCredentials(f.user.email, "Own!Password"), locked);
   assert.equal(f.providerCalls(), 5);
-  f.advance(299999);
+  f.advance(59999);
   await assert.rejects(f.controller.checkCredentials("actor", "Own!Password"), locked);
   f.advance(1);
   await f.controller.checkCredentials("actor", "Own!Password");
@@ -124,16 +133,21 @@ test("successful credentials reset consecutive failures; provider outages do not
 
 test("OTP failures accumulate across resends; lock blocks verification, resend, and fresh login until expiry", async () => {
   const f = fixture();
-  let challenge = await f.otp.createOtpVerification(f.user);
+  let challenge;
   const verify = code => f.otp.verifyOtpCode({ otpId: challenge.otpId, otpCode: code, user: f.user });
-  for (let i = 0; i < 3; i++) await assert.rejects(verify("wrong"), { statusCode: 400 });
+  for (let i = 0; i < 4; i++) {
+    challenge = await f.otp.createOtpVerification(f.user);
+    await assert.rejects(verify("wrong"), { statusCode: 400 });
+  }
   challenge = await f.otp.createOtpVerification(f.user);
-  await assert.rejects(verify("wrong"), { statusCode: 400 });
   await assert.rejects(verify("wrong"), locked);
   await assert.rejects(verify("123456"), locked);
   await assert.rejects(f.otp.createOtpVerification(f.user), locked);
-  await assert.rejects(f.controller.checkCredentials("actor", "Own!Password"), locked);
-  f.advance(300000);
+  await assert.rejects(f.assertAttemptsAllowed("otp", f.user.uid), locked);
+  await f.controller.checkCredentials("actor", "Own!Password");
+  f.advance(299999);
+  await assert.rejects(f.otp.createOtpVerification(f.user), locked);
+  f.advance(1);
   challenge = await f.otp.createOtpVerification(f.user);
   await verify("123456");
   await assert.rejects(verify("123456"), { statusCode: 409 });

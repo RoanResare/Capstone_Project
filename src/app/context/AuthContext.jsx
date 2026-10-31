@@ -630,7 +630,7 @@ export function AuthProvider({ children }) {
           error: "This login portal only accepts customer accounts.",
         };
       }
-      if (rememberDevice) rememberCustomerLogin(identifier.trim(), password);
+      if (rememberDevice) rememberCustomerLogin(identifier.trim());
       else clearRememberedCustomerLogin();
       setPendingOtp(null);
       setCurrentUser(hydratedSession.user);
@@ -757,7 +757,7 @@ export function AuthProvider({ children }) {
       const hydratedSession = await installFreshSupabaseSession(response.supabaseSession, rememberDevice);
 
       if (isCustomerRole(hydratedSession.user?.role)) {
-        if (rememberDevice) rememberCustomerLogin(identifier.trim(), password);
+        if (rememberDevice) rememberCustomerLogin(identifier.trim());
         else clearRememberedCustomerLogin();
       }
       setPendingOtp(null);

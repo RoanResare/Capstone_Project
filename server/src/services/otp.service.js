@@ -181,7 +181,8 @@ async function verifyOtpCode({ otpId, otpCode, user }) {
     const nextAttemptCount = Number(record.attemptCount || 0) + 1;
 
     if (hashOtpCode(otpCode) !== record.otpCode) {
-      const nextAttemptState = failedAttempt(attemptState);
+      const nextAttemptState = failedAttempt(attemptState, Date.now(), "otp");
+      nextAttemptState.scope = "otp";
       transaction.set(attemptsRef, nextAttemptState);
       const attemptsRemaining = Math.max(0, MAX_FAILED_ATTEMPTS - nextAttemptState.failures);
 

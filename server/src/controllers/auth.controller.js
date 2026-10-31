@@ -1,4 +1,4 @@
-const { assertAttemptsAllowed, recordFailedAttempt, resetAttempts, MAX_FAILED_ATTEMPTS } = require("../services/authAttempts.service");
+const { assertAttemptsAllowed, recordFailedAttempt, resetAttempts, attemptReference, lockError, MAX_FAILED_ATTEMPTS } = require("../services/authAttempts.service");
 const crypto = require("node:crypto");
 const { getAllowedClientOrigins } = require("../config/clientOrigins");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
@@ -587,7 +587,15 @@ async function verifyLoginCredentials(identifier, password) {
   try {
     email = await resolveEmailFromIdentifier(identifier);
   } catch (error) {
-    if (error.statusCode === 401) await recordFailedAttempt("login", identifier);
+    if (error.statusCode === 401) {
+      const remaining = await recordFailedAttempt("login", identifier);
+      if (remaining === 0) {
+        const state = await attemptReference("login", identifier).get();
+        throw lockError(state.data());
+      }
+      throw new ApiError(401, `Invalid email, username, or password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+        { code: "INVALID_LOGIN_CREDENTIALS", attemptsRemaining: remaining });
+    }
     throw error;
   }
   await assertAttemptsAllowed("login", email);
@@ -595,9 +603,14 @@ async function verifyLoginCredentials(identifier, password) {
   try {
     signInPayload = await signInWithSupabasePassword(email, password);
   } catch (error) {
-    if (["INVALID_PASSWORD", "INVALID_LOGIN_CREDENTIALS", "EMAIL_NOT_FOUND", "INVALID_CREDENTIALS"].includes(error.details?.supabaseCode)) {
+    if (error.statusCode === 401 || ["INVALID_PASSWORD", "INVALID_LOGIN_CREDENTIALS", "EMAIL_NOT_FOUND", "INVALID_CREDENTIALS"].includes(error.details?.supabaseCode)) {
       const remaining = await recordFailedAttempt("login", email);
-      error.message += ' ' + remaining + ' attempt' + (remaining === 1 ? '' : 's') + ' remaining.';
+      if (remaining === 0) {
+        const state = await attemptReference("login", email).get();
+        throw lockError(state.data());
+      }
+      throw new ApiError(401, `Invalid email, username, or password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+        { code: "INVALID_LOGIN_CREDENTIALS", attemptsRemaining: remaining });
     }
     throw error;
   }

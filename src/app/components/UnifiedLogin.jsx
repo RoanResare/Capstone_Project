@@ -42,6 +42,7 @@ export function UnifiedLogin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
+  const formatLockCountdown = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const [showTerms, setShowTerms] = useState(false);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
@@ -150,8 +151,8 @@ export function UnifiedLogin() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
-            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Try again in {lockSeconds} seconds.</p>}
+          <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Login temporarily restricted. Try again in {formatLockCountdown(lockSeconds)}.</p>}
             {supabaseConfigError && (
               <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-2.5 text-sm text-[#8A6410]">
                 Supabase setup is incomplete. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable login.
@@ -170,7 +171,7 @@ export function UnifiedLogin() {
               <input
                 name="identifier"
                 value={form.identifier}
-                autoComplete="off"
+                autoComplete="username"
                 onChange={updateField("identifier")}
                 disabled={isSubmitting || lockSeconds > 0}
                 className={`w-full rounded-lg border px-4 py-2.5 outline-none transition focus:border-[#2D9B9B] ${
@@ -190,7 +191,7 @@ export function UnifiedLogin() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   value={form.password}
-                  autoComplete="new-password"
+                  autoComplete="current-password"
                   onChange={updateField("password")}
                   disabled={isSubmitting || lockSeconds > 0}
                   className={`w-full rounded-lg border px-4 py-2.5 pr-11 outline-none transition focus:border-[#2D9B9B] ${
@@ -226,12 +227,7 @@ export function UnifiedLogin() {
                     clearRememberedCustomerLogin();
                     setForm((current) => ({
                       ...current,
-                      password:
-                        remembered.status === "active" &&
-                        current.identifier.trim() === remembered.credentials.identifier &&
-                        current.password === remembered.credentials.password
-                          ? ""
-                          : current.password,
+                      password: "",
                       rememberDevice: false,
                     }));
                     return;

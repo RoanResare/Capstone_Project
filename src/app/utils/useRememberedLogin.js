@@ -29,7 +29,7 @@ export function useRememberedLogin(role, setForm, setFeedback, notify) {
     }
     setForm((current) => ({ ...current,
       identifier: current.identifier || remembered.credentials.identifier,
-      password: current.password || remembered.credentials.password,
+      password: current.password,
       rememberDevice: true }));
     const timeout = window.setTimeout(expire, remembered.credentials.expiresAt - Date.now());
     return () => window.clearTimeout(timeout);

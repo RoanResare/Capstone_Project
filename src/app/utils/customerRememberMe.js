@@ -26,18 +26,16 @@ function normalizeCredentialRecord(record) {
   }
 
   const identifier = typeof record.identifier === "string" ? record.identifier : "";
-  const password = typeof record.password === "string" ? record.password : "";
   const expiresAt = Number(record.expiresAt || 0);
   const rememberConsent = record.rememberConsent === true;
   const expired = record.expired === true && expiresAt <= now();
 
-  if (!identifier.trim() || !Number.isFinite(expiresAt) || (!expired && (!password || !rememberConsent))) {
+  if (!identifier.trim() || !Number.isFinite(expiresAt) || (!expired && !rememberConsent)) {
     return null;
   }
 
   return {
     identifier,
-    password,
     rememberConsent,
     savedAt: Number(record.savedAt || 0) || now(),
     expiresAt,
@@ -81,11 +79,10 @@ export function readRememberedCustomerLogin() {
   }
 }
 
-export function rememberCustomerLogin(identifier, password) {
+export function rememberCustomerLogin(identifier) {
   const normalizedIdentifier = typeof identifier === "string" ? identifier.trim() : "";
-  const normalizedPassword = typeof password === "string" ? password : "";
 
-  if (!normalizedIdentifier || !normalizedPassword) {
+  if (!normalizedIdentifier) {
     clearRememberedCustomerLogin();
     return false;
   }
@@ -98,7 +95,6 @@ export function rememberCustomerLogin(identifier, password) {
     CUSTOMER_REMEMBER_ME_KEY,
     JSON.stringify({
       identifier: normalizedIdentifier,
-      password: normalizedPassword,
       rememberConsent: true,
       savedAt,
       expiresAt,

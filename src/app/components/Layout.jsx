@@ -109,13 +109,13 @@ export function Layout() {
   };
 
   const desktopScrollButtonClassName =
-    "rounded-lg px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/10";
+    "ui-hover-lift rounded-lg px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-white/10";
   const desktopRouteLinkClassName = ({ isActive }) =>
-    `rounded-lg px-3 py-2 text-sm font-semibold text-white transition-all duration-200 ${
+    `ui-hover-lift rounded-lg px-3 py-2 text-sm font-semibold text-white transition-all duration-200 ${
       isActive ? "bg-white/16 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]" : "hover:bg-white/10"
     }`;
   const mobileLinkClassName = ({ isActive }) =>
-    `block rounded-xl px-4 py-2.5 text-base font-semibold text-white transition-all duration-200 ${
+    `ui-hover-lift block rounded-xl px-4 py-2.5 text-base font-semibold text-white transition-all duration-200 ${
       isActive ? "bg-white/16 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]" : "hover:bg-white/10"
     }`;
 

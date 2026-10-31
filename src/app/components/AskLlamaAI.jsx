@@ -411,7 +411,7 @@ export function AskLlamaAI() {
                     submitMessage(draft);
                   }}
                 >
-                  <div className="flex items-center gap-3 rounded-[26px] border border-[#D8E6E6] bg-[#FCFEFE] px-4 py-2 transition focus-within:border-[#2D9B9B] focus-within:shadow-[0_0_0_4px_rgba(45,155,155,0.12)]">
+                  <div className="charming-assistant-composer flex items-center gap-2 rounded-[26px] border border-[#D8E6E6] bg-[#FCFEFE] px-3 py-2 transition-colors duration-150 sm:gap-3 sm:px-4">
                     <textarea
                       ref={inputRef}
                       rows={1}
@@ -425,13 +425,13 @@ export function AskLlamaAI() {
                       }}
                       placeholder="Ask about services, prices, booking, or clinic hours"
                       aria-label="Message to Charming Assistant"
-                      className="block min-h-[24px] max-h-[120px] min-w-0 flex-1 resize-none border-0 bg-transparent p-0 text-base leading-6 text-[#27484E] outline-none placeholder:text-[#627E83] sm:text-sm"
+                      className="charming-assistant-input block min-h-[24px] max-h-[120px] flex-1 resize-none p-0 text-base leading-6 text-[#27484E] placeholder:text-[#627E83] sm:text-sm"
                     />
 
                     <button
                       type="submit"
                       disabled={isLoading || !draft.trim()}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#173E44] text-white shadow-[0_18px_35px_rgba(23,62,68,0.2)] transition hover:scale-[1.02] hover:bg-[#1F5159] disabled:cursor-not-allowed disabled:opacity-70"
+                      className="ui-hover-lift inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#173E44] text-white shadow-[0_18px_35px_rgba(23,62,68,0.2)] hover:bg-[#1F5159] disabled:cursor-not-allowed disabled:opacity-70"
                       aria-label="Send message to Charming Assistant"
                     >
                       {isLoading ? (
@@ -457,7 +457,7 @@ export function AskLlamaAI() {
         onClick={() => setIsOpen((current) => !current)}
         aria-expanded={isOpen}
         aria-controls={isOpen ? "charming-assistant-panel" : undefined}
-        className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-[#173E44] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(23,62,68,0.2)] transition hover:translate-y-[-1px] hover:bg-[#1F5159] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
+        className="ui-hover-lift pointer-events-auto inline-flex items-center gap-2 rounded-full bg-[#173E44] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(23,62,68,0.2)] hover:bg-[#1F5159] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
       >
         {isOpen ? <Bot size={16} /> : <MessageCircleMore size={16} />}
         Charming Assistant

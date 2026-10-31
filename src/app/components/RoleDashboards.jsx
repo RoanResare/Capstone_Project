@@ -24,7 +24,7 @@ function QuickLink({ to, icon: Icon, title, description }) {
   return (
     <Link
       to={to}
-      className="flex h-full flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FCFEFE] p-5 transition duration-200 hover:-translate-y-0.5 hover:border-[#BDD9D7] hover:shadow-[0_12px_26px_rgba(54,67,62,0.09)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
+      className="ui-hover-lift flex h-full flex-col rounded-[20px] border border-[#E6EFEE] bg-[#FCFEFE] p-5 hover:border-[#BDD9D7] hover:shadow-[0_12px_26px_rgba(54,67,62,0.09)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D9B9B]"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#EAF6F6] text-[#2D6B73]">
         <Icon size={22} />

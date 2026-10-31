@@ -67,7 +67,7 @@ function PortalNavLink({ module }) {
       to={module.id === "appointments" ? "/portal/appointments" : `/portal/${module.id}`}
       end
       className={({ isActive }) =>
-        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
+        `ui-hover-lift flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all ${
           isActive
             ? "bg-[#2D9B9B] text-white shadow-[0_12px_24px_rgba(45,155,155,0.25)]"
             : "text-[#365057] hover:bg-[#E9F3F3]"

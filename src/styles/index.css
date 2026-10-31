@@ -40,6 +40,39 @@ a[href]:active {
   transform: translateY(1px);
 }
 
+/* Opt-in lift for interactive surfaces; hover-only devices avoid stuck touch states. */
+.ui-hover-lift {
+  transition-property: transform, box-shadow, border-color, background-color, color;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-hover-lift:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+}
+
+.charming-assistant-composer {
+  min-width: 0;
+}
+
+.charming-assistant-composer:focus-within {
+  border-color: var(--brand-teal);
+  box-shadow: 0 0 0 3px rgba(45, 155, 155, 0.2);
+}
+
+.charming-assistant-input {
+  min-width: 0;
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

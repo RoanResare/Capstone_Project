@@ -258,6 +258,58 @@ try {
   assert.ok(assistantBounds.x >= 0 && assistantBounds.y >= 0
     && assistantBounds.x + assistantBounds.width <= 320 && assistantBounds.y + assistantBounds.height <= 568,
     "Floating assistant must remain within a short mobile viewport");
+  const composer = page.locator(".charming-assistant-composer");
+  const assistantInput = page.getByRole("textbox", { name: "Message to Charming Assistant" });
+  const sendButton = page.getByRole("button", { name: "Send message to Charming Assistant" });
+  for (const width of [320, 375, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    const composerBounds = await composer.boundingBox();
+    const inputBounds = await assistantInput.boundingBox();
+    const sendBounds = await sendButton.boundingBox();
+    assert.ok(composerBounds.x >= 0 && composerBounds.x + composerBounds.width <= width,
+      `Assistant composer must fit within ${width}px`);
+    assert.ok(inputBounds.x + inputBounds.width <= sendBounds.x,
+      `Assistant input text area must not overlap send button at ${width}px`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+      `Assistant must not overflow horizontally at ${width}px`);
+  }
+  await assistantInput.focus();
+  const focusedComposer = await composer.evaluate(element => ({
+    border: getComputedStyle(element).borderTopColor,
+    shadow: getComputedStyle(element).boxShadow,
+  }));
+  assert.notEqual(focusedComposer.border, "rgb(216, 230, 230)",
+    "Chat input focus is indicated by the composer border");
+  assert.notEqual(focusedComposer.shadow, "none", "Chat input focus is indicated by the composer ring");
+  const composerStyle = await composer.evaluate(element => getComputedStyle(element));
+  const inputStyle = await assistantInput.evaluate(element => getComputedStyle(element));
+  assert.equal(inputStyle.borderTopWidth, "0px", "Chat textarea has no conflicting inner border");
+  assert.equal(inputStyle.backgroundColor, "rgba(0, 0, 0, 0)", "Chat textarea uses the unified composer surface");
+  assert.notEqual(composerStyle.borderTopColor, inputStyle.borderTopColor,
+    "Composer group owns the focused border treatment");
+  const launcher = page.getByRole("button", { name: "Charming Assistant", exact: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.mouse.move(1200, 800);
+  const launcherBounds = await launcher.boundingBox();
+  await page.mouse.move(launcherBounds.x + launcherBounds.width / 2, launcherBounds.y + launcherBounds.height / 2);
+  await page.waitForTimeout(240);
+  const hoverTransform = await launcher.evaluate(element => getComputedStyle(element).transform);
+  assert.match(hoverTransform, /matrix\(1, 0, 0, 1, 0, -2\)/,
+    "Fine-pointer hover lifts the launcher by two pixels");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const reducedTransition = await launcher.evaluate(element => getComputedStyle(element).transitionDuration);
+  assert.ok(reducedTransition.split(",").every(duration => parseFloat(duration) <= 0.001),
+    "Reduced-motion preference disables hover transition duration");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await assistantInput.fill("Responsive composer test");
+  await sendButton.click();
+  await assistantInput.fill("Enter sends");
+  await assistantInput.press("Enter");
+  await assistantInput.fill("First line");
+  await assistantInput.press("Shift+Enter");
+  await assistantInput.pressSequentially("Second line");
+  assert.match(await assistantInput.inputValue(), /First line\nSecond line/,
+    "Shift+Enter remains a newline in the chatbot input");
   await page.getByRole("button", { name: "Close Charming Assistant" }).click();
   assert.deepEqual(errors, []);
   console.log("PASS chatbot positioning and accessible dialog open/close at 320x568; no page errors.");

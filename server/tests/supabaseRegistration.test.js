@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const Module = require("node:module");
+const { Timestamp } = require("../src/database/values");
 
 function loadRegistration(options = {}) {
   const records = new Map();
@@ -13,12 +14,15 @@ function loadRegistration(options = {}) {
   let signupMetadata;
   const db = {
     collection(name) {
-      return { doc(id) { return { id, key: `${name}/${id}` }; } };
+      return { doc(id) { return { id, key: `${name}/${id}`,
+        async update(value) { records.set(`${name}/${id}`, { ...records.get(`${name}/${id}`), ...value }); },
+      }; } };
     },
     async runTransaction(run) {
       await run({
         get: async (ref) => ({ exists: records.has(ref.key), data: () => records.get(ref.key) }),
-        set: (ref, value) => pendingWrites.push([ref.key, value]),
+        set: (ref, value, settings) => pendingWrites.push([ref.key, settings?.merge ? { ...records.get(ref.key), ...value } : value]),
+        update: (ref, value) => pendingWrites.push([ref.key, { ...records.get(ref.key), ...value }]),
         delete: (ref) => pendingWrites.push([ref.key, null]),
       });
       for (const [key, value] of pendingWrites.splice(0)) {
@@ -56,9 +60,21 @@ function loadRegistration(options = {}) {
         });
         return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash" };
       },
-      deleteSupabaseUser: async () => { authDeleted += 1; }, verifySupabaseEmailToken: async () => ({}),
+      deleteSupabaseUser: async () => { authDeleted += 1; },
+      verifySupabaseEmailToken: async (token, type) => {
+        assert.equal(token, "opaque-token-hash"); assert.equal(type, "signup");
+        if (options.invalidToken) throw new Error("Expired token");
+        return { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com" } };
+      },
     };
-    if (id === "../services/mail.service") return { sendEmailVerificationLink: async () => ({ messageId: "mail-id" }) };
+    if (id === "../services/mail.service") return { sendEmailVerificationLink: async (payload) => {
+      if (options.mailError) throw options.mailError;
+      const link = new URL(payload.verificationLink);
+      assert.equal(link.origin, "https://clinic.example");
+      assert.equal(link.pathname, "/activate-account");
+      assert.equal(link.searchParams.get("token_hash"), "opaque-token-hash");
+      return { messageId: "mail-id" };
+    } };
     if (id === "../services/phoneAccounts.service") return { findPhoneAccounts: async () => [], PHONE_ACCOUNT_LIMIT: 3, PHONE_ACCOUNT_LIMIT_MESSAGE: "Phone limit reached." };
     if (id === "../utils/phoneNumber") return { normalizePhilippineMobileNumber: (value) => value ? "+63 9940702702" : "", PH_MOBILE_ERROR: "Invalid phone." };
     if (id === "../utils/password") return { hashPassword: () => "scrypt-hash", assertStrongPassword: () => {} };
@@ -66,6 +82,7 @@ function loadRegistration(options = {}) {
       assertValidUsername: (value) => value,
       findUserByEmailCaseInsensitive: async () => options.profile || null,
       getUsernameOwner: async () => options.usernameOwner || null,
+      getUserByEmail: async () => records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620"),
     };
     return originalRequire(id);
   };
@@ -74,6 +91,8 @@ function loadRegistration(options = {}) {
   return {
     records, response, get authCreated() { return authCreated; }, get authDeleted() { return authDeleted; },
     get signupMetadata() { return signupMetadata; },
+    activate: () => controller.exports.activateCustomerEmail({ body: { token_hash: "opaque-token-hash" } }, response),
+    resend: () => controller.exports.resendCustomerEmailVerification({ body: { email: "customer@example.com" } }, response),
     run: () => controller.exports.createCustomerProfile({ body: {
       fullName: "Survey Customer", email: "customer@example.com", username: "survey_customer",
       phone: "+63 9940702702", password: "Valid!Pass123",
@@ -125,6 +144,66 @@ test("registration completes the matching profile created by an Auth INSERT trig
   assert.equal(profile.verificationStatus, "pending");
   assert.equal(profile.accountStatus, "inactive");
   assert.equal(fixture.authDeleted, 0);
+});
+
+test("registration accepts a fresh database Timestamp and nullable status without erasing trigger metadata", async () => {
+  const fixture = loadRegistration({ triggerProfile: {
+    createdAt: Timestamp.now(), status: null, accountStatus: null, preservedMetadata: "keep",
+  } });
+  await fixture.run();
+  assert.equal(fixture.response.statusCode, 202);
+  assert.equal(fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620").preservedMetadata, "keep");
+  assert.equal(fixture.authDeleted, 0);
+});
+
+test("mail failure reports a created pending account and preserves its identity and profile", async () => {
+  const fixture = loadRegistration({ mailError: new Error("Mail unavailable") });
+  await fixture.run();
+  assert.equal(fixture.response.statusCode, 202);
+  assert.equal(fixture.response.body.deliveryStatus, "pending");
+  assert.match(fixture.response.body.message, /account was created.*email could not be sent/);
+  assert.equal(fixture.authDeleted, 0);
+  assert.equal(fixture.authCreated, 1);
+  assert.equal(fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620").accountStatus, "inactive");
+});
+
+test("valid activation links activate the matching pending account with database timestamps", async () => {
+  const fixture = loadRegistration();
+  await fixture.run();
+  const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+  profile.verificationExpiresAt = Timestamp.fromDate(new Date(Date.now() + 60000));
+  await fixture.activate();
+  assert.equal(fixture.response.statusCode, 200);
+  const activated = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+  assert.equal(activated.emailVerified, true);
+  assert.equal(activated.accountStatus, "active");
+  assert.equal(activated.authUserId, activated.uid);
+});
+
+test("expired or malformed database expiry timestamps cannot activate an account", async () => {
+  for (const expiry of [Timestamp.fromDate(new Date(0)), undefined, "invalid"]) {
+    const fixture = loadRegistration();
+    await fixture.run();
+    const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+    profile.verificationExpiresAt = expiry;
+    await assert.rejects(fixture.activate(), error => error.statusCode === 400);
+    assert.equal(profile.accountStatus, "inactive");
+  }
+  const fixture = loadRegistration({ invalidToken: true });
+  await fixture.run();
+  await assert.rejects(fixture.activate(), error => error.statusCode === 400);
+});
+
+test("verification resend honors database Timestamp cooldown and sends a fresh link after it", async () => {
+  const fixture = loadRegistration();
+  await fixture.run();
+  const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
+  profile.verificationSentAt = Timestamp.now();
+  await assert.rejects(fixture.resend(), error => error.statusCode === 429);
+  profile.verificationSentAt = Timestamp.fromDate(new Date(Date.now() - 61000));
+  await fixture.resend();
+  assert.equal(fixture.response.body.deliveryStatus, "sent");
+  assert.equal(fixture.response.body.messageId, "mail-id");
 });
 
 test("conflicting, old or verified profiles are preserved when registration is rejected", async () => {

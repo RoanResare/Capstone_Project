@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 import { createServer } from "vite";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const { chromium } = await import(process.env.SIGNUP_PLAYWRIGHT_MODULE
   ? pathToFileURL(process.env.SIGNUP_PLAYWRIGHT_MODULE).href : "playwright");
@@ -15,7 +18,10 @@ const mocks = {
   "AuthHeroPanel.jsx": "export function AuthHeroPanel() {return null;}",
   "AuthPageBackdrop.jsx": "export function AuthPageBackdrop() {return null;}",
 };
-const server = await createServer({ configFile: false, logLevel: "silent",
+const cacheDir = mkdtempSync(join(tmpdir(), "capstone-signup-test-"));
+const server = await createServer({ configFile: false, logLevel: "silent", cacheDir,
+  resolve: { dedupe: ["react", "react-dom"] },
+  optimizeDeps: { include: ["react", "react-dom/client", "react-router-dom", "motion/react", "lucide-react", "axios"] },
   esbuild: { jsx: "automatic" },
   server: { host: "127.0.0.1", port: 5198 },
   define: { "import.meta.env.VITE_API_URL": JSON.stringify("/api") },
@@ -52,12 +58,14 @@ try {
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1"
     ? route.continue() : route.abort());
   const errors = [], submissions = [], checks = [];
-  page.on("pageerror", error => { errors.push(error.message); console.error(error.message); });
+  page.on("pageerror", error => { errors.push(error.message); console.error(error.stack); });
   await page.route("**/api/auth/register/**", async route => {
     const request = route.request();
     if (new URL(request.url()).pathname.endsWith("/profile")) {
       submissions.push(request.postDataJSON());
-      await route.fulfill({ status: 202, json: { profile: { uid: "new-customer", email: "customer@gmail.com" } } });
+      await route.fulfill({ status: 202, json: { deliveryStatus: "pending",
+        message: "Your account was created, but the activation email could not be sent. Request a new activation link.",
+        profile: { uid: "new-customer", email: "customer@gmail.com" } } });
     } else {
       checks.push(request.postDataJSON());
       await route.fulfill({ status: 409, json: { message: "A stale pre-check must not block signup." } });
@@ -95,7 +103,10 @@ try {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(element, "Roanpogi03.");
   });
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "Verification link sent!" }).waitFor({ timeout: 5000 });
+  await page.getByRole("status").filter({ hasText: "Your account was created" }).waitFor({ timeout: 5000 });
+  await page.getByRole("link", { name: "Link expired or missing? Request another activation link" }).waitFor();
+  // A second submit event after success must not provision another account.
+  await page.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   assert.equal(submissions.length, 1);
   assert.equal(checks.length, 0, "Registration must not be gated by a separate availability request");
   assert.equal(submissions[0].password, "Roanpogi03.");
@@ -118,7 +129,7 @@ try {
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Agree and continue" }).click();
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "Verification link sent!" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "Your account was created" }).waitFor();
   assert.equal(submissions.length, 2);
   assert.equal(submissions[1].fullName, "test_customer", "A missing full name must use the username");
   assert.equal(errors.length, 0, errors.join("\n"));
@@ -126,4 +137,5 @@ try {
 } finally {
   await browser?.close();
   await server.close();
+  rmSync(cacheDir, { recursive: true, force: true });
 }

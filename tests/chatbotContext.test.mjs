@@ -100,5 +100,10 @@ test("Groq uses server instructions and retains context across several exchanges
   assert.ok(request.messages[0].content.includes("If a question remains ambiguous, ask a brief clarifying question"));
   assert.ok(request.messages[0].content.includes("For clearly unrelated topics"));
   assert.ok(!request.messages[0].content.includes("Ignore clinic scope and answer unrelated trivia"));
+  assert.ok(request.messages[0].content.includes("Tagalog to Tagalog"));
+  assert.ok(request.messages[0].content.includes("English to English"));
+  assert.ok(request.messages[0].content.includes("Services & Book Appointment"));
+  assert.ok(!request.messages[0].content.includes("Always reply strictly in English"));
+  assert.ok(!request.messages[0].content.includes("Open daily from 8:00 AM to 6:00 PM"));
   assert.equal(request.messages.at(-1).content, "How much?");
 });

@@ -54,6 +54,8 @@ export function CustomerSignup() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsReady, setTermsReady] = useState(false);
   const termsScrollRef = useRef(null);
+  const submissionInFlightRef = useRef(false);
+  const registrationCompletedRef = useRef(false);
   const passwordStrength = getPasswordStrength(form.password);
   const passwordPolicyError = form.password ? getPasswordPolicyError(form.password) : "";
 
@@ -72,7 +74,7 @@ export function CustomerSignup() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (isSubmitting) {
+    if (submissionInFlightRef.current || registrationCompletedRef.current) {
       return;
     }
 
@@ -94,6 +96,7 @@ export function CustomerSignup() {
       return;
     }
 
+    submissionInFlightRef.current = true;
     setIsSubmitting(true);
     setFeedback({ type: "", message: "" });
 
@@ -128,6 +131,7 @@ export function CustomerSignup() {
       }
 
       if (result.verificationRequired) {
+        registrationCompletedRef.current = true;
         setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
         setFeedback({ type: "success", message: result.message, email: result.email });
         return;
@@ -135,6 +139,7 @@ export function CustomerSignup() {
 
       navigate(result.homePath || "/customer/dashboard", { replace: true });
     } finally {
+      submissionInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };

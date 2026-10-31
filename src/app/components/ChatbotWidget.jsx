@@ -1,62 +1,13 @@
 import { useRef, useState } from "react";
 import { Bot, Languages, SendHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
-  chatbotKnowledgeBase,
   chatbotSuggestionChips,
 } from "../data/systemData.js";
 import { useApp } from "../context/AppContext.jsx";
 import {
-  BLOCKED_CUSTOMER_MESSAGE,
-  isBlockedCustomerMessage,
+  askGroqAssistant,
 } from "../../services/groq.js";
-
-function normalizeValue(value = "") {
-  return value.trim().toLowerCase();
-}
-
-function detectLanguage(message) {
-  const lookup = normalizeValue(message);
-  const tagalogHints = [
-    "ano",
-    "magkano",
-    "oras",
-    "paano",
-    "kailan",
-    "serbisyo",
-    "bukas",
-    "pwede",
-  ];
-
-  return tagalogHints.some((word) => lookup.includes(word)) ? "tl" : "en";
-}
-
-function resolveChatReply(message) {
-  const language = detectLanguage(message);
-
-  const lookup = normalizeValue(message);
-  const topic = chatbotKnowledgeBase.find((entry) =>
-    entry.keywords.some((keyword) => lookup.includes(keyword)),
-  );
-
-  if (!topic) {
-    return {
-      recognized: false,
-      language,
-      topic: "unrecognized",
-      answer:
-        language === "tl"
-          ? "Hindi ko pa maintindihan ang tanong na iyon. Subukang magtanong tungkol sa services, presyo, appointments, policies, o clinic hours."
-          : "I could not understand that question yet. Try asking about services, pricing, appointments, policies, or clinic hours.",
-    };
-  }
-
-  return {
-    recognized: true,
-    language,
-    topic: topic.id,
-    answer: language === "tl" ? topic.answerTl : topic.answerEn,
-  };
-}
 
 function ChatBubble({ from, children }) {
   const isUser = from === "user";
@@ -80,6 +31,8 @@ export function ChatbotWidget({ surface = "home" }) {
   const { logChatbotInquiry } = useApp();
   const [draft, setDraft] = useState("");
   const lastSubmissionRef = useRef({ message: "", at: 0 });
+  const requestInFlightRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: "assistant-intro",
@@ -89,7 +42,7 @@ export function ChatbotWidget({ surface = "home" }) {
     },
   ]);
 
-  const isSubmitDisabled = !draft.trim();
+  const isSubmitDisabled = isLoading || !draft.trim();
 
   const isDuplicateSubmission = (message) => {
     const now = Date.now();
@@ -104,9 +57,9 @@ export function ChatbotWidget({ surface = "home" }) {
     return false;
   };
 
-  const submitInquiry = (message) => {
+  const submitInquiry = async (message) => {
     const cleanMessage = message.trim();
-    if (!cleanMessage) {
+    if (!cleanMessage || requestInFlightRef.current) {
       return;
     }
 
@@ -114,41 +67,39 @@ export function ChatbotWidget({ surface = "home" }) {
       return;
     }
 
-    if (isBlockedCustomerMessage(cleanMessage)) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: `assistant-${Date.now()}`,
-          from: "assistant",
-          content: BLOCKED_CUSTOMER_MESSAGE,
-        },
-      ]);
-      setDraft("");
-      return;
-    }
-
-    const reply = resolveChatReply(cleanMessage);
+    requestInFlightRef.current = true;
+    setIsLoading(true);
+    const history = messages.slice(1).map(({ from, content }) => ({
+      role: from === "user" ? "user" : "assistant", content,
+    }));
     const userMessage = {
       id: `user-${Date.now()}`,
       from: "user",
       content: cleanMessage,
     };
-    const assistantMessage = {
-      id: `assistant-${Date.now() + 1}`,
-      from: "assistant",
-      content: reply.answer,
-    };
-
-    setMessages((current) => [...current, userMessage, assistantMessage]);
-    setDraft("");   
-    logChatbotInquiry({
-      question: cleanMessage,
-      response: reply.answer,
-      recognized: reply.recognized,
-      language: reply.language,
-      topic: reply.topic,
-      source: surface,
-    });
+    setMessages((current) => [...current, userMessage]);
+    setDraft("");
+    try {
+      // The existing service owns timeouts and provider-unavailable fallbacks.
+      const reply = await askGroqAssistant({ message: cleanMessage, history });
+      setMessages((current) => [...current, {
+        id: `assistant-${Date.now()}`, from: "assistant", content: reply.answer,
+        bookingLink: /\b(book|booking|appointment|schedule|reserve|reservation|magpa|iskedyul)\b/i.test(cleanMessage),
+      }]);
+      logChatbotInquiry({
+        question: cleanMessage,
+        response: reply.answer,
+        recognized: reply.recognized,
+        language: reply.language,
+        topic: reply.topic,
+        provider: reply.provider,
+        model: reply.model || null,
+        source: surface,
+      });
+    } finally {
+      requestInFlightRef.current = false;
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -172,9 +123,15 @@ export function ChatbotWidget({ surface = "home" }) {
       <div className="mt-5 space-y-3 rounded-[26px] bg-[#FCFEFE] p-4">
         {messages.map((message) => (
           <ChatBubble key={message.id} from={message.from}>
-            {message.content}
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            {message.bookingLink && (
+              <Link to="/customer/dashboard?tab=services" className="mt-3 block font-semibold underline underline-offset-4">
+                Book an appointment
+              </Link>
+            )}
           </ChatBubble>
         ))}
+        {isLoading && <p role="status" className="text-sm text-[#607277]">Charming Assistant is thinking...</p>}
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -182,6 +139,7 @@ export function ChatbotWidget({ surface = "home" }) {
           <button
             key={chip}
             type="button"
+            disabled={isLoading}
             onClick={() => submitInquiry(chip)}
             className="rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-4 py-2 text-sm text-[#36555B] transition hover:border-[#2D9B9B] hover:text-[#2D6B73]"
           >

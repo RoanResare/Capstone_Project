@@ -16,6 +16,13 @@ const MAX_CODE_LENGTH = 4096;
 const normalizeEmail = (value = "") => String(value || "").trim().toLowerCase();
 const pendingVerificationMessage = (email) => `Verification link sent! Check ${email} for the activation link. It expires automatically.`;
 
+function timestampMillis(value) {
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (value == null || value === "") return NaN;
+  return new Date(value).getTime();
+}
+
 function buildAppVerificationLink(tokenHash, email) {
   if (!tokenHash) throw new ApiError(500, "The generated verification link is missing its activation token.");
   const link = new URL(env.auth.emailVerificationUrl);
@@ -78,7 +85,6 @@ async function createCustomerProfile(req, res) {
   const now = new Date().toISOString();
   const profileRef = db.collection("users").doc(uid);
   const usernameRef = db.collection("usernames").doc(username);
-  let profileCommitted = false;
   try {
     await db.runTransaction(async (transaction) => {
       const profile = await transaction.get(profileRef);
@@ -86,14 +92,14 @@ async function createCustomerProfile(req, res) {
       // Auth INSERT triggers may create a profile while generate_link runs.
       // Complete only a fresh, unverified customer row for this exact identity.
       const existing = profile.data() || {};
-      const createdAt = new Date(existing.createdAt).getTime();
+      const createdAt = timestampMillis(existing.createdAt);
       const triggerProfile = profile.exists && normalizeEmail(existing.email) === email
         && (existing.authUserId || existing.uid) === uid
         && (!existing.username || existing.username === username)
         && (!existing.role || existing.role === "customer")
         && existing.emailVerified !== true && existing.verificationStatus !== "verified"
-        && [undefined, "active", "inactive", "pending"].includes(existing.accountStatus)
-        && [undefined, "active", "inactive", "pending"].includes(existing.status)
+        && [undefined, null, "active", "inactive", "pending"].includes(existing.accountStatus)
+        && [undefined, null, "active", "inactive", "pending"].includes(existing.status)
         && Number.isFinite(createdAt) && createdAt >= signupStartedAt - 1000 && createdAt <= Date.now();
       if (profile.exists && !triggerProfile) throw new ApiError(409,
         "An existing profile conflicts with this registration. Sign in or contact the clinic to verify the account link.",
@@ -115,25 +121,13 @@ async function createCustomerProfile(req, res) {
         verificationStatus: "pending",
         registrationIp: registrationSecurity.registrationIp || "",
         verificationSentAt: now, verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), createdAt: now, updatedAt: now,
-      });
+      }, { merge: true });
       transaction.set(usernameRef, { uid, email, username, createdAt: now, updatedAt: now, verificationStatus: "pending" });
       if (phoneRef) transaction.set(phoneRef, { accountIds: [...phoneAccountIds, uid], updatedAt: now });
     });
-    profileCommitted = true;
-    await sendEmailVerificationLink({ to: email, fullName, verificationLink: buildAppVerificationLink(challenge.tokenHash, email) });
   } catch (error) {
-    if (profileCommitted) await db.runTransaction(async (transaction) => {
-      const profile = await transaction.get(profileRef);
-      const usernameDoc = await transaction.get(usernameRef);
-      const phoneRef = phone ? db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, "")) : null;
-      const lock = phoneRef ? await transaction.get(phoneRef) : null;
-      if (profile.exists && profile.data().authUserId === uid && normalizeEmail(profile.data().email) === email
-        && profile.data().verificationStatus === "pending") transaction.delete(profileRef);
-      if (usernameDoc.exists && usernameDoc.data().uid === uid) transaction.delete(usernameRef);
-      if (lock?.exists) transaction.set(phoneRef, { accountIds: (lock.data()?.accountIds || []).filter((accountId) => accountId !== uid), updatedAt: new Date().toISOString() });
-    }).catch(() => {});
     // Never delete an existing identity/profile when the transaction found a conflict.
-    if (profileCommitted || error?.statusCode !== 409) await deleteSupabaseUser(uid).catch(() => {});
+    if (error?.statusCode !== 409 && ![error?.code, error?.cause?.code, error?.originalError?.code].includes("23505")) await deleteSupabaseUser(uid).catch(() => {});
     if (error?.code === "23505" || error?.cause?.code === "23505" || error?.originalError?.code === "23505") {
       throw new ApiError(409, "An account with this email or username already exists.", {
         code: "REGISTRATION_IDENTITY_CONFLICT",
@@ -141,7 +135,17 @@ async function createCustomerProfile(req, res) {
     }
     throw error;
   }
-  return res.status(202).json({ success: true, message: pendingVerificationMessage(email), profile: {
+  let deliveryStatus = "sent";
+  try {
+    await sendEmailVerificationLink({ to: email, fullName, verificationLink: buildAppVerificationLink(challenge.tokenHash, email) });
+  } catch (_error) {
+    // Registration has committed. Preserve the pending account so the customer
+    // can retry email delivery instead of creating another identity.
+    deliveryStatus = "pending";
+  }
+  return res.status(202).json({ success: true, deliveryStatus,
+    message: deliveryStatus === "sent" ? pendingVerificationMessage(email)
+      : "Your account was created, but the activation email could not be sent. Wait one minute, then request a new activation link to verify your email before signing in.", profile: {
     uid, email, fullName, username, phone: phone || "", role: "customer", accountStatus: "inactive",
     status: "inactive", emailVerified: false, verificationStatus: "pending",
   } });
@@ -168,7 +172,8 @@ async function activatePendingProfile(uid, confirmationEmail) {
     const data = profile.data() || {};
     if (normalizeEmail(data.email) !== normalizeEmail(confirmationEmail)) throw new ApiError(400, "The activation link does not match this account.");
     if (data.verificationStatus !== "pending" || data.accountStatus !== "inactive") throw new ApiError(400, "This account is already activated or no longer awaiting verification.");
-    if (Date.parse(data.verificationExpiresAt || "") <= Date.now()) throw new ApiError(400, "This activation link has expired. Request a new one.");
+    const expiresAt = timestampMillis(data.verificationExpiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) throw new ApiError(400, "This activation link has expired. Request a new one.");
     const phone = profile.data()?.phone || "";
     if (phone) {
       const phoneRef = db.collection("phoneAccountLimits").doc(phone.replace(/\D/g, ""));
@@ -189,7 +194,7 @@ async function resendCustomerEmailVerification(req, res) {
   const profile = await getUserByEmail(email);
   const notSent = () => res.status(200).json({ success: true, deliveryStatus: "not_sent", message: "No activation email was sent. If your account still needs activation, contact the clinic for help." });
   if (!profile || profile.verificationStatus !== "pending" || profile.accountStatus !== "inactive") return notSent();
-  const sentAt = Date.parse(profile.verificationSentAt || "");
+  const sentAt = timestampMillis(profile.verificationSentAt);
   if (Number.isFinite(sentAt) && Date.now() - sentAt < VERIFICATION_RESEND_COOLDOWN_MS) throw new ApiError(429, "An activation email was sent recently. Please wait one minute before requesting another.", { code: "ACTIVATION_RESEND_COOLDOWN" });
   const { resolveCustomerFullName } = await import("../../../shared/customerName.mjs");
   const challenge = await generateSupabaseEmailLink({ email, type: "signup", userMetadata: {

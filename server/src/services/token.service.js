@@ -88,6 +88,19 @@ function signOtpTicket(user, otpId) {
   );
 }
 
+function signCustomerVerificationStatusToken(uid, nonce) {
+  return jwt.sign({ uid, nonce, type: "customer_verification_status" }, env.auth.jwtSecret, { expiresIn: "15m" });
+}
+
+function verifyCustomerVerificationStatusToken(token) {
+  try {
+    const payload = jwt.verify(token, env.auth.jwtSecret);
+    return payload?.type === "customer_verification_status" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 function verifyOtpTicket(token) {
   try {
     const payload = jwt.verify(token, env.auth.otpTicketSecret);
@@ -114,6 +127,8 @@ module.exports = {
   signAccessToken,
   signRememberDeviceToken,
   signOtpTicket,
+  signCustomerVerificationStatusToken,
+  verifyCustomerVerificationStatusToken,
   verifyAccessToken,
   verifyRememberDeviceToken,
   verifyOtpTicket,

@@ -49,17 +49,17 @@ function loadRegistration(options = {}) {
     if (id === "../services/supabaseAuth.service") return {
       findSupabaseUserByEmail: async () => {
         authLookups += 1;
-        return authLookups === 1 ? options.authUser || null : options.fallbackAuthUser || null;
+        return authLookups === 1 ? options.authUser || (options.existingPending ? { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com" } : null) : options.fallbackAuthUser || null;
       },
       generateSupabaseEmailLink: async (payload) => {
         signupMetadata = payload.userMetadata;
-        authCreated += 1;
+        if (!options.existingPending) authCreated += 1;
         if (options.triggerProfile) records.set(`users/${options.generatedProfile?.profileDocId || "7caeb3fd-d955-49cb-a8d9-17f0e75d8620"}`, {
           uid: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com",
           role: "customer", accountStatus: "active", createdAt: new Date().toISOString(),
           ...options.triggerProfile,
         });
-        return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash", emailOtp: "012345" };
+        return options.challenge || { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620" }, tokenHash: "opaque-token-hash", emailOtp: "012345", actionLink: "https://auth.example/verify?token_hash=opaque-token-hash" };
       },
       deleteSupabaseUser: async () => { authDeleted += 1; },
       verifySupabaseEmailToken: async (token, type) => {
@@ -74,10 +74,14 @@ function loadRegistration(options = {}) {
         return { user: { id: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: options.verifiedEmail || email } };
       },
     };
-    if (id === "../services/mail.service") return { sendSignupVerificationCode: async (payload) => {
+    if (id === "../services/token.service") return {
+      signCustomerVerificationStatusToken: (uid, nonce) => `status:${uid}:${nonce}`,
+      verifyCustomerVerificationStatusToken: (token) => token === "valid-status" ? { uid: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", nonce: "nonce" } : null,
+    };
+    if (id === "../services/mail.service") return { sendEmailVerificationLink: async (payload) => {
       if (options.mailError) throw options.mailError;
-      assert.equal(payload.otpCode, "012345");
       assert.equal(payload.to, "customer@example.com");
+      assert.match(payload.verificationLink, /token_hash=opaque-token-hash/);
       return { messageId: "mail-id" };
     } };
     if (id === "../services/phoneAccounts.service") return { findPhoneAccounts: async () => [], PHONE_ACCOUNT_LIMIT: 3, PHONE_ACCOUNT_LIMIT_MESSAGE: "Phone limit reached." };
@@ -204,12 +208,12 @@ test("valid activation links activate the matching pending account with database
   assert.equal(activated.authUserId, activated.uid);
 });
 
-test("signup returns an OTP screen instruction without exposing the code or activation token", async () => {
+test("signup returns a verification-link instruction without exposing the token hash", async () => {
   const fixture = loadRegistration();
   await fixture.run();
-  assert.equal(fixture.response.body.verificationMethod, "otp");
+  assert.equal(fixture.response.body.verificationMethod, "link");
   assert.equal(fixture.response.body.deliveryStatus, "sent");
-  assert.match(fixture.response.body.message, /Verification code sent/);
+  assert.match(fixture.response.body.message, /verification email/);
   assert.ok(!JSON.stringify(fixture.response.body).includes("012345"));
   assert.ok(!JSON.stringify(fixture.response.body).includes("opaque-token-hash"));
   await fixture.verifyCode();
@@ -217,6 +221,21 @@ test("signup returns an OTP screen instruction without exposing the code or acti
   assert.equal(profile.emailVerified, true);
   assert.equal(profile.verificationStatus, "verified");
   assert.equal(profile.accountStatus, "active");
+});
+
+test("a matching pending customer registration safely sends a new link without creating another identity", async () => {
+  const fixture = loadRegistration({ existingPending: true, profile: {
+    uid: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", profileDocId: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620",
+    authUserId: "7caeb3fd-d955-49cb-a8d9-17f0e75d8620", email: "customer@example.com", role: "customer",
+    accountStatus: "inactive", verificationStatus: "pending", emailVerified: false,
+    username: "survey_customer", phone: "+63 9940702702", verificationSentAt: new Date(Date.now() - 61000).toISOString(),
+  } });
+  await fixture.run();
+  assert.equal(fixture.response.statusCode, 202);
+  assert.equal(fixture.response.body.verificationMethod, "link");
+  assert.equal(fixture.response.body.deliveryStatus, "sent");
+  assert.equal(fixture.authCreated, 0);
+  assert.equal(fixture.authDeleted, 0);
 });
 
 test("wrong codes and mismatched verification identities cannot activate the profile", async () => {

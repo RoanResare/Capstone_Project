@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
 import { getPhoneSubscriberInput, normalizePhilippineMobileNumber, PH_MOBILE_ERROR } from "../utils/phoneNumber.js";
+import { checkCustomerVerificationStatus, resendCustomerEmailVerification } from "../services/authApi.js";
 
 function getPasswordStrength(password = "") {
   const checks = [
@@ -46,6 +47,8 @@ export function CustomerSignup() {
     confirmPassword: "",
   });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [verificationDialog, setVerificationDialog] = useState(null);
+  const [verificationAction, setVerificationAction] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -133,13 +136,10 @@ export function CustomerSignup() {
       if (result.verificationRequired) {
         registrationCompletedRef.current = true;
         setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
-        if (result.verificationMethod === "otp") {
-          navigate(`/activate-account?method=otp&email=${encodeURIComponent(result.email)}`, {
-            replace: true, state: { deliveryMessage: result.message, deliveryStatus: result.deliveryStatus },
-          });
-          return;
-        }
-        setFeedback({ type: "success", message: result.message, email: result.email });
+        setVerificationDialog({ email: result.email, statusChallenge: result.statusChallenge, deliveryStatus: result.deliveryStatus,
+          message: result.message, statusMessage: result.deliveryStatus === "sent"
+            ? "Verification email sent. Your account is waiting for email verification."
+            : "Your account is waiting for email verification. Email delivery did not complete; try resending shortly." });
         return;
       }
 
@@ -150,8 +150,61 @@ export function CustomerSignup() {
     }
   };
 
+  const handleVerificationStatus = async () => {
+    if (!verificationDialog?.statusChallenge || verificationAction) return;
+    setVerificationAction("checking");
+    try {
+      const result = await checkCustomerVerificationStatus(verificationDialog.statusChallenge);
+      if (result.status === "verified") {
+        navigate("/login?emailVerified=1", { replace: true });
+      } else {
+        setVerificationDialog((current) => ({ ...current,
+          statusMessage: "Your email is still awaiting verification. Open the verification email and follow its link before signing in." }));
+      }
+    } catch (error) {
+      setVerificationDialog((current) => ({ ...current, statusMessage: error.message || "Unable to check verification status right now." }));
+    } finally {
+      setVerificationAction("");
+    }
+  };
+
+  const handleVerificationResend = async () => {
+    if (!verificationDialog?.email || verificationAction) return;
+    setVerificationAction("resending");
+    try {
+      const result = await resendCustomerEmailVerification(verificationDialog.email);
+      setVerificationDialog((current) => ({ ...current, deliveryStatus: result.deliveryStatus,
+        statusMessage: result.deliveryStatus === "sent"
+          ? "A new verification email was sent. Your account is still pending until you follow its link."
+          : result.message || "No verification email was sent. Please wait and try again." }));
+    } catch (error) {
+      setVerificationDialog((current) => ({ ...current, statusMessage: error.message || "Unable to resend the verification email right now." }));
+    } finally {
+      setVerificationAction("");
+    }
+  };
+
   return (
     <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 lg:py-8">
+      {verificationDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#172C31]/60 px-4 py-6" role="presentation">
+          <section role="dialog" aria-modal="true" aria-labelledby="verify-email-title" className="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="verify-email-title" className="text-2xl font-extrabold text-[#07545A]">Verify Your Email</h2>
+                <p className="mt-3 text-sm leading-6 text-[#526B70]">We've sent a verification email to your email address. Please check your inbox and follow the instructions to activate your account.</p>
+              </div>
+              <button type="button" onClick={() => setVerificationDialog(null)} className="rounded-full p-2 text-[#607277] hover:bg-[#F3F8F8]" aria-label="Close verification dialog"><X size={19} /></button>
+            </div>
+            <p role="status" aria-live="polite" className={`mt-4 rounded-2xl px-4 py-3 text-sm ${verificationDialog.deliveryStatus === "sent" ? "bg-[#EAF7F7] text-[#2D6B73]" : "bg-[#FFF6E6] text-[#805A12]"}`}>{verificationDialog.statusMessage}</p>
+            <div className="mt-6 grid gap-3">
+              <a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white">Open Gmail</a>
+              <button type="button" onClick={handleVerificationStatus} disabled={Boolean(verificationAction)} className="min-h-12 rounded-2xl bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{verificationAction === "checking" ? "Checking..." : "I've Verified My Email / Continue to Login"}</button>
+              <button type="button" onClick={handleVerificationResend} disabled={Boolean(verificationAction)} className="min-h-12 rounded-2xl border border-[#D9E7E7] px-5 py-3 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">{verificationAction === "resending" ? "Resending..." : "Resend Verification Email"}</button>
+            </div>
+          </section>
+        </div>
+      )}
       <AuthPageBackdrop />
       <div className="relative z-10 mx-auto grid max-w-[1320px] items-start gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-6">
         <motion.div

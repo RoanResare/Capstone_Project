@@ -1,10 +1,12 @@
 const { db } = require("../config/postgresDatabase");
 const { env } = require("../config/env");
 const { ApiError } = require("../utils/ApiError");
+const { randomBytes } = require("node:crypto");
 const { validateRegistrationSecurity } = require("../services/registrationSecurity.service");
 const { validateAccessSecurity } = require("../services/sessionSecurity.service");
 const { generateSupabaseEmailLink, deleteSupabaseUser, verifySupabaseEmailToken, verifySupabaseEmailCode, findSupabaseUserByEmail } = require("../services/supabaseAuth.service");
-const { sendSignupVerificationCode } = require("../services/mail.service");
+const { signCustomerVerificationStatusToken, verifyCustomerVerificationStatusToken } = require("../services/token.service");
+const { sendEmailVerificationLink } = require("../services/mail.service");
 const { findPhoneAccounts, PHONE_ACCOUNT_LIMIT, PHONE_ACCOUNT_LIMIT_MESSAGE } = require("../services/phoneAccounts.service");
 const { normalizePhilippineMobileNumber, PH_MOBILE_ERROR } = require("../utils/phoneNumber");
 const { assertValidEmail } = require("../utils/emailValidation");
@@ -14,7 +16,7 @@ const { assertValidUsername, findUserByEmailCaseInsensitive, getUserByEmail, get
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_CODE_LENGTH = 4096;
 const normalizeEmail = (value = "") => String(value || "").trim().toLowerCase();
-const pendingVerificationMessage = (email) => `Verification code sent! Check ${email} and enter the code to activate your account.`;
+const pendingVerificationMessage = () => "We've sent a verification email to your email address. Please check your inbox and follow the instructions to activate your account.";
 
 function timestampMillis(value) {
   if (typeof value?.toMillis === "function") return value.toMillis();
@@ -23,13 +25,19 @@ function timestampMillis(value) {
   return new Date(value).getTime();
 }
 
-async function sendSignupCode(challenge, email, fullName) {
-  if (!/^\d{6,10}$/.test(String(challenge.emailOtp || ""))) {
-    throw new ApiError(503, "The signup verification code could not be generated.", { code: "SIGNUP_CODE_MISSING" });
+async function sendSignupLink(challenge, email, fullName) {
+  if (!challenge.actionLink) {
+    throw new ApiError(503, "Supabase Auth did not generate a verification link.", { code: "SIGNUP_LINK_MISSING" });
   }
-  // Supabase validates this challenge; Resend remains the email sender.
-  // Do not guess its provider-configured expiry or expose the code to the client.
-  return sendSignupVerificationCode({ to: email, fullName, otpCode: challenge.emailOtp });
+  const configuredUrl = new URL(env.auth.emailVerificationUrl);
+  const actionUrl = new URL(challenge.actionLink);
+  const tokenHash = challenge.tokenHash;
+  if (!tokenHash || tokenHash.length > MAX_CODE_LENGTH) {
+    throw new ApiError(503, "The signup verification link could not be generated.", { code: "SIGNUP_LINK_MISSING" });
+  }
+  const activationUrl = new URL(configuredUrl);
+  activationUrl.searchParams.set("token_hash", tokenHash);
+  return sendEmailVerificationLink({ to: email, fullName, verificationLink: activationUrl.toString() });
 }
 
 async function createCustomerProfile(req, res) {
@@ -51,12 +59,51 @@ async function createCustomerProfile(req, res) {
   catch (error) { throw new ApiError(400, error.message, { code: "INVALID_TEXT", fields: error.fields }); }
   if (!env.runtime.mailDeliveryReady) throw new ApiError(503, "Activation email delivery is not configured.", { code: "ACTIVATION_MAIL_NOT_CONFIGURED" });
   const storedEmailUser = await findUserByEmailCaseInsensitive(email);
-  if (storedEmailUser && normalizeEmail(storedEmailUser.email) === email) {
+  const authUser = await findSupabaseUserByEmail(email);
+  const storedEmailMatches = storedEmailUser && normalizeEmail(storedEmailUser.email) === email;
+  const authEmailMatches = authUser?.id && normalizeEmail(authUser.email) === email;
+  const existingPending = storedEmailMatches && authEmailMatches
+    && storedEmailUser.role === "customer"
+    && storedEmailUser.authUserId === authUser.id
+    && storedEmailUser.verificationStatus === "pending"
+    && storedEmailUser.accountStatus === "inactive"
+    && storedEmailUser.emailVerified !== true
+    && (!storedEmailUser.username || storedEmailUser.username === username);
+  if ((storedEmailMatches || authEmailMatches) && !existingPending) {
     throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
   }
-  const authUser = await findSupabaseUserByEmail(email);
-  if (authUser?.id && normalizeEmail(authUser.email) === email) {
-    throw new ApiError(409, "Email is already associated with another account.", { code: "REGISTRATION_EMAIL_EXISTS" });
+  if (existingPending) {
+    if (phone && storedEmailUser.phone && normalizePhilippineMobileNumber(storedEmailUser.phone) !== phone) {
+      throw new ApiError(409, "An existing pending registration uses different account details. Contact the clinic to verify the account link.", { code: "REGISTRATION_PENDING_PROFILE_CONFLICT" });
+    }
+    const pendingUsername = storedEmailUser.username || username;
+    if (pendingUsername !== username) {
+      throw new ApiError(409, "An existing pending registration uses a different username. Contact the clinic to verify the account link.", { code: "REGISTRATION_PENDING_PROFILE_CONFLICT" });
+    }
+    if ((storedEmailUser.authUserId || storedEmailUser.uid) !== authUser.id) {
+      throw new ApiError(409, "The pending profile is linked to a different authentication identity.", { code: "REGISTRATION_PROFILE_CONFLICT" });
+    }
+    if (Date.now() - timestampMillis(storedEmailUser.verificationSentAt) < VERIFICATION_RESEND_COOLDOWN_MS) {
+      return res.status(202).json({ success: true, deliveryStatus: "pending", verificationMethod: "link",
+        message: "Your account is awaiting email verification. Please check your inbox or request a new verification email shortly.",
+        statusChallenge: signCustomerVerificationStatusToken(authUser.id, randomBytes(24).toString("base64url")),
+        profile: { uid: storedEmailUser.uid, authUserId: authUser.id, email, role: "customer", accountStatus: "inactive", verificationStatus: "pending" } });
+    }
+    const challenge = await generateSupabaseEmailLink({ email, type: "signup", userMetadata: {
+      full_name: storedEmailUser.fullName || fullName, username: pendingUsername, phone: storedEmailUser.phone || "", role: "customer",
+    } });
+    if (challenge.user?.id && challenge.user.id !== authUser.id) {
+      throw new ApiError(409, "The verification identity does not match this pending account.", { code: "REGISTRATION_PROFILE_CONFLICT" });
+    }
+    const delivery = await sendSignupLink(challenge, email, storedEmailUser.fullName || fullName);
+    const now = new Date().toISOString();
+    try { await db.collection("users").doc(storedEmailUser.profileDocId || storedEmailUser.uid).update({ verificationSentAt: now,
+      verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), updatedAt: now }); }
+    catch (_error) { console.warn("[registration] Verification link sent but delivery metadata could not be updated."); }
+    return res.status(202).json({ success: true, deliveryStatus: "sent", verificationMethod: "link",
+      message: pendingVerificationMessage, messageId: delivery.messageId,
+      statusChallenge: signCustomerVerificationStatusToken(authUser.id, randomBytes(24).toString("base64url")),
+      profile: { uid: storedEmailUser.uid, authUserId: authUser.id, email, role: "customer", accountStatus: "inactive", verificationStatus: "pending" } });
   }
   const owner = await getUsernameOwner(username);
   if (owner) throw new ApiError(409, "That username is already in use.");
@@ -143,13 +190,14 @@ async function createCustomerProfile(req, res) {
   }
   let deliveryStatus = "sent";
   try {
-    await sendSignupCode(challenge, email, fullName);
+    await sendSignupLink(challenge, email, fullName);
   } catch (_error) {
     // Registration has committed. Preserve the pending account so the customer
     // can retry email delivery instead of creating another identity.
     deliveryStatus = "pending";
   }
-  return res.status(202).json({ success: true, deliveryStatus, verificationMethod: "otp",
+  return res.status(202).json({ success: true, deliveryStatus, verificationMethod: "link",
+    statusChallenge: signCustomerVerificationStatusToken(uid, randomBytes(24).toString("base64url")),
     message: deliveryStatus === "sent" ? pendingVerificationMessage(email)
       : "Your account was created, but the verification code could not be sent. Wait one minute, then request a new code before signing in.", profile: {
     uid: profileUid, authUserId: uid, email, fullName, username, phone: phone || "", role: "customer", accountStatus: "inactive",
@@ -158,6 +206,20 @@ async function createCustomerProfile(req, res) {
 }
 
 async function activateCustomerEmail(req, res) {
+  if (req.body?.statusOnly === true) {
+    const challengeToken = String(req.body?.statusChallenge || "");
+    const challenge = verifyCustomerVerificationStatusToken(challengeToken);
+    if (!challenge?.uid || !challenge.nonce) {
+      throw new ApiError(401, "The verification status session is invalid.");
+    }
+    if (!env.runtime.supabaseAdminReady || !db) throw new ApiError(503, "Customer verification status is unavailable right now.");
+    const profile = await require("../services/user.service").getUserByAuthId(challenge.uid);
+    if (profile?.role === "customer" && profile.verificationStatus === "verified"
+      && profile.emailVerified === true && profile.accountStatus === "active") {
+      return res.status(200).json({ success: true, status: "verified", message: "Your email is verified and your account is active." });
+    }
+    return res.status(200).json({ success: true, status: "pending", message: "Your email is still awaiting verification. Open the verification email to activate your account." });
+  }
   const emailInput = normalizeEmail(req.body?.email);
   const otpCode = String(req.body?.otpCode || "").trim();
   const tokenHash = String(req.body?.token_hash || req.body?.tokenHash || req.body?.oobCode || "").trim();
@@ -222,7 +284,7 @@ async function resendCustomerEmailVerification(req, res) {
     full_name: resolveCustomerFullName(profile), username: profile.username, role: "customer",
   } });
   if (challenge.user?.id && challenge.user.id !== (profile.authUserId || profile.uid)) throw new ApiError(409, "The verification identity does not match this account.");
-  const delivery = await sendSignupCode(challenge, email, profile.fullName || "");
+  const delivery = await sendSignupLink(challenge, email, profile.fullName || "");
   const now = new Date().toISOString();
   try {
     await db.collection("users").doc(profile.profileDocId || profile.uid).update({ verificationSentAt: now, verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), updatedAt: now });
@@ -230,7 +292,7 @@ async function resendCustomerEmailVerification(req, res) {
     // Delivery already succeeded; never tell the customer their email failed.
     console.warn("[registration] Verification code sent but delivery metadata could not be updated.");
   }
-  return res.status(200).json({ success: true, verificationMethod: "otp", deliveryStatus: "sent", messageId: delivery.messageId, message: "A new verification code has been sent. Check your inbox and spam folder." });
+  return res.status(200).json({ success: true, verificationMethod: "link", deliveryStatus: "sent", messageId: delivery.messageId, message: "A new verification email has been sent. Check your inbox and spam folder." });
 }
 
 module.exports = { activateCustomerEmail, createCustomerProfile, resendCustomerEmailVerification };

@@ -446,7 +446,7 @@ export function AuthProvider({ children }) {
 
     const previousSignupUid = auth.currentUser?.id || "";
     try {
-      const { profile, message, deliveryStatus, verificationMethod } = await signUpCustomerWithEmailPassword({
+      const { profile, message, deliveryStatus, verificationMethod, statusChallenge } = await signUpCustomerWithEmailPassword({
         fullName,
         email,
         password,
@@ -469,6 +469,7 @@ export function AuthProvider({ children }) {
         message: message || "Verification link sent! Please check your email inbox to activate your account.",
         deliveryStatus: deliveryStatus || "sent",
         verificationMethod: verificationMethod || "link",
+        statusChallenge,
       };
     } catch (error) {
       if ((auth.currentUser?.id || "") === previousSignupUid) {

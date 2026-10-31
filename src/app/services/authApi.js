@@ -130,6 +130,15 @@ export async function activateCustomerEmail(tokenHash, email = "", otpCode = "")
   }
 }
 
+export async function checkCustomerVerificationStatus(statusChallenge) {
+  try {
+    const response = await apiClient.post("/auth/register/activate", { statusChallenge, statusOnly: true });
+    return response.data;
+  } catch (error) {
+    throw createApiRequestError(error, "Unable to check your verification status right now.", "email-activation-status");
+  }
+}
+
 export async function resendCustomerEmailVerification(email) {
   try {
     const response = await apiClient.post("/auth/register/resend-verification", { email });

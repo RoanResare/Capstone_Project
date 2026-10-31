@@ -207,13 +207,13 @@ async function sendPasswordResetEmail({ to, fullName, resetLink }) {
   });
 }
 
-async function sendEmailVerificationLink({ to, fullName, verificationLink }) {
+async function sendEmailVerificationLink({ to, fullName, verificationLink, actionUrl = verificationLink }) {
   return deliverMail({
     type: "email-verification",
     to,
     subject: "Activate your Charming Fur-fection account",
-    html: buildEmailVerificationHtml({ fullName, verificationLink }),
-    text: `Activate your Charming Fur-fection account using this secure link: ${verificationLink}\nThis link expires automatically and can only be used once.`,
+    html: buildEmailVerificationHtml({ fullName, verificationLink: actionUrl }),
+    text: `Activate your Charming Fur-fection account using this secure link: ${actionUrl}\nThis link expires automatically and can only be used once.`,
   });
 }
 

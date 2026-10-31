@@ -5,9 +5,10 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { createRequire } = require("node:module");
 const { ApiError } = require("../src/utils/ApiError");
+const { errorHandler } = require("../src/middlewares/errorHandler");
 const { hashPassword } = require("../src/utils/password");
 
-function fixture() {
+function fixture(role = "admin") {
   let clock = Date.parse("2030-01-01T12:00:00Z");
   class TestDate extends Date {
     constructor(...args) { super(...(args.length ? args : [clock])); }
@@ -44,7 +45,7 @@ function fixture() {
       return result;
     },
   };
-  const user = { uid: "actor", authUserId: "actor", email: "actor@example.com", role: "admin", accountStatus: "active", passwordHash: hashPassword("Own!Password") };
+  const user = { uid: "actor", authUserId: "actor", email: "actor@example.com", role, accountStatus: "active", passwordHash: hashPassword("Own!Password") };
   let providerCalls = 0, mutations = 0, providerError = null;
   const timestamp = date => ({ toDate: () => date });
   const mocks = {
@@ -108,18 +109,51 @@ function fixture() {
 
 const locked = error => error.statusCode === 429 && error.details.code === "AUTH_ATTEMPTS_LOCKED" && error.details.retryAfterSeconds > 0;
 
-test("five failed logins lock both username and email for exactly one minute, including correct credentials", async () => {
-  const f = fixture();
-  for (let i = 0; i < 4; i++) await assert.rejects(f.controller.checkCredentials(i % 2 ? "actor" : f.user.email, "wrong"), { statusCode: 401 });
-  await assert.rejects(f.controller.checkCredentials("actor", "wrong"), locked);
-  assert.equal(f.providerCalls(), 5);
-  await assert.rejects(f.controller.checkCredentials(f.user.email, "Own!Password"), locked);
-  assert.equal(f.providerCalls(), 5);
-  f.advance(59999);
-  await assert.rejects(f.controller.checkCredentials("actor", "Own!Password"), locked);
-  f.advance(1);
-  await f.controller.checkCredentials("actor", "Own!Password");
-  await assert.rejects(f.controller.checkCredentials("actor", "wrong"), error => /4 attempts remaining/.test(error.message));
+test("HTTP auth errors preserve remaining attempts and server lock expiry in the JSON details", () => {
+  for (const [statusCode, message, details] of [
+    [401, "Invalid credentials. 3 attempts remaining.", { code: "INVALID_LOGIN_CREDENTIALS", attemptsRemaining: 3 }],
+    [429, "Too many failed attempts. Please try again in 60 seconds.", {
+      code: "AUTH_ATTEMPTS_LOCKED", attemptsRemaining: 0, retryAfterSeconds: 60,
+      lockedUntil: "2030-01-01T12:01:00.000Z", scope: "login",
+    }],
+  ]) {
+    const response = {};
+    const res = {
+      status(value) { response.statusCode = value; return this; },
+      json(value) { response.body = value; return this; },
+    };
+    errorHandler(new ApiError(statusCode, message, details), null, res, () => {});
+    assert.equal(response.statusCode, statusCode);
+    assert.equal(response.body.message, message);
+    assert.deepEqual(response.body.details, details);
+  }
+});
+
+test("customer, admin, and staff receive exact remaining attempts and a server-timed one-minute lockout", async () => {
+  for (const role of ["customer", "admin", "staff"]) {
+    const f = fixture(role);
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      const remaining = 5 - attempt;
+      await assert.rejects(f.controller.checkCredentials(attempt % 2 ? f.user.email : "actor", "wrong"), error =>
+        error.statusCode === 401
+          && error.details.code === "INVALID_LOGIN_CREDENTIALS"
+          && error.details.attemptsRemaining === remaining
+          && error.message === `Invalid credentials. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`);
+    }
+    await assert.rejects(f.controller.checkCredentials("actor", "wrong"), error =>
+      locked(error) && error.details.retryAfterSeconds === 60
+        && error.details.lockedUntil === "2030-01-01T12:01:00.000Z"
+        && error.message === "Too many failed attempts. Please try again in 60 seconds.");
+    assert.equal(f.providerCalls(), 5);
+    await assert.rejects(f.controller.checkCredentials(f.user.email, "Own!Password"), locked);
+    assert.equal(f.providerCalls(), 5);
+    f.advance(59999);
+    await assert.rejects(f.controller.checkCredentials("actor", "Own!Password"), locked);
+    f.advance(1);
+    await f.controller.checkCredentials("actor", "Own!Password");
+    await assert.rejects(f.controller.checkCredentials("actor", "wrong"), error =>
+      error.details.attemptsRemaining === 4 && /4 attempts remaining/.test(error.message));
+  }
 });
 
 test("successful credentials reset consecutive failures; provider outages do not increment them", async () => {

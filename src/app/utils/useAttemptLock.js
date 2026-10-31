@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { readSessionStorageItem, writeSessionStorageItem } from "./browserState.js";
+import { getAttemptLockSecondsRemaining, getServerLockDeadline } from "./attemptLockTime.js";
 
 // The server enforces the lock; this cache only keeps the countdown across refreshes.
 export function useAttemptLock(scope, identity = "") {
@@ -7,7 +8,7 @@ export function useAttemptLock(scope, identity = "") {
   const [now, setNow] = useState(() => Date.now());
   const [lock, setLock] = useState({ key, until: Number(readSessionStorageItem(key)) || 0 });
   const until = lock.key === key ? lock.until : Number(readSessionStorageItem(key)) || 0;
-  const secondsRemaining = Math.max(0, Math.ceil((until - now) / 1000));
+  const secondsRemaining = getAttemptLockSecondsRemaining(until, now);
   useEffect(() => {
     if (!secondsRemaining) {
       if (until && until <= Date.now()) writeSessionStorageItem(key, "");
@@ -17,9 +18,8 @@ export function useAttemptLock(scope, identity = "") {
     return () => window.clearInterval(timer);
   }, [key, until, secondsRemaining > 0]);
   const applyLock = (result) => {
-    if (result?.details?.code !== "AUTH_ATTEMPTS_LOCKED") return;
-    const serverDeadline = Date.parse(result.details.lockedUntil);
-    if (!Number.isFinite(serverDeadline)) return;
+    const serverDeadline = getServerLockDeadline(result);
+    if (!serverDeadline) return;
     writeSessionStorageItem(key, String(serverDeadline));
     setLock({ key, until: serverDeadline });
     setNow(Date.now());

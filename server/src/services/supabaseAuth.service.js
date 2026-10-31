@@ -63,7 +63,15 @@ async function signInWithSupabasePassword(email, password) {
     return session;
   } catch (error) {
     const code = String(error.details?.code || "").toLowerCase();
-    if (["invalid_credentials", "invalid_grant", "user_not_found"].includes(code)) {
+    const message = String(error.message || "").trim().toLowerCase();
+    const invalidCredentials = [
+      "invalid_credentials",
+      "invalid_grant",
+      "invalid_login",
+      "invalid_login_credentials",
+      "user_not_found",
+    ].includes(code) || /invalid (?:login )?credentials/.test(message);
+    if (invalidCredentials) {
       throw new ApiError(401, "Invalid email, username, or password.", {
         code: "INVALID_LOGIN_CREDENTIALS", supabaseCode: "INVALID_LOGIN_CREDENTIALS",
       });

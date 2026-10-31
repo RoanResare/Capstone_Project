@@ -6,6 +6,8 @@ import { Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
+import { getLoginAttemptFeedback } from "../utils/loginAttemptFeedback.js";
+import { formatAttemptLockCountdown } from "../utils/attemptLockTime.js";
 import { revokePortalTrustedDevice } from "../services/authApi.js";
 import {
   createAccessDeniedState,
@@ -51,7 +53,6 @@ export function RoleLoginPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
-  const formatLockCountdown = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const links = supportLinks(role);
   const expectedRole = normalizeRole(role);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
@@ -102,8 +103,10 @@ export function RoleLoginPage({
 
       if (!result.ok) {
         applyLock(result);
-        setFeedback({ type: "error", message: result.error });
-        showErrorToast(result.error);
+        setFeedback({
+          type: "error",
+          message: result.details?.code === "AUTH_ATTEMPTS_LOCKED" ? "" : getLoginAttemptFeedback(result),
+        });
         return;
       }
 
@@ -184,7 +187,7 @@ export function RoleLoginPage({
           className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(94,81,60,0.14)] md:p-8"
         >
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
-            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Login temporarily restricted. Try again in {formatLockCountdown(lockSeconds)}.</p>}
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Login temporarily restricted. Try again in {formatAttemptLockCountdown(lockSeconds)}.</p>}
             {supabaseConfigError && (
               <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
                 Supabase client setup is incomplete. The public site will still load, but complete

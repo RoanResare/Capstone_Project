@@ -11,6 +11,8 @@ import { useToast } from "../context/ToastContext.jsx";
 import { branchDetails } from "../data/systemData.js";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
+import { getLoginAttemptFeedback } from "../utils/loginAttemptFeedback.js";
+import { formatAttemptLockCountdown } from "../utils/attemptLockTime.js";
 import { revokePortalTrustedDevice } from "../services/authApi.js";
 import {
   clearRememberedCustomerLogin,
@@ -41,7 +43,6 @@ export function UnifiedLogin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
-  const formatLockCountdown = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
   const [showTerms, setShowTerms] = useState(false);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
@@ -103,8 +104,10 @@ export function UnifiedLogin() {
 
       if (!result.ok) {
         applyLock(result);
-        setFeedback({ type: "error", message: result.error });
-        showErrorToast(result.error);
+        setFeedback({
+          type: "error",
+          message: result.details?.code === "AUTH_ATTEMPTS_LOCKED" ? "" : getLoginAttemptFeedback(result),
+        });
         return;
       }
 
@@ -151,7 +154,7 @@ export function UnifiedLogin() {
           </div>
 
           <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
-            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Login temporarily restricted. Try again in {formatLockCountdown(lockSeconds)}.</p>}
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Login temporarily restricted. Try again in {formatAttemptLockCountdown(lockSeconds)}.</p>}
             {supabaseConfigError && (
               <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-2.5 text-sm text-[#8A6410]">
                 Supabase setup is incomplete. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable login.

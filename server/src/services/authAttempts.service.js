@@ -17,7 +17,7 @@ function lockError(state, now = Date.now()) {
   const retryAfterSeconds = Math.ceil((state.lockedUntil - now) / 1000);
   const scope = state.scope || "login";
   return new ApiError(429, scope === "login"
-    ? `Login temporarily restricted. Try again in ${retryAfterSeconds} seconds.`
+    ? `Too many failed attempts. Please try again in ${retryAfterSeconds} seconds.`
     : `Too many failed attempts. Try again in ${retryAfterSeconds} seconds.`, {
     code: "AUTH_ATTEMPTS_LOCKED", attemptsRemaining: 0, retryAfterSeconds,
     scope,

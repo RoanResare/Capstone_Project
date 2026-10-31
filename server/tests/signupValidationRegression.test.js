@@ -65,6 +65,14 @@ test("password Auth maps provider errors to clear security responses without tre
     await assert.rejects(service.signInWithSupabasePassword("user@gmail.com", "password"),
       error => error.statusCode === expectedStatus && error.details.code === expectedCode);
   }
+
+  const service = loadService("supabaseAuth.service.js", {
+    supabase: { url: "https://auth.example", anonKey: "test" },
+  }, async () => ({ ok: false, status: 400, json: async () => ({ message: "Invalid login credentials" }) }),
+  { console: { error() {} } });
+  await assert.rejects(service.signInWithSupabasePassword("user@gmail.com", "password"), error =>
+    error.statusCode === 401 && error.message === "Invalid email, username, or password."
+      && error.details.code === "INVALID_LOGIN_CREDENTIALS");
 });
 
 test("OTP session exchange never generates a magic link for an unverified or mismatched identity", async () => {

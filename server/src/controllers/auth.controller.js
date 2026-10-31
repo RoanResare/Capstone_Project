@@ -588,7 +588,7 @@ async function verifyLoginCredentials(identifier, password) {
         const state = await attemptReference("login", identifier).get();
         throw lockError(state.data());
       }
-      throw new ApiError(401, `Invalid email, username, or password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+      throw new ApiError(401, `Invalid credentials. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
         { code: "INVALID_LOGIN_CREDENTIALS", attemptsRemaining: remaining });
     }
     throw error;
@@ -604,7 +604,7 @@ async function verifyLoginCredentials(identifier, password) {
         const state = await attemptReference("login", email).get();
         throw lockError(state.data());
       }
-      throw new ApiError(401, `Invalid email, username, or password. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
+      throw new ApiError(401, `Invalid credentials. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`,
         { code: "INVALID_LOGIN_CREDENTIALS", attemptsRemaining: remaining });
     }
     throw error;

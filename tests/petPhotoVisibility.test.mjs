@@ -63,6 +63,14 @@ test("customer photo picker preserves optional photo preview and supports image 
   assert.match(upload, /accept="image\/jpeg,image\/png,image\/webp"/);
 });
 
+test("photo moderation cache uses the shared exported collection name", () => {
+  const context = readFileSync(new URL("../src/app/context/AppContext.jsx", import.meta.url), "utf8");
+  const schedule = readFileSync(new URL("../src/app/services/scheduleData.js", import.meta.url), "utf8");
+  assert.match(context, /COLLECTIONS,\s*\n\} from "\.\.\/services\/scheduleData\.js"/);
+  assert.match(schedule, /export const COLLECTIONS = \{/);
+  assert.equal((context.match(/COLLECTIONS\.photoModeration/g) || []).length, 2);
+});
+
 test("OTP page reuses the auth backdrop and retains its verify and resend handlers", () => {
   assert.match(otp, /import \{ AuthPageBackdrop \} from "\.\/AuthPageBackdrop\.jsx"/);
   assert.match(otp, /<AuthPageBackdrop \/>/);

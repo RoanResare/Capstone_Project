@@ -990,8 +990,8 @@ export function CustomerProfile() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-1 items-start gap-4 @min-[32rem]:grid-cols-[minmax(240px,280px)_minmax(0,1fr)] @min-[48rem]:grid-cols-[minmax(260px,320px)_minmax(0,1fr)]">
-                    <form onSubmit={savePet} className="min-w-0 rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input]:min-w-0 [&_select]:min-w-0 [&_textarea]:min-w-0">
+                  <div className="mt-5 grid min-w-0 grid-cols-1 items-start gap-4 @min-[32rem]:grid-cols-[minmax(0,17.5rem)_minmax(0,1fr)] @min-[48rem]:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+                    <form onSubmit={savePet} className="box-border w-full min-w-0 max-w-[28rem] rounded-[20px] bg-[#FBFDFC] p-4 sm:p-5 [&_input:not([type=file])]:box-border [&_input:not([type=file])]:w-full [&_input:not([type=file])]:max-w-full [&_input:not([type=file])]:min-w-0 [&_select]:box-border [&_select]:w-full [&_select]:max-w-full [&_select]:min-w-0 [&_textarea]:box-border [&_textarea]:w-full [&_textarea]:max-w-full [&_textarea]:min-w-0">
                       <div className="grid gap-4">
                         <input
                           name="petName"

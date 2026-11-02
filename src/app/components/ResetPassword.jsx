@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
+import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
 
 const passwordChecklist = [
   "At least 6 characters",
@@ -115,8 +116,9 @@ export function ResetPassword() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 sm:py-10 lg:py-18">
-      <div className="mx-auto grid w-full min-w-0 max-w-[1120px] items-start gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:gap-10">
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 sm:py-10 lg:py-18">
+      <AuthPageBackdrop />
+      <div className="relative z-10 mx-auto grid w-full min-w-0 max-w-[1120px] items-start gap-5 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] lg:gap-10">
         <motion.section
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}

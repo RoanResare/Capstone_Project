@@ -37,6 +37,7 @@ import {
   saveAvailabilitySlotDocument,
   savePetRecordDocument,
   savePhotoModerationDocument,
+  COLLECTIONS,
 } from "../services/scheduleData.js";
 import * as userApi from "../services/userApi.js";
 import { isPostgresEnabled } from "../services/database.js";

@@ -48,6 +48,26 @@ function png(red) {
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk("IHDR", header), chunk("IDAT", deflateSync(Buffer.from([0,red,0,0,255]))), chunk("IEND", Buffer.alloc(0))]);
 }
 
+async function assertPetLayoutFits(page, hasPhoto) {
+  for (const width of [320, 375, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const sizes = await page.evaluate(() => {
+      const form = document.querySelector("form");
+      const photo = form.querySelector('[aria-labelledby] > div');
+      const formRect = form.getBoundingClientRect();
+      const fields = [...form.querySelectorAll("input:not([type=file]), select, textarea")].map(field => field.getBoundingClientRect());
+      const actions = [...form.querySelectorAll("[aria-label*=Photo], button")].map(button => button.getBoundingClientRect());
+      return { viewport: innerWidth, document: document.documentElement.scrollWidth, form: formRect.width,
+        fieldsWithinForm: fields.every(rect => rect.left >= formRect.left && rect.right <= formRect.right + 1),
+        photoWithinForm: photo.getBoundingClientRect().right <= formRect.right + 1,
+        actionsWithinForm: actions.every(rect => rect.left >= formRect.left - 1 && rect.right <= formRect.right + 1) };
+    });
+    assert.ok(sizes.document <= sizes.viewport, `layout overflows horizontally at ${width}px: ${JSON.stringify(sizes)}`);
+    assert.ok(sizes.fieldsWithinForm && sizes.photoWithinForm && sizes.actionsWithinForm,
+      `pet fields or photo controls exceed the form at ${width}px (photo=${hasPhoto}): ${JSON.stringify(sizes)}`);
+  }
+}
+
 test("pet photo upload UI works at desktop and mobile sizes with validation and form preservation", async () => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(baseUrl, { waitUntil: "load", timeout: 10000 });
@@ -68,13 +88,26 @@ test("pet photo upload UI works at desktop and mobile sizes with validation and 
   assert.equal(await preview.evaluate(image => getComputedStyle(image).objectFit), "cover");
   assert.equal(await page.getByRole("button", { name: "Change Photo" }).isVisible(), true);
   const oldPhoto = await preview.getAttribute("src");
-  await input.setInputFiles({ name: "pet-replacement.png", mimeType: "image/png", buffer: png(25) });
+  const changePhoto = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Change Photo" }).click();
+  await (await changePhoto).setFiles({ name: "pet-replacement.png", mimeType: "image/png", buffer: png(25) });
   await page.waitForFunction(previous => document.querySelector('[alt="Milo photo preview"]')?.src !== previous, oldPhoto);
-  await page.getByRole("button", { name: "Save pet" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
   assert.equal(await page.locator("output").textContent(), "saved-with-photo", "valid photo saves with the pet profile");
+  await page.reload({ waitUntil: "load" });
+  await page.getByAltText("Milo photo preview").waitFor();
+  assert.equal(await page.locator("output").textContent(), "loaded-saved-pet", "saved pet photo reloads from the fixture record");
+  await assertPetLayoutFits(page, true);
+  const desktopScreenshot = join(outputDirectory, "pet-widget-desktop-uploaded.png");
+  await page.screenshot({ path: desktopScreenshot, fullPage: true });
+  await page.setViewportSize({ width: 320, height: 900 });
+  const mobileScreenshot = join(outputDirectory, "pet-widget-mobile-320-uploaded.png");
+  await page.screenshot({ path: mobileScreenshot, fullPage: true });
+  console.log(`Pet widget screenshots: ${desktopScreenshot} | ${mobileScreenshot}`);
   await page.getByRole("button", { name: "Remove Photo" }).click();
   assert.equal(await page.getByText("Add a Photo of Your Pet").isVisible(), true);
-  await page.getByRole("button", { name: "Save pet" }).click();
+  await assertPetLayoutFits(page, false);
+  await page.getByRole("button", { name: "Save changes" }).click();
   assert.equal(await page.locator("output").textContent(), "saved-without-photo", "pet saving still works without a photo");
 
   await input.setInputFiles({ name: "wrong-type.txt", mimeType: "text/plain", buffer: Buffer.from("not allowed") });
@@ -84,11 +117,6 @@ test("pet photo upload UI works at desktop and mobile sizes with validation and 
   assert.match(await page.getByRole("alert").textContent(), /corrupt|cannot be decoded/i);
   await input.setInputFiles({ name: "large.png", mimeType: "image/png", buffer: Buffer.alloc(1024 * 1024 + 1) });
   assert.match(await page.getByRole("alert").textContent(), /1 MB or smaller/i);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(100);
-  const sizes = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth, card: document.querySelector("main").getBoundingClientRect().width }));
-  assert.ok(sizes.document <= sizes.viewport, `mobile layout overflows horizontally: ${JSON.stringify(sizes)}`);
-  assert.ok(sizes.card <= sizes.viewport);
   await page.close();
 });
 

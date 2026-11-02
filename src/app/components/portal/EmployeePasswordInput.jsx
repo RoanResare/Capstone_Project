@@ -5,7 +5,7 @@ export function EmployeePasswordInput({ id, value = "", onChange, disabled = fal
   const [visible, setVisible] = useState(false);
   return (
     <div className="w-full min-w-0">
-      <label htmlFor={id} className="block text-sm font-medium text-[#425A60]">New password</label>
+      <label htmlFor={id} className="block text-sm font-medium text-[#425A60]">New Password</label>
       <div className="relative mt-2 w-full">
         <input id={id} autoFocus={autoFocus} required={required} type={visible ? "text" : "password"}
           autoComplete="new-password" value={value} onChange={event => onChange(event.target.value)} disabled={disabled}

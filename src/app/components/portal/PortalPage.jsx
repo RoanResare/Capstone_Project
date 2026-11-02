@@ -23,6 +23,8 @@ import {
   Trash2,
   X,
   UserRound,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
@@ -1694,6 +1696,10 @@ function ManageUsersWorkspace({
   const [pendingUserSave, setPendingUserSave] = useState(null);
   const [form, setForm] = useState(() => buildPortalUserForm());
   const [originalForm, setOriginalForm] = useState(() => buildPortalUserForm());
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
+  const [currentAdminPasswordError, setCurrentAdminPasswordError] = useState("");
+  const [showCurrentAdminPassword, setShowCurrentAdminPassword] = useState(false);
+  const currentAdminPasswordRef = useRef(null);
 
   const portalUsers = (Array.isArray(state.users) ? state.users : [])
     .filter((user) => user && ["admin", "staff"].includes(user.role))
@@ -1719,16 +1725,35 @@ function ManageUsersWorkspace({
         portalUsers[0] ||
         null;
 
+  const showCurrentAdminPasswordError = (message) => {
+    setPendingUserSave(null);
+    setPendingUserStatus(null);
+    setConfirmDelete(false);
+    setCurrentAdminPassword("");
+    setCurrentAdminPasswordError(message);
+    setFeedback({ type: "", message: "" });
+    requestAnimationFrame(() => currentAdminPasswordRef.current?.focus());
+  };
+
+  const requireCurrentAdminPassword = () => {
+    if (currentAdminPassword) return true;
+    setCurrentAdminPasswordError("Enter your own password to confirm these changes.");
+    currentAdminPasswordRef.current?.focus();
+    return false;
+  };
+
   const requestUserStatusChange = (user, status) => {
     if (isSaving || !user?.id || user.status === status) {
       return;
     }
 
+    if (!requireCurrentAdminPassword()) return;
+
     setPendingUserStatus({ user, status });
     setFeedback({ type: "", message: "" });
   };
 
-  const confirmUserStatusChange = async (currentPassword) => {
+  const confirmUserStatusChange = async () => {
     if (!pendingUserStatus || isSaving) {
       return;
     }
@@ -1738,11 +1763,17 @@ function ManageUsersWorkspace({
     setFeedback({ type: "", message: "" });
 
     try {
-      const result = await updateUser(user.id, { status, currentPassword });
+      const result = await updateUser(user.id, { status, currentPassword: currentAdminPassword });
       if (!result?.ok) {
+        const message = result?.error || "Unable to update employee status.";
+        if (/current password|password to confirm/i.test(message)) {
+          showCurrentAdminPasswordError(message);
+          return;
+        }
+        setPendingUserStatus(null);
         setFeedback({
           type: "error",
-          message: result?.error || "Unable to update employee status.",
+          message,
         });
         return;
       }
@@ -1750,6 +1781,8 @@ function ManageUsersWorkspace({
       const message = `${user.name} is now ${formatUserStatusLabel(status)}.`;
       setFeedback({ type: "success", message });
       setPendingUserStatus(null);
+      setCurrentAdminPassword("");
+      setCurrentAdminPasswordError("");
       toast.success(message);
     } finally {
       setIsSaving(false);
@@ -1761,6 +1794,9 @@ function ManageUsersWorkspace({
 
     setForm(nextForm);
     setOriginalForm(nextForm);
+    setCurrentAdminPassword("");
+    setCurrentAdminPasswordError("");
+    setShowCurrentAdminPassword(false);
     if (isCreatingNew) {
       setConfirmDelete(false);
       return;
@@ -1789,6 +1825,9 @@ function ManageUsersWorkspace({
     setFeedback({ type: "", message: "" });
     setPendingUserSave(null);
     setPendingUserStatus(null);
+    setCurrentAdminPassword("");
+    setCurrentAdminPasswordError("");
+    setShowCurrentAdminPassword(false);
   };
 
   const startNewUser = () => {
@@ -1843,13 +1882,23 @@ function ManageUsersWorkspace({
     }
 
     const payload = isCreatingNew ? fullPayload : buildChangedPortalUserPayload(fullPayload, originalForm);
+    const requiresCurrentPassword = isCreatingNew || Boolean(payload.password || payload.role || payload.status || payload.accountStatus || payload.fraudStatus);
+    if (requiresCurrentPassword && !currentAdminPassword) {
+      setCurrentAdminPasswordError("Enter your own password to confirm these changes.");
+      currentAdminPasswordRef.current?.focus();
+      return;
+    }
 
     setPendingUserSave({
       fullPayload,
       payload,
       mode: isCreatingNew ? "create" : "update",
       userId: selectedUser?.id || "",
+      employeeName: selectedUser?.name || fullPayload.name,
+      employeeEmail: selectedUser?.email || fullPayload.email,
+      requiresCurrentPassword,
     });
+    setCurrentAdminPasswordError("");
     setFeedback({ type: "", message: "" });
   };
 
@@ -1861,19 +1910,32 @@ function ManageUsersWorkspace({
     const passwordError = pendingUserSave.fullPayload.password
       ? getPasswordPolicyError(pendingUserSave.fullPayload.password.trim())
       : pendingUserSave.mode === "create" ? "A password is required for a new employee account." : "";
-    if (passwordError) { setFeedback({ type: "error", message: passwordError }); return; }
+    if (passwordError) {
+      setPendingUserSave(null);
+      setFeedback({ type: "error", message: passwordError });
+      return;
+    }
     setIsSaving(true);
     setFeedback({ type: "", message: "" });
 
     try {
       const result = pendingUserSave.mode === "create"
-        ? await createStaff(pendingUserSave.payload)
-        : await updateUser(pendingUserSave.userId, pendingUserSave.payload);
+        ? await createStaff({ ...pendingUserSave.payload, currentPassword: currentAdminPassword })
+        : await updateUser(pendingUserSave.userId, {
+            ...pendingUserSave.payload,
+            ...(pendingUserSave.requiresCurrentPassword ? { currentPassword: currentAdminPassword } : {}),
+          });
 
       if (!result?.ok) {
+        const message = result?.error || "Unable to save the employee account.";
+        if (/current password|password to confirm/i.test(message)) {
+          showCurrentAdminPasswordError(message);
+          return;
+        }
+        setPendingUserSave(null);
         setFeedback({
           type: "error",
-          message: result?.error || "Unable to save the employee account.",
+          message,
         });
         return;
       }
@@ -1900,6 +1962,8 @@ function ManageUsersWorkspace({
       setForm(savedForm);
       setOriginalForm(savedForm);
       setPendingUserSave(null);
+      setCurrentAdminPassword("");
+      setCurrentAdminPasswordError("");
       setFeedback({
         type: "success",
         message: successMessage,
@@ -1910,21 +1974,34 @@ function ManageUsersWorkspace({
     }
   };
 
-  const handleDelete = async (currentPassword) => {
+  const requestDeleteConfirmation = () => {
+    if (requireCurrentAdminPassword()) {
+      setFeedback({ type: "", message: "" });
+      setConfirmDelete(true);
+    }
+  };
+
+  const handleDelete = async () => {
     if (!selectedUser?.id) {
       return;
     }
 
-    if (isSaving || !currentPassword) return;
+    if (isSaving || !currentAdminPassword) return;
 
     setIsSaving(true);
 
     try {
-      const result = await deleteUser(selectedUser.id, currentPassword);
+      const result = await deleteUser(selectedUser.id, currentAdminPassword);
       if (!result?.ok) {
+        const message = result?.error || "Unable to delete the employee account.";
+        if (/current password|password to confirm/i.test(message)) {
+          showCurrentAdminPasswordError(message);
+          return;
+        }
+        setConfirmDelete(false);
         setFeedback({
           type: "error",
-          message: result?.error || "Unable to delete the employee account.",
+          message,
         });
         return;
       }
@@ -1944,6 +2021,8 @@ function ManageUsersWorkspace({
   };
 
   const resetForm = () => {
+    setCurrentAdminPassword("");
+    setCurrentAdminPasswordError("");
     if (isCreatingNew) {
       setForm(buildPortalUserForm());
       setFeedback({ type: "", message: "" });
@@ -2157,12 +2236,34 @@ function ManageUsersWorkspace({
                     ))}
                   </select>
                 </div>
-                {!isCreatingNew && (
-                  <div className="min-w-0 md:col-span-2">
-                    <EmployeePasswordInput id="employee-edit-password" value={form.password} disabled={isSaving}
-                      onChange={password => setForm(current => ({ ...current, password }))} />
-                  </div>
-                )}
+                <div className="min-w-0 md:col-span-2">
+                  <EmployeePasswordInput id={isCreatingNew ? "employee-create-password" : "employee-edit-password"}
+                    value={form.password} disabled={isSaving} required={isCreatingNew}
+                    onChange={password => setForm(current => ({ ...current, password }))} />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="current-admin-password" className="mb-2 block text-sm font-medium text-[#425A60]">Current Admin Password</label>
+                <div className="relative">
+                  <input ref={currentAdminPasswordRef} id="current-admin-password"
+                    type={showCurrentAdminPassword ? "text" : "password"} autoComplete="current-password"
+                    value={currentAdminPassword} onChange={event => {
+                      setCurrentAdminPassword(event.target.value);
+                      setCurrentAdminPasswordError("");
+                    }} disabled={isSaving}
+                    aria-invalid={Boolean(currentAdminPasswordError)}
+                    aria-describedby="current-admin-password-help current-admin-password-error"
+                    className="w-full rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 pr-12 text-sm outline-none transition focus:border-[#2D9B9B]" />
+                  <button type="button" aria-label={showCurrentAdminPassword ? "Hide current admin password" : "Show current admin password"}
+                    aria-controls="current-admin-password" aria-pressed={showCurrentAdminPassword}
+                    onClick={() => setShowCurrentAdminPassword(value => !value)} disabled={isSaving}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-[#607277] focus-visible:outline-2 focus-visible:outline-[#2D9B9B] disabled:opacity-60">
+                    {showCurrentAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p id="current-admin-password-help" className="mt-2 text-xs text-[#7A9297]">Enter your own password to confirm these changes.</p>
+                {currentAdminPasswordError && <p id="current-admin-password-error" role="alert" className="mt-2 rounded-lg bg-[#FBECEF] px-3 py-2 text-sm text-[#B23949]">{currentAdminPasswordError}</p>}
               </div>
 
               {!isCreatingNew && selectedUser && (
@@ -2211,7 +2312,7 @@ function ManageUsersWorkspace({
                 {!isCreatingNew && selectedUser && (
                   <button
                     type="button"
-                  onClick={() => { setFeedback({ type: "", message: "" }); setConfirmDelete(true); }}
+                  onClick={requestDeleteConfirmation}
                   disabled={isSaving}
                     className={`inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold ${
                       confirmDelete
@@ -2231,11 +2332,9 @@ function ManageUsersWorkspace({
 
               {confirmDelete && selectedUser && <EmployeeSaveConfirmation
                 pendingSave={{ mode: "delete", fullPayload: selectedUser }} isSaving={isSaving}
-                error={feedback.type === "error" ? feedback.message : ""}
                 onCancel={() => { setConfirmDelete(false); setFeedback({ type: "", message: "" }); }} onConfirm={handleDelete} />}
               {pendingUserStatus && <EmployeeSaveConfirmation
                 pendingSave={{ mode: "status", fullPayload: pendingUserStatus.user, status: pendingUserStatus.status }} isSaving={isSaving}
-                error={feedback.type === "error" ? feedback.message : ""}
                 onCancel={() => { setPendingUserStatus(null); setFeedback({ type: "", message: "" }); }} onConfirm={confirmUserStatusChange} />}
 
               {pendingUserSave && (
@@ -2243,18 +2342,6 @@ function ManageUsersWorkspace({
                   pendingSave={pendingUserSave}
                   isSaving={isSaving}
                   onCancel={() => setPendingUserSave(null)}
-                  error={feedback.type === "error" ? feedback.message : ""}
-                  onNewPasswordChange={password => {
-                    setForm(current => ({ ...current, password }));
-                    setPendingUserSave(current => {
-                      const payload = { ...current.payload };
-                      if (password) payload.password = password.trim();
-                      else if (current.mode === "create") payload.password = "";
-                      else delete payload.password;
-                      return { ...current, fullPayload: { ...current.fullPayload, password }, payload };
-                    });
-                    setFeedback({ type: "", message: "" });
-                  }}
                   onConfirm={confirmSaveUser}
                 />
               )}

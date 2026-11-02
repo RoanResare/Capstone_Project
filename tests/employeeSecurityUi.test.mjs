@@ -46,23 +46,27 @@ const { EmployeePasswordInput } = await server.ssrLoadModule("/src/app/component
 const { PortalPage, ManageUsersWorkspace } = await server.ssrLoadModule("/src/app/components/portal/PortalPage.jsx");
 globalThis.document = { body: {} };
 
-test("employee saves request only a new password; status and deletion retain holder confirmation", () => {
+test("employee save confirmation summarizes changed fields without password inputs or duplicated errors", () => {
   for (const mode of ["create", "update", "delete", "status"]) {
     const html = renderToString(createElement(EmployeeSaveConfirmation, { pendingSave: { mode,
-      fullPayload: { name: "Target", email: "target@example.com", username: "target", role: "staff", password: "Target!Password" } },
+      fullPayload: { name: "Target", email: "target@example.com", username: "target", role: "staff", password: "Target!Password" },
+      payload: mode === "update" ? { name: "Target", password: "Target!Password" } : { name: "Target", email: "target@example.com", username: "target", role: "staff", password: "Target!Password" } },
       isSaving: false, error: "Current password is incorrect", onConfirm() {}, onCancel() {}, onNewPasswordChange() {} }));
-    assert.match(html, /role="alert"/);
+    assert.doesNotMatch(html, /autoComplete="current-password"|autoComplete="new-password"|role="alert"|Current password is incorrect|Target!Password/);
     if (["create", "update"].includes(mode)) {
-      assert.doesNotMatch(html, /Your current password|autoComplete="current-password"/);
-      assert.ok(html.indexOf("Role") < html.indexOf("New password"));
+      assert.match(html, /Confirm Employee Changes/);
+      assert.match(html, /Review the changes before saving\./);
+      assert.match(html, /Employee: <!-- -->Target/);
+      assert.match(html, /target@example\.com/);
+      assert.match(html, /Password will be updated/);
+      assert.match(html, />Name</);
+      if (mode === "update") assert.doesNotMatch(html, />\s*(Email|Username|Role)\s*<\/dt/);
+      assert.match(html, /Confirm Changes/);
+      assert.match(html, />Cancel</);
       assert.doesNotMatch(html, /type="submit" disabled=""/);
-      assert.match(html, /autoComplete="new-password"/);
-      assert.match(html, /aria-label="Show new password"/);
-      assert.match(html, /id="employee-new-password"[^>]*class="block w-full/);
     } else {
-      assert.match(html, /Your current password/);
-      assert.match(html, /required=""[^>]*type="password"[^>]*autoComplete="current-password"/);
-      assert.match(html, /type="submit" disabled=""/);
+      assert.match(html, /Confirm permanent deletion|Confirm status change/);
+      assert.doesNotMatch(html, /Your current password/);
     }
   }
 });
@@ -106,7 +110,7 @@ test("new password visibility toggles both ways and typing updates the pending e
   } finally { delete globalThis.__employeeHooks; }
 });
 
-test("create form omits password while edit form spans both columns with one working password control", () => {
+test("create and edit forms keep separate new and current admin password controls", () => {
   const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
   const employee = { id: "employee", name: "Employee", email: "employee@example.com", username: "employee", role: "staff", status: "active" };
   const props = { currentUser: { id: "admin", role: "admin" }, state: { users: [employee] }, visibleNotifications: [] };
@@ -115,7 +119,7 @@ test("create form omits password while edit form spans both columns with one wor
       createElement(ManageUsersWorkspace, props)));
     if (creating) {
       assert.match(html, /Create employee account/);
-      assert.doesNotMatch(html, /autoComplete="new-password"|employee-edit-password|>Password<|>New password</);
+      assert.match(html, /id="employee-create-password"[^>]*autoComplete="new-password"/);
     } else {
       assert.match(html, /Employee Information/);
       assert.match(html, /Update the employee(?:&#x27;|')s information, password, and role\./);
@@ -123,7 +127,7 @@ test("create form omits password while edit form spans both columns with one wor
       assert.match(html, />Email</);
       assert.match(html, />Username</);
       assert.match(html, />Role</);
-      assert.match(html, /New password/);
+      assert.match(html, /New Password/);
       assert.match(html, /class="min-w-0 md:col-span-2"/);
       assert.match(html, /id="employee-edit-password"[^>]*class="block w-full/);
       assert.match(html, /aria-controls="employee-edit-password"/);
@@ -133,6 +137,9 @@ test("create form omits password while edit form spans both columns with one wor
       assert.match(html, /Discard Changes/);
       assert.match(html, /Delete Account/);
     }
+    assert.match(html, /Current Admin Password/);
+    assert.match(html, /autoComplete="current-password"/);
+    assert.match(html, /Enter your own password to confirm these changes\./);
     assert.match(html, /Manage Employee Accounts/);
     assert.match(html, /Add new employees, update their information, and manage their account access\./);
     assert.match(html, /Search employees\.\.\./);
@@ -142,7 +149,7 @@ test("create form omits password while edit form spans both columns with one wor
   assert.match(source, /onChange=\{\(event\) => setSearchValue\(event\.target\.value\)\}/);
 });
 
-test("create action opens confirmation without a password and without creating the account", async () => {
+test("create action waits for confirmation and includes current admin password only for the API call", async () => {
   const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
   const start = source.indexOf("  const saveUser = async (event) => {");
   const handler = source.slice(start, source.indexOf("  const confirmSaveUser =", start));
@@ -151,6 +158,7 @@ test("create action opens confirmation without a password and without creating t
     isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [],
     form: { name: "Employee", email: "employee@example.com", username: "test.cstmr2", role: "staff", password: "" },
     isValidEmail: () => true, isCreatingNew: true, selectedUser: null,
+    currentAdminPassword: "Admin!Password1", currentAdminPasswordRef: { current: null }, setCurrentAdminPasswordError() {},
     isValidUsername, USERNAME_POLICY_MESSAGE,
     setPendingUserSave: value => { pending = value; }, setFeedback() {},
     createStaff: () => assert.fail("Must wait for modal confirmation"),
@@ -160,6 +168,16 @@ test("create action opens confirmation without a password and without creating t
   assert.equal(pending.mode, "create");
   assert.equal(pending.fullPayload.password, "");
   assert.equal(pending.fullPayload.username, "test.cstmr2");
+  let missingPending;
+  let fieldError;
+  let focused = false;
+  const missingPasswordPorts = { ...ports, currentAdminPassword: "", currentAdminPasswordRef: { current: { focus() { focused = true; } } },
+    setPendingUserSave: value => { missingPending = value; }, setCurrentAdminPasswordError: value => { fieldError = value; } };
+  const saveMissingPassword = new Function(...Object.keys(missingPasswordPorts), `${handler}\nreturn saveUser;`)(...Object.values(missingPasswordPorts));
+  await saveMissingPassword({ preventDefault() {} });
+  assert.equal(missingPending, undefined);
+  assert.equal(fieldError, "Enter your own password to confirm these changes.");
+  assert.equal(focused, true);
 });
 
 test("Manage Users username validation follows the shared policy and allows unchanged dotted names", async () => {
@@ -174,6 +192,7 @@ test("Manage Users username validation follows the shared policy and allows unch
     const ports = {
       isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], form, originalForm,
       isValidEmail: () => true, isCreatingNew: false, selectedUser: { id: "employee" },
+      currentAdminPassword: "", currentAdminPasswordRef: { current: null }, setCurrentAdminPasswordError() {},
       isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE,
       buildChangedPortalUserPayload: (current, original) => Object.fromEntries(
         ["name", "email", "username", "role"].filter(key => current[key] !== original[key]).map(key => [key, current[key]]),
@@ -194,6 +213,7 @@ test("Manage Users username validation follows the shared policy and allows unch
   const invalidPorts = {
     isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], form, originalForm,
     isValidEmail: () => true, isCreatingNew: false, selectedUser: { id: "employee" },
+    currentAdminPassword: "", currentAdminPasswordRef: { current: null }, setCurrentAdminPasswordError() {},
     isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE,
     buildChangedPortalUserPayload: () => ({}), setPendingUserSave: value => { pending = value; },
     setFeedback: value => { feedback = value; },
@@ -218,23 +238,71 @@ test("confirmation validates password before invoking employee create or update"
     for (const password of ["", "weak", "Valid123!"]) {
       let requests = 0;
       let feedback;
+      let sentPayload;
       const ports = {
-        pendingUserSave: { mode, userId: "employee", fullPayload: { password }, payload: { password } },
-        isSaving: false, getPasswordPolicyError,
+        pendingUserSave: { mode, userId: "employee", fullPayload: { password }, payload: { password }, requiresCurrentPassword: true },
+        isSaving: false, getPasswordPolicyError, currentAdminPassword: "Admin!Password1", setPendingUserSave() {},
         setFeedback: value => { feedback = value; }, setIsSaving() {},
         // Stop after the API returns so this test isolates validation and submission.
-        createStaff: async () => { requests++; return { ok: false, error: "API reached" }; },
-        updateUser: async () => { requests++; return { ok: false, error: "API reached" }; },
+        createStaff: async payload => { requests++; sentPayload = payload; return { ok: false, error: "API reached" }; },
+        updateUser: async (_id, payload) => { requests++; sentPayload = payload; return { ok: false, error: "API reached" }; },
       };
       const confirm = new Function(...Object.keys(ports), `${handler}\nreturn confirmSaveUser;`)(...Object.values(ports));
       await confirm();
       const valid = password === "Valid123!" || (mode === "update" && !password);
       assert.equal(requests, valid ? 1 : 0, `${mode}: ${password || "blank"}`);
       assert.equal(feedback.type, "error");
-      if (valid) assert.equal(feedback.message, "API reached");
+      if (valid) {
+        assert.equal(feedback.message, "API reached");
+        assert.equal(sentPayload.currentPassword, "Admin!Password1");
+      }
       else assert.match(feedback.message, /password/i);
     }
   }
+});
+
+test("incorrect admin password closes confirmation and reports the error only beneath its field", async () => {
+  const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  const confirmSaveUser = async () => {");
+  const handler = source.slice(start, source.indexOf("  const handleDelete =", start));
+  let pendingSave = { mode: "update", userId: "employee", fullPayload: { password: "" }, payload: { role: "admin" }, requiresCurrentPassword: true };
+  let fieldError = "";
+  let feedback = null;
+  let clearedPassword = false;
+  let focused = false;
+  const ports = {
+    pendingUserSave: pendingSave, isSaving: false, getPasswordPolicyError, currentAdminPassword: "wrong",
+    setPendingUserSave: value => { pendingSave = value; }, setCurrentAdminPassword: value => { clearedPassword = value === ""; },
+    setCurrentAdminPasswordError: value => { fieldError = value; }, setFeedback: value => { feedback = value; }, setIsSaving() {},
+    currentAdminPasswordRef: { current: { focus() { focused = true; } } },
+    showCurrentAdminPasswordError: message => {
+      pendingSave = null;
+      clearedPassword = true;
+      fieldError = message;
+      feedback = { type: "", message: "" };
+      requestAnimationFrame(() => ports.currentAdminPasswordRef.current.focus());
+    },
+    updateUser: async () => ({ ok: false, error: "Your current password is incorrect. No employee changes were saved." }),
+  };
+  const confirm = new Function(...Object.keys(ports), `${handler}\nreturn confirmSaveUser;`)(...Object.values(ports));
+  const priorAnimationFrame = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = callback => callback();
+  try { await confirm(); } finally {
+    if (priorAnimationFrame) globalThis.requestAnimationFrame = priorAnimationFrame;
+    else delete globalThis.requestAnimationFrame;
+  }
+  assert.equal(pendingSave, null);
+  assert.equal(fieldError, "Your current password is incorrect. No employee changes were saved.");
+  assert.equal(clearedPassword, true);
+  assert.equal(focused, true);
+  assert.equal(feedback.message, "");
+});
+
+test("status and deletion confirmations keep password verification in the employee form", () => {
+  const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
+  assert.match(source, /updateUser\(user\.id, \{ status, currentPassword: currentAdminPassword \}\)/);
+  assert.match(source, /deleteUser\(selectedUser\.id, currentAdminPassword\)/);
+  assert.match(source, /const requireCurrentAdminPassword = \(\) =>/);
 });
 
 test("admin and staff appointment History renders lifecycle records and omits account creation logs", () => {

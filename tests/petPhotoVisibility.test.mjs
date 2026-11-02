@@ -54,11 +54,12 @@ test("manager pet records expose photo thumbnails, fallback, and accessible view
 
 test("customer photo picker preserves optional photo preview and supports image replacement/removal", () => {
   assert.match(customer, /<PetPhotoUpload photoURL=\{petForm\.photoURL\}/);
-  assert.match(upload, /Pet Photo \(Optional\)/);
+  assert.match(upload, /aria-label="Pet Photo \(Optional\)"/);
+  assert.match(upload, /Add a Photo of Your Pet/);
   assert.match(upload, /createImageBitmap\(file\)/);
   assert.match(upload, /onPhotoChange\(String\(reader\.result/);
   assert.match(upload, /Remove Photo/);
-  assert.match(upload, /Replace Photo/);
+  assert.match(upload, /Change Photo/);
   assert.match(upload, /accept="image\/jpeg,image\/png,image\/webp"/);
 });
 

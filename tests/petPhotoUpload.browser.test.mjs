@@ -51,13 +51,14 @@ function png(red) {
 test("pet photo upload UI works at desktop and mobile sizes with validation and form preservation", async () => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(baseUrl, { waitUntil: "load", timeout: 10000 });
-  await page.getByText("Choose a pet photo").waitFor({ timeout: 15000 });
+  await page.getByText("Add a Photo of Your Pet").waitFor({ timeout: 15000 });
   const input = page.getByLabel("Pet Photo (Optional)");
   await assert.doesNotReject(() => input.waitFor({ state: "attached" }));
   const inputBounds = await input.boundingBox();
   assert.ok(inputBounds.width <= 1 && inputBounds.height <= 1, "native file control is visually hidden but keyboard/screen-reader accessible");
-  assert.equal(await page.getByText("Choose a pet photo").isVisible(), true);
-  const card = page.locator("label").filter({ has: page.getByText("Choose a pet photo") });
+  assert.equal(await page.getByText("Help our staff recognize your dog or cat.").isVisible(), true);
+  assert.equal(await page.getByText("JPG, PNG or WebP · Maximum 1 MB").isVisible(), true);
+  const card = page.locator("section[aria-labelledby]").locator("div.rounded-\\[20px\\]").first();
   const cardStyle = await card.evaluate(element => ({ border: getComputedStyle(element).borderTopStyle, background: getComputedStyle(element).backgroundImage }));
   assert.equal(cardStyle.border, "dashed");
   assert.notEqual(cardStyle.background, "none");
@@ -65,14 +66,14 @@ test("pet photo upload UI works at desktop and mobile sizes with validation and 
   const preview = page.getByAltText("Milo photo preview");
   await preview.waitFor();
   assert.equal(await preview.evaluate(image => getComputedStyle(image).objectFit), "cover");
-  assert.equal(await page.getByText("Replace Photo").isVisible(), true);
+  assert.equal(await page.getByRole("button", { name: "Change Photo" }).isVisible(), true);
   const oldPhoto = await preview.getAttribute("src");
   await input.setInputFiles({ name: "pet-replacement.png", mimeType: "image/png", buffer: png(25) });
   await page.waitForFunction(previous => document.querySelector('[alt="Milo photo preview"]')?.src !== previous, oldPhoto);
   await page.getByRole("button", { name: "Save pet" }).click();
   assert.equal(await page.locator("output").textContent(), "saved-with-photo", "valid photo saves with the pet profile");
   await page.getByRole("button", { name: "Remove Photo" }).click();
-  assert.equal(await page.getByText("Choose a pet photo").isVisible(), true);
+  assert.equal(await page.getByText("Add a Photo of Your Pet").isVisible(), true);
   await page.getByRole("button", { name: "Save pet" }).click();
   assert.equal(await page.locator("output").textContent(), "saved-without-photo", "pet saving still works without a photo");
 

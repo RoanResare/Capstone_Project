@@ -1,4 +1,5 @@
-import { PawPrint } from "lucide-react";
+import { useId, useRef, useState } from "react";
+import { Camera, ImagePlus, LoaderCircle, Upload } from "lucide-react";
 
 const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ACCEPTED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
@@ -14,11 +15,16 @@ function hasSupportedImageFormat(file) {
 }
 
 export function PetPhotoUpload({ photoURL = "", petName = "Pet", onPhotoChange, toast, setFeedback }) {
+  const inputId = useId();
+  const inputRef = useRef(null);
+  const [isReading, setIsReading] = useState(false);
+
   async function handleFileChange(event) {
     const input = event.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
     const reportError = (message) => {
+      setIsReading(false);
       setFeedback?.({ type: "error", message });
       toast?.error(message);
       input.value = "";
@@ -31,6 +37,7 @@ export function PetPhotoUpload({ photoURL = "", petName = "Pet", onPhotoChange, 
       reportError("Pet photo must be 1 MB or smaller.");
       return;
     }
+    setIsReading(true);
     try {
       const decoded = await createImageBitmap(file);
       const isValid = decoded.width > 0 && decoded.height > 0;
@@ -40,6 +47,7 @@ export function PetPhotoUpload({ photoURL = "", petName = "Pet", onPhotoChange, 
       reader.onerror = () => reportError("The selected image could not be read. Please choose another file.");
       reader.onload = () => {
         onPhotoChange(String(reader.result || ""));
+        setIsReading(false);
         setFeedback?.({ type: "", message: "" });
         input.value = "";
       };
@@ -49,25 +57,46 @@ export function PetPhotoUpload({ photoURL = "", petName = "Pet", onPhotoChange, 
     }
   }
 
+  function openFilePicker() {
+    inputRef.current?.click();
+  }
+
   return (
-    <section className="grid gap-2 text-sm font-medium text-[#425A60]">
-      <h3>Pet Photo (Optional)</h3>
-      <p id="pet-photo-help" className="text-xs font-normal leading-5 text-[#607277]">Upload a clear photo of your dog or cat to help our staff identify your pet. JPG, PNG, or WebP, up to 1 MB.</p>
-      <label className="group flex min-h-24 cursor-pointer items-center gap-4 rounded-[20px] border border-dashed border-[#9FC9C8] bg-[linear-gradient(145deg,#F8FCFC_0%,#EEF7F6_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_5px_14px_rgba(45,107,115,0.07)] transition hover:border-[#2D9B9B] hover:shadow-[0_8px_18px_rgba(45,107,115,0.12)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#2D6B73]">
-        <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#2D6B73] shadow-[0_3px_10px_rgba(30,73,77,0.12)]"><PawPrint size={23}/></span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold text-[#24444A]">{photoURL ? "Photo ready to save" : "Choose a pet photo"}</span>
-          <span className="mt-1 block text-xs font-normal text-[#71878A]">{photoURL ? "Select another image to replace it" : "Select a clear image · JPG, PNG, WebP · Max 1 MB"}</span>
-        </span>
-        <span className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-[#2B555C] shadow-sm group-hover:bg-[#E5F2F1]">{photoURL ? "Replace Photo" : "Browse"}</span>
-        <input type="file" aria-label="Pet Photo (Optional)" aria-describedby="pet-photo-help" accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="sr-only" />
-      </label>
-      {photoURL ? (
-        <div className="rounded-[20px] border border-[#D9E7E7] bg-white p-3 shadow-[0_5px_16px_rgba(30,73,77,0.08)]">
-          <img src={photoURL} alt={`${petName || "Pet"} photo preview`} className="h-36 w-full rounded-[14px] object-cover sm:h-44" />
-          <button type="button" onClick={() => onPhotoChange("")} className="mt-3 rounded-xl bg-[#FBECEF] px-3 py-2 text-sm font-semibold text-[#B23949]">Remove Photo</button>
+    <section className="grid gap-2 text-sm font-medium text-[#425A60]" aria-labelledby={`${inputId}-heading`}>
+      <div className="rounded-[20px] border border-dashed border-[#9FC9C8] bg-[linear-gradient(145deg,#FAFDFC_0%,#EEF7F6_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_4px_12px_rgba(45,107,115,0.06)] transition duration-200 hover:border-[#76B7B5] hover:shadow-[0_7px_16px_rgba(45,107,115,0.10)] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#2D6B73] sm:p-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-white text-[#2D6B73] shadow-[0_3px_9px_rgba(30,73,77,0.12)]">
+            <Camera size={19} strokeWidth={1.9} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 id={`${inputId}-heading`} className="text-sm font-semibold leading-5 text-[#24444A]">Add a Photo of Your Pet</h3>
+            <p className="mt-0.5 text-xs font-normal leading-4 text-[#71878A]">Help our staff recognize your dog or cat.</p>
+          </div>
+          <button type="button" onClick={openFilePicker} disabled={isReading}
+            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-[#2B555C] shadow-[0_2px_7px_rgba(30,73,77,0.1)] transition hover:bg-[#E5F2F1] hover:shadow-[0_3px_9px_rgba(30,73,77,0.14)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D6B73] disabled:cursor-wait disabled:opacity-70">
+            {isReading ? <LoaderCircle size={15} className="animate-spin" aria-hidden="true" /> : <Upload size={14} aria-hidden="true" />}
+            {isReading ? "Loading Photo" : "Choose Photo"}
+          </button>
+          <input ref={inputRef} id={inputId} type="file" aria-label="Pet Photo (Optional)" aria-describedby={`${inputId}-help`}
+            accept="image/jpeg,image/png,image/webp" onChange={handleFileChange} className="sr-only" />
         </div>
-      ) : null}
+        <p id={`${inputId}-help`} className="mt-2.5 pl-[52px] text-[11px] font-normal leading-4 text-[#809295]">JPG, PNG or WebP · Maximum 1 MB</p>
+        {photoURL ? (
+          <div className="mt-3 flex items-center gap-3 rounded-[15px] border border-white/80 bg-white/75 p-2.5 shadow-[inset_0_1px_2px_rgba(30,73,77,0.04)]">
+            <img src={photoURL} alt={`${petName || "Pet"} photo preview`} className="h-14 w-14 shrink-0 rounded-xl object-cover shadow-sm sm:h-16 sm:w-16" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-[#365057]">Photo ready to save</p>
+              <p className="mt-0.5 text-[11px] font-normal text-[#829396]">Preview · private to your pet record</p>
+            </div>
+            <button type="button" onClick={openFilePicker} disabled={isReading}
+              className="min-h-9 rounded-lg px-2.5 text-xs font-semibold text-[#2D6B73] transition hover:bg-[#EDF6F5] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2D6B73] disabled:opacity-60">Change Photo</button>
+            <button type="button" onClick={() => { onPhotoChange(""); setFeedback?.({ type: "", message: "" }); }} disabled={isReading}
+              className="min-h-9 rounded-lg px-2.5 text-xs font-semibold text-[#A3424F] transition hover:bg-[#FFF1F2] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#A3424F] disabled:opacity-60">Remove Photo</button>
+          </div>
+        ) : (
+          <span className="sr-only"><ImagePlus aria-hidden="true" /></span>
+        )}
+      </div>
     </section>
   );
 }

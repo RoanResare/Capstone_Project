@@ -4,14 +4,14 @@ import { containsInappropriatePetText, getPetTextErrors, assertAppropriatePetTex
 
 test("rejects English and Filipino profanity, slurs, and common obfuscation", () => {
   for (const text of ["FUCK", "shit!", "f u c k", "f.u.c.k", "fuuuck", "sh1t", "sh!t", "f*ck", "b*tch", "ＦＵＣＫ", "f\u200buck", "fúck", "putang ina", "pakyu", "gago", "nigger", "n1gga", "faggot"]) {
-    assert.equal(containsInappropriatePetText(text), true, text);
+    assert.equal(containsInappropriatePetText(text), true);
     assert.ok(getPetTextErrors({ petName: text }).petName);
     assert.ok(getPetTextErrors({ petName: "Milo", notes: `Note: ${text}.` }).notes);
   }
 });
 test("allows ordinary names and veterinary notes without substring false positives", () => {
   for (const text of ["Milo", "Shih Tzu", "Cockapoo", "Cassie", "Spice", "Buttercup", "Scunthorpe", "Needs assistance with anal glands; no food allergy.", "Please trim nails and give medication.", "Mabait at masiglang aso.", "O'Malley", "Puti"]) {
-    assert.equal(containsInappropriatePetText(text), false, text);
+    assert.equal(containsInappropriatePetText(text), false);
     assert.deepEqual(getPetTextErrors({ petName: "Milo", notes: text }), {});
   }
 });
@@ -25,8 +25,8 @@ test("requires a pet name, bounds field sizes, and reports fields without echoin
 
 test("blocks screenshot examples and Filipino inflections, numeric suffixes, spacing and masking", () => {
   for (const text of ["putanginamoka", "tanginaka", "tanginamo", "tanginamo0", "tanginamo123", "TANGINAMO", "tang ina mo", "t.a.n.g.i.n.a.m.o", "t4ng1n4m0", "taenamo", "tanginamong", "gagoka", "tangin*mo", "nigga123"]) {
-    assert.ok(getPetTextErrors({ petName: text }).petName, text);
-    assert.ok(getPetTextErrors({ petName: "Milo", notes: text }).notes, text);
+    assert.ok(getPetTextErrors({ petName: text }).petName);
+    assert.ok(getPetTextErrors({ petName: "Milo", notes: text }).notes);
   }
 });
 
@@ -39,14 +39,14 @@ test("multilingual profanity and identity-directed abuse are rejected in both fi
     "你这个傻逼", "他妈的", "死ね", "씨발", "개새끼", "ไอ้เหี้ย",
   ];
   for (const text of cases) {
-    assert.ok(getPetTextErrors({ petName: text }).petName, text);
-    assert.ok(getPetTextErrors({ petName: "Milo", notes: `Note: ${text}.` }).notes, text);
+    assert.ok(getPetTextErrors({ petName: text }).petName);
+    assert.ok(getPetTextErrors({ petName: "Milo", notes: `Note: ${text}.` }).notes);
   }
 });
 
 test("Unicode, separators, repeated letters, masking and ambiguous leetspeak cannot disguise goblok", () => {
   for (const text of ["GOBLOK", "g0bl0k", "G0B10K", "g0b10k123", "gobloooook", "g o b l o k", "g.o.b.l.o.k", "gob-lok", "góbłök", "ｇｏｂｌｏｋ", "go\u200bblok", "gоblоk", "gob**k", "g#blok"]) {
-    assert.equal(containsInappropriatePetText(text), true, text);
+    assert.equal(containsInappropriatePetText(text), true);
   }
 });
 
@@ -55,7 +55,7 @@ test("neutral identities, safe multilingual text, pet names and clinical notes r
     "Milo", "Cassie", "Spice", "Shih Tzu", "Cockapoo", "Buttercup", "Scunthorpe", "Goby", "Block", "Bobby", "Lulu",
     "Needs assistance with anal glands and medication.", "May puke after medication; monitor vomiting.",
     "Mahal ko ang aking aso.", "Kucing saya sehat.", "我的猫需要疫苗", "Mi perro necesita vacunas."]) {
-    assert.equal(containsInappropriatePetText(text), false, text);
+    assert.equal(containsInappropriatePetText(text), false);
   }
 });
 

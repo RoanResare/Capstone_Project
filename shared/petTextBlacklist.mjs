@@ -5,9 +5,13 @@ export const petTextBlacklist = {
   english: [
     "fuck", "fucker", "fuckers", "fucking", "motherfucker", "motherfucking", "fuckoff", "fuckyou", "fuk", "phuck",
     "shit", "shitty", "bullshit", "horseshit", "shithead", "shite", "shyt", "dipshit", "dumbass", "jackass", "asshole", "arsehole",
-    "bitch", "bitches", "sonofabitch", "bastard", "cunt", "dick", "dickhead", "prick", "pussy", "cocksucker", "cock sucker",
+    // Standalone "Dick" and "bitch" have legitimate personal-name and
+    // veterinary meanings. Keep targeted compounds and insults instead.
+    "sonofabitch", "you bitch", "bitchass", "bastard", "cunt", "dickhead", "prick", "pussy", "cocksucker", "cock sucker",
     "whore", "slut", "slutty", "porn", "porno", "pornography", "blowjob", "handjob", "rimjob", "wanker", "tosser", "twat", "bollocks", "bugger",
-    "damn", "goddamn", "god damn", "dammit", "damnit",
+    "i will kill you", "i am going to kill you", "im going to kill you", "i want to kill you",
+    "i will hurt you", "i am going to hurt you", "im going to hurt you", "i know where you live",
+    "you deserve to die", "go kill yourself", "you should kill yourself", "you are worthless", "nobody wants you",
   ],
   tagalogAndRegional: [
     "puta", "putangina", "putanginamo", "putanginaka", "tangina", "tanginamo", "tanginaka", "tanginanyo", "tanginaniyo",
@@ -16,8 +20,8 @@ export const petTextBlacklist = {
     "pakshit", "pakyu", "pakyou", "kantot", "kantutan", "iyot", "iyotin", "burat", "tite", "titi", "pekpek", "puki", "jakol",
     "yawa", "yawa ka", "piste", "pisti", "pistengyawa", "pistingyawa", "atay", "bilat", "bilatan", "buang", "boang", "lintik", "leche", "hinayupak", "hayop ka",
     "siraulo", "sira ulo", "bugok", "sinto-sinto", "sintosinto", "sinto", "baliw", "loko", "loka", "engot", "unggoy", "punyemas",
-    "mamatay", "mamamatay", "patayin", "mapatay", "mamatay ka", "mamatay kana", "mamatay ka na", "sana mamatay", "sana mamatay ka", "mamatay ka sana", "mamatay ka na sana", "sana mapatay", "patayin ka", "papatayin kita", "gusto kitang patayin", "gusto ko patayin ka", "matigok ka", "mategi ka",
-    "pakyu ka", "gago ka", "tanga ka", "bobo ka", "ulol ka", "putang ina mo", "tang ina mo", "hayop ka", "walang hiya", "walang utak", "kupal", "kupal ka", "buwisit", "bwisit", "hindot", "punyeta",
+    "mamatay ka", "mamatay kana", "mamatay ka na", "sana mamatay ka", "mamatay ka sana", "mamatay ka na sana", "sana mapatay", "patayin ka", "papatayin kita", "gusto kitang patayin", "gusto ko patayin ka", "matigok ka", "mategi ka",
+    "pakyu ka", "gago ka", "tanga ka", "bobo ka", "ulol ka", "putang ina mo", "tang ina mo", "putanginamoka", "hayop ka", "walang hiya", "walang utak", "kupal", "kupal ka", "buwisit", "bwisit", "hindot", "punyeta",
   ],
   indonesianAndMalay: [
     "goblok", "goblog", "gobleg", "gobloknya", "goblokmu", "gobloklah", "goblokbanget", "gblk",
@@ -39,9 +43,10 @@ export const petTextBlacklist = {
   ],
   discriminatoryAbuse: [
     "nigger", "nigga", "niggah", "negrohead", "coon", "chink", "gook", "kike", "spic", "wetback", "beaner", "raghead", "towelhead", "sandnigger",
-    "faggot", "fag", "dyke", "tranny", "shemale", "poofter", "poof", "sodomite", "retard", "retarded", "mongoloid",
-    "baklang salot", "salot na bakla", "bading na salot", "kill all gays", "kill gay people", "kill trans people",
-    "gay people are disgusting", "trans people are disgusting", "white power", "heil hitler", "sieg heil",
+    "faggot", "fag", "dyke", "tranny", "shemale", "poofter", "poof", "sodomite", "mongoloid",
+    "you are retarded", "stop acting retarded", "what a retard",
+    "baklang salot", "salot na bakla", "bading na salot", "kill all gays", "kill gay people", "kill trans people", "kill lesbians",
+    "gay people are disgusting", "trans people are disgusting", "gay people should die", "trans people should die", "go back to your country", "white power", "heil hitler", "sieg heil",
     "banci", "bencong", "pondan", "bapok", "pédé", "pédé de merde", "maricon", "maricón", "schwuchtel", "пидор", "пидорас",
   ],
   spanishAndPortuguese: [

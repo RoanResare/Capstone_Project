@@ -83,6 +83,16 @@ test("invalid decisions, failed commits, and customer approvals cannot create em
   app.db.failCommit = true; await assert.rejects(app.save({ status: "Approved" }), /commit failed/);
   assert.equal(app.jobs().length, 0); assert.equal(app.records.get("appointments/booking").status, "Pending");
 });
+test("API rejects inappropriate appointment notes and staff explanations before saving", async () => {
+  const app = fixture();
+  await assert.rejects(app.save({ notes: "gago ka" }), error => error.statusCode === 400 && error.details?.code === "INVALID_TEXT");
+  await assert.rejects(app.save({ status: "Rejected", decision: { category: "C", reason: "Please stop, gago ka now." } }),
+    error => error.statusCode === 400 && error.details?.code === "INVALID_TEXT");
+  await assert.rejects(app.save({ status: "Approved", cancellationReason: "gago ka" }),
+    error => error.statusCode === 400 && error.details?.code === "INVALID_TEXT");
+  assert.equal(app.records.get("appointments/booking").status, "Pending");
+  assert.equal(app.jobs().length, 0);
+});
 test("customer cancellation and unchanged reads/assignment edits never enqueue staff decision mail", async () => {
   const app = fixture(); await app.save({ notes: "internal only" });
   assert.equal(app.jobs().length, 0);

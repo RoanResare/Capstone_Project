@@ -119,6 +119,7 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   assertAuthSetupReady();
+  await require("../utils/textModeration").assertAppropriateText(req.body || {}, { fraudReason: "Reason" });
   if (req.body?.accountStatus || req.body?.status || req.body?.password || req.body?.role || req.body?.fraudStatus) {
     await confirmAccountHolderPassword(req);
   }

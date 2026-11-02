@@ -47,6 +47,7 @@ export function CustomerSignup() {
     confirmPassword: "",
   });
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [textErrors, setTextErrors] = useState({});
   const [verificationDialog, setVerificationDialog] = useState(null);
   const [verificationAction, setVerificationAction] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,6 +72,7 @@ export function CustomerSignup() {
       ? getPhoneSubscriberInput(event.target.value)
       : event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
+    setTextErrors((current) => ({ ...current, [field]: undefined }));
     setFeedback((current) => current.type === "error" ? { type: "", message: "" } : current);
   };
 
@@ -94,8 +96,8 @@ export function CustomerSignup() {
     }
 
     const textErrors = getTextValidationErrors(submittedForm, ACCOUNT_TEXT_FIELDS);
+    setTextErrors(textErrors);
     if (Object.keys(textErrors).length) {
-      setFeedback({ type: "error", message: Object.values(textErrors)[0] });
       return;
     }
 
@@ -244,12 +246,14 @@ export function CustomerSignup() {
               <input
                 name="fullName"
                 value={form.fullName}
+                aria-invalid={Boolean(textErrors.fullName)} aria-describedby={textErrors.fullName ? "signup-name-error" : undefined}
                 autoComplete="name"
                 onChange={handleChange("fullName")}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Enter your full name"
               />
+              {textErrors.fullName && <p id="signup-name-error" role="alert" className="mt-2 text-sm text-[#B23949]">{textErrors.fullName}</p>}
             </div>
 
             <div>
@@ -273,12 +277,14 @@ export function CustomerSignup() {
               <input
                 name="username"
                 value={form.username}
+                aria-invalid={Boolean(textErrors.username)} aria-describedby={textErrors.username ? "signup-username-error" : undefined}
                 autoComplete="username"
                 onChange={handleChange("username")}
                 disabled={isSubmitting}
                 className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                 placeholder="Choose a profile username"
               />
+              {textErrors.username && <p id="signup-username-error" role="alert" className="mt-2 text-sm text-[#B23949]">{textErrors.username}</p>}
               <p className="mt-2 text-xs text-[#7A9297]">
                 This username is stored on your customer profile. You can use it or your email to
                 sign in.

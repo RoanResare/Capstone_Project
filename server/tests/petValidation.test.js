@@ -21,7 +21,7 @@ function fixture(initial = {}) {
   };
   const filename = path.resolve(__dirname, "../src/controllers/pet.controller.js");
   const context = { module: { exports: {} }, require(id) {
-    if (id === "../config/firebaseAdmin") return { db };
+    if (id === "../config/postgresDatabase") return { db };
     if (id === "../utils/ApiError") return { ApiError };
     throw new Error(id);
   } };
@@ -62,6 +62,12 @@ test("rejects deleted pets, malformed records, and invalid genders", async () =>
     await assert.rejects(fixture().save(body), error => error.statusCode === 400);
   }
 });
+test("API rejects an inappropriate custom breed even when the form is bypassed", async () => {
+  const f = fixture();
+  await assert.rejects(f.save({ breed: "gago" }), error => error.statusCode === 400 && error.details.code === "INVALID_PET_TEXT");
+  assert.equal(f.writes.length, 0);
+});
+
 test("direct Firestore pet writes cannot bypass API moderation", () => {
   const rules = fs.readFileSync(path.resolve(__dirname, "../../firestore.rules"), "utf8");
   const petRules = rules.slice(rules.indexOf("match /pets/"), rules.indexOf("match /notifications/"));

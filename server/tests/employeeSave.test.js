@@ -19,7 +19,9 @@ function fixture() {
     "../services/user.service": services,
     "../utils/ApiError": require("../src/utils/ApiError"),
     "../utils/password": require("../src/utils/password"),
+    "../utils/textModeration": require("../src/utils/textModeration"),
     "../utils/setupGuard": { assertAuthSetupReady() {} },
+    "../services/trustedDevice.service": { revokeTrustedDevicesForUser: async () => {} },
   };
   const context = { module: { exports: {} }, require: name => {
     assert.ok(name in modules, name); return modules[name];
@@ -44,6 +46,13 @@ test("employee creation and edits do not require the administrator's current pas
   req.body.password = "Replacement123!";
   await controller.updateUser(req, res);
   assert.equal(writes[2].password, "Replacement123!");
+});
+
+test("employee account notes reject inappropriate text before profile changes are stored", async () => {
+  const { controller, req, res, writes } = fixture();
+  req.body.fraudReason = "gago ka";
+  await assert.rejects(controller.updateUser(req, res), error => error.statusCode === 400 && error.details.code === "INVALID_TEXT");
+  assert.equal(writes.length, 0);
 });
 
 test("new employee password validation and separate destructive confirmations remain enforced", async () => {

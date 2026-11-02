@@ -42,6 +42,7 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
   const [serverClock, setServerClock] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [textErrors, setTextErrors] = useState({});
   const editing = initialPromo?.isActive === true;
 
   useEffect(() => {
@@ -68,14 +69,15 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
   const updateField = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
     setError("");
+    setTextErrors((current) => ({ ...current, [field]: undefined }));
   };
   const submit = async (event) => {
     event.preventDefault();
     if (saving) return;
     setError("");
     const textErrors = getTextValidationErrors(form, PROMO_TEXT_FIELDS);
+    setTextErrors(textErrors);
     if (Object.keys(textErrors).length) {
-      setError(Object.values(textErrors)[0]);
       return;
     }
     try {
@@ -110,11 +112,13 @@ function PromoFormDialog({ initialPromo, onClose, onSave }) {
           </label>
           <label className="block text-sm font-medium text-[#425A60]">
             Promotion Title
-            <input value={form.title} onChange={updateField("title")} maxLength={100} className={`mt-2 ${inputClass}`} />
+            <input value={form.title} aria-invalid={Boolean(textErrors.title)} aria-describedby={textErrors.title ? "promo-title-error" : undefined} onChange={updateField("title")} maxLength={100} className={`mt-2 ${inputClass}`} />
+            {textErrors.title && <span id="promo-title-error" role="alert" className="mt-1 block text-sm text-[#B23949]">{textErrors.title}</span>}
           </label>
           <label className="block text-sm font-medium text-[#425A60]">
             Promotion Description (Optional)
-            <textarea value={form.description} onChange={updateField("description")} maxLength={1000} rows={3} className={`mt-2 resize-y ${inputClass}`} />
+            <textarea value={form.description} aria-invalid={Boolean(textErrors.description)} aria-describedby={textErrors.description ? "promo-description-error" : undefined} onChange={updateField("description")} maxLength={1000} rows={3} className={`mt-2 resize-y ${inputClass}`} />
+            {textErrors.description && <span id="promo-description-error" role="alert" className="mt-1 block text-sm text-[#B23949]">{textErrors.description}</span>}
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <PromoScheduleFields min={editing && form.startsAt === localDateTime(initialPromo?.startsAt) ? "" : localDateTime(trustedNow() + PROMO_NOTICE_MS)} label="Promotion Start" value={form.startsAt} onChange={(value) => { setForm((current) => ({ ...current, startsAt: value })); setError(""); }} inputClass={inputClass} />

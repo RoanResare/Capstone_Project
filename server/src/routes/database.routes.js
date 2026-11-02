@@ -133,6 +133,14 @@ router.post("/write", asyncHandler(async (req, res) => {
       for (const key of Object.keys(after)) if (after[key] === undefined) delete after[key];
       const data = decode(after, db);
       assertWrite(write.collection, write.id, before, data, identity, write.operation);
+      if (write.collection === "users" && write.id === identity.uid) {
+        await require("../utils/textModeration").assertAppropriateText(data, {
+          fullName: "Full name", name: "Name", username: "Username",
+        });
+      }
+      if (write.collection === "usernames") {
+        await require("../utils/textModeration").assertAppropriateText(data, { username: "Username" });
+      }
       tx.set(ref, data);
       staged.set(ref.path, data);
     }

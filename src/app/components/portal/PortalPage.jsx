@@ -1246,6 +1246,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
   const [petTypeFilter, setPetTypeFilter] = useState("Dog");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [textErrors, setTextErrors] = useState({});
   const [form, setForm] = useState(() => buildPetRecordForm());
 
   const petRecords = (Array.isArray(state.petRecords) ? state.petRecords : [])
@@ -1299,14 +1300,15 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
     if (field !== "lastVisit" && field !== "notes") return;
     const value = event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
+    setTextErrors((current) => ({ ...current, [field]: undefined }));
   };
 
   const saveRecord = async (event) => {
     event.preventDefault();
 
     const textErrors = getTextValidationErrors(form, { notes: "Notes" });
+    setTextErrors(textErrors);
     if (Object.keys(textErrors).length) {
-      setFeedback({ type: "error", message: Object.values(textErrors)[0] });
       return;
     }
 
@@ -1596,10 +1598,12 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                 <textarea
                   value={form.notes}
                   onChange={updateField("notes")}
+                  aria-invalid={Boolean(textErrors.notes)} aria-describedby={textErrors.notes ? "staff-pet-notes-error" : undefined}
                   maxLength={500}
                   className="min-h-[120px] w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                   placeholder="Handling notes, special reminders, or grooming concerns"
                 />
+                {textErrors.notes && <p id="staff-pet-notes-error" role="alert" className="mt-1 text-sm text-[#B23949]">{textErrors.notes}</p>}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -1697,6 +1701,7 @@ function ManageUsersWorkspace({
   const [searchValue, setSearchValue] = useState("");
   const [employeeRole, setEmployeeRole] = useState("admin");
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [textErrors, setTextErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pendingUserStatus, setPendingUserStatus] = useState(null);
@@ -1815,6 +1820,7 @@ function ManageUsersWorkspace({
   const updateField = (field) => (event) => {
     const value = event.target.value;
     setForm((current) => ({ ...current, [field]: value }));
+    setTextErrors((current) => ({ ...current, [field]: undefined }));
   };
 
   const openUser = (userId, notificationId = "") => {
@@ -1829,6 +1835,7 @@ function ManageUsersWorkspace({
     }
 
     setSearchParams(nextParams);
+    setTextErrors({});
     setFeedback({ type: "", message: "" });
     setPendingUserSave(null);
     setPendingUserStatus(null);
@@ -1848,10 +1855,8 @@ function ManageUsersWorkspace({
     }
 
     const textErrors = getTextValidationErrors(form, ACCOUNT_TEXT_FIELDS);
+    setTextErrors(textErrors);
     if (Object.keys(textErrors).length) {
-      const message = Object.values(textErrors)[0];
-      setFeedback({ type: "error", message });
-      toast.error(message);
       return;
     }
 
@@ -2028,6 +2033,7 @@ function ManageUsersWorkspace({
   };
 
   const resetForm = () => {
+    setTextErrors({});
     setCurrentAdminPassword("");
     setCurrentAdminPasswordError("");
     if (isCreatingNew) {
@@ -2195,9 +2201,11 @@ function ManageUsersWorkspace({
                     onChange={updateField("name")}
                     disabled={isSaving}
                     maxLength={80}
+                    aria-invalid={Boolean(textErrors.name)} aria-describedby={textErrors.name ? "employee-name-error" : undefined}
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="Employee full name"
                   />
+                  {textErrors.name && <p id="employee-name-error" role="alert" className="mt-1 text-sm text-[#B23949]">{textErrors.name}</p>}
                 </div>
 
                 <div>
@@ -2222,10 +2230,12 @@ function ManageUsersWorkspace({
                     onChange={updateField("username")}
                     disabled={isSaving}
                     maxLength={USERNAME_MAX_LENGTH}
+                    aria-invalid={Boolean(textErrors.username)} aria-describedby={textErrors.username ? "employee-username-error" : undefined}
                     pattern={USERNAME_INPUT_PATTERN}
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee username"
                   />
+                  {textErrors.username && <p id="employee-username-error" role="alert" className="mt-1 text-sm text-[#B23949]">{textErrors.username}</p>}
                 </div>
 
                 <div>

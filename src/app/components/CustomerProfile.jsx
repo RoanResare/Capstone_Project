@@ -399,6 +399,7 @@ export function CustomerProfile() {
   const [appointmentSearch, setAppointmentSearch] = useState("");
   const [appointmentPage, setAppointmentPage] = useState(0);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [profileTextErrors, setProfileTextErrors] = useState({});
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPet, setIsSavingPet] = useState(false);
   const [profileVerificationPassword, setProfileVerificationPassword] = useState("");
@@ -553,10 +554,12 @@ export function CustomerProfile() {
         ? event.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 24)
         : event.target.value;
     setProfileForm((current) => ({ ...current, [field]: value }));
+    setProfileTextErrors((current) => ({ ...current, [field]: undefined }));
   };
 
   const handlePetTypeChange = (event) => {
     const value = event.target.value;
+    setPetTextErrors((current) => ({ ...current, breed: undefined, customBreed: undefined }));
     setPetForm((current) => ({
       ...current,
       petType: value,
@@ -568,6 +571,7 @@ export function CustomerProfile() {
 
   const handleBreedChange = (event) => {
     const value = event.target.value;
+    setPetTextErrors((current) => ({ ...current, breed: undefined, customBreed: undefined }));
     setPetForm((current) => ({
       ...current,
       breed: value,
@@ -627,10 +631,8 @@ export function CustomerProfile() {
 
   const validateProfileForm = () => {
     const textErrors = getTextValidationErrors(profileForm, ACCOUNT_TEXT_FIELDS);
+    setProfileTextErrors(textErrors);
     if (Object.keys(textErrors).length) {
-      const message = Object.values(textErrors)[0];
-      setFeedback({ type: "error", message });
-      toast.error(message);
       return false;
     }
     if (isSavingProfile) {
@@ -742,9 +744,6 @@ export function CustomerProfile() {
     const textErrors = getPetTextErrors(petForm);
     setPetTextErrors(textErrors);
     if (Object.keys(textErrors).length) {
-      const message = Object.values(textErrors)[0];
-      setFeedback({ type: "error", message });
-      toast.error(message);
       petSectionRef.current?.querySelector(`[name="${Object.keys(textErrors)[0]}"]`)?.focus();
       return;
     }
@@ -1066,16 +1065,22 @@ export function CustomerProfile() {
                         </select>
                         {petForm.breed === "Other" && (
                           <input
+                            name="customBreed"
                             value={petForm.customBreed}
+                            aria-invalid={Boolean(petTextErrors.customBreed)} aria-describedby={petTextErrors.customBreed ? "pet-breed-error" : undefined}
                             autoComplete="off"
                             onChange={(event) =>
-                              setPetForm((current) => ({ ...current, customBreed: event.target.value }))
+                              {
+                                setPetForm((current) => ({ ...current, customBreed: event.target.value }));
+                                setPetTextErrors((current) => ({ ...current, customBreed: undefined }));
+                              }
                             }
                             maxLength={60}
                             className="rounded-[18px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                             placeholder="Specify breed"
                           />
                         )}
+                        {petTextErrors.customBreed && <p id="pet-breed-error" role="alert" className="text-sm text-[#B23949]">{petTextErrors.customBreed}</p>}
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                           <input
                             value={petForm.ageValue}
@@ -1548,9 +1553,11 @@ export function CustomerProfile() {
                         value={profileForm.fullName}
                         autoComplete="off"
                         onChange={handleProfileChange("fullName")}
+                        aria-invalid={Boolean(profileTextErrors.fullName)} aria-describedby={profileTextErrors.fullName ? "profile-name-error" : undefined}
                         maxLength={80}
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                       />
+                      {profileTextErrors.fullName && <p id="profile-name-error" role="alert" className="mt-2 text-sm text-[#B23949]">{profileTextErrors.fullName}</p>}
                     </div>
                     <div>
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Username</label>
@@ -1558,10 +1565,12 @@ export function CustomerProfile() {
                         value={profileForm.username}
                         autoComplete="off"
                         onChange={handleProfileChange("username")}
+                        aria-invalid={Boolean(profileTextErrors.username)} aria-describedby={profileTextErrors.username ? "profile-username-error" : undefined}
                         maxLength={24}
                         pattern="[a-z0-9._-]{3,24}"
                         className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                       />
+                      {profileTextErrors.username && <p id="profile-username-error" role="alert" className="mt-2 text-sm text-[#B23949]">{profileTextErrors.username}</p>}
                     </div>
                     <div>
                       <label className="mb-2 block text-sm font-medium text-[#425A60]">Email</label>

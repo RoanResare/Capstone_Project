@@ -60,6 +60,16 @@ async function saveAppointment(req, res) {
     const { isLowCostKaponAppointment, isKaponPromoAvailable, KAPON_UNAVAILABLE_MESSAGE } =
       await import("../../../shared/lowCostKaponPromo.mjs");
     const previous = existing.data?.() || {};
+    const changedText = {};
+    for (const field of ["petName", "notes", "rejectionReason", "cancellationReason"]) {
+      if (Object.hasOwn(appointment, field) && (!existing.exists || appointment[field] !== previous[field])) changedText[field] = appointment[field];
+    }
+    if (Object.keys(changedText).length) {
+      const { assertAppropriateText } = require("../utils/textModeration");
+      await assertAppropriateText(changedText, {
+        petName: "Pet name", notes: "Appointment notes", rejectionReason: "Reason", cancellationReason: "Reason",
+      });
+    }
     if (["admin", "staff"].includes(user.role) && existing.exists) {
       const previousStatus = normalizeAppointmentStatus(previous.status);
       const requestedStatus = appointment.sessionAction === "end"
@@ -84,9 +94,11 @@ async function saveAppointment(req, res) {
       const {validateAppointmentDecision} = await import("../../../shared/appointmentDecisions.mjs");
       try {
         const decision=validateAppointmentDecision(appointment.decision);
+        const { assertAppropriateText } = require("../utils/textModeration");
+        await assertAppropriateText({ reason: decision.reason }, { reason: "Reason" });
         decisionFields.decision={...decision,by:user.uid,at:new Date().toISOString()};
         decisionFields[nextStatus === "Rejected" ? "rejectionReason" : "cancellationReason"]=decision.reason;
-      } catch(error) { throw new ApiError(400,error.message); }
+      } catch(error) { if (error instanceof ApiError) throw error; throw new ApiError(400,error.message); }
     }
     const sessionFields = {};
     const action = appointment.sessionAction;

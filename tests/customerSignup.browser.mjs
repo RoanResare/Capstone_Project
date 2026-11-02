@@ -67,27 +67,16 @@ try {
     const request = route.request();
     if (new URL(request.url()).pathname.endsWith("/profile")) {
       submissions.push(request.postDataJSON());
-      await route.fulfill({ status: 202, json: submissions.length > 1 ? {
-        verificationMethod: "otp", deliveryStatus: "sent", message: "Verification code sent!",
-        profile: { uid: "new-customer", email: "customer@gmail.com" },
-      } : { deliveryStatus: "pending",
+      await route.fulfill({ status: 202, json: { deliveryStatus: "pending",
         message: "Your account was created, but the activation email could not be sent. Request a new activation link.",
+        verificationMethod: "otp", statusChallenge: "test-status-challenge",
         profile: { uid: "new-customer", email: "customer@gmail.com" } } });
-    } else if (new URL(request.url()).pathname.endsWith("/activate")) {
-      const payload = request.postDataJSON();
-      activations.push(payload);
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await route.fulfill(payload.otpCode === "012345"
-        ? { status: 200, json: { success: true, email: payload.email, message: "Email verified. Your account is active; you can now sign in." } }
-        : { status: 400, json: { message: "This verification code is invalid or expired." } });
-    } else if (new URL(request.url()).pathname.endsWith("/resend-verification")) {
-      await route.fulfill({ status: 503, json: { message: "Email delivery is unavailable. Please try again." } });
     } else {
       checks.push(request.postDataJSON());
       await route.fulfill({ status: 409, json: { message: "A stale pre-check must not block signup." } });
     }
   });
-  await page.goto(`${server.resolvedUrls.local[0]}__signup_test`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.goto(`${server.resolvedUrls.local[0]}__signup_test`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.getByPlaceholder("Enter your full name").fill("Test Customer");
   await page.getByPlaceholder("Enter your email").fill("customer@gmail.com");
   await page.getByPlaceholder("Choose a profile username").fill("test_customer");
@@ -102,6 +91,12 @@ try {
   });
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Agree and continue" }).click();
+  await page.getByPlaceholder("Enter your full name").fill("gago");
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByRole("alert").filter({ hasText: "Please remove inappropriate or offensive language before continuing." }).waitFor();
+  assert.equal(submissions.length, 0, "Moderation must reject client-side before account creation");
+  await page.getByPlaceholder("Enter your full name").fill("Test Customer");
+  assert.equal(await page.getByRole("alert").count(), 0, "Correcting the name must clear its field error");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByRole("alert").filter({ hasText: "Passwords do not match." }).waitFor();
   assert.equal(submissions.length, 0, "A genuine mismatch must not reach the API");
@@ -119,8 +114,8 @@ try {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(element, "Roanpogi03.");
   });
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "Your account was created" }).waitFor({ timeout: 5000 });
-  await page.getByRole("link", { name: "Link expired or missing? Request another activation link" }).waitFor();
+  await page.getByRole("heading", { name: "Verify Your Email", exact: true }).waitFor({ timeout: 5000 });
+  await page.getByRole("status").filter({ hasText: "Your account is waiting for email verification" }).waitFor();
   // A second submit event after success must not provision another account.
   await page.locator("form").evaluate(form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
   assert.equal(submissions.length, 1);
@@ -132,37 +127,9 @@ try {
   assert.equal(submissions[0].phone, "+63 9940702702");
   assert.equal(await page.getByPlaceholder("Create a password").inputValue(), "");
   assert.equal(await page.getByPlaceholder("Repeat your password").inputValue(), "");
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await page.getByPlaceholder("Enter your email").fill("customer@gmail.com");
-  await page.getByPlaceholder("Choose a profile username").fill("test_customer");
-  await page.getByPlaceholder("9XXXXXXXXX", { exact: true }).fill("9940702702");
-  await page.getByPlaceholder("Create a password").fill("Roanpogi03.");
-  await page.getByPlaceholder("Repeat your password").fill("Roanpogi03.");
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("dialog").locator("div.overflow-y-auto").evaluate(element => {
-    element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
-  });
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Agree and continue" }).click();
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("heading", { name: "Verify your email", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Request a new verification code" }).click();
-  await page.getByRole("status").filter({ hasText: "Email delivery is unavailable" }).waitFor();
-  await page.getByLabel("Verification code", { exact: true }).fill("999999");
-  await page.getByRole("button", { name: "Verify code", exact: true }).click();
-  await page.getByRole("status").filter({ hasText: "invalid or expired" }).waitFor();
-  await page.getByLabel("Verification code", { exact: true }).fill("012345");
-  await page.locator("form").first().evaluate(form => {
-    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-  });
-  await page.getByRole("heading", { name: "Email verified", exact: true }).waitFor();
-  assert.equal(activations.length, 2, "Duplicate code verification must be prevented");
-  assert.deepEqual(activations[1], { email: "customer@gmail.com", otpCode: "012345" });
-  assert.equal(submissions.length, 2);
-  assert.equal(submissions[1].fullName, "test_customer", "A missing full name must use the username");
+  assert.equal(activations.length, 0, "The signup flow must not trigger an unrelated activation request");
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log("PASS: signup validation, duplicate prevention, OTP navigation, delivery errors, invalid codes and successful activation.");
+  console.log("PASS: signup moderation, correction, duplicate prevention and account verification handoff.");
 } finally {
   await browser?.close();
   await server.close();

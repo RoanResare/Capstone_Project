@@ -54,6 +54,7 @@ async function listPhotoModeration(req, res) {
 async function updatePhotoModeration(req, res) {
   const { id } = req.params;
   if (!id || id.includes("/")) throw new ApiError(400, "A valid photo submission ID is required.");
+  await require("../utils/textModeration").assertAppropriateText(req.body || {}, { moderationNote: "Moderation note" });
   const status = req.body?.status === "approved" ? "approved" : req.body?.status === "rejected" ? "rejected" : "";
   if (!status) throw new ApiError(400, "Choose approved or rejected.");
   const ref = db.collection("photoModeration").doc(id);

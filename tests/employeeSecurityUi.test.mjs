@@ -155,7 +155,7 @@ test("create action waits for confirmation and includes current admin password o
   const handler = source.slice(start, source.indexOf("  const confirmSaveUser =", start));
   let pending;
   const ports = {
-    isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [],
+    isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], setTextErrors() {},
     form: { name: "Employee", email: "employee@example.com", username: "test.cstmr2", role: "staff", password: "" },
     isValidEmail: () => true, isCreatingNew: true, selectedUser: null,
     currentAdminPassword: "Admin!Password1", currentAdminPasswordRef: { current: null }, setCurrentAdminPasswordError() {},
@@ -190,7 +190,7 @@ test("Manage Users username validation follows the shared policy and allows unch
     let pending;
     let feedback;
     const ports = {
-      isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], form, originalForm,
+      isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], setTextErrors() {}, form, originalForm,
       isValidEmail: () => true, isCreatingNew: false, selectedUser: { id: "employee" },
       currentAdminPassword: "", currentAdminPasswordRef: { current: null }, setCurrentAdminPasswordError() {},
       isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE,
@@ -211,7 +211,7 @@ test("Manage Users username validation follows the shared policy and allows unch
   let pending;
   let feedback;
   const invalidPorts = {
-    isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], form, originalForm,
+    isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], setTextErrors() {}, form, originalForm,
     isValidEmail: () => true, isCreatingNew: false, selectedUser: { id: "employee" },
     currentAdminPassword: "", currentAdminPasswordRef: { current: null }, setCurrentAdminPasswordError() {},
     isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE,

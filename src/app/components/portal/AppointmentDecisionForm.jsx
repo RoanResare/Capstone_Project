@@ -1,12 +1,16 @@
 import {useState} from "react";
 import {APPOINTMENT_REASON_GROUPS,OTHER_REASON_MIN_LENGTH,OTHER_REASON_MAX_LENGTH,validateAppointmentDecision} from "../../../../shared/appointmentDecisions.mjs";
+import {getTextValidationErrors} from "../../../../shared/textModeration.mjs";
 export function AppointmentDecisionForm({busy,onSave,onClose,status="Rejected"}) {
- const [category,setCategory]=useState(""),[reason,setReason]=useState(""),[error,setError]=useState("");
+ const [category,setCategory]=useState(""),[reason,setReason]=useState(""),[error,setError]=useState(""),[textError,setTextError]=useState("");
  const group=APPOINTMENT_REASON_GROUPS.find(group=>group.id===category);
  async function submit(event){
   event.preventDefault();setError("");
   try {
    const decision=validateAppointmentDecision({category,reason});
+   const moderationErrors=getTextValidationErrors({reason:decision.reason},{reason:"Reason"});
+   if(moderationErrors.reason){setTextError(moderationErrors.reason);return;}
+   setTextError("");
    const result=await onSave({status,decision});
    if(result===false)throw new Error("Unable to save the appointment decision. Please try again.");
    onClose();
@@ -23,8 +27,9 @@ export function AppointmentDecisionForm({busy,onSave,onClose,status="Rejected"})
   {category&&<button type="button" disabled={busy} onClick={()=>{setCategory("");setReason("");setError("");}} className="text-sm text-[#173E44] underline">Change category</button>}
   {group?.reasons.length>0&&<fieldset className="space-y-3"><legend className="mb-2 text-sm font-semibold">Choose a reason</legend>{group.reasons.map(option=><label key={option} className="flex items-start gap-3 rounded-xl border border-[#D9E7E7] p-3 text-sm"><input type="radio" name="appointment-decision-reason" checked={reason===option} disabled={busy} onChange={()=>setReason(option)} className="mt-1 accent-[#173E44]"/><span>{option}</span></label>)}</fieldset>}
   {category==="C"&&<label className="block text-sm font-medium">Explanation
-   <textarea aria-label="Explanation" value={reason} disabled={busy} minLength={OTHER_REASON_MIN_LENGTH} maxLength={OTHER_REASON_MAX_LENGTH} required rows={5} onChange={event=>setReason(event.target.value)} className="mt-2 w-full rounded-xl border border-[#D9E7E7] p-3"/>
+   <textarea aria-label="Explanation" aria-invalid={Boolean(textError)} aria-describedby={textError?"appointment-reason-moderation-error":undefined} value={reason} disabled={busy} minLength={OTHER_REASON_MIN_LENGTH} maxLength={OTHER_REASON_MAX_LENGTH} required rows={5} onChange={event=>{setReason(event.target.value);setTextError("");setError("");}} className="mt-2 w-full rounded-xl border border-[#D9E7E7] p-3"/>
    <span className="mt-1 block text-xs text-[#607277]">{OTHER_REASON_MIN_LENGTH}–{OTHER_REASON_MAX_LENGTH} characters. Explain the reason clearly.</span>
+   {textError&&<span id="appointment-reason-moderation-error" role="alert" className="mt-1 block text-sm text-[#B23949]">{textError}</span>}
   </label>}
   {error&&<p role="alert" className="text-sm text-[#B23949]">{error}</p>}
   <div className="flex justify-end gap-3"><button type="button" disabled={busy} onClick={onClose} className="rounded-xl border border-[#D9E7E7] px-4 py-3">Back</button><button type="submit" disabled={busy||!category} className="rounded-xl bg-[#173E44] px-4 py-3 font-semibold text-white disabled:opacity-50">{busy?"Saving...":status==="Cancelled"?"Confirm cancellation":"Confirm rejection"}</button></div>

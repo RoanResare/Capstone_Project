@@ -30,6 +30,67 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, signOut } = useAuth();
+  useEffect(() => {
+    const canonicalOrigin = "https://www.charmingfurfectionpetscareservices.online";
+    const pageMetadata = {
+      "/": {
+        title: "Charming Fur-fection Pet Care Services | Las Piñas City",
+        description: "Official website of Charming Fur-fection Pet Care Services in Las Piñas City, Philippines. Explore pet care services, manage pet profiles, and book appointments.",
+      },
+      "/about": {
+        title: "About Charming Fur-fection Pet Care Services | Las Piñas City",
+        description: "Learn about Charming Fur-fection Pet Care Services in Las Piñas City and how customers can explore services, manage pet profiles, and book appointments.",
+      },
+    };
+    const routePath = location.pathname === "/" ? "/" : location.pathname.replace(/\/+$/, "");
+    const page = pageMetadata[routePath];
+    const ensureMeta = (selector, attributes, content) => {
+      let element = document.head.querySelector(selector);
+      if (!content) {
+        element?.remove();
+        return;
+      }
+      if (!element) {
+        element = document.createElement("meta");
+        Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+        document.head.append(element);
+      }
+      element.setAttribute("content", content);
+    };
+    const ensureCanonical = (href) => {
+      let element = document.head.querySelector('link[rel="canonical"]');
+      if (!href) {
+        element?.remove();
+        return;
+      }
+      if (!element) {
+        element = document.createElement("link");
+        element.setAttribute("rel", "canonical");
+        document.head.append(element);
+      }
+      element.setAttribute("href", href);
+    };
+
+    if (!page) {
+      document.title = "Charming Fur-fection Pet Care Services";
+      ensureMeta('meta[name="robots"]', { name: "robots" }, "noindex,nofollow");
+      ensureMeta('meta[name="description"]', { name: "description" }, "");
+      ensureCanonical("");
+      ensureMeta('meta[property="og:title"]', { property: "og:title" }, "");
+      ensureMeta('meta[property="og:description"]', { property: "og:description" }, "");
+      ensureMeta('meta[property="og:url"]', { property: "og:url" }, "");
+      return;
+    }
+
+    const canonicalUrl = `${canonicalOrigin}${routePath}`;
+    document.title = page.title;
+    ensureMeta('meta[name="robots"]', { name: "robots" }, "index,follow");
+    ensureMeta('meta[name="description"]', { name: "description" }, page.description);
+    ensureCanonical(canonicalUrl);
+    ensureMeta('meta[property="og:title"]', { property: "og:title" }, page.title);
+    ensureMeta('meta[property="og:description"]', { property: "og:description" }, page.description);
+    ensureMeta('meta[property="og:url"]', { property: "og:url" }, canonicalUrl);
+  }, [location.pathname]);
   const dashboardPath = currentUser ? resolveHomePath(currentUser.role) : "/login";
   const accountName = getDisplayName(currentUser);
   const accountItems =

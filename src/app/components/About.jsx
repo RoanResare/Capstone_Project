@@ -1,29 +1,6 @@
 import { motion } from "motion/react";
 import { branchDetails } from "../data/systemData.js";
 
-const values = [
-  {
-    icon: "\uD83D\uDC9A",
-    title: "Compassion",
-    description: "We treat every pet with love and care",
-  },
-  {
-    icon: "\u2728",
-    title: "Quality",
-    description: "Professional service at affordable prices",
-  },
-  {
-    icon: "\uD83C\uDFE5",
-    title: "Expertise",
-    description: "Experienced veterinarians and staff",
-  },
-  {
-    icon: "\uD83E\uDD1D",
-    title: "Trust",
-    description: "Building lasting relationships with pet owners",
-  },
-];
-
 export function About() {
   return (
     <div className="min-h-[calc(100vh-5rem)] px-4 py-8 sm:px-6 sm:py-12">
@@ -34,46 +11,26 @@ export function About() {
           transition={{ duration: 0.6 }}
         >
           <h1 className="mb-6 text-center text-3xl font-bold text-[#2D9B9B] sm:text-4xl md:text-5xl">
-            About Charming Fur-fection
+            About Charming Fur-fection Pet Care Services
           </h1>
 
           <div className="space-y-5 rounded-3xl border border-[#E6EFEE] bg-white p-5 shadow-[0_16px_36px_rgba(54,67,62,0.1)] sm:p-8">
             <p className="text-lg text-gray-700 leading-relaxed">
-              Welcome to{" "}
+              This is the official website of Charming Fur-fection Pet Care Services in Las Piñas City. Customers can explore pet care services, manage pet profiles, and book appointments through this website.
+            </p>
+
+            <p className="text-lg text-gray-700 leading-relaxed">
+              The website was developed for the business and is used by the client for its operations. It provides information about services and related clinic details, along with customer accounts, pet profiles, and appointment booking.
+            </p>
+
+            <p className="text-lg text-gray-700 leading-relaxed">
+              Find the business at{" "}
               <span className="font-semibold text-[#2D9B9B]">
                 {branchDetails.name}
-              </span>
-              , your trusted partner in providing quality care for your beloved pets. We are
-              dedicated to offering affordable and comprehensive veterinary services, grooming,
-              and pet care solutions.
+              </span>{" "}
+              in Las Piñas City, Philippines. Contact details and current operating information are listed on the home page.
             </p>
 
-            <p className="text-lg text-gray-700 leading-relaxed">
-              Our mission is to ensure that every pet receives the love, care, and medical
-              attention they deserve. With our experienced team of veterinarians and pet care
-              specialists, we provide a wide range of services including vaccinations, deworming,
-              consultations, laboratory testing, and low-cost neutering services.
-            </p>
-
-            <p className="text-lg text-gray-700 leading-relaxed">
-              At Charming Fur-fection, we believe that quality pet care should be accessible to
-              everyone. That is why we strive to offer competitive pricing without compromising on
-              the quality of our services.
-            </p>
-
-            <div className="pt-6">
-              <h2 className="text-2xl font-bold text-[#2D9B9B] mb-4">Our Values</h2>
-              <ul className="space-y-3 text-gray-700 text-lg">
-                {values.map((value) => (
-                  <li key={value.title} className="flex items-start gap-3">
-                    <span className="text-[#2D9B9B] text-2xl">{value.icon}</span>
-                    <span>
-                      <strong>{value.title}:</strong> {value.description}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
         </motion.div>
       </div>

@@ -1,0 +1,6 @@
+{
+  "minLength": 3,
+  "maxLength": 24,
+  "allowedCharacters": "a-z0-9._-",
+  "message": "Username must be 3-24 characters and use only letters, numbers, dots, underscores, or hyphens."
+}

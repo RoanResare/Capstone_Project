@@ -2,6 +2,7 @@ import { EmployeeSaveConfirmation } from "./EmployeeSaveConfirmation.jsx";
 import { EmployeePasswordInput } from "./EmployeePasswordInput.jsx";
 import { buildAppointmentHistory } from "../../../../shared/appointmentHistory.mjs";
 import { getPasswordPolicyError } from "../../utils/passwordPolicy.js";
+import { isValidUsername, normalizeUsername, USERNAME_INPUT_PATTERN, USERNAME_MAX_LENGTH, USERNAME_POLICY_MESSAGE } from "../../utils/usernamePolicy.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
 import { AppointmentApprovalDialog } from "./AppointmentApprovalDialog.jsx";
@@ -1832,10 +1833,11 @@ function ManageUsersWorkspace({
       return;
     }
 
-    if (!/^[a-zA-Z0-9_]{3,32}$/.test(fullPayload.username)) {
+    const usernameChanged = isCreatingNew || normalizeUsername(fullPayload.username) !== normalizeUsername(originalForm?.username);
+    if (usernameChanged && !isValidUsername(fullPayload.username)) {
       setFeedback({
         type: "error",
-        message: "Username must be 3-32 characters and use only letters, numbers, or underscores.",
+        message: USERNAME_POLICY_MESSAGE,
       });
       return;
     }
@@ -2133,8 +2135,8 @@ function ManageUsersWorkspace({
                     autoComplete="off"
                     onChange={updateField("username")}
                     disabled={isSaving}
-                    maxLength={32}
-                    pattern="[A-Za-z0-9_]{3,32}"
+                    maxLength={USERNAME_MAX_LENGTH}
+                    pattern={USERNAME_INPUT_PATTERN}
                     className="w-full rounded-lg border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
                     placeholder="employee username"
                   />

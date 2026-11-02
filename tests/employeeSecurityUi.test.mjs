@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import { createServer } from "vite";
 import { readFileSync } from "node:fs";
 import { getPasswordPolicyError } from "../src/app/utils/passwordPolicy.js";
+import { isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE } from "../src/app/utils/usernamePolicy.js";
 
 const previousDocument = globalThis.document;
 globalThis.__employeeSecurityUi = { currentUser: { id: "admin", uid: "admin", role: "admin", name: "Account Holder" },
@@ -131,8 +132,9 @@ test("create action opens confirmation without a password and without creating t
   let pending;
   const ports = {
     isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [],
-    form: { name: "Employee", email: "employee@example.com", username: "employee", role: "staff", password: "" },
+    form: { name: "Employee", email: "employee@example.com", username: "test.cstmr2", role: "staff", password: "" },
     isValidEmail: () => true, isCreatingNew: true, selectedUser: null,
+    isValidUsername, USERNAME_POLICY_MESSAGE,
     setPendingUserSave: value => { pending = value; }, setFeedback() {},
     createStaff: () => assert.fail("Must wait for modal confirmation"),
   };
@@ -140,6 +142,55 @@ test("create action opens confirmation without a password and without creating t
   await save({ preventDefault() {} });
   assert.equal(pending.mode, "create");
   assert.equal(pending.fullPayload.password, "");
+  assert.equal(pending.fullPayload.username, "test.cstmr2");
+});
+
+test("Manage Users username validation follows the shared policy and allows unchanged dotted names", async () => {
+  const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
+  const start = source.indexOf("  const saveUser = async (event) => {");
+  const handler = source.slice(start, source.indexOf("  const confirmSaveUser =", start));
+  for (const username of ["test.cstmr2", "legacy name"]) {
+    const originalForm = { name: "Employee", email: "employee@example.com", username, role: "staff", password: "" };
+    const form = { ...originalForm };
+    let pending;
+    let feedback;
+    const ports = {
+      isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], form, originalForm,
+      isValidEmail: () => true, isCreatingNew: false, selectedUser: { id: "employee" },
+      isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE,
+      buildChangedPortalUserPayload: (current, original) => Object.fromEntries(
+        ["name", "email", "username", "role"].filter(key => current[key] !== original[key]).map(key => [key, current[key]]),
+      ),
+      setPendingUserSave: value => { pending = value; }, setFeedback: value => { feedback = value; },
+    };
+    const save = new Function(...Object.keys(ports), `${handler}\nreturn saveUser;`)(...Object.values(ports));
+    await save({ preventDefault() {} });
+    assert.equal(pending.mode, "update");
+    assert.equal(pending.payload.username, undefined, "unchanged username is omitted from the edit payload");
+    assert.equal(feedback.message, "");
+  }
+
+  const originalForm = { name: "Employee", email: "employee@example.com", username: "test.cstmr2", role: "staff", password: "" };
+  const form = { ...originalForm, username: "bad name" };
+  let pending;
+  let feedback;
+  const invalidPorts = {
+    isSaving: false, getTextValidationErrors: () => ({}), ACCOUNT_TEXT_FIELDS: [], form, originalForm,
+    isValidEmail: () => true, isCreatingNew: false, selectedUser: { id: "employee" },
+    isValidUsername, normalizeUsername, USERNAME_POLICY_MESSAGE,
+    buildChangedPortalUserPayload: () => ({}), setPendingUserSave: value => { pending = value; },
+    setFeedback: value => { feedback = value; },
+  };
+  const saveInvalid = new Function(...Object.keys(invalidPorts), `${handler}\nreturn saveUser;`)(...Object.values(invalidPorts));
+  await saveInvalid({ preventDefault() {} });
+  assert.equal(pending, undefined);
+  assert.equal(feedback.message, USERNAME_POLICY_MESSAGE);
+
+  for (const username of ["ab", "a".repeat(25), "bad name", "bad/name"]) {
+    assert.equal(isValidUsername(username), false, username);
+  }
+  assert.equal(isValidUsername("test.cstmr2"), true);
+  assert.equal(isValidUsername("under_score-2"), true);
 });
 
 test("confirmation validates password before invoking employee create or update", async () => {

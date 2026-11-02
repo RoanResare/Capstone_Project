@@ -151,6 +151,9 @@ test("browser policy preserves ownership and blocks role escalation and business
   assert.throws(() => assertRead("sessionSecurity", "alice", {}, identity));
   const before = { uid: "alice", role: "customer", accountStatus: "active", fullName: "A" };
   assertWrite("users", "alice", before, { ...before, fullName: "Alice" }, identity, "update");
+  assertWrite("users", "alice", before, { ...before, username: "test.cstmr2" }, identity, "update");
+  assertWrite("usernames", "test.cstmr2", null, { uid: "alice", email: "alice@example.com" }, identity, "set");
+  assert.throws(() => assertWrite("usernames", "bad/name", null, { uid: "alice" }, identity, "set"));
   assert.throws(() => assertWrite("users", "alice", before, { ...before, role: "admin" }, identity, "update"));
   assert.throws(() => assertWrite("appointments", "a", {}, { status: "Approved" }, identity, "update"));
   assert.throws(() => assertWrite("usernames", "bob", { uid: "bob" }, { uid: "alice" }, identity, "set"));

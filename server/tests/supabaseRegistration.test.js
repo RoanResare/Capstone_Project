@@ -112,7 +112,7 @@ function loadRegistration(options = {}) {
 }
 
 test("customer registration creates a Supabase identity and a complete PostgreSQL profile payload without a second password hash", async () => {
-  const fixture = loadRegistration();
+  const fixture = loadRegistration({ payload: { username: "test.cstmr2" } });
   await fixture.run();
   const profile = fixture.records.get("users/7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
   assert.equal(fixture.response.statusCode, 202);
@@ -120,13 +120,13 @@ test("customer registration creates a Supabase identity and a complete PostgreSQ
   assert.equal(profile.fullName, "Survey Customer");
   assert.equal(fixture.signupMetadata.full_name, "Survey Customer");
   assert.equal(fixture.signupMetadata.role, "customer");
-  assert.equal(profile.username, "survey_customer");
+  assert.equal(profile.username, "test.cstmr2");
   assert.equal(profile.phone, "+63 9940702702");
   assert.equal(profile.authUserId, "7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
   assert.equal(profile.role, "customer");
   assert.equal(profile.accountStatus, "inactive");
   assert.equal(Object.hasOwn(profile, "passwordHash"), false);
-  assert.equal(fixture.records.get("usernames/survey_customer").uid, profile.uid);
+  assert.equal(fixture.records.get("usernames/test.cstmr2").uid, profile.uid);
   assert.equal(fixture.authCreated, 1);
 });
 

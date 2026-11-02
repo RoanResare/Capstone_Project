@@ -4,6 +4,7 @@ const { env } = require("../config/env");
 const { FRAUD_STATUSES, USER_ROLES, USER_STATUSES, USERS_COLLECTION } = require("../constants/auth");
 const { ApiError } = require("../utils/ApiError");
 const { assertEmailIsDeliverable, assertRegistrationEmailAllowed } = require("./registrationSecurity.service");
+const USERNAME_POLICY = require("../../../shared/usernamePolicy.json");
 const { normalizePhilippineMobileNumber } = require("../utils/phoneNumber");
 const USERNAMES_COLLECTION = "usernames";
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -57,15 +58,18 @@ function normalizeUsername(username = "") {
   return typeof username === "string" ? username.trim().toLowerCase() : "";
 }
 
+const USERNAME_PATTERN = new RegExp(`^[${USERNAME_POLICY.allowedCharacters}]{${USERNAME_POLICY.minLength},${USERNAME_POLICY.maxLength}}$`);
+const INVALID_USERNAME_CHARACTERS = new RegExp(`[^${USERNAME_POLICY.allowedCharacters}]`, "g");
+
 function sanitizeUsernameCandidate(username = "") {
   return normalizeUsername(username)
-    .replace(/[^a-z0-9._-]/g, "")
+    .replace(INVALID_USERNAME_CHARACTERS, "")
     .replace(/^[._-]+/, "")
-    .slice(0, 24);
+    .slice(0, USERNAME_POLICY.maxLength);
 }
 
 function isValidUsername(username = "") {
-  return /^[a-z0-9._-]{3,24}$/.test(normalizeUsername(username));
+  return USERNAME_PATTERN.test(normalizeUsername(username));
 }
 
 function deriveUsernameFromEmail(email = "") {
@@ -76,7 +80,7 @@ function deriveUsernameFromEmail(email = "") {
 function resolveProfileUsername(username = "", email = "", uid = "") {
   const normalizedUsername = normalizeUsername(username);
 
-  if (isValidUsername(normalizedUsername)) {
+  if (normalizedUsername) {
     return normalizedUsername;
   }
 
@@ -99,7 +103,7 @@ function assertValidUsername(username = "") {
   if (!isValidUsername(normalized)) {
     throw new ApiError(
       400,
-      "Username must be 3-24 characters and use only lowercase letters, numbers, dots, underscores, or hyphens.",
+      USERNAME_POLICY.message,
     );
   }
 
@@ -707,14 +711,16 @@ async function updatePortalUser(uid, updates) {
     typeof updates.email === "string" && updates.email.trim()
       ? updates.email.trim().toLowerCase()
       : existingUser.email;
+  const requestedUsername = typeof updates.username === "string" ? updates.username.trim() : "";
+  const usernameChanged = Boolean(requestedUsername) && normalizeUsername(requestedUsername) !== normalizeUsername(existingUser.username);
+  const nextUsername = usernameChanged
+    ? assertValidUsername(requestedUsername)
+    : existingUser.username || assertValidUsername(deriveUsernameFromEmail(nextEmail));
   const nextUser = {
     ...existingUser,
     fullName: typeof updates.fullName === "string" ? updates.fullName.trim() : existingUser.fullName,
     email: nextEmail,
-    username:
-      typeof updates.username === "string" && updates.username.trim()
-        ? assertValidUsername(updates.username)
-        : existingUser.username || assertValidUsername(deriveUsernameFromEmail(nextEmail)),
+    username: nextUsername,
     role: typeof updates.role === "string" ? normalizeRole(updates.role) : existingUser.role,
     accountStatus:
       typeof updates.accountStatus === "string"
@@ -750,7 +756,9 @@ async function updatePortalUser(uid, updates) {
     await assertEmailIsDeliverable(nextUser.email);
   }
   await assertEmailAvailable(nextUser.email, uid);
-  await assertUsernameAvailable(nextUser.username, uid);
+  if (usernameChanged || !existingUser.username) {
+    await assertUsernameAvailable(nextUser.username, uid);
+  }
 
   const authId = existingUser.authUserId || uid;
   nextUser.authUserId = authId;
@@ -788,48 +796,51 @@ async function updatePortalUser(uid, updates) {
     });
     await db.runTransaction(async (transaction) => {
       const userReference = db.collection(USERS_COLLECTION).doc(uid);
-      const usernameReference = db.collection(USERNAMES_COLLECTION).doc(nextUser.username);
-      const usernameSnapshot = await transaction.get(usernameReference);
-
-      if (usernameSnapshot.exists && usernameSnapshot.data()?.uid !== uid) {
-        throw new ApiError(409, "This username is already in use.");
-      }
-
-      transaction.set(
-        userReference,
-        {
-          uid,
-          authUserId: authId,
-          fullName: nextUser.fullName,
-          email: nextUser.email,
-          username: nextUser.username,
-          role: nextUser.role,
-          accountStatus: nextUser.accountStatus,
-          status: nextUser.accountStatus,
-          fraudStatus: nextUser.fraudStatus,
-          fraudReason: nextUser.fraudReason,
-          fraudUpdatedAt: nextUser.fraudUpdatedAt,
-          passwordHash: nextUser.passwordHash,
-          phone: nextUser.phone,
-          updatedAt: nextUser.updatedAt,
-          statusChangedAt,
-        },
-        { merge: true },
-      );
-      transaction.set(
-        usernameReference,
-        {
+      const userUpdate = {
+        uid,
+        authUserId: authId,
+        fullName: nextUser.fullName,
+        email: nextUser.email,
+        role: nextUser.role,
+        accountStatus: nextUser.accountStatus,
+        status: nextUser.accountStatus,
+        fraudStatus: nextUser.fraudStatus,
+        fraudReason: nextUser.fraudReason,
+        fraudUpdatedAt: nextUser.fraudUpdatedAt,
+        passwordHash: nextUser.passwordHash,
+        phone: nextUser.phone,
+        updatedAt: nextUser.updatedAt,
+        statusChangedAt,
+      };
+      if (usernameChanged || !existingUser.username) {
+        const usernameReference = db.collection(USERNAMES_COLLECTION).doc(normalizeUsername(nextUser.username));
+        const usernameSnapshot = await transaction.get(usernameReference);
+        if (usernameSnapshot.exists && usernameSnapshot.data()?.uid !== uid) {
+          throw new ApiError(409, "This username is already in use.");
+        }
+        userUpdate.username = nextUser.username;
+        transaction.set(usernameReference, {
           uid,
           email: nextUser.email,
           username: nextUser.username,
           updatedAt: nextUser.updatedAt,
-        },
-        { merge: true },
-      );
-
-      if (existingUser.username && existingUser.username !== nextUser.username) {
-        transaction.delete(db.collection(USERNAMES_COLLECTION).doc(existingUser.username));
+        }, { merge: true });
+        if (existingUser.username && normalizeUsername(existingUser.username) !== normalizeUsername(nextUser.username)) {
+          transaction.delete(db.collection(USERNAMES_COLLECTION).doc(normalizeUsername(existingUser.username)));
+        }
+      } else if (nextEmail !== existingUser.email && isValidUsername(existingUser.username)) {
+        const usernameReference = db.collection(USERNAMES_COLLECTION).doc(normalizeUsername(existingUser.username));
+        const usernameSnapshot = await transaction.get(usernameReference);
+        if (!usernameSnapshot.exists || usernameSnapshot.data()?.uid === uid) {
+          transaction.set(usernameReference, {
+            uid,
+            email: nextUser.email,
+            username: existingUser.username,
+            updatedAt: nextUser.updatedAt,
+          }, { merge: true });
+        }
       }
+      transaction.set(userReference, userUpdate, { merge: true });
     });
     logPortalUserOperation("PostgreSQL profile update succeeded", { uid });
     await setCustomClaims(nextUser);

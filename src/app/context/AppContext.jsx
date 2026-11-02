@@ -41,6 +41,7 @@ import {
 import * as userApi from "../services/userApi.js";
 import { isPostgresEnabled } from "../services/database.js";
 import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwordPolicy.js";
+import { isValidUsername, normalizeUsername, sanitizeUsernameCandidate, USERNAME_POLICY_MESSAGE } from "../utils/usernamePolicy.js";
 import { appointmentStatusLabel } from "../utils/appointmentPresentation.js";
 import { subscribeKaponPromo, saveKaponPromo } from "../services/kaponPromo.js";
 import { isKaponPromoAvailable, isLowCostKaponAppointment, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
@@ -81,17 +82,9 @@ function countPendingAppointments(appointments, customerId = "", customerEmail =
   }).length;
 }
 
-function normalizeUsername(username = "") {
-  return typeof username === "string" ? username.trim().toLowerCase() : "";
-}
-
 function deriveUsernameFromEmail(email = "") {
   const [localPart = ""] = normalizeEmail(email).split("@");
-  return normalizeUsername(localPart.replace(/[^a-z0-9._-]/g, "").slice(0, 24));
-}
-
-function isValidUsername(username = "") {
-  return /^[a-z0-9._-]{3,24}$/.test(normalizeUsername(username));
+  return sanitizeUsernameCandidate(localPart);
 }
 
 function isPortalUserRole(role) {
@@ -2160,8 +2153,7 @@ export function AppProvider({ children }) {
       if (!isValidUsername(username)) {
         return {
           ok: false,
-          error:
-            "Username must be 3-24 characters and use only lowercase letters, numbers, dots, underscores, or hyphens.",
+          error: USERNAME_POLICY_MESSAGE,
         };
       }
 
@@ -2236,6 +2228,7 @@ export function AppProvider({ children }) {
       const normalizedUsername = updates.username
         ? normalizeUsername(updates.username)
         : normalizeUsername(targetUser.username);
+      const usernameChanged = Boolean(updates.username) && normalizedUsername !== normalizeUsername(targetUser.username);
       const normalizedRole = updates.role
         ? normalizePortalRole(updates.role)
         : targetUser.role;
@@ -2257,11 +2250,10 @@ export function AppProvider({ children }) {
         return { ok: false, error: "Name and email are required." };
       }
 
-      if (!normalizedUsername || !isValidUsername(normalizedUsername)) {
+      if (usernameChanged && !isValidUsername(normalizedUsername)) {
         return {
           ok: false,
-          error:
-            "Username must be 3-24 characters and use only lowercase letters, numbers, dots, underscores, or hyphens.",
+          error: USERNAME_POLICY_MESSAGE,
         };
       }
 

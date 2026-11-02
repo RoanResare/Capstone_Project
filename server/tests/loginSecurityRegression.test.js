@@ -55,8 +55,8 @@ function fixture(options = {}) {
     { body: { identifier, password: "ExactPass! ", role: "admin", otpTicket: "otp-ticket", otpCode: "123456" }, headers: {}, ip: "127.0.0.1" }, response) };
 }
 
-test("email and username login use Auth credentials and the PostgreSQL customer role, ignoring requested/metadata roles", async () => {
-  for (const identifier of [" USER@gmail.com ", "customer_name"]) {
+test("email and supported usernames log in with the PostgreSQL customer role, ignoring requested/metadata roles", async () => {
+  for (const identifier of [" USER@gmail.com ", "customer_name", "test.cstmr2"]) {
     const f = fixture(); await f.run("loginUnified", identifier);
     assert.equal(f.response.code, 200);
     assert.equal(f.response.body.user.role, "customer");
@@ -67,7 +67,7 @@ test("email and username login use Auth credentials and the PostgreSQL customer 
 
 test("staff and admin login require OTP and return no access or Supabase session tokens", async () => {
   for (const role of ["staff", "admin"]) {
-    const f = fixture({ profile: { role } }); await f.run();
+    const f = fixture({ profile: { role } }); await f.run("loginUnified", "test.cstmr2");
     assert.equal(f.response.code, 202);
     assert.equal(f.response.body.requiresTwoFactor, true);
     assert.equal(f.response.body.user.role, role);
@@ -136,5 +136,8 @@ test("unknown PostgreSQL roles/statuses fail closed and native UUID lookup canno
   service._compile(fs.readFileSync(filename, "utf8"), filename);
   const profile = service.exports.toPublicUser({ uid: "id", role: "superadmin", accountStatus: "unknown" });
   assert.equal(profile.role, ""); assert.equal(profile.accountStatus, "inactive");
+  assert.equal(service.exports.assertValidUsername("Test.Cstmr2"), "test.cstmr2");
+  assert.throws(() => service.exports.assertValidUsername("bad/name"), /Username must/);
+  assert.equal(service.exports.normalizeUserPayload({ uid: "legacy", username: "legacy name" }).username, "legacy name");
   assert.equal(await service.exports.getUserByAuthId("auth-id"), null);
 });

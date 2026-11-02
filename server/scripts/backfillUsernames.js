@@ -1,4 +1,6 @@
 const { db } = require("../src/config/postgresDatabase");
+const USERNAME_POLICY = require("../../shared/usernamePolicy.json");
+const USERNAME_PATTERN = new RegExp(`^[${USERNAME_POLICY.allowedCharacters}]{${USERNAME_POLICY.minLength},${USERNAME_POLICY.maxLength}}$`);
 
 function normalizeUsername(username = "") {
   return typeof username === "string" ? username.trim().toLowerCase() : "";
@@ -10,7 +12,7 @@ function deriveUsernameFromEmail(email = "") {
 }
 
 function isValidUsername(username = "") {
-  return /^[a-z0-9._-]{3,24}$/.test(username);
+  return USERNAME_PATTERN.test(username);
 }
 
 async function main() {

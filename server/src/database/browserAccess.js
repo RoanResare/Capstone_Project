@@ -1,5 +1,7 @@
 const { ApiError } = require("../utils/ApiError");
 const { ownsRecord } = require("../services/scheduleRecords.service");
+const USERNAME_POLICY = require("../../../shared/usernamePolicy.json");
+const USERNAME_PATTERN = new RegExp(`^[${USERNAME_POLICY.allowedCharacters}]{${USERNAME_POLICY.minLength},${USERNAME_POLICY.maxLength}}$`);
 const PUBLIC_READ = new Set(["usernames", "services", "chatbot_faqs"]);
 const SHARED_READ = new Set(["availabilitySlots", "timeSlots", "slotManagement", "schedules", "slot_management", "lowCostKaponPromo"]);
 const SELF_FIELDS = new Set(["uid", "id", "email", "username", "fullName", "name", "phone", "updatedAt", "createdAt", "role", "status", "accountStatus", "fraudStatus", "registrationIp", "photoURL", "profilePhotoPath", "profilePhotoModerationId", "profilePhotoUploadCount"]);
@@ -38,12 +40,12 @@ function assertWrite(collection, id, before, after, identity, operation) {
     if (status(after.accountStatus || after.status) !== previousStatus || (after.status !== undefined && status(after.status) !== previousStatus)) deny();
     if ((before.fraudStatus || "normal").toLowerCase() !== (after.fraudStatus || "normal").toLowerCase()) deny();
     if ((before.registrationIp || "") !== (after.registrationIp || "")) deny();
-    if (after.username && !/^[a-z0-9._-]{3,24}$/.test(after.username)) deny();
+    if (after.username && !USERNAME_PATTERN.test(after.username)) deny();
     if (after.email && after.email.toLowerCase() !== String(identity.claims.email || "").toLowerCase()) deny();
     return;
   }
   if (collection === "usernames" && operation !== "delete") {
-    if (!/^[a-z0-9._-]{3,24}$/.test(id)) deny();
+    if (!USERNAME_PATTERN.test(id)) deny();
     if (after?.uid !== identity.uid || (before?.uid && before.uid !== identity.uid)) deny();
     if (after.email && after.email.toLowerCase() !== String(identity.claims.email || "").toLowerCase()) deny();
     return;

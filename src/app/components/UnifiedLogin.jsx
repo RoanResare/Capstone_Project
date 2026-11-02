@@ -8,7 +8,6 @@ import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
 import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { branchDetails } from "../data/systemData.js";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
 import { useRememberedLogin } from "../utils/useRememberedLogin.js";
 import { getLoginAttemptFeedback } from "../utils/loginAttemptFeedback.js";
@@ -146,10 +145,10 @@ export function UnifiedLogin() {
             <PawPrint className="mx-auto mb-2 text-[#168985]" size={30} />
             <h2 className="text-3xl font-extrabold text-[#07545A]">Welcome Back!</h2>
             <h3 className="mt-1 text-base font-bold text-[#20343B]">
-              {branchDetails.name}
+              Charming Fur-fection Pet Care Services – Las Piñas City
             </h3>
             <p className="mt-2 text-sm text-[#607277]">
-              Log in with your account credentials to continue.
+              Enter your email or username and password to continue.
             </p>
           </div>
 
@@ -243,7 +242,7 @@ export function UnifiedLogin() {
                 className="h-4 w-4 accent-[#2D9B9B]"
               />
             </label>
-            <Link to="/forgot-password" className="text-sm font-semibold text-[#2D6B73] underline underline-offset-4">
+            <Link to="/forgot-password" className="ui-hover-lift inline-flex min-h-10 items-center justify-center rounded-full border border-[#78B8B2] bg-white px-4 py-2 text-sm font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none">
               Forgot Password?
             </Link>
             </div>
@@ -267,7 +266,7 @@ export function UnifiedLogin() {
 
             <p className="pt-1 text-center text-xs text-[#718387]">
               By continuing, you agree to our{" "}
-              <button type="button" onClick={() => setShowTerms(true)} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>.
+              <button type="button" onClick={() => setShowTerms(true)} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Terms and Conditions</button>.
             </p>
           </form>
 

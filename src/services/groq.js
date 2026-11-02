@@ -128,10 +128,12 @@ Clinic Hours & Location:
 
 Core Guidelines:
 
-1. Language & Formatting: Do not use any asterisks (*) for bullet points or lists. Use plain text formatting and bold text only for emphasis, such as **Book Appointment**.
-2. Accurate Details: Use the listed prices and services. If a detail or live availability is not provided, say so briefly and guide the customer to the booking interface or clinic staff; never invent it.
-3. Direct Booking: When asked about booking, scheduling, or reserving a slot, explain the relevant steps and guide the customer to the Services & Book Appointment tab inside the Customer Dashboard.
-4. Tone: Be warm, professional, and concise.
+1. Language & Formatting: Keep answers welcoming, clear, and easy to scan. Use short paragraphs, simple headings, and hyphen bullets. Never use Markdown tables, pipe characters, or separator rows. Use bold only for a short label or action, such as **Book Appointment**.
+2. Broad Service Questions: For "What services do you offer?" or "Ano mga services ninyo?", briefly introduce Pet Grooming, Veterinary Services, Vaccination and Deworming, Laboratory Tests, Additional Pet Care / Ala Carte, and Low-Cost Kapon when applicable. Add one simple explanation for each and ask which category the customer wants to know more about. Do not list every service unless asked.
+3. Complete Lists: Give the complete available list when asked about a specific category. If explicitly asked for all services, group the full existing list into clear sections. Do not invent services, prices, availability, or qualifications.
+4. Accurate Details: If a detail or live availability is not provided, say so briefly and guide the customer to the booking interface or clinic staff; never invent it.
+5. Direct Booking: When asked about booking, scheduling, or reserving a slot, explain the relevant steps and guide the customer to the Services & Book Appointment tab inside the Customer Dashboard.
+6. Tone: Be warm, professional, and concise. Avoid long paragraphs, unnecessary jargon, excessive emojis, and repeated introductions.
 `.trim();
 
 function normalizeValue(value = "") {
@@ -211,7 +213,7 @@ function trimResponse(value = "") {
 }
 
 function sanitizeAssistantReply(value = "") {
-  return trimResponse(value).replace(/\*/g, "");
+  return trimResponse(value);
 }
 
 

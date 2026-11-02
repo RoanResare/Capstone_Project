@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext.jsx";
 import { branchDetails } from "../data/systemData.js";
+import { AssistantMessage } from "./AssistantMessage.jsx";
 import {
   askGroqAssistantStream,
   CHAT_TIMEOUT_ERROR_MESSAGE,
@@ -69,13 +70,13 @@ function ChatBubble({ message }) {
   return (
     <div className={`flex min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[90%] min-w-0 rounded-[24px] px-4 py-3 text-sm leading-6 shadow-sm ${
+        className={`max-w-[90%] min-w-0 [overflow-wrap:anywhere] rounded-[24px] px-4 py-3 text-base leading-7 shadow-sm ${
           isUser
             ? "bg-[#173E44] text-white"
             : "border border-[#DDEAEA] bg-white text-[#27484E]"
         }`}
       >
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        <AssistantMessage content={message.content} />
         {message.bookingLink && (
           <Link
             to="/customer/dashboard?tab=services"
@@ -357,7 +358,7 @@ export function AskLlamaAI() {
                   role="log"
                   aria-live="polite"
                   aria-busy={isLoading}
-                  className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 pr-3 scroll-smooth sm:px-5 sm:py-5 sm:pr-4"
+                  className="min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 pr-3 scroll-smooth sm:px-5 sm:py-5 sm:pr-4"
                 >
                   {messages.map((message) => (
                     <ChatBubble key={message.id} message={message} />
@@ -377,15 +378,15 @@ export function AskLlamaAI() {
               </div>
 
               <div className="mt-3 shrink-0 space-y-3">
-                <div className="-mx-1 overflow-x-auto overflow-y-hidden px-1 pb-1 scroll-smooth">
-                  <div className="flex w-max min-w-full gap-2">
+                <div className="px-0.5 pb-1">
+                  <div className="flex min-w-0 flex-wrap gap-2">
                     {groqSuggestionChips.map((chip) => (
                       <button
                         key={chip}
                         type="button"
                         onClick={() => submitMessage(chip)}
                         disabled={isLoading}
-                        className="shrink-0 rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-3 py-2 text-xs font-medium text-[#2D6B73] transition hover:border-[#2D9B9B] hover:bg-[#EEF7F7] disabled:cursor-not-allowed disabled:opacity-70"
+                        className="min-h-11 max-w-full rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-3 py-2 text-left text-sm leading-5 font-medium text-[#2D6B73] transition hover:border-[#2D9B9B] hover:bg-[#EEF7F7] disabled:cursor-not-allowed disabled:opacity-70 [overflow-wrap:anywhere]"
                       >
                         {chip}
                       </button>

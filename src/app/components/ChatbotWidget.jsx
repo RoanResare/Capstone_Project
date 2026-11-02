@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, Languages, SendHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
+import { AssistantMessage } from "./AssistantMessage.jsx";
 import {
   chatbotSuggestionChips,
 } from "../data/systemData.js";
@@ -15,7 +16,7 @@ function ChatBubble({ from, children }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[88%] rounded-[22px] px-4 py-3 text-sm leading-6 ${
+        className={`max-w-[88%] min-w-0 [overflow-wrap:anywhere] rounded-[22px] px-4 py-3 text-base leading-7 ${
           isUser
             ? "bg-[#173E44] text-white"
             : "bg-[#F3F8F8] text-[#27484E]"
@@ -32,6 +33,7 @@ export function ChatbotWidget({ surface = "home" }) {
   const [draft, setDraft] = useState("");
   const lastSubmissionRef = useRef({ message: "", at: 0 });
   const requestInFlightRef = useRef(false);
+  const messagesEndRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
     {
@@ -41,6 +43,10 @@ export function ChatbotWidget({ surface = "home" }) {
         "Hello! Ask about services, pricing, appointments, clinic hours, or policies in English or Tagalog.",
     },
   ]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, isLoading]);
 
   const isSubmitDisabled = isLoading || !draft.trim();
 
@@ -120,10 +126,10 @@ export function ChatbotWidget({ surface = "home" }) {
         </div>
       </div>
 
-      <div className="mt-5 space-y-3 rounded-[26px] bg-[#FCFEFE] p-4">
+      <div className="mt-5 max-h-[min(65vh,560px)] space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain rounded-[26px] bg-[#FCFEFE] p-3 sm:p-4">
         {messages.map((message) => (
           <ChatBubble key={message.id} from={message.from}>
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            <AssistantMessage content={message.content} />
             {message.bookingLink && (
               <Link to="/customer/dashboard?tab=services" className="mt-3 block font-semibold underline underline-offset-4">
                 Book an appointment
@@ -132,6 +138,7 @@ export function ChatbotWidget({ surface = "home" }) {
           </ChatBubble>
         ))}
         {isLoading && <p role="status" className="text-sm text-[#607277]">Charming Assistant is thinking...</p>}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -141,7 +148,7 @@ export function ChatbotWidget({ surface = "home" }) {
             type="button"
             disabled={isLoading}
             onClick={() => submitInquiry(chip)}
-            className="rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-4 py-2 text-sm text-[#36555B] transition hover:border-[#2D9B9B] hover:text-[#2D6B73]"
+            className="min-h-11 max-w-full rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-4 py-2 text-left text-sm leading-5 text-[#36555B] transition hover:border-[#2D9B9B] hover:text-[#2D6B73] [overflow-wrap:anywhere]"
           >
             {chip}
           </button>
@@ -153,7 +160,7 @@ export function ChatbotWidget({ surface = "home" }) {
           event.preventDefault();
           submitInquiry(draft);
         }}
-        className="mt-5 flex flex-col gap-3 md:flex-row"
+        className="mt-5 flex min-w-0 flex-col gap-3 md:flex-row"
       >
         <input
           value={draft}

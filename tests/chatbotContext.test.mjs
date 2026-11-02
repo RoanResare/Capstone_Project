@@ -105,6 +105,10 @@ test("Groq uses server instructions and retains context across several exchanges
   assert.ok(request.messages[0].content.includes("Tagalog to Tagalog"));
   assert.ok(request.messages[0].content.includes("English to English"));
   assert.ok(request.messages[0].content.includes("Services & Book Appointment"));
+  assert.ok(request.messages[0].content.includes("Never use Markdown tables, pipe characters, or separator rows"));
+  assert.ok(request.messages[0].content.includes("For a broad question such as \"What services do you offer?\""));
+  assert.ok(request.messages[0].content.includes("Do not list every individual service in this overview"));
+  assert.ok(request.messages[0].content.includes("If they explicitly ask for all services, provide the complete list"));
   assert.ok(!request.messages[0].content.includes("Always reply strictly in English"));
   assert.ok(!request.messages[0].content.includes("Open daily from 8:00 AM to 6:00 PM"));
   assert.equal(request.messages.at(-1).content, "How much?");

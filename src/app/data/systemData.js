@@ -137,10 +137,10 @@ export const appointmentFilters = [
 ];
 
 export const chatbotSuggestionChips = [
-  "What services do you offer?",
-  "How much is consultation?",
-  "How do I book an appointment?",
-  "What are the clinic hours?",
+  "View Services",
+  "Grooming Prices",
+  "Book Appointment",
+  "Clinic Hours",
 ];
 
 export function formatMoneyLabel(value) {

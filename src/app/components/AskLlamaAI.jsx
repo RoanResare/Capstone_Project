@@ -70,11 +70,7 @@ function ChatBubble({ message }) {
   return (
     <div className={`flex min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[90%] min-w-0 [overflow-wrap:anywhere] rounded-[24px] px-4 py-3 text-base leading-7 shadow-sm ${
-          isUser
-            ? "bg-[#173E44] text-white"
-            : "border border-[#DDEAEA] bg-white text-[#27484E]"
-        }`}
+        className={`${isUser ? "max-w-[90%] bg-[#173E44] text-white" : "w-full max-w-full border border-[#DDEAEA] bg-white text-[#27484E]"} min-w-0 [overflow-wrap:anywhere] rounded-[24px] px-4 py-3 text-base leading-7 shadow-sm`}
       >
         <AssistantMessage content={message.content} />
         {message.bookingLink && (
@@ -379,14 +375,14 @@ export function AskLlamaAI() {
 
               <div className="mt-3 shrink-0 space-y-3">
                 <div className="px-0.5 pb-1">
-                  <div className="flex min-w-0 flex-wrap gap-2">
+                  <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {groqSuggestionChips.map((chip) => (
                       <button
                         key={chip}
                         type="button"
                         onClick={() => submitMessage(chip)}
                         disabled={isLoading}
-                        className="min-h-11 max-w-full rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-3 py-2 text-left text-sm leading-5 font-medium text-[#2D6B73] transition hover:border-[#2D9B9B] hover:bg-[#EEF7F7] disabled:cursor-not-allowed disabled:opacity-70 [overflow-wrap:anywhere]"
+                        className="min-h-11 w-full max-w-full rounded-full border border-[#D9E8E8] bg-[#F9FBFB] px-3 py-1.5 text-left text-sm leading-5 font-medium text-[#2D6B73] transition hover:border-[#2D9B9B] hover:bg-[#EEF7F7] disabled:cursor-not-allowed disabled:opacity-70 [overflow-wrap:anywhere] sm:w-auto"
                       >
                         {chip}
                       </button>

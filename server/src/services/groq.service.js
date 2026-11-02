@@ -9,7 +9,7 @@ const MAX_HISTORY_MESSAGES = 8;
 const GROQ_SYSTEM_PROMPT = `
 You are Charming Fur-fection Assistant, an intelligent, helpful, and polite customer support AI for Charming Fur-fection Pet Care Services.
 
-Business Knowledge Base & Exact Pricing:
+Business Knowledge Base & Available Price Information:
 
 - Official branch name: Charming Fur-fection Pet Care Services - Las Pinas City.
 - Address: Saint Joseph Avenue corner Guinto Street, Pulang Lupa Dos, Las Pinas, Philippines, 1740.
@@ -27,9 +27,7 @@ Business Knowledge Base & Exact Pricing:
 - Sanitary Groom (Small: 350, Medium: 400, Large: 500, X-Large: 550)
 - Full Groom (Small: 400, Medium: 500, Large: 600, X-Large: 700)
 - Puppy Cut (Small: 450, Medium: 550, Large: 650, X-Large: 750)
-- Feline Basic Groom: 500
-- Feline Sanitary Groom: 600
-- Feline Full Groom: 700
+- Cat grooming: Basic, Sanitary, and Full Groom. Current cat grooming prices must be checked on the clinic's published pricelist; do not quote the older static cat prices in this prompt.
 
 2. Veterinary Services & Procedures:
 
@@ -84,11 +82,7 @@ Business Knowledge Base & Exact Pricing:
 
 7. Low-Cost Kapon Program:
 
-- Registration Fee: 200
-- Male Cat: 700
-- Female Cat: 900
-- Male Dog: 1,600
-- Female Dog: 2,200
+- Pricing and registration depend on the currently active promotion. This prompt has no live promotion status or authoritative price data. Do not invent a registration fee, quote fixed procedure prices, or promise that registration is open. Direct customers to the Low-Cost Kapon promotion shown on the website or to clinic staff.
 
 Safety & Conversational Rules:
 
@@ -99,8 +93,9 @@ Safety & Conversational Rules:
 - Match the language of the customer's latest message: reply in English to English, Tagalog to Tagalog, and Taglish to mixed-language messages. Use recent conversation to understand follow-up questions. Keep official business names and dashboard labels unchanged.
 - Use short, simple sentences and comfortable spacing. Keep dashboard labels such as Services & Book Appointment and Customer Dashboard unchanged when translating navigation instructions.
 - Never use Markdown tables, pipe characters, or separator rows. Format information as brief paragraphs, simple category headings, or hyphen bullets. Use bold only for short labels or actions.
-- For a broad question such as "What services do you offer?" or "Ano mga services ninyo?", give a short, friendly overview of Pet Grooming; Veterinary Services; Vaccination and Deworming; Laboratory Tests; Additional Pet Care / Ala Carte; and Low-Cost Kapon when applicable. Briefly explain each category and finish by asking which service the customer would like to know more about. Do not list every individual service in this overview.
-- If the customer asks about one category, give its complete available list using a readable heading and bullets. If they explicitly ask for all services, provide the complete list grouped into clear sections without omitting valid services.
+- For a broad question such as "What services do you offer?" or "Ano mga services ninyo?", give a short, friendly overview of Pet Grooming; Veterinary Services; Vaccinations; Deworming; Laboratory Tests; Ala Carte Services; and Low-Cost Kapon, subject to current promotion availability. Briefly explain each category and finish by asking which service the customer would like to know more about. Do not list every individual service in this overview.
+- Treat explicit requests for all services, a complete pricelist, all prices, or "magkano lahat" as requests for the complete catalog. Give every available item grouped into clear sections. For a request about a specific category, include the complete list for that category. Never claim a catalog is complete if the reply was cut off; tell the customer the list is incomplete and invite them to ask for a section.
+- The cat grooming rates in this prompt conflict with the currently supplied clinic pricelist reference. Never repeat those static cat rates; refer customers to the published pricelist for current cat grooming prices until structured current rates are available here.
 - Keep responses comfortable to read on a phone. Avoid giant paragraphs, unnecessary jargon, repeated introductions, excessive emojis, and unrelated service details.
 - Use only the approved prices, services, and hours listed above. If information or live availability is unavailable, acknowledge that and guide the customer to clinic staff or the booking interface; never invent details.
 - Whenever a user asks about booking, scheduling, or reserving a slot, explain how to select a service through Services & Book Appointment inside their Customer Dashboard, in the customer's language.
@@ -109,6 +104,22 @@ Safety & Conversational Rules:
 
 function normalizeValue(value = "") {
   return String(value || "").trim();
+}
+
+const EXPLICIT_COMPLETE_CATALOG = /\b(all|complete|full|entire|every|lahat|kabuuan|buong)\b|\b(pricelist|price\s+list|all\s+prices|lahat\s+ng\s+presyo|view\s+services)\b/i;
+const SPECIFIC_CATEGORY = /\b(groom(?:ing)?|veterinary|vet|consultation|vaccin(?:e|ation|ations)|deworm(?:ing)?|laboratory|lab(?:oratory)?\s+test|ala\s*carte|kapon|spay|neuter)\b/i;
+const CATEGORY_DETAIL_REQUEST = /\b(service|services|procedure|procedures|list|available|offer|price|prices|presyo|magkano|ano\s+ano|show|view)\b/i;
+
+function getChatResponseTokenLimit(message = "") {
+  const question = normalizeValue(message);
+  if (EXPLICIT_COMPLETE_CATALOG.test(question)) return 1800;
+  if (SPECIFIC_CATEGORY.test(question) && CATEGORY_DETAIL_REQUEST.test(question)) return 1000;
+  return 500;
+}
+
+const INCOMPLETE_CATALOG_NOTICE = "This list may be incomplete. Ask me for a specific category to see its full list.";
+function addIncompleteCatalogNotice(answer, wasTruncated) {
+  return wasTruncated ? `${answer.trim()}\n\n${INCOMPLETE_CATALOG_NOTICE}` : answer;
 }
 
 function getGroqApiKey() {
@@ -227,7 +238,7 @@ async function createChatCompletion(payload = {}) {
         {
           model,
           temperature: 0.2,
-          max_tokens: 500,
+          max_tokens: getChatResponseTokenLimit(payload.message),
           stream: false,
           messages,
         },
@@ -235,10 +246,11 @@ async function createChatCompletion(payload = {}) {
           signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
         },
       );
-      const answer = normalizeValue(completion?.choices?.[0]?.message?.content).replace(
+      const rawAnswer = normalizeValue(completion?.choices?.[0]?.message?.content).replace(
         /\n{3,}/g,
         "\n\n",
       );
+      const answer = addIncompleteCatalogNotice(rawAnswer, completion?.choices?.[0]?.finish_reason === "length");
 
       if (!answer) {
         lastError = new Error("Groq returned an empty response.");
@@ -288,13 +300,14 @@ async function createChatCompletionStream(payload = {}, onChunk) {
 
   for (const model of getModelCandidates()) {
     let answer = "";
+    let wasTruncated = false;
 
     try {
       const completion = await groq.chat.completions.create(
         {
           model,
           temperature: 0.2,
-          max_tokens: 500,
+          max_tokens: getChatResponseTokenLimit(payload.message),
           stream: true,
           messages,
         },
@@ -305,6 +318,7 @@ async function createChatCompletionStream(payload = {}, onChunk) {
 
       for await (const chunk of completion) {
         const token = chunk?.choices?.[0]?.delta?.content || "";
+        if (chunk?.choices?.[0]?.finish_reason === "length") wasTruncated = true;
         if (token) {
           answer += token;
         }
@@ -312,8 +326,11 @@ async function createChatCompletionStream(payload = {}, onChunk) {
       }
 
       if (normalizeValue(answer)) {
+        if (wasTruncated) {
+          onChunk({ choices: [{ delta: { content: `\n\n${INCOMPLETE_CATALOG_NOTICE}` } }] });
+        }
         return {
-          answer: normalizeValue(answer).replace(/\n{3,}/g, "\n\n"),
+          answer: addIncompleteCatalogNotice(normalizeValue(answer).replace(/\n{3,}/g, "\n\n"), wasTruncated),
           model,
           provider: "groq",
         };
@@ -343,4 +360,5 @@ module.exports = {
   createChatCompletionStream,
   createFallbackChunk,
   getGroqStatus,
+  getChatResponseTokenLimit,
 };

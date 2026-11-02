@@ -29,11 +29,19 @@ export function AssistantMessage({ content = "" }) {
         </Tag>;
       }
       if (block.type === "table") {
-        return <div key={index} role="list" aria-label="Service details" className="space-y-3">
-          {block.rows.map((row, rowIndex) => <section key={rowIndex} role="listitem" className="rounded-xl bg-[#F7FAFA] p-3">
-            <h4 className="font-semibold text-[#20343B]"><InlineText value={row.title} /></h4>
-            <div className="mt-1.5 space-y-1.5">
-              {row.details.map((detail, detailIndex) => {
+        return <div key={index} role="list" aria-label="Service details" className="divide-y divide-[#E5EEEE]">
+          {block.rows.map((row, rowIndex) => {
+            const prices = row.details.filter((detail) => /price/i.test(detail.label));
+            const otherDetails = row.details.filter((detail) => !/price/i.test(detail.label));
+            return <div key={rowIndex} role="listitem" className="min-w-0 py-2 first:pt-0 last:pb-0">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <h4 className="min-w-0 font-semibold text-[#20343B]"><InlineText value={row.title} /></h4>
+              {prices.map((price, priceIndex) => <span key={priceIndex} className="shrink-0 text-right text-sm font-semibold text-[#36555B]">
+                {price.label && <span className="font-normal">{price.label}: </span>}<InlineText value={price.value} />
+              </span>)}
+            </div>
+            {otherDetails.length > 0 && <div className="mt-1 space-y-1">
+              {otherDetails.map((detail, detailIndex) => {
                 const services = /service/i.test(detail.label) ? detail.value.split(/,\s*/).filter(Boolean) : null;
                 return <div key={detailIndex} className="text-sm leading-6">
                   {detail.label && <span className="font-medium">{detail.label}: </span>}
@@ -42,8 +50,9 @@ export function AssistantMessage({ content = "" }) {
                     : <InlineText value={detail.value} />}
                 </div>;
               })}
-            </div>
-          </section>)}
+            </div>}
+          </div>;
+          })}
         </div>;
       }
       return <p key={index} className="whitespace-pre-wrap leading-6"><InlineText value={block.text} /></p>;

@@ -16,11 +16,7 @@ function ChatBubble({ from, children }) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[88%] min-w-0 [overflow-wrap:anywhere] rounded-[22px] px-4 py-3 text-base leading-7 ${
-          isUser
-            ? "bg-[#173E44] text-white"
-            : "bg-[#F3F8F8] text-[#27484E]"
-        }`}
+        className={`${isUser ? "max-w-[90%] bg-[#173E44] text-white" : "w-full max-w-full bg-[#F3F8F8] text-[#27484E]"} min-w-0 [overflow-wrap:anywhere] rounded-[22px] px-4 py-3 text-base leading-7`}
       >
         {children}
       </div>

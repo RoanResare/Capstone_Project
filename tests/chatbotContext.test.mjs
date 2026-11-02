@@ -74,7 +74,7 @@ test("backend forwards questions and treats contextual guidance as a normal repl
   }
 });
 
-test("Groq uses server instructions and retains context across several exchanges", async () => {
+test("Groq uses server instructions, preserves history, and budgets complete-list replies", async () => {
   let request;
   class Groq {
     chat = { completions: { create: async (payload) => {
@@ -108,8 +108,37 @@ test("Groq uses server instructions and retains context across several exchanges
   assert.ok(request.messages[0].content.includes("Never use Markdown tables, pipe characters, or separator rows"));
   assert.ok(request.messages[0].content.includes("For a broad question such as \"What services do you offer?\""));
   assert.ok(request.messages[0].content.includes("Do not list every individual service in this overview"));
-  assert.ok(request.messages[0].content.includes("If they explicitly ask for all services, provide the complete list"));
+  assert.ok(request.messages[0].content.includes("Treat explicit requests for all services"));
+  assert.ok(request.messages[0].content.includes("Never claim a catalog is complete if the reply was cut off"));
+  assert.ok(!request.messages[0].content.includes("Feline Basic Groom: 500"));
+  assert.ok(!request.messages[0].content.includes("Registration Fee: 200"));
+  assert.ok(request.messages[0].content.includes("Do not invent a registration fee"));
   assert.ok(!request.messages[0].content.includes("Always reply strictly in English"));
   assert.ok(!request.messages[0].content.includes("Open daily from 8:00 AM to 6:00 PM"));
   assert.equal(request.messages.at(-1).content, "How much?");
+  assert.equal(request.max_tokens, 500);
+  assert.equal(context.module.exports.getChatResponseTokenLimit("View Services"), 1800);
+  assert.equal(context.module.exports.getChatResponseTokenLimit("Show all available veterinary procedures"), 1800);
+  assert.equal(context.module.exports.getChatResponseTokenLimit("List vaccination prices"), 1000);
+});
+
+test("a truncated streamed catalog explicitly tells customers the list is incomplete", async () => {
+  let request;
+  class Groq {
+    chat = { completions: { create: async (payload) => {
+      request = payload;
+      return (async function* () {
+        yield { choices: [{ delta: { content: "Some services" } }] };
+        yield { choices: [{ delta: {}, finish_reason: "length" }] };
+      })();
+    } } };
+  }
+  const context = { module: { exports: {} }, require: () => Groq,
+    process: { env: { GROQ_API_KEY: "test-key" } }, AbortSignal };
+  vm.runInNewContext(readFileSync(new URL("../server/src/services/groq.service.js", import.meta.url), "utf8"), context);
+  const chunks = [];
+  const result = await context.module.exports.createChatCompletionStream({ message: "View Services" }, (chunk) => chunks.push(chunk));
+  assert.equal(request.max_tokens, 1800);
+  assert.ok(result.answer.includes("This list may be incomplete"));
+  assert.ok(chunks.map((chunk) => chunk.choices?.[0]?.delta?.content || "").join("").includes("This list may be incomplete"));
 });

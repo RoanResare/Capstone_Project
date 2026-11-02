@@ -1,7 +1,17 @@
 import { PawPrint } from "lucide-react";
 
 const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ACCEPTED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 const MAX_PET_PHOTO_BYTES = 1024 * 1024;
+
+function hasSupportedImageFormat(file) {
+  const mimeType = String(file.type || "").toLowerCase();
+  if (ACCEPTED_IMAGE_TYPES.has(mimeType)) return true;
+  const extension = String(file.name || "").split(".").pop()?.toLowerCase();
+  if (!ACCEPTED_IMAGE_EXTENSIONS.has(extension)) return false;
+  return !mimeType || mimeType === "application/octet-stream" ||
+    (extension === "jpg" || extension === "jpeg" ? mimeType === "image/jpg" || mimeType === "image/jpeg" : mimeType === `image/${extension}`);
+}
 
 export function PetPhotoUpload({ photoURL = "", petName = "Pet", onPhotoChange, toast, setFeedback }) {
   async function handleFileChange(event) {
@@ -13,7 +23,7 @@ export function PetPhotoUpload({ photoURL = "", petName = "Pet", onPhotoChange, 
       toast?.error(message);
       input.value = "";
     };
-    if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+    if (!hasSupportedImageFormat(file)) {
       reportError("Choose a JPG, PNG, or WebP image for the pet photo.");
       return;
     }

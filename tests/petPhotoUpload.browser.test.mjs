@@ -79,6 +79,7 @@ test("pet photo upload UI works at desktop and mobile sizes with validation and 
   await input.setInputFiles({ name: "wrong-type.txt", mimeType: "text/plain", buffer: Buffer.from("not allowed") });
   assert.match(await page.getByRole("alert").textContent(), /JPG, PNG, or WebP/i);
   await input.setInputFiles({ name: "corrupt.png", mimeType: "image/png", buffer: Buffer.from("not an image") });
+  await page.getByRole("alert").filter({ hasText: /corrupt|cannot be decoded/i }).waitFor();
   assert.match(await page.getByRole("alert").textContent(), /corrupt|cannot be decoded/i);
   await input.setInputFiles({ name: "large.png", mimeType: "image/png", buffer: Buffer.alloc(1024 * 1024 + 1) });
   assert.match(await page.getByRole("alert").textContent(), /1 MB or smaller/i);

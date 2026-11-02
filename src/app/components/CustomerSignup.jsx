@@ -382,24 +382,18 @@ export function CustomerSignup() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#288A8A]"
+              className="ui-hover-lift inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#288A8A] hover:shadow-md motion-reduce:transition-none"
             >
               {isSubmitting ? "Creating account..." : "Create account"}
               <UserPlus size={16} />
             </button>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="grid gap-3 text-sm">
               <Link
                 to="/login"
-                className="font-semibold text-[#2D6B73] underline underline-offset-4"
+                className="ui-hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[#78B8B2] bg-white px-5 py-2.5 text-center font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none"
               >
-                Sign in instead
-              </Link>
-              <Link
-                to="/forgot-password"
-                className="font-semibold text-[#607277] underline underline-offset-4"
-              >
-                Forgot password?
+                Already have an account? Log In
               </Link>
             </div>
           </form>

@@ -44,7 +44,7 @@ import { isPasswordPolicyValid, PASSWORD_POLICY_MESSAGE } from "../utils/passwor
 import { isValidUsername, normalizeUsername, sanitizeUsernameCandidate, USERNAME_POLICY_MESSAGE } from "../utils/usernamePolicy.js";
 import { appointmentStatusLabel } from "../utils/appointmentPresentation.js";
 import { subscribeKaponPromo, saveKaponPromo } from "../services/kaponPromo.js";
-import { isKaponPromoAvailable, isLowCostKaponAppointment, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
+import { promoNow, isKaponPromoAvailable, isLowCostKaponAppointment, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { validateAppointmentServices, validateSinglePet } from "../../../shared/bookingServices.mjs";
 import { uniqueAppointmentsById } from "../utils/appointmentState.js";
 
@@ -1728,7 +1728,7 @@ export function AppProvider({ children }) {
     let disposed = false;
     const unsubscribe = subscribeKaponPromo((promo) => {
       if (!disposed) {
-        setPromoClock(Date.now());
+        setPromoClock(promoNow(promo));
         setPromoState({ uid: currentUser.uid, promo, ready: true, error: "" });
       }
     }, (error) => {
@@ -1739,10 +1739,10 @@ export function AppProvider({ children }) {
 
 
   useEffect(() => {
-    const tick = () => setPromoClock(Date.now());
+    const tick = () => setPromoClock(promoNow(kaponPromo));
     const boundaries = [kaponPromo?.startsAt, kaponPromo?.endsAt]
-      .map((value) => Date.parse(value)).filter((time) => Number.isFinite(time) && time > Date.now());
-    const timer = boundaries.length ? setTimeout(tick, Math.min(Math.min(...boundaries) - Date.now() + 30, 2147483647)) : null;
+      .map((value) => Date.parse(value)).filter((time) => Number.isFinite(time) && time > promoNow(kaponPromo));
+    const timer = boundaries.length ? setTimeout(tick, Math.min(Math.min(...boundaries) - promoNow(kaponPromo) + 30, 2147483647)) : null;
     window.addEventListener("focus", tick);
     return () => { clearTimeout(timer); window.removeEventListener("focus", tick); };
   }, [kaponPromo, promoClock]);
@@ -2089,6 +2089,7 @@ export function AppProvider({ children }) {
     async manageKaponPromo(payload) {
       if (!["admin", "staff"].includes(currentUser?.role)) throw new Error("Only admin and staff can manage promotions.");
       const promo = await saveKaponPromo(payload);
+      setPromoClock(promoNow(promo));
       setPromoState({ uid: currentUser.uid, promo, ready: true, error: "" });
       return promo;
     },

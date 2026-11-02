@@ -1,3 +1,5 @@
+> Historical implementation notes below describe the former Firestore workflow. For the current Supabase scheduling implementation and approval requirements, see [the advance scheduling review](kapon-advance-scheduling-review.md).
+
 # Low-Cost Kapon Promo
 
 ## Operation

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { createServer } from "vite";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const { chromium } = await import(process.env.KAPON_PLAYWRIGHT_MODULE
   ? pathToFileURL(process.env.KAPON_PLAYWRIGHT_MODULE).href : "playwright");
+const productionCss = readdirSync(new URL("../dist/assets/", import.meta.url)).find(name => /^index-.*\.css$/.test(name));
 const cacheDir = mkdtempSync(join(tmpdir(), "capstone-kapon-activation-"));
 const mocks = {
   "context/AppContext.jsx": `import {useEffect,useState} from 'react';
@@ -36,7 +37,7 @@ const server = await createServer({ configFile:false,cacheDir,logLevel:"silent",
         import {KaponPromoManager} from '/src/app/components/portal/KaponPromoManager.jsx';
         createRoot(document.getElementById('root')).render(React.createElement(KaponPromoManager));`;},
     configureServer(vite){vite.middlewares.use((req,res,next)=>{if(!req.url.startsWith('/__fixture'))return next();
-      res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><body><div id="root"></div><script type="module" src="/__entry.js"></script></body></html>');});},
+      res.setHeader('Content-Type','text/html');res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/dist/assets/${productionCss}"></head><body><div id="root"></div><script type="module" src="/__entry.js"></script></body></html>`);});},
   }],
 });
 let browser;
@@ -46,6 +47,7 @@ try {
   const errors=[];page.on('pageerror',error=>errors.push(error.stack));
   let record=null; const writes=[];
   await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
+  await page.route('**/api/auth/promotions/low-cost-kapon/clock',route=>route.fulfill({json:{serverNow:new Date().toISOString()}}));
   await page.route('**/__promo-read',route=>route.fulfill({json:record}));
   await page.route('**/api/auth/promotions/low-cost-kapon',route=>{
     const payload=route.request().postDataJSON();writes.push({payload,token:route.request().headers().authorization});
@@ -54,10 +56,26 @@ try {
   });
   for(const role of ['admin','staff']){
     record=null;await page.goto(`${server.resolvedUrls.local[0]}__fixture?role=${role}`,{waitUntil:'domcontentloaded'});
-    const activate=page.getByRole('button',{name:'Activate Low-Cost Kapon',exact:true});
+    const activate=page.getByRole('button',{name:'Schedule Low-Cost Kapon',exact:true});
+    await page.setViewportSize({width:role==='admin'?1280:390,height:role==='admin'?720:600});
     await activate.click();
+    await page.waitForFunction(()=>document.querySelector('input[type="date"]')?.value);
+    const geometry=await page.locator('dialog').evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight};});
+    assert.ok(geometry.left>=0 && geometry.right<=geometry.width && geometry.top>=0 && geometry.bottom<=geometry.height);
+    assert.equal(await page.locator('input[type="time"]').count(),2);
+    assert.equal(await page.locator('select').count(),0);
+    const dates=await page.locator('input[type="date"]').evaluateAll(nodes=>nodes.map(n=>n.value));
+    assert.ok(dates.every(Boolean));
+    const startTime=await page.locator('input[type="time"]').first().inputValue();
+    const originalEnd=await page.locator('input[type="time"]').last().inputValue();
     await page.getByPlaceholder('https://forms.gle/...').fill('https://forms.gle/test123');
-    await page.getByRole('button',{name:'Activate Promo',exact:true}).click();
+    await page.locator('input[type="time"]').last().fill(startTime);
+    await page.getByRole('button',{name:'Schedule Promotion',exact:true}).click();
+    await page.getByRole('alert').waitFor();
+    assert.equal(writes.length,role==='admin'?0:2);
+    await page.locator('input[type="time"]').last().fill(originalEnd);
+    await page.getByPlaceholder('https://forms.gle/...').fill('https://forms.gle/test123');
+    await page.getByRole('button',{name:'Schedule Promotion',exact:true}).click();
     await page.getByRole('button',{name:'Edit Promo',exact:true}).waitFor();
     assert.equal(record.isActive,true);assert.equal(writes.at(-1).token,`Bearer test-${role}`);
     await page.reload({waitUntil:'domcontentloaded'});

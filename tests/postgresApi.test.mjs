@@ -67,6 +67,16 @@ test("PostgreSQL API authenticates Supabase users, enforces ownership, protects 
   const base = `http://127.0.0.1:${server.address().port}/database`;
   const post = (route, body, token = "supabase-token") => fetch(`${base}/${route}`, { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
   try {
+    for (const offset of [-172800000, 172800000]) {
+      await db.collection("lowCostKaponPromo").doc("low-cost-kapon").set({isActive:true, formLink:"https://forms.gle/test123",startsAt:new Date(Date.now()+offset).toISOString(),endsAt:new Date(Date.now()+offset+3600000).toISOString()});
+      const result=await (await post("read",{collection:"lowCostKaponPromo",id:"low-cost-kapon"})).json();
+      assert.equal(result.data.formLink,undefined);
+      assert.ok(Number.isFinite(result.data.serverNow));
+      const query=await (await post("query",{collection:"lowCostKaponPromo"})).json();
+      assert.equal(query.records[0].data.formLink,undefined);
+    }
+    await db.collection("lowCostKaponPromo").doc("low-cost-kapon").set({isActive:true,formLink:"https://forms.gle/test123",startsAt:new Date(Date.now()-3600000).toISOString(),endsAt:new Date(Date.now()+3600000).toISOString()});
+    assert.equal((await (await post("read",{collection:"lowCostKaponPromo",id:"low-cost-kapon"})).json()).data.formLink,"https://forms.gle/test123");
     assert.equal((await post("read", { collection: "pets", id: "alice-pet" })).status, 200);
     assert.equal((await post("read", { collection: "pets", id: "bob-pet" })).status, 403);
     assert.equal((await post("read", { collection: "pets", id: "alice-pet" }, "bad-token")).status, 401);

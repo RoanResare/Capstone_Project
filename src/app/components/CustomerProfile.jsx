@@ -19,6 +19,7 @@ import { Navigate, useLocation, useNavigate, useSearchParams } from "react-route
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
 import { usePricelistWarmup } from "./PricelistImage.jsx";
 import { BookingAdditions } from "./BookingAdditions.jsx";
+import { promoNow } from "../../../shared/lowCostKaponPromo.mjs";
 import { KaponPromoBanner } from "./KaponPromoBanner.jsx";
 import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
@@ -975,7 +976,7 @@ export function CustomerProfile() {
               <div className="space-y-4">
                 <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="min-w-0 space-y-4">
-                  {kaponPromoAvailable && <KaponPromoBanner promo={kaponPromo} />}
+                  {(kaponPromoAvailable || (kaponPromo?.isActive && kaponPromo?.startsAt && Date.parse(kaponPromo.startsAt) > promoNow(kaponPromo))) && <KaponPromoBanner promo={kaponPromo} />}
                   <article aria-label="Low-Cost Kapon service" className="min-w-0 rounded-[24px] border border-[#D9E7E7] bg-white p-5 shadow-[0_18px_36px_rgba(102,91,72,0.12)] sm:p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                       <BrandMark className="h-20 w-20 shrink-0 self-start rounded-2xl bg-[#EAF6F6] p-3" />

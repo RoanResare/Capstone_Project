@@ -1,8 +1,7 @@
-import { doc, getDoc, runTransaction, onSnapshot, isPostgresEnabled } from "./database.js";
+import { doc, getDoc, onSnapshot, isPostgresEnabled } from "./database.js";
 import { apiClient, buildAuthHeaders, extractApiError } from "./apiClient.js";
 import { db, isSupabaseConfigured } from "./supabaseDatabase.js";
 import { auth, getSupabaseAccessToken } from "./supabaseSession.js";
-import { normalizePromoInput, validatePromoStart } from "../../../shared/lowCostKaponPromo.mjs";
 import { readJsonCache, removeJsonCache, writeJsonCache } from "../utils/browserState.js";
 
 const KAPON_PROMO_CACHE_KEY = "furfection-cache:lowCostKaponPromo";
@@ -17,9 +16,14 @@ export function subscribeKaponPromo(onChange, onError) {
     const reference = doc(db, "lowCostKaponPromo", "low-cost-kapon");
     let disposed = false;
     let readVersion = 0;
+    let boundaryTimer;
     const apply = snapshot => {
       if (disposed) return;
-      const promo = snapshot.exists() ? snapshot.data() : null;
+      const raw = snapshot.exists() ? snapshot.data() : null;
+      const promo = raw && { ...raw, clockReceivedAt: performance.now() };
+      clearTimeout(boundaryTimer);
+      const delay = promo?.startsAt && Date.parse(promo.startsAt) - promo.serverNow;
+      if (delay > 0) boundaryTimer = setTimeout(() => { void refresh(); }, Math.min(delay + 50, 2147483647));
       if (promo) writeJsonCache(KAPON_PROMO_CACHE_KEY, promo);
       else removeJsonCache(KAPON_PROMO_CACHE_KEY);
       onChange(promo);
@@ -42,12 +46,12 @@ export function subscribeKaponPromo(onChange, onError) {
       apply(snapshot);
     }, () => { void refresh(); });
     const refreshOnFocus = () => { if (document.visibilityState !== "hidden") void refresh(); };
-    const interval = setInterval(refreshOnFocus, 30000);
+
     window.addEventListener("focus", refreshOnFocus);
     document.addEventListener("visibilitychange", refreshOnFocus);
     return () => {
       disposed = true;
-      clearInterval(interval);
+      clearTimeout(boundaryTimer);
       window.removeEventListener("focus", refreshOnFocus);
       document.removeEventListener("visibilitychange", refreshOnFocus);
       unsubscribe();
@@ -89,38 +93,18 @@ export function subscribeKaponPromo(onChange, onError) {
 export async function saveKaponPromo(payload) {
   const user = auth?.currentUser;
   if (!user) throw new Error("Sign in to manage promotions.");
-  if (isPostgresEnabled) {
-    try {
-      const token = await getSupabaseAccessToken();
-      const response = await apiClient.put("/auth/promotions/low-cost-kapon", payload, { headers: buildAuthHeaders(token) });
-      writeJsonCache(KAPON_PROMO_CACHE_KEY, response.data.promo);
-      return response.data.promo;
-    } catch (error) { throw new Error(extractApiError(error, "Unable to save the promotion.")); }
-  }
-  if (!isSupabaseConfigured || !db) throw new Error("Supabase is unavailable. Please try again later.");
-  const { action, expectedRevision } = payload || {};
-  if (!["activate", "edit", "deactivate"].includes(action) || !Number.isInteger(expectedRevision) || expectedRevision < 0) {
-    throw new Error("A valid promo action and revision are required.");
-  }
-  const configuration = action === "deactivate" ? null : normalizePromoInput(payload);
-  const reference = doc(db, "lowCostKaponPromo", "low-cost-kapon");
-  const promo = await runTransaction(db, async (transaction) => {
-    if (auth.currentUser?.id !== user?.id) throw new Error("Your account changed. Please try again.");
-    const snapshot = await transaction.get(reference);
-    const current = snapshot.data() || {};
-    if ((current.revision || 0) !== expectedRevision) {
-      throw new Error("The promotion was changed by another employee. Review the latest details and try again.");
-    }
-    if (action !== "activate" && current.isActive !== true) throw new Error("This promotion is no longer active.");
-    if (action === "activate" && current.isActive === true) throw new Error("This promotion is already active. Use Edit Promo to change it.");
-    if (configuration?.endsAt && configuration.endsAt <= new Date().toISOString()) throw new Error("End time must be in the future.");
-    if (configuration) validatePromoStart(configuration.startsAt, { previousStartsAt: action === "edit" ? current.startsAt : null });
-    const next = action === "deactivate"
-      ? { isActive: false, revision: expectedRevision + 1 }
-      : { ...configuration, isActive: true, revision: expectedRevision + 1 };
-    transaction.set(reference, next);
-    return next;
-  });
-  writeJsonCache(KAPON_PROMO_CACHE_KEY, promo);
-  return promo;
+  try {
+    const token = await getSupabaseAccessToken();
+    const response = await apiClient.put("/auth/promotions/low-cost-kapon", payload, { headers: buildAuthHeaders(token) });
+    const promo = { ...response.data.promo, clockReceivedAt: performance.now() };
+    writeJsonCache(KAPON_PROMO_CACHE_KEY, promo);
+    return promo;
+  } catch (error) { throw new Error(extractApiError(error, "Unable to save the promotion.")); }
+}
+export async function getKaponServerTime() {
+  const token = await getSupabaseAccessToken();
+  const response = await apiClient.get("/auth/promotions/low-cost-kapon/clock", { headers: buildAuthHeaders(token) });
+  const time = Date.parse(response.data.serverNow);
+  if (!Number.isFinite(time)) throw new Error("Unable to confirm server time. Please reopen the form.");
+  return time;
 }

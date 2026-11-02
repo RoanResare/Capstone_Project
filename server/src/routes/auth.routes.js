@@ -50,6 +50,10 @@ router.get("/session-security", verifyToken, asyncHandler(sessionSecurity));
 router.put("/appointments/:id", verifyToken, asyncHandler(saveAppointment));
 router.delete("/pets/:id", verifyToken, asyncHandler(deletePet));
 router.put("/pets/:id", verifyToken, asyncHandler(savePet));
+router.get("/promotions/low-cost-kapon/clock", verifyToken, verifyRole(["admin", "staff"]), (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json({ serverNow: new Date().toISOString() });
+});
 router.put("/promotions/low-cost-kapon", verifyToken, verifyRole(["admin", "staff"]), asyncHandler(saveKaponPromo));
 router.get("/availability-slots", verifyToken, asyncHandler(listAvailabilitySlots));
 router.put("/availability-slots/:id", verifyToken, verifyRole(["admin", "staff"]), asyncHandler(saveAvailabilitySlot));

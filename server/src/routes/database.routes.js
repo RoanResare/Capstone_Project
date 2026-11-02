@@ -49,7 +49,14 @@ function validateReference(collection, id) {
   try { return id === undefined ? db.collection(collection) : db.collection(collection).doc(id); }
   catch (_error) { throw new ApiError(400, "Invalid database reference."); }
 }
-function publicPayload(collection, data) {
+function publicPayload(collection, data, identity) {
+  if (collection === "lowCostKaponPromo") {
+    const now = Date.now();
+    const safe = { ...data, serverNow: now };
+    const invalidTime = [data.startsAt, data.endsAt].some(value => value && !Number.isFinite(Date.parse(value)));
+    if (!["admin", "staff"].includes(identity?.user?.role) && (invalidTime || data.isActive !== true || (data.startsAt && Date.parse(data.startsAt) > now) || (data.endsAt && Date.parse(data.endsAt) <= now))) delete safe.formLink;
+    return safe;
+  }
   if (collection !== "users") return data;
   const { password, passwordHash, passwordSalt, passwordVersion, ...safe } = data;
   return safe;
@@ -61,7 +68,7 @@ router.post("/read", asyncHandler(async (req, res) => {
   const data = snapshot.data();
   assertRead(collection, id, data, req.databaseIdentity);
   res.set("Cache-Control", "no-store");
-  res.json({ exists: snapshot.exists, id, data: data ? encode(publicPayload(collection, data)) : null });
+  res.json({ exists: snapshot.exists, id, data: data ? encode(publicPayload(collection, data, req.databaseIdentity)) : null });
 }));
 router.post("/query", asyncHandler(async (req, res) => {
   const { collection, filters = [], orders = [], cursor, limit = 500 } = req.body || {};
@@ -91,7 +98,7 @@ router.post("/query", asyncHandler(async (req, res) => {
     for (const order of orders) query = query.orderBy(order.field, order.direction);
     if (cursor) query = query.startAfter(...cursor.map(value => decode(value)));
     const snapshot = await query.limit(limit).get();
-    records = snapshot.docs.map(doc => ({ ...publicPayload(collection, doc.data()), id: doc.id }));
+    records = snapshot.docs.map(doc => ({ ...publicPayload(collection, doc.data(), identity), id: doc.id }));
   }
   res.set("Cache-Control", "no-store");
   res.json({ records: records.map(record => ({ id: record.id, data: encode(record) })) });

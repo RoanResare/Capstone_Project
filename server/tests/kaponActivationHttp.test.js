@@ -66,7 +66,7 @@ async function fixture() {
   };
   return { records, request, close: () => new Promise(resolve => server.close(resolve)) };
 }
-const configuration = { title: "Low-Cost Kapon", description: "Clinic promotion", formLink: "https://forms.gle/test123" };
+const configuration = { startsAt: new Date(Date.now() + 172800000).toISOString(), endsAt: new Date(Date.now() + 180000000).toISOString(), title: "Low-Cost Kapon", description: "Clinic promotion", formLink: "https://forms.gle/test123" };
 
 for (const role of ["admin", "staff"]) {
   test(`${role} credentials activate, edit and deactivate the promo through the protected route`, async () => {
@@ -99,4 +99,27 @@ test("customer, inactive and missing credentials cannot manage promotions or wri
       assert.equal(app.records.size, 0);
     }
   } finally { await app.close(); }
+});
+
+test("backend rejects manipulated and incomplete schedules and accepts the exact 24-hour boundary", async () => {
+  const realNow = Date.now;
+  const now = Date.parse("2030-01-31T04:00:00Z");
+  Date.now = () => now;
+  const app = await fixture();
+  try {
+    for (const delta of [-86400000, 0, 86399999]) {
+      const result = await app.request("admin", { ...configuration, action: "activate", expectedRevision: 0, startsAt: new Date(now + delta).toISOString(), endsAt: new Date(now + 172800000).toISOString() });
+      assert.equal(result.status,400);
+      assert.equal(app.records.size,0);
+    }
+    for (const patch of [{startsAt:null},{endsAt:null},{startsAt:"2030-02-30T12:00:00Z"},{endsAt:"2030-01-31T04:00:00Z"}]) {
+      const result = await app.request("staff", { ...configuration, startsAt:new Date(now+86400000).toISOString(), endsAt:new Date(now+172800000).toISOString(), ...patch, action:"activate",expectedRevision:0 });
+      assert.equal(result.status,400);
+      assert.equal(app.records.size,0);
+    }
+    const result = await app.request("staff", { ...configuration, action:"activate", expectedRevision:0, startsAt:new Date(now+86400000).toISOString(), endsAt:new Date(now+172800000).toISOString() });
+    assert.equal(result.status,200);
+    assert.equal(result.body.notificationStatus,"disabled_pending_consent_approval");
+    assert.equal(app.records.size,2);
+  } finally { Date.now=realNow; await app.close(); }
 });

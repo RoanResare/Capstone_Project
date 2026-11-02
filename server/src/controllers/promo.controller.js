@@ -12,7 +12,7 @@ async function saveKaponPromo(req, res) {
   if (!["activate", "edit", "deactivate"].includes(action) || !Number.isInteger(expectedRevision) || expectedRevision < 0) {
     throw new ApiError(400, "A valid promo action and revision are required.");
   }
-  const { normalizePromoInput, validatePromoStart } = await import("../../../shared/lowCostKaponPromo.mjs");
+  const { normalizePromoInput, validatePromoSchedule } = await import("../../../shared/lowCostKaponPromo.mjs");
   let configuration;
   if (action !== "deactivate") {
     try { configuration = normalizePromoInput(req.body); }
@@ -32,12 +32,12 @@ async function saveKaponPromo(req, res) {
     if (action === "activate" && current.isActive === true) {
       throw new ApiError(409, "This promotion is already active. Use Edit Promo to change it.");
     }
-    const now = new Date().toISOString();
-    if (configuration?.endsAt && configuration.endsAt <= now) {
+    const now = new Date(Date.now()).toISOString();
+    if (configuration?.endsAt && configuration.endsAt <= now && !(action === "edit" && configuration.startsAt === current.startsAt && configuration.endsAt === current.endsAt)) {
       throw new ApiError(400, "End time must be in the future.");
     }
     if (configuration) {
-      try { validatePromoStart(configuration.startsAt, { previousStartsAt: action === "edit" ? current.startsAt : null }); }
+      try { validatePromoSchedule(configuration, { now: Date.parse(now), previous: action === "edit" ? current : null }); }
       catch (error) { throw new ApiError(400, error.message); }
     }
     const actor = { uid: user.uid, name: user.name || user.fullName || "", role: user.role };
@@ -56,7 +56,7 @@ async function saveKaponPromo(req, res) {
     }, { merge: true });
     return next;
   });
-  res.json({ promo });
+  res.json({ promo: { ...promo, serverNow: Date.now() }, notificationStatus: "disabled_pending_consent_approval" });
 }
 
 module.exports = { saveKaponPromo };

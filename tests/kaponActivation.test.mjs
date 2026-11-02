@@ -22,6 +22,7 @@ function fixture() {
     } },
     readJsonCache: key => state.cache.get(key), writeJsonCache: (key, value) => state.cache.set(key, value), removeJsonCache: key => state.cache.delete(key),
     window: new EventTarget(), document: Object.assign(new EventTarget(), { visibilityState: "visible" }),
+    performance, setTimeout, clearTimeout,
     setInterval: callback => { state.timers.set(1, callback); return 1; }, clearInterval: id => state.timers.delete(id),
   };
   const source = readFileSync(new URL("../src/app/services/kaponPromo.js", import.meta.url), "utf8")
@@ -40,7 +41,7 @@ test("promotion loads through the authenticated API even when realtime never sub
   stop();
 });
 
-test("realtime failure falls back to confirmed reads and polling persists activation after resubscription", async () => {
+test("realtime failure falls back to confirmed reads and focus refresh persists activation after resubscription", async () => {
   const app = fixture(); let stop = app.subscribe(); await flush();
   const saved = await app.saveKaponPromo({ action: "activate", expectedRevision: 0, title: "Low-Cost Kapon", formLink: "https://forms.gle/test123" });
   app.state.error(new Error("Realtime unavailable")); await flush();
@@ -52,7 +53,7 @@ test("realtime failure falls back to confirmed reads and polling persists activa
   stop = app.subscribe(); await flush();
   assert.equal(app.state.changes.at(-1).revision, saved.revision);
   app.state.record = { isActive: false, revision: 2 };
-  app.state.timers.get(1)(); await flush();
+  app.context.window.dispatchEvent(new Event("focus")); await flush();
   assert.equal(app.state.changes.at(-1).isActive, false);
   stop(); assert.ok(app.state.stopped);
 });

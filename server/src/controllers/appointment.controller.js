@@ -21,6 +21,7 @@ async function saveAppointment(req, res) {
   }
   const reference = db.collection("appointments").doc(id);
   let savedAppointment;
+  let emailNotification = null;
   await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(reference);
     if (appointment.petRecordId && !existing.exists) {
@@ -297,6 +298,9 @@ async function saveAppointment(req, res) {
         reason: savedAppointment.rejectionReason || savedAppointment.cancellationReason || "",
       }];
     }
+    const { queueStatusEmail } = await import("../services/appointmentStatusEmail.service.js");
+    emailNotification = queueStatusEmail({ db, transaction, previous: existing.exists ? previous : null,
+      appointment: savedAppointment, actor: user, reason: decisionFields.decision?.reason || "" });
     transaction.set(reference, savedAppointment, { merge: true });
     if(staffDecision || staffCancellation){
       const notificationId=`appointment-${id}-${nextStatus.toLowerCase()}`;
@@ -310,7 +314,11 @@ async function saveAppointment(req, res) {
       });
     }
   });
-  res.json({ success: true, appointment: savedAppointment });
+  if (emailNotification) {
+    const { requestStatusEmailDelivery } = await import("../services/appointmentStatusEmail.service.js");
+    requestStatusEmailDelivery();
+  }
+  res.json({ success: true, appointment: savedAppointment, emailNotification });
 }
 
 module.exports = { saveAppointment };

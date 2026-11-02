@@ -40,6 +40,7 @@ async function persistSlotChange(req, payload) {
     const slot = { ...previous.data(), ...payload };
     const cancelledAppointments = [];
     const notifications = [];
+    const { queueStatusEmail } = await import("../services/appointmentStatusEmail.service.js");
     if (!slot.isOpen) {
       const byId = await transaction.get(
         db.collection("appointments")
@@ -66,6 +67,7 @@ async function persistSlotChange(req, payload) {
         const cancellationReason = "The clinic administration closed this date and time slot, so your appointment was cancelled. Please choose another available slot.";
         const updated = { ...appointment, id, status: "Cancelled", cancellationReason,
           cancelledBy: req.auth.user.uid, cancelledAt: payload.updatedAt, updatedAt: payload.updatedAt };
+        queueStatusEmail({ db, transaction, previous: appointment, appointment: updated, actor: req.auth.user, reason: cancellationReason });
         cancelledAppointments.push(updated);
         notifications.push({
           id: `slot-cancelled-${id}-${Date.parse(payload.updatedAt)}`,
@@ -144,6 +146,10 @@ async function saveAvailabilitySlot(req, res) {
     }
   }
   const result = await persistSlotChange(req, payload);
+  if (result.cancelledAppointments.length) {
+    const { requestStatusEmailDelivery } = await import("../services/appointmentStatusEmail.service.js");
+    requestStatusEmailDelivery();
+  }
   res.json({ success: true, ...result });
 }
 
@@ -154,6 +160,10 @@ async function disableAvailabilitySlot(req, res) {
     id: req.params.id, isOpen: false, disabled: true, status: "Cancelled",
     updatedAt: new Date().toISOString(), updatedBy: req.auth.user.uid,
   });
+  if (result.cancelledAppointments.length) {
+    const { requestStatusEmailDelivery } = await import("../services/appointmentStatusEmail.service.js");
+    requestStatusEmailDelivery();
+  }
   res.json({ success: true, ...result });
 }
 

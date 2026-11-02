@@ -2535,7 +2535,7 @@ export function AppProvider({ children }) {
         },
       });
 
-      return true;
+      return { ok: true, emailNotification: savedAppointment?.emailNotification || null };
     },
     async savePetRecord(payload, actorName) {
       assertAppropriatePetText(payload);

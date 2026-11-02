@@ -859,8 +859,15 @@ function AppointmentsWorkspace({
       return false;
     }
     try {
-      await updateAppointment(appointmentId, updates, currentUser.name);
-      await refreshScheduleData();
+      const result = await updateAppointment(appointmentId, updates, currentUser.name);
+      if (result === false) return false;
+      if (["Accepted", "Confirmed", "Approved", "Rejected", "Cancelled"].includes(updates.status)) {
+        const label = ["Accepted", "Confirmed"].includes(updates.status) ? "approved" : updates.status.toLowerCase();
+        const pending = result?.emailNotification?.state === "pending" ? " Customer email notification is pending." : "";
+        toast.success(`Appointment ${label} successfully.${pending}`);
+      }
+      // A failed refresh must not report a committed decision as an update failure.
+      try { await refreshScheduleData(); } catch {}
       return true;
     } catch (error) {
       toast.error(error.message || "Unable to update appointment.");

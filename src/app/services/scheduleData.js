@@ -217,7 +217,7 @@ export function saveAppointmentDocument(appointment) {
       });
       invalidateScheduleCache(COLLECTIONS.appointments);
       invalidateScheduleCache(COLLECTIONS.notifications);
-      return response.data.appointment || true;
+      return response.data.appointment ? { ...response.data.appointment, emailNotification: response.data.emailNotification || null } : true;
     } catch (error) {
       const requestError = new Error(extractApiError(error, "Unable to save the appointment."));
       requestError.code = error?.response?.data?.details?.code;

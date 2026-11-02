@@ -696,7 +696,10 @@ test("admin and staff must assign staff before confirmation or acceptance", asyn
       }
       assert.equal(fixture.writes.length, 0);
       await fixture.save({ status, assignedStaff: "Active Staff" }, role);
-      assert.equal(fixture.writes.length, 1);
+      assert.equal(fixture.writes.length, 2);
+      assert.equal(fixture.writes.filter(write => write.notificationType === "appointment-status-email").length, 1);
+      assert.equal(fixture.writes.find(write => write.notificationType === "appointment-status-email").status, "Approved");
+      assert.equal(fixture.writes.find(write => !write.notificationType).assignedStaff, "Active Staff");
     }
   }
   const fixture = appointmentFixture({ existing: { status: "Confirmed", assignedStaff: "Staff" } });

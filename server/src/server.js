@@ -21,6 +21,7 @@ try {
 startDisposableEmailUpdates();
 startPendingRegistrationCleanup();
 startAppointmentReminders();
+require("./services/appointmentStatusEmail.service").startAppointmentStatusEmails();
 startAppointmentNoShowUpdates();
 
 app.listen(env.port, () => {

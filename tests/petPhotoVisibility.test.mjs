@@ -6,11 +6,14 @@ import { createRequire } from "node:module";
 
 const portal = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
 const customer = readFileSync(new URL("../src/app/components/CustomerProfile.jsx", import.meta.url), "utf8");
+const upload = readFileSync(new URL("../src/app/components/PetPhotoUpload.jsx", import.meta.url), "utf8");
 const otp = readFileSync(new URL("../src/app/components/OtpVerification.jsx", import.meta.url), "utf8");
 const access = readFileSync(new URL("../server/src/database/browserAccess.js", import.meta.url), "utf8");
+const photoDisplay = readFileSync(new URL("../src/app/components/portal/PetPhotoDisplay.jsx", import.meta.url), "utf8");
 
 test("appointment review resolves photos only by the appointment pet record id", () => {
-  assert.match(portal, /find\(\(pet\) => pet\.id === appointment\.petRecordId\)/);
+  assert.match(portal, /resolveAppointmentPetPhoto\(state\.petRecords, appointment\)/);
+  assert.match(photoDisplay, /find\(pet => pet\?\.id === appointment\.petRecordId\)/);
   assert.match(portal, /associatedPet\?\.photoURL/);
   assert.match(portal, /No pet photo uploaded or linked pet record unavailable/);
   assert.doesNotMatch(portal, /associatedPet\s*\|\|\s*.*petName/);
@@ -42,19 +45,21 @@ test("pet photo record access is owner scoped for customers and role scoped for 
 });
 
 test("manager pet records expose photo thumbnails, fallback, and accessible viewer", () => {
-  assert.match(portal, /record\.photoURL \? <button/);
-  assert.match(portal, /aria-label=\{`View \$\{record\.petName\} photo`\}/);
+  assert.match(portal, /<PetPhotoThumbnail photoURL=\{record\.photoURL\}/);
+  assert.match(photoDisplay, /aria-label=\{`View \$\{name\} photo`\}/);
   assert.match(portal, /No pet photo uploaded/);
-  assert.match(portal, /function PetPhotoDialog/);
-  assert.match(portal, /aria-modal="true"/);
+  assert.match(photoDisplay, /export function PetPhotoDialog/);
+  assert.match(photoDisplay, /aria-modal="true"/);
 });
 
 test("customer photo picker preserves optional photo preview and supports image replacement/removal", () => {
-  assert.match(customer, /Pet Photo \(Optional\)/);
-  assert.match(customer, /createImageBitmap\(file\)/);
-  assert.match(customer, /setPetForm\(\(current\) => \(\{ \.\.\.current, photoURL: String\(reader\.result/);
-  assert.match(customer, /Remove photo/);
-  assert.match(customer, /accept="image\/jpeg,image\/png,image\/webp"/);
+  assert.match(customer, /<PetPhotoUpload photoURL=\{petForm\.photoURL\}/);
+  assert.match(upload, /Pet Photo \(Optional\)/);
+  assert.match(upload, /createImageBitmap\(file\)/);
+  assert.match(upload, /onPhotoChange\(String\(reader\.result/);
+  assert.match(upload, /Remove Photo/);
+  assert.match(upload, /Replace Photo/);
+  assert.match(upload, /accept="image\/jpeg,image\/png,image\/webp"/);
 });
 
 test("OTP page reuses the auth backdrop and retains its verify and resend handlers", () => {

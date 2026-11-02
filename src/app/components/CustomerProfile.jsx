@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AppointmentBooking } from "./AppointmentBooking.jsx";
+import { PetPhotoUpload } from "./PetPhotoUpload.jsx";
 import { usePricelistWarmup } from "./PricelistImage.jsx";
 import { BookingAdditions } from "./BookingAdditions.jsx";
 import { promoNow } from "../../../shared/lowCostKaponPromo.mjs";
@@ -579,50 +580,6 @@ export function CustomerProfile() {
     }));
   };
 
-  const handlePetPhotoChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      const message = "Choose a JPG, PNG, or WebP image for the pet photo.";
-      setFeedback({ type: "error", message });
-      toast.error(message);
-      event.target.value = "";
-      return;
-    }
-
-    if (file.size > 1024 * 1024) {
-      const message = "Pet photo must be 1 MB or smaller.";
-      setFeedback({ type: "error", message });
-      toast.error(message);
-      event.target.value = "";
-      return;
-    }
-
-    try {
-      const decoded = await createImageBitmap(file);
-      const isValid = decoded.width > 0 && decoded.height > 0;
-      decoded.close();
-      if (!isValid) throw new Error("The selected image is invalid.");
-      const reader = new FileReader();
-      reader.onerror = () => {
-        const message = "The selected image could not be read. Please choose another file.";
-        setFeedback({ type: "error", message });
-        toast.error(message);
-      };
-      reader.onload = () => {
-        setPetForm((current) => ({ ...current, photoURL: String(reader.result || "") }));
-        setFeedback({ type: "", message: "" });
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      const message = "The selected image is corrupt or cannot be decoded. Please choose another image.";
-      setFeedback({ type: "error", message });
-      toast.error(message);
-      event.target.value = "";
-    }
-  };
-
   const buildProfilePayload = (overrides = {}) => ({
     fullName: profileForm.fullName.trim(),
     username: profileForm.username.trim(),
@@ -1171,32 +1128,9 @@ export function CustomerProfile() {
                           placeholder="Notes for staff or future visits"
                         />
                         {petTextErrors.notes && <p id="pet-notes-error" role="alert" className="text-sm text-[#B23949]">{petTextErrors.notes}</p>}
-                        <label className="grid gap-2 text-sm font-medium text-[#425A60]">
-                            Pet Photo (Optional)
-                          <span className="text-xs font-normal text-[#607277]">Upload a clear photo of your dog or cat to help our staff identify your pet. JPG, PNG, or WebP, up to 1 MB.</span>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handlePetPhotoChange}
-                            className="rounded-[18px] border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm outline-none transition file:mr-3 file:rounded-xl file:border-0 file:bg-[#EEF6F6] file:px-3 file:py-2 file:text-sm file:font-semibold file:text-[#2B555C] focus:border-[#2D9B9B]"
-                          />
-                        </label>
-                        {petForm.photoURL && (
-                          <div className="rounded-[18px] border border-[#D9E7E7] bg-white p-3">
-                            <img
-                              src={petForm.photoURL}
-                              alt={`${petForm.petName || "Pet"} preview`}
-                              className="h-32 w-full rounded-[14px] object-cover"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setPetForm((current) => ({ ...current, photoURL: "" }))}
-                              className="mt-3 rounded-xl bg-[#FBECEF] px-3 py-2 text-sm font-semibold text-[#B23949]"
-                            >
-                              Remove photo
-                            </button>
-                          </div>
-                        )}
+                        <PetPhotoUpload photoURL={petForm.photoURL} petName={petForm.petName}
+                          toast={toast} setFeedback={setFeedback}
+                          onPhotoChange={(photoURL) => setPetForm((current) => ({ ...current, photoURL }))} />
                         <div className="flex flex-wrap gap-3">
                           <button
                             type="submit"

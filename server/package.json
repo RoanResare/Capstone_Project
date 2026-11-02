@@ -29,7 +29,8 @@
     "jsonwebtoken": "^9.0.2",
     "nodemon": "^3.1.14",
     "pg": "^8.23.1",
-    "resend": "^6.34.1"
+    "resend": "^6.34.1",
+    "sharp": "^0.35.5"
   },
   "overrides": {
     "gaxios": "^7.1.5",

@@ -6,6 +6,7 @@ import { isValidUsername, normalizeUsername, USERNAME_INPUT_PATTERN, USERNAME_MA
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
 import { AppointmentApprovalDialog } from "./AppointmentApprovalDialog.jsx";
+import { PetPhotoDialog, PetPhotoThumbnail, resolveAppointmentPetPhoto } from "./PetPhotoDisplay.jsx";
 import { BookingAdditions } from "../BookingAdditions.jsx";
 import { createPortal } from "react-dom";
 import { PricelistManager } from "./PricelistManager.jsx";
@@ -46,22 +47,6 @@ import {
 } from "../../data/systemData.js";
 
 const NEW_PORTAL_USER_ID = "__new-portal-user__";
-
-function PetPhotoDialog({ photo, name, onClose }) {
-  const dialogRef = useRef(null);
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    dialog.showModal();
-    return () => { if (dialog.open) dialog.close(); };
-  }, []);
-  return createPortal(<dialog ref={dialogRef} aria-label={`${name} pet photo`} aria-modal="true"
-    onCancel={(event) => { event.preventDefault(); onClose(); }}
-    className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-3xl overflow-auto rounded-2xl border border-[#D9E7E7] bg-white p-4 shadow-xl backdrop:bg-black/60 sm:p-6">
-    <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold text-[#173E44]">{name} · Pet Photo</h2><button type="button" autoFocus onClick={onClose} aria-label="Close pet photo" className="rounded-xl p-2 text-[#365057] hover:bg-[#EEF6F6]"><X size={20}/></button></div>
-    <img src={photo} alt={`${name} pet`} className="mx-auto mt-4 max-h-[75dvh] max-w-full rounded-xl object-contain" />
-  </dialog>, document.body);
-}
 
 function isValidDateInstance(value) {
   return value instanceof Date && !Number.isNaN(value.getTime());
@@ -531,9 +516,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
   const [decisionStatus,setDecisionStatus]=useState("");
   const [photoOpen, setPhotoOpen] = useState(false);
   const { state } = useApp();
-  const associatedPet = appointment?.petRecordId
-    ? (state.petRecords || []).find((pet) => pet.id === appointment.petRecordId) || null
-    : null;
+  const associatedPet = resolveAppointmentPetPhoto(state.petRecords, appointment);
   const [sessionNow, setSessionNow] = useState(Date.now());
   useEffect(() => {
     setSessionNow(Date.now());
@@ -631,11 +614,8 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
                 Pet details
               </p>
               <div className="flex items-start gap-3">
-                {associatedPet?.photoURL ? (
-                  <button type="button" onClick={() => setPhotoOpen(true)} aria-label={`View ${associatedPet.petName} photo`} className="shrink-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D6B73]">
-                    <img src={associatedPet.photoURL} alt={`${associatedPet.petName} pet`} loading="lazy" className="h-20 w-20 rounded-xl object-cover" />
-                  </button>
-                ) : <div aria-label="No pet photo uploaded" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6B73]"><PawPrint size={22} /></div>}
+                <PetPhotoThumbnail photoURL={associatedPet?.photoURL} name={associatedPet?.petName || appointment.petName}
+                  size="large" onOpen={() => setPhotoOpen(true)} />
                 <div>
                   <p className="font-semibold text-[#365057]">{associatedPet?.petName || appointment.petName} | {associatedPet?.petType || appointment.petType || "Pet type not saved"}</p>
                   {associatedPet ? <p className="mt-1 text-xs">{associatedPet.breed || "Breed not saved"} · {associatedPet.gender || "Gender not saved"}</p> : <p className="mt-1 text-xs">{appointment.petRecordId ? "No pet photo uploaded or linked pet record unavailable." : "No pet photo uploaded."}</p>}
@@ -1461,7 +1441,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        {record.photoURL ? <button type="button" onClick={(event) => { event.stopPropagation(); setPhotoToView(record); }} aria-label={`View ${record.petName} photo`} className="shrink-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D6B73]"><img src={record.photoURL} alt={`${record.petName} pet`} loading="lazy" className="h-10 w-10 rounded-xl object-cover" /></button> : <div aria-label="No pet photo uploaded" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEF6F6] text-[#2D6A73]"><PawPrint size={18} /></div>}
+                        <span onClick={(event) => event.stopPropagation()}><PetPhotoThumbnail photoURL={record.photoURL} name={record.petName} onOpen={() => setPhotoToView(record)} /></span>
                         <div className="min-w-0">
                           <p className="truncate text-lg font-semibold text-[#20343B]">
                             {record.petName} | {record.petType}
@@ -1503,7 +1483,7 @@ function PetRecordsWorkspace({ currentUser, state, savePetRecord }) {
             <form noValidate onSubmit={saveRecord} className="space-y-4">
               <section aria-label="Pet Photo" className="rounded-2xl border border-[#E6F0F0] bg-[#F8FCFC] p-4">
                 <h3 className="text-sm font-semibold text-[#365057]">Pet Photo</h3>
-                {selectedRecord.photoURL ? <button type="button" onClick={() => setPhotoToView(selectedRecord)} aria-label={`View ${selectedRecord.petName} photo`} className="mt-3 block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2D6B73]"><img src={selectedRecord.photoURL} alt={`${selectedRecord.petName} pet`} loading="lazy" className="h-40 w-full max-w-xs rounded-xl object-cover" /></button> : <div className="mt-3 flex items-center gap-3 text-sm text-[#607277]"><PawPrint size={20} />No pet photo uploaded.</div>}
+                {selectedRecord.photoURL ? <div className="mt-3"><PetPhotoThumbnail photoURL={selectedRecord.photoURL} name={selectedRecord.petName} size="preview" onOpen={() => setPhotoToView(selectedRecord)} /></div> : <div className="mt-3 flex items-center gap-3 text-sm text-[#607277]"><PawPrint size={20} />No pet photo uploaded.</div>}
               </section>
               <fieldset disabled className="grid gap-4 md:grid-cols-2 [&_input]:cursor-not-allowed [&_input]:bg-[#F1F5F5] [&_select]:cursor-not-allowed [&_select]:bg-[#F1F5F5] [&_select]:text-[#425A60]">
                 <div>

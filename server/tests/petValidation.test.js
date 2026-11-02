@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { ApiError } = require("../src/utils/ApiError");
+const sharp = require("../node_modules/sharp");
 
 function fixture(initial = {}) {
   const records = new Map(Object.entries(initial));
@@ -24,6 +25,7 @@ function fixture(initial = {}) {
     if (id === "../config/postgresDatabase") return { db };
     if (id === "../utils/ApiError") return { ApiError };
     if (id === "node:zlib") return require("node:zlib");
+    if (id === "sharp") return sharp;
     throw new Error(id);
   } };
   vm.runInNewContext(fs.readFileSync(filename, "utf8"), context, { filename, importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER });
@@ -38,13 +40,22 @@ function testPng(red) {
   const header = Buffer.alloc(13); header.writeUInt32BE(1, 0); header.writeUInt32BE(1, 4); header.set([8, 6, 0, 0, 0], 8);
   return `data:image/png;base64,${Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", header), chunk("IDAT", require("node:zlib").deflateSync(Buffer.from([0, red, 0, 0, 255]))), chunk("IEND", Buffer.alloc(0))]).toString("base64")}`;
 }
-test("photo validation accepts an intact small PNG and rejects corrupt or mismatched content", () => {
+test("photo validation fully decodes valid JPG, PNG, and WebP and rejects corrupt content", async () => {
   const validate = fixture().controller.validatePetPhoto;
   const image = testPng(255);
-  assert.doesNotThrow(() => validate(image));
-  assert.throws(() => validate("data:image/png;base64," + Buffer.from("not an image").toString("base64")), error => error.statusCode === 400);
-  assert.throws(() => validate("data:image/jpeg;base64," + Buffer.from("not a jpeg").toString("base64")), error => error.statusCode === 400);
-  assert.throws(() => validate("data:image/gif;base64,R0lGODlh"), error => error.statusCode === 400);
+  const jpeg = await sharp({ create: { width: 2, height: 2, channels: 3, background: "#d86b52" } }).jpeg().toBuffer();
+  const webp = await sharp({ create: { width: 2, height: 2, channels: 3, background: "#4f91a0" } }).webp().toBuffer();
+  await assert.doesNotReject(() => validate(image));
+  await assert.doesNotReject(() => validate(`data:image/jpeg;base64,${jpeg.toString("base64")}`));
+  await assert.doesNotReject(() => validate(`data:image/webp;base64,${webp.toString("base64")}`));
+  await assert.rejects(validate("data:image/png;base64," + Buffer.from("not an image").toString("base64")), error => error.statusCode === 400);
+  await assert.rejects(validate(`data:image/jpeg;base64,${jpeg.subarray(0, jpeg.length - 12).toString("base64")}`), error => error.statusCode === 400);
+  await assert.rejects(validate(`data:image/webp;base64,${webp.subarray(0, webp.length - 8).toString("base64")}`), error => error.statusCode === 400);
+  await assert.rejects(validate("data:image/gif;base64,R0lGODlh"), error => error.statusCode === 400);
+  const corruptPng = Buffer.from(image.slice(image.indexOf(",") + 1), "base64");
+  corruptPng[43] ^= 0xff;
+  await assert.rejects(validate(`data:image/png;base64,${corruptPng.toString("base64")}`), error => error.statusCode === 400);
+  await assert.rejects(validate(`data:image/png;base64,${"A".repeat(1_450_001)}`), error => error.statusCode === 413);
 });
 test("pet photo API supports optional save, replacement, and removal while retaining ownership checks", async () => {
   const f = fixture();

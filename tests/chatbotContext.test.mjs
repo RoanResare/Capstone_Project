@@ -8,6 +8,18 @@ const questions = [
   "Where are you in Las Piñas City?", "How do I book?", "How can I change my password?",
   "How much?", "What sex should I select for my pet?", "Ano ang mga serbisyo ninyo?",
 ];
+const websiteQuestions = [
+  "Is Charming Fur-fection a real website?",
+  "Is this the official website of Charming Fur-fection?",
+  "Is this website fake?",
+  "Can I book my pet's appointment here?",
+  "Is this website legit?",
+  "I found this website online. Is it really from your clinic?",
+  "Who developed this website?",
+  "Can I trust the appointment booking feature?",
+  "Is https://unfamiliar-example.invalid an official clinic website?",
+  "Is https://another-example.invalid fake?",
+];
 const history = [
   { role: "user", content: "Tell me about consultation." },
   { role: "assistant", content: "We offer consultations." },
@@ -120,6 +132,33 @@ test("Groq uses server instructions, preserves history, and budgets complete-lis
   assert.equal(context.module.exports.getChatResponseTokenLimit("View Services"), 1800);
   assert.equal(context.module.exports.getChatResponseTokenLimit("Show all available veterinary procedures"), 1800);
   assert.equal(context.module.exports.getChatResponseTokenLimit("List vaccination prices"), 1000);
+});
+
+test("Groq receives verified Charming Fur-fection website identity and cautious third-party guidance", async () => {
+  const requests = [];
+  class Groq {
+    chat = { completions: { create: async (payload) => {
+      requests.push(payload);
+      return { choices: [{ message: { content: "Website guidance" } }] };
+    } } };
+  }
+  const context = { module: { exports: {} }, require: () => Groq,
+    process: { env: { GROQ_API_KEY: "test-key" } }, AbortSignal };
+  vm.runInNewContext(readFileSync(new URL("../server/src/services/groq.service.js", import.meta.url), "utf8"), context);
+  for (const message of websiteQuestions) {
+    await context.module.exports.createChatCompletion({ message });
+  }
+  assert.equal(requests.length, websiteQuestions.length);
+  for (const request of requests) {
+    const prompt = request.messages[0].content;
+    assert.ok(prompt.includes("Official business website: https://www.charmingfurfectionpetscareservices.online"));
+    assert.ok(prompt.includes("used by the client for its business operations"));
+    assert.ok(prompt.includes("Do not call this website fake because you cannot independently verify the domain"));
+    assert.ok(prompt.includes("do not assume they are official or fake"));
+    assert.ok(prompt.includes("Do not make those claims unless separately verified"));
+    assert.ok(prompt.includes("Do not guarantee transaction safety"));
+  }
+  assert.deepEqual(requests.map((request) => request.messages.at(-1).content), websiteQuestions);
 });
 
 test("a truncated streamed catalog explicitly tells customers the list is incomplete", async () => {

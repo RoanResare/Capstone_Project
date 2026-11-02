@@ -44,7 +44,7 @@ const mocks = {
   "context/AppContext.jsx": appMock,
   "context/AuthContext.jsx": `const view = new URLSearchParams(window.location.search).get('view') || '';
     const role = view.startsWith('customer') ? 'customer' : view.toLowerCase().includes('admin') ? 'admin' : 'staff';
-    const publicAuth = ['login','signup','forgot','reset','otp'].includes(view);
+    const publicAuth = ['home','login','signup','forgot','reset','otp'].includes(view);
     const mockUser = {id:role,uid:role,role,name:'Test User',username:'testuser',email:'test@example.com'};
     const restoreOtp = () => null;
     export function useAuth() { return {currentUser:publicAuth ? null : mockUser,
@@ -205,6 +205,10 @@ try {
         "Signup mismatch validation must remain visible after consent");
     }
     if (view === "home") {
+      await page.getByRole("heading", { name: "Quality Pet Care for Your Furry Friends." }).waitFor();
+      await page.getByText("Explore our pet care services, book appointments, and manage your pet's information easily through your account.").waitFor();
+      await page.getByRole("heading", { name: "Plan Your Visit with Ease" }).waitFor();
+      await page.getByText("Sign in to your account to book appointments, view your pet's records, and stay updated on your bookings.").waitFor();
       await page.getByRole("button", { name: "Toggle menu" }).click();
       await page.getByRole("button", { name: "Home", exact: true }).last().waitFor();
       await page.getByRole("button", { name: "Toggle menu" }).click();
@@ -234,6 +238,10 @@ try {
         .slice(0, 12)
         .map(({element, rect}) => ({tag:element.tagName, className:String(element.className).slice(0,100), left:Math.round(rect.left), right:Math.round(rect.right), width:element.scrollWidth, client:element.clientWidth, text:(element.innerText||"").slice(0,50)}))) : [];
       assert.equal(overflow, false, `${view} route must not overflow horizontally at ${width}px: ${JSON.stringify(overflowingElements)}`);
+    }
+    if (view === "home") {
+      await page.getByRole("button", { name: "Book an Appointment" }).click();
+      await page.getByRole("heading", { name: "Welcome Back!" }).waitFor();
     }
     if (view === "portal") {
       await page.setViewportSize({ width: 320, height: 568 });

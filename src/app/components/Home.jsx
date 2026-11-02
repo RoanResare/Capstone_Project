@@ -84,14 +84,14 @@ export function Home() {
                   {businessBranchDetails.name}
                 </p>
                 <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-white md:text-5xl">
-                  Pet care services and account access in one calm place.
+                  Quality Pet Care for Your Furry Friends.
                 </h1>
               </div>
 
               <div className="pt-8">
                 <p className="max-w-2xl text-sm leading-5 text-[#E9F7F7] md:text-base">
-                  Review the essentials, then sign in to book a visit or manage your pet care
-                  details from your customer account.
+                  Explore our pet care services, book appointments, and manage your pet's
+                  information easily through your account.
                 </p>
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row">
@@ -100,7 +100,7 @@ export function Home() {
                     onClick={openCustomerBooking}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F4C16A] px-5 py-2.5 text-sm font-semibold text-[#173E44] transition hover:bg-[#F8CD82]"
                   >
-                    Start booking
+                    Book an Appointment
                     <ArrowRight size={16} />
                   </button>
                 </div>
@@ -149,11 +149,11 @@ export function Home() {
                   Visit policies
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-[#20343B]">
-                  Plan your visit, then complete service selection inside your account.
+                  Plan Your Visit with Ease
                 </h2>
                 <p className="mt-3 text-sm leading-5 text-[#607277]">
-                  Booking now happens in the customer dashboard so pet details, profile information,
-                  appointment history, and clinic updates stay connected to one authenticated account.
+                  Sign in to your account to book appointments, view your pet's records, and stay
+                  updated on your bookings.
                 </p>
 
                 <div className="mt-5">

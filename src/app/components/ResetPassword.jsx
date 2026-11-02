@@ -130,8 +130,8 @@ export function ResetPassword() {
             Choose a new password for your account.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Open the reset link from your email. If the password reset code is still valid,
-            you can set a new password here and then sign in again normally.
+            Enter and confirm your new password below. Once your password has been reset, you
+            can log in using your new password.
           </p>
 
           <div className="mt-6 rounded-[24px] border border-white/12 bg-white/8 p-5">
@@ -226,23 +226,23 @@ export function ResetPassword() {
                 !verifiedEmail ||
                 !passwordsMatch
               }
-              className="w-full rounded-[22px] bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F4E55] disabled:cursor-not-allowed disabled:opacity-70"
+              className="ui-hover-lift min-h-11 w-full rounded-full bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1F4E55] hover:shadow-md motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSubmitting ? "Resetting password..." : "Reset password"}
+              {isSubmitting ? "Resetting password..." : "Reset Password"}
             </button>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div className="grid gap-3 text-sm">
               <Link
                 to="/forgot-password"
-                className="font-semibold text-[#2D6B73] underline underline-offset-4"
+                className="ui-hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[#78B8B2] bg-white px-5 py-2.5 text-center font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none"
               >
-                Request a new reset link
+                Request a New Reset Link
               </Link>
               <Link
                 to="/login"
-                className="font-semibold text-[#607277] underline underline-offset-4"
+                className="ui-hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[#78B8B2] bg-white px-5 py-2.5 text-center font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none"
               >
-                Return to login
+                Back to Login
               </Link>
             </div>
           </form>

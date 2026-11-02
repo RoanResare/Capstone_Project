@@ -60,24 +60,24 @@ export function ForgotPassword() {
           className="rounded-[28px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-6 text-white shadow-[0_24px_56px_rgba(20,43,46,0.2)] md:p-8"
         >
           <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/76">
-            Password Recovery
+            RESET YOUR PASSWORD
           </p>
           <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl md:text-[4.1rem]">
-            Request a secure password reset link.
+            Forgot your password?
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-white/78 md:text-lg">
-            Enter the email address used for sign-in. The backend resolves the account and
-            delivers a Supabase Auth reset link through the configured email provider.
+            Enter your registered email address and we'll send you a link to reset your
+            password.
           </p>
 
           <div className="mt-6 rounded-[24px] border border-white/12 bg-white/8 p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-white/64">
-              Reset rules
+              WHAT HAPPENS NEXT?
             </p>
             <div className="mt-4 space-y-3 text-sm text-white/78">
-              <p>1. The server generates a Supabase password reset code.</p>
-              <p>2. The email links directly to the React reset screen.</p>
-              <p>3. Expired or reused reset codes are rejected by Supabase Auth.</p>
+              <p>1. Enter your registered email address.</p>
+              <p>2. Check your inbox for the password reset link.</p>
+              <p>3. Open the link and create a new password.</p>
             </div>
           </div>
         </motion.section>
@@ -96,11 +96,11 @@ export function ForgotPassword() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                    Email recovery
+                    RESET PASSWORD VIA EMAIL
                   </p>
                   <p className="mt-2 text-sm leading-5 text-[#607277]">
-                    Use the same email address you registered with. A valid email is matched to
-                    its Supabase Auth account before the reset link is sent.
+                    We'll send a password reset link to your registered email address. Follow
+                    the instructions in the email to create a new password.
                   </p>
                 </div>
               </div>
@@ -141,15 +141,15 @@ export function ForgotPassword() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-[22px] bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1F4E55]"
+              className="ui-hover-lift w-full min-h-11 rounded-full bg-[#173E44] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1F4E55] hover:shadow-md motion-reduce:transition-none"
             >
-              {isSubmitting ? "Sending reset link..." : "Send password reset link"}
+              {isSubmitting ? "Sending reset link..." : "Send Password Reset Link"}
             </button>
 
-            <div className="flex justify-center text-sm">
+            <div className="grid gap-3 text-sm">
               <Link
                 to="/login"
-                className="font-semibold text-[#2D6B73] underline underline-offset-4"
+                className="ui-hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[#78B8B2] bg-white px-5 py-2.5 text-center font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none"
               >
                 Back to Login
               </Link>

@@ -107,6 +107,7 @@ test("new password visibility toggles both ways and typing updates the pending e
 });
 
 test("create form omits password while edit form spans both columns with one working password control", () => {
+  const source = readFileSync(new URL("../src/app/components/portal/PortalPage.jsx", import.meta.url), "utf8");
   const employee = { id: "employee", name: "Employee", email: "employee@example.com", username: "employee", role: "staff", status: "active" };
   const props = { currentUser: { id: "admin", role: "admin" }, state: { users: [employee] }, visibleNotifications: [] };
   for (const [id, creating] of [["__new-portal-user__", true], ["employee", false]]) {
@@ -116,13 +117,29 @@ test("create form omits password while edit form spans both columns with one wor
       assert.match(html, /Create employee account/);
       assert.doesNotMatch(html, /autoComplete="new-password"|employee-edit-password|>Password<|>New password</);
     } else {
-      assert.match(html, /Employee account details/);
+      assert.match(html, /Employee Information/);
+      assert.match(html, /Update the employee(?:&#x27;|')s information, password, and role\./);
+      assert.match(html, />Name</);
+      assert.match(html, />Email</);
+      assert.match(html, />Username</);
+      assert.match(html, />Role</);
+      assert.match(html, /New password/);
       assert.match(html, /class="min-w-0 md:col-span-2"/);
       assert.match(html, /id="employee-edit-password"[^>]*class="block w-full/);
       assert.match(html, /aria-controls="employee-edit-password"/);
       assert.equal((html.match(/autoComplete="new-password"/g) || []).length, 1);
+      assert.match(html, /This employee can log in to their account\./);
+      assert.match(html, /Save Changes/);
+      assert.match(html, /Discard Changes/);
+      assert.match(html, /Delete Account/);
     }
+    assert.match(html, /Manage Employee Accounts/);
+    assert.match(html, /Add new employees, update their information, and manage their account access\./);
+    assert.match(html, /Search employees\.\.\./);
+    assert.match(html, /Add employee/);
   }
+  assert.match(source, /aria-label=\{`Change status for \$\{user\.name\}`\}/);
+  assert.match(source, /onChange=\{\(event\) => setSearchValue\(event\.target\.value\)\}/);
 });
 
 test("create action opens confirmation without a password and without creating the account", async () => {

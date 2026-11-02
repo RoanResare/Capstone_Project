@@ -1971,8 +1971,8 @@ function ManageUsersWorkspace({
 
       <div className="grid gap-4 xl:grid-cols-[0.96fr_1.04fr]">
         <PanelCard
-          title="Employee accounts"
-          description="Create employees here; change account status from the list below."
+          title="Manage Employee Accounts"
+          description="Add new employees, update their information, and manage their account access."
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 md:flex-row">
@@ -1983,7 +1983,7 @@ function ManageUsersWorkspace({
                   autoComplete="off"
                   onChange={(event) => setSearchValue(event.target.value)}
                   className="w-full bg-transparent outline-none"
-                  placeholder="Search by name, email, username, role, or status"
+                  placeholder="Search employees..."
                 />
               </label>
 
@@ -2091,11 +2091,11 @@ function ManageUsersWorkspace({
         </PanelCard>
 
         <PanelCard
-          title={isCreatingNew ? "Create employee account" : "Employee account details"}
+          title={isCreatingNew ? "Create employee account" : "Employee Information"}
           description={
             isCreatingNew
               ? "New employee accounts start Active. Manage status from the employee list."
-              : "Edit identity, credentials, and role assignment."
+              : "Update the employee's information, password, and role."
           }
         >
           {isCreatingNew || selectedUser ? (
@@ -2174,7 +2174,7 @@ function ManageUsersWorkspace({
                     <EmployeeStatusBadge status={selectedUser.status} />
                   </div>
                   <p className="mt-3">
-                    Current access: {selectedUser.status === "active" ? "Can sign in to the portal." : "Portal sign-in is blocked."}
+                    {selectedUser.status === "active" ? "This employee can log in to their account." : "Portal sign-in is blocked."}
                   </p>
                   {selectedUserIsCurrentAdmin && (
                     <p className="mt-2 text-[#A56A0F]">
@@ -2196,7 +2196,7 @@ function ManageUsersWorkspace({
                       : "Saving changes..."
                     : isCreatingNew
                       ? "Create account"
-                      : "Save changes"}
+                      : "Save Changes"}
                 </button>
 
                 <button
@@ -2205,7 +2205,7 @@ function ManageUsersWorkspace({
                   disabled={isSaving}
                   className="rounded-lg bg-[#EEF6F6] px-5 py-2.5 text-sm font-semibold text-[#24444A]"
                 >
-                  {isCreatingNew ? "Clear form" : "Reset changes"}
+                  {isCreatingNew ? "Clear form" : "Discard Changes"}
                 </button>
 
                 {!isCreatingNew && selectedUser && (
@@ -2224,7 +2224,7 @@ function ManageUsersWorkspace({
                       ? "Deleting..."
                       : confirmDelete
                         ? "Confirm permanent delete"
-                        : "Delete account"}
+                        : "Delete Account"}
                   </button>
                 )}
               </div>

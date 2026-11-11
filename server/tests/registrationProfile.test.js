@@ -68,11 +68,12 @@ function fixture(options = {}) {
   };
   controller._compile(fs.readFileSync(filename, "utf8"), filename);
   const response = { status(value) { this.statusCode = value; return this; }, json(value) { this.body = value; return this; } };
-  const request = () => ({ body: { uid: "forged-uid", email: "Customer@gmail.com", password: "Valid!Password1",
-    fullName: "Customer", username: "new_customer", phone: "9940702702" }, ip: "127.0.0.1", headers: {} });
+  const request = (includeConsent = true) => ({ body: { uid: "forged-uid", email: "Customer@gmail.com", password: "Valid!Password1",
+    fullName: "Customer", username: "new_customer", phone: "9940702702",
+    ...(includeConsent ? { termsAndConditionsAccepted: true, privacyPolicyAccepted: true } : {}) }, ip: "127.0.0.1", headers: {} });
   return { records, response, handler: controller.exports.createCustomerProfile,
     get sent() { return sent; }, get generated() { return generated; }, get deleted() { return deleted; },
-    run: () => controller.exports.createCustomerProfile(request(), response) };
+    run: (includeConsent = true) => controller.exports.createCustomerProfile(request(includeConsent), response) };
 }
 
 test("signup links the profile to the Supabase Auth identity, ignoring a forged client UID", async () => {
@@ -82,6 +83,10 @@ test("signup links the profile to the Supabase Auth identity, ignoring a forged 
   assert.equal(system.response.body.profile.uid, "verified-uid");
   assert.equal(system.response.body.profile.authUserId, "verified-uid");
   assert.equal(system.records.get("users/verified-uid").email, "customer@gmail.com");
+  assert.equal(system.records.get("users/verified-uid").termsAndConditionsAccepted, true);
+  assert.equal(Number.isFinite(Date.parse(system.records.get("users/verified-uid").termsAndConditionsAcceptedAt)), true);
+  assert.equal(system.records.get("users/verified-uid").privacyPolicyAccepted, true);
+  assert.equal(Number.isFinite(Date.parse(system.records.get("users/verified-uid").privacyPolicyAcceptedAt)), true);
   assert.equal(system.records.has("users/forged-uid"), false);
   assert.equal(system.sent, 1);
   assert.equal(system.generated, 1);
@@ -100,6 +105,13 @@ test("Supabase and configuration failures never save a pending customer profile"
   const authError = Object.assign(new Error("Supabase unavailable"), { statusCode: 503 });
   await assert.rejects(fixture({ linkError: authError }).run(), error => error === authError);
   await assert.rejects(fixture({ noSupabase: true }).run(), error => error.statusCode === 503);
+});
+
+test("registration rejects missing policy consent before creating a Supabase identity", async () => {
+  const system = fixture();
+  await assert.rejects(system.run(false), error => error.statusCode === 400 && error.details?.code === "POLICY_CONSENT_REQUIRED");
+  assert.equal(system.generated, 0);
+  assert.equal(system.records.size, 0);
 });
 
 test("profile transaction failure triggers best-effort cleanup of the newly created Supabase identity", async () => {
@@ -124,7 +136,7 @@ test("POST signup returns a pending profile or retryable email delivery status t
     try {
       const response = await fetch(`http://127.0.0.1:${server.address().port}/api/auth/register/profile`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "Customer@gmail.com", password: "Valid!Password1", fullName: "Customer", username: "new_customer", phone: "9940702702" }),
+        body: JSON.stringify({ email: "Customer@gmail.com", password: "Valid!Password1", fullName: "Customer", username: "new_customer", phone: "9940702702", termsAndConditionsAccepted: true, privacyPolicyAccepted: true }),
       });
       const body = await response.json();
       assert.equal(response.status, 202);

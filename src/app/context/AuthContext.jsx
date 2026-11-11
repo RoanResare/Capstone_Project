@@ -364,7 +364,10 @@ export function AuthProvider({ children }) {
     return beginUnifiedLogin({ identifier: loginIdentifier, password, rememberDevice });
   }
 
-  async function signUp({ fullName, email, password, confirmPassword, phone = "", username = "" }) {
+  async function signUp({ fullName, email, password, confirmPassword, phone = "", username = "", termsAndConditionsAccepted = false, privacyPolicyAccepted = false }) {
+    if (termsAndConditionsAccepted !== true || privacyPolicyAccepted !== true) {
+      return { ok: false, error: "Accept the Terms and Conditions and Privacy Policy before creating an account." };
+    }
     fullName = resolveCustomerFullName({ fullName, username, email });
     const textErrors = getTextValidationErrors({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
     if (Object.keys(textErrors).length) return { ok: false, error: Object.values(textErrors)[0] };
@@ -433,6 +436,8 @@ export function AuthProvider({ children }) {
         password,
         phone: normalizedPhone,
         username,
+        termsAndConditionsAccepted,
+        privacyPolicyAccepted,
       });
       resetTransientAuthStorage();
       clearPortalSession();

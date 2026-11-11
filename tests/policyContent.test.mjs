@@ -40,16 +40,21 @@ test("document formatting joins PDF line wraps without losing policy wording", (
   assert.ok(!privacyBlocks.some((block) => block.value === "Terms and Conditions"));
 });
 
-test("signup reads each modal independently and requires both bottoms plus manual agreement", () => {
-  assert.match(dialog, /documentType === "terms"/);
-  assert.match(dialog, /termsAndConditionsText : privacyPolicyText/);
+test("signup combines separate policy sources and requires the combined reader plus manual agreement", () => {
+  assert.match(dialog, /documentType === "combined"/);
+  assert.match(dialog, /termsAndConditionsText/);
+  assert.match(dialog, /privacyPolicyText/);
+  assert.match(dialog, /\$\{documentTitle\} full text/);
   assert.match(dialog, /onScroll=\{\(event\)/);
   assert.match(signup, /termsRead, setTermsRead/);
   assert.match(signup, /privacyRead, setPrivacyRead/);
-  assert.match(signup, /onReachedBottom=\{\(\) => \(policyDocument === "terms" \? setTermsRead\(true\) : setPrivacyRead\(true\)\)\}/);
+  assert.match(signup, /onReachedBottom=\{\(\) => \{ setTermsRead\(true\); setPrivacyRead\(true\); \}\}/);
+  assert.match(signup, /setPolicyDocument\("combined"\)/);
   assert.match(signup, /disabled=\{!termsRead \|\| !privacyRead \|\| isSubmitting\}/);
   assert.match(signup, /I have read and agree to the Terms and Conditions and Privacy Policy\./);
   assert.match(signup, /disabled=\{!canAgree \|\| isSubmitting\}/);
+  assert.match(signup, /termsAndConditionsAccepted: true/);
+  assert.match(signup, /privacyPolicyAccepted: true/);
   assert.match(signup, /\[termsAndConditionsText, privacyPolicyText\]/);
   assert.equal(canAcceptPolicyAgreement({ termsRead: false, privacyRead: false, accepted: true }), false);
   assert.equal(canAcceptPolicyAgreement({ termsRead: true, privacyRead: false, accepted: true }), false);
@@ -69,4 +74,12 @@ test("login opens each document independently without signup agreement gating", 
   assert.match(login, /setPolicyDocument\("privacy"\)/);
   assert.match(login, /<PolicyDialog documentType=\{policyDocument\}/);
   assert.doesNotMatch(login, /canAcceptPolicyAgreement|termsRead|privacyRead/);
+});
+
+test("policy modal uses viewport-safe top-layer dialog and prevents background scrolling", () => {
+  assert.match(dialog, /createPortal\(/);
+  assert.match(dialog, /dialog\.showModal\(\)/);
+  assert.match(dialog, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(dialog, /height: "min\(calc\(100dvh - 2rem\), 52rem\)"/);
+  assert.match(dialog, /overflow-y-auto/);
 });

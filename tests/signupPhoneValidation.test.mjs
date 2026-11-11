@@ -36,15 +36,17 @@ test("the actual signup handler accepts +63 and local formats and stores the sam
   renderToString(createElement(AuthProvider, null, createElement(CaptureSignup)));
   for (const phone of ["+63 9620614953", "09620614953", "9620614953"]) {
     const result = await signUp({ fullName: "Test Customer", email: "customer@example.test", username: "customer",
-      phone, password: "Test123!", confirmPassword: "Test123!" });
+      phone, password: "Test123!", confirmPassword: "Test123!",
+      termsAndConditionsAccepted: true, privacyPolicyAccepted: true });
     assert.equal(result.ok, true, result.error);
-    assert.equal(result.homePath, "/customer/dashboard");
+    assert.equal(result.verificationRequired, true);
     assert.equal(globalThis.__signupPhoneTestCalls.at(-1).phone, "+63 9620614953");
-    assert.equal(globalThis.__signupPhoneTestChecks.at(-1).phone, "+63 9620614953");
   }
+  assert.equal(globalThis.__signupPhoneTestChecks.length, 0, "Signup must not add a duplicate availability pre-check");
   const count = globalThis.__signupPhoneTestCalls.length;
   const result = await signUp({ fullName: "Test Customer", email: "customer@example.test", username: "customer",
-    phone: "+63 96206149530", password: "Test123!", confirmPassword: "Test123!" });
+    phone: "+63 96206149530", password: "Test123!", confirmPassword: "Test123!",
+    termsAndConditionsAccepted: true, privacyPolicyAccepted: true });
   assert.equal(result.ok, false);
   assert.equal(globalThis.__signupPhoneTestCalls.length, count);
 });

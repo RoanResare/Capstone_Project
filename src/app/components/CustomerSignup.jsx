@@ -101,7 +101,7 @@ export function CustomerSignup() {
     setForm(submittedForm);
 
     if (!termsReady) {
-      setPolicyDocument("terms");
+      setPolicyDocument("combined");
       setFeedback({ type: "", message: "" });
       return;
     }
@@ -128,7 +128,7 @@ export function CustomerSignup() {
 
       if (!canAcceptPolicyAgreement({ termsRead, privacyRead, accepted: termsAccepted })) {
         setTermsReady(false);
-        setPolicyDocument(!termsRead ? "terms" : "privacy");
+        setPolicyDocument("combined");
         return;
       }
 
@@ -139,6 +139,8 @@ export function CustomerSignup() {
         phone: normalizedPhone,
         password: submittedForm.password,
         confirmPassword: submittedForm.confirmPassword,
+        termsAndConditionsAccepted: true,
+        privacyPolicyAccepted: true,
       });
 
       if (!result.ok) {
@@ -398,9 +400,9 @@ export function CustomerSignup() {
 
             <p className="text-center text-xs text-[#718387]">
               Review{" "}
-              <button type="button" onClick={() => setPolicyDocument("terms")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>
+              <button type="button" onClick={() => setPolicyDocument("combined")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>
               {" "}and{" "}
-              <button type="button" onClick={() => setPolicyDocument("privacy")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Privacy Policy</button>.
+              <button type="button" onClick={() => setPolicyDocument("combined")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Privacy Policy</button>.
             </p>
 
             <button
@@ -446,7 +448,7 @@ export function CustomerSignup() {
         <PolicyDialog
           documentType={policyDocument}
           onClose={() => setPolicyDocument(null)}
-          onReachedBottom={() => (policyDocument === "terms" ? setTermsRead(true) : setPrivacyRead(true))}
+          onReachedBottom={() => { setTermsRead(true); setPrivacyRead(true); }}
           footer={(
             <div className="shrink-0 pt-3">
               <label className="flex items-start gap-3 text-sm font-semibold text-[#415D62]">

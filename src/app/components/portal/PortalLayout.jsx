@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bell, CalendarDays, Clock3, LogOut, PawPrint, Users, X } from "lucide-react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useToast } from "../../context/ToastContext.jsx";
 import { BrandMark } from "../BrandMark.jsx";
 import { resolveHomePath } from "../../utils/roleUtils.js";
 
@@ -201,9 +202,34 @@ export function PortalLayout() {
     markAllNotificationsRead,
   } = useApp();
   const { signOut } = useAuth();
+  const toast = useToast();
   const [panelOpen, setPanelOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const notificationToastStateRef = useRef(null);
+
+  if (notificationToastStateRef.current?.userId !== currentUser.uid) {
+    notificationToastStateRef.current = {
+      userId: currentUser.uid,
+      mountedAt: Date.now(),
+      seenIds: new Set(visibleNotifications.map((notification) => notification.id)),
+    };
+  }
+
+  useEffect(() => {
+    const tracking = notificationToastStateRef.current;
+    for (const notification of visibleNotifications) {
+      if (tracking.seenIds.has(notification.id)) continue;
+      tracking.seenIds.add(notification.id);
+      const createdAt = Date.parse(notification.createdAt);
+      if (currentUser.role === "admin" || currentUser.role === "staff") {
+        if (notification.targetType === "appointment" && notification.actionLabel === "Booked appointment" &&
+            Number.isFinite(createdAt) && createdAt >= tracking.mountedAt) {
+          toast.info(notification.message || "A customer submitted a new appointment.", { duration: 7000 });
+        }
+      }
+    }
+  }, [currentUser.role, currentUser.uid, visibleNotifications]);
 
   useEffect(() => {
     setPanelOpen(false);

@@ -59,6 +59,7 @@ try {
   console.log("Chromium ready; testing signup.");
   const page = await browser.newPage();
   page.setDefaultTimeout(10000);
+  await page.setViewportSize({ width: 375, height: 667 });
   await page.route("**/*", route => new URL(route.request().url()).hostname === "127.0.0.1"
     ? route.continue() : route.abort());
   const errors = [], submissions = [], checks = [], activations = [];
@@ -88,32 +89,50 @@ try {
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   const policyDialog = page.getByRole("dialog");
   await policyDialog.locator("#policy-dialog-title").filter({ hasText: "Terms and Conditions" }).waitFor();
-  const termsDocument = policyDialog.locator('[aria-label="Terms and Conditions document"]');
-  assert.equal(await policyDialog.locator('[aria-label="Privacy Policy document"]').count(), 0,
-    "The Terms and Conditions modal must not render the Privacy Policy document");
+  assert.equal(await policyDialog.locator('[data-policy-document="Terms and Conditions"]').count(), 1);
+  assert.equal(await policyDialog.locator('[data-policy-document="Privacy Policy"]').count(), 1,
+    "Signup consent must show both separate documents in one viewer");
+  assert.equal(await policyDialog.getByRole("checkbox").count(), 1,
+    "The combined signup experience must have exactly one agreement checkbox");
+  const dialogBounds = await policyDialog.boundingBox();
+  assert.ok(dialogBounds.y >= 0 && dialogBounds.y + dialogBounds.height <= 667,
+    "The signup policy dialog must fit inside the mobile viewport");
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+    "The signup policy dialog must not overflow horizontally on mobile");
+  const combinedDocument = policyDialog.locator('[aria-label="Combined policy documents"]');
   const agreementCheckbox = policyDialog.getByRole("checkbox");
   assert.equal(await agreementCheckbox.isDisabled(), true,
-    "Opening Terms and Conditions must not count as reading either document");
-  await termsDocument.evaluate(element => {
-    element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
+    "Opening the combined viewer must not count as reading either document");
+  assert.equal(await policyDialog.getByRole("button", { name: "Agree and continue" }).isDisabled(), true);
+  await combinedDocument.evaluate(element => {
+    const terms = element.querySelector('[data-policy-document="Terms and Conditions"]');
+    const container = element.getBoundingClientRect();
+    const end = terms.getBoundingClientRect().bottom - container.top + element.scrollTop;
+    element.scrollTop = end - element.clientHeight;
+    element.dispatchEvent(new Event("scroll"));
   });
   assert.equal(await agreementCheckbox.isDisabled(), true,
-    "Reading only Terms and Conditions must not enable the checkbox");
-  await policyDialog.getByRole("button", { name: "Close Terms and Conditions" }).click();
-  await page.getByRole("button", { name: "Privacy Policy", exact: true }).click();
-  await policyDialog.locator("#policy-dialog-title").filter({ hasText: "Privacy Policy" }).waitFor();
-  const privacyDocument = policyDialog.locator('[aria-label="Privacy Policy document"]');
-  assert.equal(await policyDialog.locator('[aria-label="Terms and Conditions document"]').count(), 0,
-    "The Privacy Policy modal must not render the Terms and Conditions document");
-  await privacyDocument.evaluate(element => {
+    "Reading only the first document must not enable the checkbox");
+  await combinedDocument.evaluate(element => {
     element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
   });
   assert.equal(await agreementCheckbox.isDisabled(), false,
-    "Reading both documents must enable the manual agreement checkbox");
+    "Reaching the combined reader bottom must enable the checkbox");
   assert.equal(await policyDialog.getByRole("button", { name: "Agree and continue" }).isDisabled(), true,
     "Agree and Continue must remain disabled until the user checks the box");
   await agreementCheckbox.check();
   await policyDialog.getByRole("button", { name: "Agree and continue" }).click();
+  await page.getByRole("button", { name: "Privacy Policy", exact: true }).click();
+  await policyDialog.getByRole("heading", { name: "Terms and Conditions and Privacy Policy" }).waitFor();
+  assert.equal(await policyDialog.locator('[data-policy-document="Terms and Conditions"]').count(), 1);
+  assert.equal(await policyDialog.locator('[data-policy-document="Privacy Policy"]').count(), 1,
+    "Either signup policy link must open the complete combined viewer");
+  await policyDialog.getByRole("button", { name: "Close Terms and Conditions and Privacy Policy" }).click();
+  await page.getByRole("button", { name: "Terms and Conditions", exact: true }).click();
+  await policyDialog.getByRole("heading", { name: "Terms and Conditions and Privacy Policy" }).waitFor();
+  assert.equal(await policyDialog.locator('[data-policy-document="Terms and Conditions"]').count(), 1);
+  assert.equal(await policyDialog.locator('[data-policy-document="Privacy Policy"]').count(), 1);
+  await policyDialog.getByRole("button", { name: "Close Terms and Conditions and Privacy Policy" }).click();
   await page.getByPlaceholder("Enter your full name").fill("gago");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByRole("alert").filter({ hasText: "Please remove inappropriate or offensive language before continuing." }).waitFor();
@@ -148,6 +167,8 @@ try {
   assert.equal(submissions[0].email, "customer@gmail.com");
   assert.equal(submissions[0].username, "test_customer");
   assert.equal(submissions[0].phone, "+63 9940702702");
+  assert.equal(submissions[0].termsAndConditionsAccepted, true);
+  assert.equal(submissions[0].privacyPolicyAccepted, true);
   assert.equal(await page.getByPlaceholder("Create a password").inputValue(), "");
   assert.equal(await page.getByPlaceholder("Repeat your password").inputValue(), "");
   assert.equal(activations.length, 0, "The signup flow must not trigger an unrelated activation request");

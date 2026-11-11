@@ -64,6 +64,7 @@ function fixture(initial = {}) {
   const { createCustomerProfile } = load("controllers/registration.controller.js", { "../services/phoneAccounts.service": service });
   return { records, register: (uid, phone) => createCustomerProfile({ headers: {}, body: {
     email: `${uid}@example.test`, password: "Valid!Password1", fullName: "Customer", username: uid, phone,
+    termsAndConditionsAccepted: true, privacyPolicyAccepted: true,
   } }, { status() { return this; }, json() {} }) };
 }
 

@@ -20,7 +20,10 @@ export async function changeCustomerPassword(currentPassword, newPassword, confi
   }
 }
 
-export async function signUpCustomerWithEmailPassword({ fullName, email, password, phone = "", username = "" }) {
+export async function signUpCustomerWithEmailPassword({ fullName, email, password, phone = "", username = "", termsAndConditionsAccepted = false, privacyPolicyAccepted = false }) {
+  if (termsAndConditionsAccepted !== true || privacyPolicyAccepted !== true) {
+    throw new Error("Accept the Terms and Conditions and Privacy Policy before creating an account.");
+  }
   fullName = resolveCustomerFullName({ fullName, username, email });
   assertAppropriateText({ fullName, email, username }, ACCOUNT_TEXT_FIELDS);
   // The registration endpoint owns validation and uniqueness. A separate
@@ -28,6 +31,7 @@ export async function signUpCustomerWithEmailPassword({ fullName, email, passwor
   try {
     const response = await apiClient.post("/auth/register/profile", {
       fullName: String(fullName || "").trim(), email: normalizeEmail(email), password, phone, username,
+      termsAndConditionsAccepted, privacyPolicyAccepted,
     });
     return { profile: response.data.profile, message: response.data.message, deliveryStatus: response.data.deliveryStatus,
       verificationMethod: response.data.verificationMethod, statusChallenge: response.data.statusChallenge };

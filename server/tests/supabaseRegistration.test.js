@@ -106,6 +106,7 @@ function loadRegistration(options = {}) {
     run: () => controller.exports.createCustomerProfile({ body: {
       fullName: "Survey Customer", email: "customer@example.com", username: "survey_customer",
       phone: "+63 9940702702", password: "Valid!Pass123",
+      termsAndConditionsAccepted: true, privacyPolicyAccepted: true,
       ...options.payload,
     }, ip: "127.0.0.1" }, response),
   };
@@ -125,6 +126,10 @@ test("customer registration creates a Supabase identity and a complete PostgreSQ
   assert.equal(profile.authUserId, "7caeb3fd-d955-49cb-a8d9-17f0e75d8620");
   assert.equal(profile.role, "customer");
   assert.equal(profile.accountStatus, "inactive");
+  assert.equal(profile.termsAndConditionsAccepted, true);
+  assert.equal(Number.isFinite(Date.parse(profile.termsAndConditionsAcceptedAt)), true);
+  assert.equal(profile.privacyPolicyAccepted, true);
+  assert.equal(Number.isFinite(Date.parse(profile.privacyPolicyAcceptedAt)), true);
   assert.equal(Object.hasOwn(profile, "passwordHash"), false);
   assert.equal(fixture.records.get("usernames/test.cstmr2").uid, profile.uid);
   assert.equal(fixture.authCreated, 1);

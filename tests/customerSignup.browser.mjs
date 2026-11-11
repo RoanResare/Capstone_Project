@@ -86,11 +86,34 @@ try {
   assert.equal(checks.length, 0, "Typing must not trigger duplicate checks");
   assert.equal(submissions.length, 0, "Typing must not submit a registration");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await page.getByRole("dialog").locator("div.overflow-y-auto").evaluate(element => {
+  const policyDialog = page.getByRole("dialog");
+  await policyDialog.locator("#policy-dialog-title").filter({ hasText: "Terms and Conditions" }).waitFor();
+  const termsDocument = policyDialog.locator('[aria-label="Terms and Conditions document"]');
+  assert.equal(await policyDialog.locator('[aria-label="Privacy Policy document"]').count(), 0,
+    "The Terms and Conditions modal must not render the Privacy Policy document");
+  const agreementCheckbox = policyDialog.getByRole("checkbox");
+  assert.equal(await agreementCheckbox.isDisabled(), true,
+    "Opening Terms and Conditions must not count as reading either document");
+  await termsDocument.evaluate(element => {
     element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
   });
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Agree and continue" }).click();
+  assert.equal(await agreementCheckbox.isDisabled(), true,
+    "Reading only Terms and Conditions must not enable the checkbox");
+  await policyDialog.getByRole("button", { name: "Close Terms and Conditions" }).click();
+  await page.getByRole("button", { name: "Privacy Policy", exact: true }).click();
+  await policyDialog.locator("#policy-dialog-title").filter({ hasText: "Privacy Policy" }).waitFor();
+  const privacyDocument = policyDialog.locator('[aria-label="Privacy Policy document"]');
+  assert.equal(await policyDialog.locator('[aria-label="Terms and Conditions document"]').count(), 0,
+    "The Privacy Policy modal must not render the Terms and Conditions document");
+  await privacyDocument.evaluate(element => {
+    element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
+  });
+  assert.equal(await agreementCheckbox.isDisabled(), false,
+    "Reading both documents must enable the manual agreement checkbox");
+  assert.equal(await policyDialog.getByRole("button", { name: "Agree and continue" }).isDisabled(), true,
+    "Agree and Continue must remain disabled until the user checks the box");
+  await agreementCheckbox.check();
+  await policyDialog.getByRole("button", { name: "Agree and continue" }).click();
   await page.getByPlaceholder("Enter your full name").fill("gago");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.getByRole("alert").filter({ hasText: "Please remove inappropriate or offensive language before continuing." }).waitFor();

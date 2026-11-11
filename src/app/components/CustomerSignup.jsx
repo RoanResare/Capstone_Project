@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
 import { motion } from "motion/react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
@@ -6,6 +6,8 @@ import { Eye, EyeOff, UserPlus, X } from "lucide-react";
 import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
 import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
 import { PolicyDialog } from "./PolicyDialog.jsx";
+import { privacyPolicyText, termsAndConditionsText } from "../utils/policyDocuments.js";
+import { canAcceptPolicyAgreement } from "../utils/policyAgreement.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
@@ -54,16 +56,23 @@ export function CustomerSignup() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [policyTitle, setPolicyTitle] = useState("Terms and Conditions and Privacy Policy");
-  const [policyDocument, setPolicyDocument] = useState("terms");
+  const [policyDocument, setPolicyDocument] = useState(null);
   const [termsRead, setTermsRead] = useState(false);
+  const [privacyRead, setPrivacyRead] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsReady, setTermsReady] = useState(false);
   const submissionInFlightRef = useRef(false);
   const registrationCompletedRef = useRef(false);
   const passwordStrength = getPasswordStrength(form.password);
   const passwordPolicyError = form.password ? getPasswordPolicyError(form.password) : "";
+  const canAgree = canAcceptPolicyAgreement({ termsRead, privacyRead, accepted: termsAccepted });
+
+  useEffect(() => {
+    setTermsRead(false);
+    setPrivacyRead(false);
+    setTermsAccepted(false);
+    setTermsReady(false);
+  }, [termsAndConditionsText, privacyPolicyText]);
 
   if (!isLoading && isAuthenticated && currentUser) {
     return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;
@@ -92,7 +101,7 @@ export function CustomerSignup() {
     setForm(submittedForm);
 
     if (!termsReady) {
-      setShowTerms(true);
+      setPolicyDocument("terms");
       setFeedback({ type: "", message: "" });
       return;
     }
@@ -117,9 +126,9 @@ export function CustomerSignup() {
         return;
       }
 
-      if (!termsAccepted || !termsRead) {
+      if (!canAcceptPolicyAgreement({ termsRead, privacyRead, accepted: termsAccepted })) {
         setTermsReady(false);
-        setShowTerms(true);
+        setPolicyDocument(!termsRead ? "terms" : "privacy");
         return;
       }
 
@@ -389,9 +398,9 @@ export function CustomerSignup() {
 
             <p className="text-center text-xs text-[#718387]">
               Review{" "}
-              <button type="button" onClick={() => { setPolicyTitle("Terms and Conditions"); setPolicyDocument("terms"); setShowTerms(true); }} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>
+              <button type="button" onClick={() => setPolicyDocument("terms")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>
               {" "}and{" "}
-              <button type="button" onClick={() => { setPolicyTitle("Privacy Policy"); setPolicyDocument("privacy"); setShowTerms(true); }} className="font-semibold text-[#2D6B73] underline underline-offset-2">Privacy Policy</button>.
+              <button type="button" onClick={() => setPolicyDocument("privacy")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Privacy Policy</button>.
             </p>
 
             <button
@@ -433,27 +442,26 @@ export function CustomerSignup() {
           )}
         </motion.section>
       </div>
-      {showTerms && (
+      {policyDocument && (
         <PolicyDialog
-          title={policyTitle}
-          initialDocument={policyDocument}
-          onClose={() => setShowTerms(false)}
-          onReadToBottom={() => setTermsRead(true)}
+          documentType={policyDocument}
+          onClose={() => setPolicyDocument(null)}
+          onReachedBottom={() => (policyDocument === "terms" ? setTermsRead(true) : setPrivacyRead(true))}
           footer={(
             <div className="shrink-0 pt-3">
-            <label className="mt-4 flex items-start gap-3 text-sm font-semibold text-[#415D62]">
-              <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} disabled={!termsRead || isSubmitting} className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed" />
-              <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
-            </label>
-            {!termsRead && <p className="mt-2 text-xs text-[#7A9297]">Scroll to the bottom of the terms before continuing.</p>}
-            <button
-              type="button"
-              disabled={!termsRead || !termsAccepted || isSubmitting}
-              onClick={() => { setTermsReady(true); setShowTerms(false); setFeedback({ type: "", message: "" }); }}
-              className="mt-5 w-full rounded-xl bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Agree and continue
-            </button>
+              <label className="flex items-start gap-3 text-sm font-semibold text-[#415D62]">
+                <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} disabled={!termsRead || !privacyRead || isSubmitting} className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed" />
+                <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
+              </label>
+              {(!termsRead || !privacyRead) && <p className="mt-2 text-xs text-[#7A9297]">Scroll to the bottom of both documents before continuing.</p>}
+              <button
+                type="button"
+                disabled={!canAgree || isSubmitting}
+                onClick={() => { setTermsReady(true); setPolicyDocument(null); setFeedback({ type: "", message: "" }); }}
+                className="mt-4 w-full rounded-xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Agree and continue
+              </button>
             </div>
           )}
         />

@@ -83,10 +83,53 @@ try {
   });
   await page.getByRole("button", { name:"Show password",exact:true }).click();
   assert.equal(await page.getByPlaceholder("Enter your password").getAttribute("type"),"text");
+  const termsLink = page.getByRole("button", { name: "Terms and Conditions", exact: true });
+  const privacyLink = page.getByRole("button", { name: "Privacy Policy", exact: true });
+  await termsLink.click();
+  let policyDialog = page.getByRole("dialog");
+  await policyDialog.locator("#policy-dialog-title").filter({ hasText: "Terms and Conditions" }).waitFor();
+  const termsDocument = policyDialog.locator('[aria-label="Terms and Conditions document"]');
+  assert.equal(await termsDocument.count(), 1);
+  assert.equal(await policyDialog.locator('[aria-label="Privacy Policy document"]').count(), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+    "The Terms and Conditions modal must not overflow at mobile width");
+  assert.equal(await termsDocument.evaluate(element => element.scrollHeight > element.clientHeight), true,
+    "Long policy content must scroll inside its own container");
+  await termsDocument.evaluate(element => {
+    element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
+  });
+  assert.equal(await termsDocument.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1), true,
+    "The end of Terms and Conditions must be reachable");
+  await policyDialog.getByRole("button", { name: "Close", exact: true }).click();
+  await privacyLink.click();
+  policyDialog = page.getByRole("dialog");
+  await policyDialog.locator("#policy-dialog-title").filter({ hasText: "Privacy Policy" }).waitFor();
+  const privacyDocument = policyDialog.locator('[aria-label="Privacy Policy document"]');
+  assert.equal(await privacyDocument.count(), 1);
+  assert.equal(await policyDialog.locator('[aria-label="Terms and Conditions document"]').count(), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+    "The Privacy Policy modal must not overflow at mobile width");
+  assert.equal(await privacyDocument.evaluate(element => element.scrollHeight > element.clientHeight), true,
+    "Long policy content must scroll inside its own container");
+  await privacyDocument.evaluate(element => {
+    element.scrollTop = element.scrollHeight; element.dispatchEvent(new Event("scroll"));
+  });
+  assert.equal(await privacyDocument.evaluate(element => element.scrollTop + element.clientHeight >= element.scrollHeight - 1), true,
+    "The end of Privacy Policy must be reachable");
+  await policyDialog.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("heading", { name: "Welcome Back!" }).waitFor();
   await page.setViewportSize({width:1440,height:1000});
   await page.waitForTimeout(500);
   const heading = await page.getByRole("heading",{name:"Welcome Back!"}).boundingBox();
   assert.ok(heading.x > 700, "Desktop login remains beside the existing hero");
+  await privacyLink.click();
+  policyDialog = page.getByRole("dialog");
+  const desktopDialogBox = await policyDialog.boundingBox();
+  assert.ok(desktopDialogBox.width <= 900 && desktopDialogBox.x >= 0 && desktopDialogBox.x + desktopDialogBox.width <= 1440,
+    "The policy modal must fit the desktop viewport at a readable width");
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false,
+    "The desktop policy modal must not overflow horizontally");
+  await policyDialog.getByRole("button", { name: "Close", exact: true }).click();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false);
   for (const width of [320, 375, 390, 768, 1024, 1440, 1920]) {
     await page.setViewportSize({ width, height: 844 });

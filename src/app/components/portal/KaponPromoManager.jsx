@@ -140,17 +140,21 @@ export function KaponPromoManager() {
   const { kaponPromo, kaponPromoReady, kaponPromoError, manageKaponPromo } = useApp();
   const toast = useToast();
   const [modal, setModal] = useState(null);
+  const [showDeactivateConfirmation, setShowDeactivateConfirmation] = useState(false);
   const [saving, setSaving] = useState(false);
+  const deactivationInFlightRef = useRef(false);
   const active = kaponPromo?.isActive === true;
   const status = getPromoStatus(kaponPromo);
   const deactivate = async () => {
-    if (saving || !window.confirm("Are you sure you would like to deactivate the Low-Cost Kapon promotion? New bookings and registration will become unavailable.")) return;
+    if (deactivationInFlightRef.current || saving) return;
+    deactivationInFlightRef.current = true;
     setSaving(true);
     try {
       await manageKaponPromo({ action: "deactivate", expectedRevision: kaponPromo?.revision || 0 });
       toast.success("Low-Cost Kapon promotion deactivated.");
+      setShowDeactivateConfirmation(false);
     } catch (error) { toast.error(error.message); }
-    finally { setSaving(false); }
+    finally { deactivationInFlightRef.current = false; setSaving(false); }
   };
   return (
     <section className="border-y border-[#D9E7E7] bg-[#F8FCFC] px-5 py-5">
@@ -164,7 +168,7 @@ export function KaponPromoManager() {
         <div className="flex shrink-0 flex-wrap gap-2">
           {active ? <>
             <button type="button" onClick={() => setModal({ ...kaponPromo })} disabled={!kaponPromoReady || saving} className="inline-flex items-center gap-2 rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 text-sm font-semibold text-[#24444A] disabled:opacity-50"><Pencil size={16} />Edit Promo</button>
-            <button type="button" onClick={deactivate} disabled={!kaponPromoReady || saving} className="inline-flex items-center gap-2 rounded-lg bg-[#FBECEF] px-4 py-2.5 text-sm font-semibold text-[#B23949] disabled:opacity-50"><Power size={16} />{saving ? "Deactivating..." : "Deactivate"}</button>
+            <button type="button" onClick={() => setShowDeactivateConfirmation(true)} disabled={!kaponPromoReady || saving} className="inline-flex items-center gap-2 rounded-lg bg-[#FBECEF] px-4 py-2.5 text-sm font-semibold text-[#B23949] disabled:opacity-50"><Power size={16} />Deactivate</button>
           </> : <button type="button" onClick={() => setModal({ ...(kaponPromo || {}) })} disabled={!kaponPromoReady || saving} className="inline-flex items-center gap-2 rounded-lg bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Power size={16} />Schedule Low-Cost Kapon</button>}
         </div>
       </div>
@@ -172,6 +176,40 @@ export function KaponPromoManager() {
         await manageKaponPromo(payload);
         toast.success(payload.action === "edit" ? "Promotion updated." : "Low-Cost Kapon has been scheduled successfully.");
       }} />}
+      {showDeactivateConfirmation && <DeactivatePromoDialog
+        busy={saving}
+        onClose={() => setShowDeactivateConfirmation(false)}
+        onConfirm={deactivate}
+      />}
     </section>
+  );
+}
+
+function DeactivatePromoDialog({ busy, onClose, onConfirm }) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
+
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="deactivate-promo-title"
+      aria-describedby="deactivate-promo-message"
+      onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-white p-5 shadow-xl backdrop:bg-[#102D32]/50 sm:p-6"
+    >
+      <div className="space-y-4">
+        <h2 id="deactivate-promo-title" className="text-xl font-semibold text-[#20343B]">Deactivate Low-Cost Kapon Promo?</h2>
+        <p id="deactivate-promo-message" className="text-sm leading-6 text-[#607277]">Are you sure you want to deactivate the Low-Cost Kapon promotion? New bookings and registration will become unavailable.</p>
+        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-3">
+          <button type="button" autoFocus disabled={busy} onClick={onClose} className="rounded-xl border border-[#D9E7E7] px-4 py-2.5 text-sm font-semibold text-[#24444A] hover:bg-[#F6FAFA] disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+          <button type="button" disabled={busy} onClick={onConfirm} className="rounded-xl bg-[#B23949] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#982F3D] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Deactivating..." : "Deactivate Promo"}</button>
+        </div>
+      </div>
+    </dialog>, document.body,
   );
 }

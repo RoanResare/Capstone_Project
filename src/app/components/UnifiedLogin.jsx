@@ -43,9 +43,7 @@ export function UnifiedLogin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
-  const [policyTitle, setPolicyTitle] = useState("Terms and Conditions");
-  const [policyDocument, setPolicyDocument] = useState("terms");
+  const [policyDocument, setPolicyDocument] = useState(null);
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
 
@@ -269,9 +267,9 @@ export function UnifiedLogin() {
 
             <p className="pt-1 text-center text-xs text-[#718387]">
               Review our{" "}
-              <button type="button" onClick={() => { setPolicyTitle("Terms and Conditions"); setPolicyDocument("terms"); setShowTerms(true); }} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Terms and Conditions</button>
+              <button type="button" onClick={() => setPolicyDocument("terms")} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Terms and Conditions</button>
               {" "}and{" "}
-              <button type="button" onClick={() => { setPolicyTitle("Privacy Policy"); setPolicyDocument("privacy"); setShowTerms(true); }} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Privacy Policy</button>.
+              <button type="button" onClick={() => setPolicyDocument("privacy")} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Privacy Policy</button>.
             </p>
           </form>
 
@@ -288,7 +286,7 @@ export function UnifiedLogin() {
           )}
         </motion.section>
       </div>
-      {showTerms && <PolicyDialog title={policyTitle} initialDocument={policyDocument} onClose={() => setShowTerms(false)} />}
+      {policyDocument && <PolicyDialog documentType={policyDocument} onClose={() => setPolicyDocument(null)} />}
     </div>
   );
 }

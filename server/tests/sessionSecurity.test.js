@@ -644,6 +644,7 @@ test("booking transaction enforces ownership and capacity before writing", async
     set: () => { writes++; },
   };
   const controller = loadService("../controllers/appointment.controller.js", {
+    "../utils/textModeration": { assertAppropriateText: async () => {} },
     "../config/firebaseAdmin": { db: {
       collection: (name) => ({ doc: (id) => ({name,id}), where: () => makeQuery() }),
       runTransaction: async (action) => action(transaction),
@@ -661,7 +662,7 @@ test("booking transaction enforces ownership and capacity before writing", async
   assert.equal(writes, 0);
   full = false;
   await controller.saveAppointment(req, { json() {} });
-  assert.equal(writes, 2);
+  assert.equal(writes, 3);
 });
 
 function appointmentFixture({ existing, slot, active = [] } = {}) {
@@ -671,6 +672,7 @@ function appointmentFixture({ existing, slot, active = [] } = {}) {
     clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], ...existing } : undefined;
   const makeQuery = () => ({ query: true, where: () => makeQuery(), limit: () => makeQuery() });
   const controller = loadService("../controllers/appointment.controller.js", {
+    "../utils/textModeration": { assertAppropriateText: async () => {} },
     "../config/firebaseAdmin": { db: {
       collection: (name) => ({ doc: (id) => ({ name, id }), where: () => makeQuery() }),
       runTransaction: async (action) => action({
@@ -686,6 +688,23 @@ function appointmentFixture({ existing, slot, active = [] } = {}) {
     body: { id: "booking", customerId: "user", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId:"slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body },
   }, { json() {} }) };
 }
+
+test("new customer bookings create one persistent appointment notification for Admin and Staff", async () => {
+  const fixture = appointmentFixture();
+  await fixture.save({ ownerName: "Sam Customer", petName: "Milo" });
+  const notifications = fixture.writes.filter(write => write.title === "New appointment booking");
+  assert.equal(notifications.length, 1);
+  const notification = notifications[0];
+  assert.equal(notification.id, "appointment-booking-created");
+  assert.equal(Array.from(notification.targetRoles).join(","), "admin,staff");
+  assert.equal(notification.relatedAppointmentId, "booking");
+  assert.equal(notification.actorName, "Sam Customer");
+  assert.equal(notification.appointmentDate, "2030-01-05");
+  assert.equal(notification.appointmentTime, "09:00");
+  assert.match(notification.message, /Sam Customer.*Vaccination.*2030-01-05.*09:00/);
+  assert.equal(Object.hasOwn(notification, "email"), false);
+  assert.equal(Object.hasOwn(notification, "phone"), false);
+});
 
 test("admin and staff must assign staff before confirmation or acceptance", async () => {
   for (const role of ["admin", "staff"]) {
@@ -716,7 +735,7 @@ test("disabled slots reject new bookings and rescheduling; reopened slots accept
   }
   const reopened = appointmentFixture({ slot: { isOpen: true, disabled: false, status: "Open", capacity: 3 } });
   await reopened.save({ slotId: "reopened" });
-  assert.equal(reopened.writes.length, 2);
+  assert.equal(reopened.writes.length, 3);
 });
 
 test("stored slot capacity overrides customer input and customers cannot approve or reopen appointments", async () => {
@@ -738,7 +757,7 @@ test("Pending appointments reserve slot capacity and cancellations free the slot
 
   const released = appointmentFixture({ slot: { isOpen: true, capacity: 1 } });
   await released.save({ slotId: "slot" });
-  assert.equal(released.writes.length, 2);
+  assert.equal(released.writes.length, 3);
   assert.equal(released.writes[0].reservationVersion, 1);
 
   const cancelled = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, existing: { status: "Cancelled" }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });

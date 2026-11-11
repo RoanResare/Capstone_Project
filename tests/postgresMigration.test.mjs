@@ -146,6 +146,12 @@ test("existing OTP and authentication-attempt logic persists locks and one-time 
 
 test("browser policy preserves ownership and blocks role escalation and business-write bypasses", () => {
   const identity = { uid: "alice", user: { uid: "alice", role: "customer" }, claims: { email: "alice@example.com" } };
+  const appointmentNotice = { targetRoles: ["admin", "staff"], targetType: "appointment", targetId: "booking-1" };
+  assertRead("notifications", "appointment-booking-1-created", appointmentNotice,
+    { uid: "admin-1", user: { uid: "admin-1", role: "admin" } });
+  assertRead("notifications", "appointment-booking-1-created", appointmentNotice,
+    { uid: "staff-1", user: { uid: "staff-1", role: "staff" } });
+  assert.throws(() => assertRead("notifications", "appointment-booking-1-created", appointmentNotice, identity));
   assertRead("pets", "a", { customerId: "alice" }, identity);
   assert.throws(() => assertRead("pets", "b", { customerId: "bob" }, identity));
   assert.throws(() => assertRead("sessionSecurity", "alice", {}, identity));

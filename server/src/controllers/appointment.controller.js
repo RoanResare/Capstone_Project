@@ -314,6 +314,32 @@ async function saveAppointment(req, res) {
     emailNotification = queueStatusEmail({ db, transaction, previous: existing.exists ? previous : null,
       appointment: savedAppointment, actor: user, reason: decisionFields.decision?.reason || "" });
     transaction.set(reference, savedAppointment, { merge: true });
+    if (!existing.exists && user.role === "customer") {
+      const notificationId = `appointment-${id}-created`;
+      const customerName = user.fullName || user.name || savedAppointment.ownerName || savedAppointment.customerName || "A customer";
+      const serviceName = savedAppointment.service || savedAppointment.serviceIds?.join(", ") || savedAppointment.serviceId || "an appointment";
+      transaction.set(db.collection("notifications").doc(notificationId), {
+        id: notificationId,
+        title: "New appointment booking",
+        message: `${customerName} booked ${serviceName} for ${savedAppointment.scheduleDate || "a date to be confirmed"} at ${savedAppointment.scheduleTime || "a time to be confirmed"}.`,
+        targetRoles: ["admin", "staff"],
+        targetType: "appointment",
+        targetId: id,
+        relatedAppointmentId: id,
+        actorName: customerName,
+        actorRole: "customer",
+        actionLabel: "Booked appointment",
+        subjectName: customerName,
+        subjectRole: "customer",
+        appointmentDate: savedAppointment.scheduleDate || "",
+        appointmentTime: savedAppointment.scheduleTime || "",
+        serviceName,
+        petName: savedAppointment.petName || "",
+        level: "info",
+        readBy: [],
+        createdAt: new Date().toISOString(),
+      });
+    }
     if(staffDecision || staffCancellation){
       const notificationId=`appointment-${id}-${nextStatus.toLowerCase()}`;
       transaction.set(db.collection("notifications").doc(notificationId),{

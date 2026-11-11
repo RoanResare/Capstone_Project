@@ -25,6 +25,18 @@ function timestampMillis(value) {
   return new Date(value).getTime();
 }
 
+function createPolicyConsent(payload, acceptedAt = new Date().toISOString()) {
+  if (payload.termsAndConditionsAccepted !== true || payload.privacyPolicyAccepted !== true) {
+    throw new ApiError(400, "Accept the Terms and Conditions and Privacy Policy before creating an account.", { code: "POLICY_CONSENT_REQUIRED" });
+  }
+  return {
+    termsAndConditionsAccepted: true,
+    termsAndConditionsAcceptedAt: acceptedAt,
+    privacyPolicyAccepted: true,
+    privacyPolicyAcceptedAt: acceptedAt,
+  };
+}
+
 async function sendSignupLink(challenge, email, fullName) {
   if (!challenge.actionLink) {
     throw new ApiError(503, "Supabase Auth did not generate a verification link.", { code: "SIGNUP_LINK_MISSING" });
@@ -43,6 +55,8 @@ async function sendSignupLink(challenge, email, fullName) {
 async function createCustomerProfile(req, res) {
   if (!env.runtime.supabaseAdminReady || !db) throw new ApiError(503, "Supabase Auth is not configured for registration.");
   const payload = req.body || {};
+  const consentAcceptedAt = new Date().toISOString();
+  const policyConsent = createPolicyConsent(payload, consentAcceptedAt);
   const email = normalizeEmail(payload.email);
   const username = assertValidUsername(String(payload.username || "").trim().toLowerCase());
   const { resolveCustomerFullName } = await import("../../../shared/customerName.mjs");
@@ -91,6 +105,14 @@ async function createCustomerProfile(req, res) {
     if ((storedEmailUser.authUserId || storedEmailUser.uid) !== authUser.id) {
       throw new ApiError(409, "The pending profile is linked to a different authentication identity.", { code: "REGISTRATION_PROFILE_CONFLICT" });
     }
+    const savedPolicyConsent = {
+      termsAndConditionsAccepted: true,
+      termsAndConditionsAcceptedAt: storedEmailUser.termsAndConditionsAcceptedAt || policyConsent.termsAndConditionsAcceptedAt,
+      privacyPolicyAccepted: true,
+      privacyPolicyAcceptedAt: storedEmailUser.privacyPolicyAcceptedAt || policyConsent.privacyPolicyAcceptedAt,
+    };
+    const pendingProfileRef = db.collection("users").doc(storedEmailUser.profileDocId || storedEmailUser.uid);
+    await pendingProfileRef.update({ ...savedPolicyConsent, updatedAt: consentAcceptedAt });
     if (Date.now() - timestampMillis(storedEmailUser.verificationSentAt) < VERIFICATION_RESEND_COOLDOWN_MS) {
       return res.status(202).json({ success: true, deliveryStatus: "pending", verificationMethod: "link",
         message: "Your account is awaiting email verification. Please check your inbox or request a new verification email shortly.",
@@ -105,7 +127,7 @@ async function createCustomerProfile(req, res) {
     }
     const delivery = await sendSignupLink(challenge, email, storedEmailUser.fullName || fullName);
     const now = new Date().toISOString();
-    try { await db.collection("users").doc(storedEmailUser.profileDocId || storedEmailUser.uid).update({ verificationSentAt: now,
+    try { await pendingProfileRef.update({ verificationSentAt: now,
       verificationExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), updatedAt: now }); }
     catch (_error) { console.warn("[registration] Verification link sent but delivery metadata could not be updated."); }
     return res.status(202).json({ success: true, deliveryStatus: "sent", verificationMethod: "link",
@@ -178,6 +200,7 @@ async function createCustomerProfile(req, res) {
       }
       transaction.set(profileRef, {
         uid: profileUid, authUserId: uid, email, fullName, username, phone: phone || "", role: "customer",
+        ...policyConsent,
         accountStatus: "inactive", status: "inactive", emailVerified: false,
         verificationStatus: "pending",
         registrationIp: registrationSecurity.registrationIp || "",

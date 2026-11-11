@@ -139,7 +139,8 @@ test("rejected signup leaves the existing identity, token, and stored session un
   window.localStorage.setItem("furfection-portal-session", "existing-session");
   for (let attempt = 0; attempt < 3; attempt++) {
     const result = await value.signUp({ fullName: "Reused Name", email: "same@yzcalo.com",
-      username: "reused_name", phone: "09620614953", password: "Test123!", confirmPassword: "Test123!" });
+      username: "reused_name", phone: "09620614953", password: "Test123!", confirmPassword: "Test123!",
+      termsAndConditionsAccepted: true, privacyPolicyAccepted: true });
     assert.equal(result.ok, false);
     assert.equal(result.error, "Temporary or disposable email addresses are not allowed");
   }

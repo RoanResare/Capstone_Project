@@ -5,6 +5,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, UserPlus, X } from "lucide-react";
 import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
 import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
+import { PolicyDialog } from "./PolicyDialog.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { resolveHomePath } from "../utils/roleUtils.js";
 import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
@@ -54,10 +55,11 @@ export function CustomerSignup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [policyTitle, setPolicyTitle] = useState("Terms and Conditions and Privacy Policy");
+  const [policyDocument, setPolicyDocument] = useState("terms");
   const [termsRead, setTermsRead] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [termsReady, setTermsReady] = useState(false);
-  const termsScrollRef = useRef(null);
   const submissionInFlightRef = useRef(false);
   const registrationCompletedRef = useRef(false);
   const passwordStrength = getPasswordStrength(form.password);
@@ -385,6 +387,13 @@ export function CustomerSignup() {
               </div>
             </div>
 
+            <p className="text-center text-xs text-[#718387]">
+              Review{" "}
+              <button type="button" onClick={() => { setPolicyTitle("Terms and Conditions"); setPolicyDocument("terms"); setShowTerms(true); }} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>
+              {" "}and{" "}
+              <button type="button" onClick={() => { setPolicyTitle("Privacy Policy"); setPolicyDocument("privacy"); setShowTerms(true); }} className="font-semibold text-[#2D6B73] underline underline-offset-2">Privacy Policy</button>.
+            </p>
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -425,33 +434,13 @@ export function CustomerSignup() {
         </motion.section>
       </div>
       {showTerms && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102D32]/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTerms(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="signup-terms-title" className="w-full max-w-xl rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 id="signup-terms-title" className="text-xl font-semibold text-[#20343B]">Terms and Conditions and Privacy Policy</h2>
-                <p className="mt-1 text-sm text-[#607277]">Scroll to the bottom to enable account creation.</p>
-              </div>
-              <button type="button" onClick={() => setShowTerms(false)} aria-label="Close terms and conditions" className="rounded-full p-2 text-[#607277] hover:bg-[#F1F7F7]"><X size={20} /></button>
-            </div>
-            <div
-              ref={termsScrollRef}
-              className="mt-5 max-h-[55vh] overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-5 text-sm leading-5 text-[#607277]"
-              onScroll={(event) => {
-                const element = event.currentTarget;
-                if (element.scrollTop + element.clientHeight >= element.scrollHeight - 4) setTermsRead(true);
-              }}
-            >
-              <p className="font-semibold text-[#20343B]">Account information and security</p>
-              <p className="mt-2">Provide accurate information that belongs to you. Keep your password private and use your account only on devices you trust. You are responsible for activity performed through your account.</p>
-              <p className="mt-4 font-semibold text-[#20343B]">Appointments and pet care</p>
-              <p className="mt-2">Use the service to book appointments for pets under your care. Provide accurate contact and health details so clinic staff can coordinate appointments and appropriate care.</p>
-              <p className="mt-4 font-semibold text-[#20343B]">Use of your information</p>
-              <p className="mt-2">Your contact details are used for appointment coordination, account security, service updates, reminders, and clinic notices. Pet notes and optional photos may be reviewed by authorized clinic staff to support your pet's care.</p>
-              <p className="mt-4 font-semibold text-[#20343B]">Responsible use</p>
-              <p className="mt-2">Do not access another person's account, submit misleading information, or interfere with the service. The clinic may restrict accounts when needed to address misuse, safety, or security concerns.</p>
-              <p className="mt-4">By continuing, you confirm that you have read and agree to these Terms and Conditions and the Privacy Policy.</p>
-            </div>
+        <PolicyDialog
+          title={policyTitle}
+          initialDocument={policyDocument}
+          onClose={() => setShowTerms(false)}
+          onReadToBottom={() => setTermsRead(true)}
+          footer={(
+            <div className="shrink-0 pt-3">
             <label className="mt-4 flex items-start gap-3 text-sm font-semibold text-[#415D62]">
               <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} disabled={!termsRead || isSubmitting} className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed" />
               <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
@@ -465,8 +454,9 @@ export function CustomerSignup() {
             >
               Agree and continue
             </button>
-          </section>
-        </div>
+            </div>
+          )}
+        />
       )}
     </div>
   );

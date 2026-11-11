@@ -1,0 +1,460 @@
+Terms and Conditions
+Section 1. General Terms
+Charming Fur-fection Pet Care Services provides a web-based booking management system that
+allows customers to view and select available services, manage their pet information, schedule
+appointments, and inquire through an AI-powered chatbot.
+This system is intended to support the management of appointments and related customer
+information. The availability of the services and appointments is subject to the operating hours of
+the business, availability of the staff, and the applicable booking policies.
+By accessing and using the system, customers, employees, and administrators agree to comply
+with the following terms and responsibilities applicable to their respective roles.. These terms are
+created to ensure proper use of the system, protect user information, and maintain efficient
+business operations.
+Section 2. Acceptance of Terms
+Users must read and agree to these terms and conditions before completing account registration
+or accessing features that require acceptance.
+By selecting the agreement checkbox and proceeding, users acknowledge that they have read,
+understood, and agreed to the applicable terms.
+Users who do not agree to the Terms and Conditions must not proceed with the activities that
+require such agreement.
+The business and development team will communicate any significant changes they made to the
+Terms and Conditions through the system or another appropriate communication channel.
+Section 3. User Accounts
+Customers are required to provide accurate and complete information when creating an account.
+Users are responsible for maintaining the confidentiality of their account credentials, including
+their email and password.
+
+Customers may manage their personal information and pet records through the features available
+in their accounts.
+Employees and administrators must use their accounts only for authorized business activities and
+must not access customer and pet information beyond what is necessary to accomplish their
+responsibilities.
+The business reserves the right to suspend or restrict employee accounts that violate system
+policies, provide false information, or misuse the platform.
+Section 4. Appointment Booking
+Customers may use the system to create appointments for the services offered by Charming
+Fur-fection Pet Care Services. The business will determine the service available for selection.
+Customers are responsible for checking their selected pet, service, appointment date, and time
+before submitting a booking request.
+Submitting a booking request does not guarantee that the appointment will be approved.
+Appointments are subject to the availability of the business, capacity of the staff, operating
+hours, and applicable service requirements.
+The system displays appointment information and status updates based on the information
+recorded by the business. Customers must check their appointment status and the received
+notifications provided by the system.
+Customers must contact the business if they need clarifications regarding their booking.
+Section 5. Appointment Cancellation, Rejection, Expiration, and No-Shows
+Customers must follow the business’ applicable appointment cancellation policy. Any
+cancellation deadline or restriction must be communicated to customers before it applies to their
+bookings.
+‘The business may reject a booking request when the requested service cannot be
+accommodated, staff or clinic capacity is insufficient, a required professional is unavailable, or
+the pet’s disclosed health information indicates that the service requested may be unsuitable.
+
+When an appointment is rejected or cancelled, the business will provide the applicable status
+update and reason through the system.
+Appointments will be marked as expired when the customer who made an appointment did not
+show up for their scheduled date and time.
+Failure to attend an appointment without prior cancellation may result in the appointment being
+recorded as no-show. A total of three (3) no-shows will result in a three-day account suspension.
+Section 6. No-Show Policy and Temporary Account Suspension
+Customers are expected to attend their scheduled appointments. At the end of each scheduled
+day, appointments that have not been marked as completed in the system will automatically be
+marked as no-show.
+When a customer accumulates three (3) no-shows, their account will be automatically suspended
+for three (3) days. During this period, the customer will be unable to book appointments.
+Customers are encouraged to contact Charming Fur-fection Pet Care Services if they believe a
+no-show status has been recorded incorrectly. The business may review reported concerns and
+correct appointment records when appropriate.
+Section 7. Pet Health and Service Suitability
+A.​ Customers are responsible for:
+a.​ Providing accurate and relevant information about their pets upon creation of pet
+profiles,
+b.​ Disclosing known health conditions or other information that may affect the
+suitability of a requested service.
+B.​ The business is responsible for:
+a.​ Declining a booking request when the requested service cannot be accommodated
+due to:
+i.​
+
+Staffing limitations
+
+ii.​
+
+Unavailable professional
+
+iii.​
+
+Temporary clinic closure
+
+iv.​
+
+Concerns regarding the pet’s health and suitability for the service.
+
+b.​ Communicating the reason for a rejected appointment through the system.
+The AI Chatbot provides general information about the business and its services. It does not
+replace an assessment or advice from a qualified veterinary professional.
+Section 8. AI Chatbot Usage
+The AI-powered chatbot is provided to assist users with inquiries regarding services, schedules,
+policies, and booking process of Charming Fur-fection Pet Care Services.
+The chatbot supports English and Tagalog inquiries within its intended functionality. Customers
+should contact the business directly when they require assistance from beyond the capabilities of
+the AI chatbot.
+The chatbot is not intended to provide diagnosis, replace professional veterinary advice, or
+determine whether a pet is medically fit for procedure. The AI-powered chatbot may respond to
+inquiries regarding pet health and safety before providing a link directing customers to the
+appointment booking page.
+Customers must exercise caution when following the chatbot’s medical responses, as the
+information may be incomplete, inaccurate, or unsuitable to the pet’s specific condition.
+Users agree not to misuse the chatbot by submitting harmful, inappropriate, offensive, or
+unrelated content.
+Section 9. Responsibilities of the Business Owner
+Charming Fur-fection Pet Care Services is responsible for maintaining accurate information
+about its services, operating hours, and appointment availability.
+The business is responsible for:
+A.​ Reviewing and managing appointment requests, which includes:
+a.​ Updating appointment statuses,
+b.​ Communicating relevant booking decisions and changes to customers.
+B.​ Determining whether it can accommodate a requested service based on:
+
+a.​ Available professionals,
+b.​ Operational capacity,
+c.​ Relevant information about the pet.
+C.​ Ensuring that the customer and pet information is accessed only by authorized personnel
+and handled for appropriate purposes in accordance with the data privacy requirements.
+D.​ Allowing customers to contact the business regarding service concerns, appointment
+disputes, or matters requiring assistance from its personnel.
+Section 10. Development Team and System Responsibilities
+The development team is responsible for developing the booking management system according
+to the agreed scope and implementing the system features and technical safeguards to the team.
+During the duration of the capstone project, the development team is responsible for providing
+system maintenance, technical support, and authorized access to customer information as
+necessary for system development, testing, troubleshooting, and implementation. The
+development team's access to customer information must be limited to what is necessary for
+these activities and handled in accordance with applicable data privacy requirements.
+Upon the official turnover of the system to Charming Fur-fection Pet Care Services, the
+development team's responsibilities for system maintenance, technical support, and access to
+customer information will end, unless otherwise agreed upon by the business and the
+development team.
+After turnover, Charming Fur-fection Pet Care Services will independently manage the system,
+including its maintenance, technical administration, user access, and customer information. The
+business will be responsible for managing the system's continued operation and handling
+customer information in accordance with applicable data privacy laws and its Privacy Notice.
+
+Privacy Policy
+Section 1. General Terms
+Charming Fur-fection Pet Care Services respects the privacy of its customers and is committed to
+responsibly handling personal information. This document explains how the business collects,
+uses, stores, accesses, shares, and protects personal information through its web-based booking
+management system.
+The system allows customers to manage their accounts and pet profiles, book appointments,
+view appointment information, and use an AI-powered chatbot for inquiries. Personal
+information collected through these features will be processed for legitimate business purposes.
+This Privacy Policy applies to customers who access or use the system and explains how their
+personal information is handled by Charming Fur-fection Pet Care Services and authorized
+individuals involved in operating the system.
+The business will handle personal information in accordance with applicable data privacy laws,
+including the Philippine Data Privacy Act of 2012 (Republic Act No. 10173)
+For questions, concerns, or requests regarding personal information, customers may contact:
+Business: Charming Fur-fection Pet Care Services​
+Privacy contact: Mr. Kenny Paquibot Ebuña Jr.​
+Email or contact number: charmingfurfectionpetcare@gmail.com | +63 950 251 1754
+Section 2. Collected Information
+Charming Fur-fection Pet Care Services collects personal information necessary to manage
+customer accounts, pet profiles, appointment requests, and customer inquiries through its
+web-based booking management system.
+The information that may be collected includes the following:
+2.1. Customer Account Information
+●​ Customer name
+
+●​ Email address
+●​ Contact number
+●​ Account credentials required to access the system
+2.2. Pet Information
+●​ Pet name
+●​ Pet type and breed
+●​ Pet age and weight
+●​ Health information or special care notes provided by the customer
+●​ Pet profile photograph, if uploaded
+2.3. Appointment Information
+●​ Requested service/s
+●​ Preferred appointment date and time
+●​ Appointment status, such as pending, approved, completed, cancelled, or rejected
+●​ Booking history and other information related to appointment management
+2.4. Chatbot Interactions
+●​ Messages and inquiries submitted through the AI-powered chatbot
+●​ Information voluntarily included in chatbot messages
+2.5. Technical and Session Information
+The system records and stores users’ IP addresses in its database for fraud detection and
+account creation monitoring. IP addresses are used to enforce the system’s limit of three
+(3) accounts per IP address, helping prevent excessive or potentially fraudulent account
+registrations. This information is processed for account security and the proper operation
+of the booking management system, in accordance with applicable data privacy
+requirements.
+Customers are encouraged to provide accurate information when using the system. They should
+avoid submitting unnecessary personal or sensitive information, particularly through the
+AI-powered chatbot.
+
+The information collected will be limited to what is necessary for the purposes described in this
+Privacy Policy and will be handled in accordance with applicable data privacy laws.
+Section 3. Purpose of Data Collection
+Charming Fur-fection Pet Care Services uses the information collected through its web-based
+booking management system for the following purposes:
+3.1. Account Management
+To create and manage customer accounts, authenticate users, maintain account
+information, and enforce account registration limits intended to help prevent fraudulent
+activity.
+3.2. Pet Profile Management
+To allow customers to create and update pet profiles containing relevant information,
+such as pet names, breeds, ages, weights, photographs, and health notes, to support the
+delivery of the appropriate pet care services.
+3.3. Appointment Management
+To process appointment requests, manage booking schedules, monitor appointment
+statuses, prevent scheduling conflicts. The system also provides customers with
+appointment updates, including approvals, cancellations, rejections, and other relevant
+booking changes through the notification box within the website, and an appointment
+reminder sent through email notifications an hour before the appointment.
+3.4. Customer Support and Communication
+To respond to customer inquiries, provide information about available services and
+business policies, and communicate information relevant to appointments and the use of
+the system. Customer communications may be provided through the website’s
+notification feature, email, or other available communication channels.
+3.5. AI Chatbot Assistance
+
+To process customer inquiries through the AI-powered chatbot and generate responses
+concerning general service information, booking procedures, business policies, and
+general pet health and safety information. The chatbot may also direct customers to the
+appointment booking page when further assistance is needed.
+3.6. Fraud Detection and System Security
+To use recorded IP addresses to enforce the limit of three (3) accounts per IP address and
+help identify or prevent potentially fraudulent account creation.
+3.7. System Operation and Improvement
+To support the proper operation of the booking management system, identify technical
+issues, and evaluate system performance where applicable.
+3.8. No-Show Monitoring and Account Restrictions
+The system monitors the status of the appointments to identify the appointments that have
+not been marked as completed by the end of the scheduled day. These appointments will
+be automatically marked as no-show in the system.
+The system keeps count of no-show records associated with customer accounts in order
+to monitor repeated missed appointments. When a customer accumulates three (3)
+no-shows, the system automatically suspends the customer’s account for three (3) days.
+During the suspension period, the customer cannot book appointments.
+This information is processed to manage appointment attendance, enforce booking
+policies, and support the proper operation of the appointment system.
+Information will be used only for purposes relevant to the operation of the system and the
+provision of pet care services, subject to applicable data privacy requirements. If information is
+needed for a new purpose that is not compatible with the original purpose of collection, the
+business will address the legal requirements before processing it for that purpose.
+Section 4. Legal Basis for Processing
+
+Charming Fur-fection Pet Care Services process personal information in accordance with the
+applicable provisions of the Philippine Data Privacy Act of 2012 (Republic Act No. 10173). The
+processing of personal information must have an appropriate lawful basis and must be conducted
+for specified and legitimate purposes.
+Depending on the purpose of processing, the business may rely on the following lawful bases:
+4.1 Fulfillment of Customer Requests and Appointments
+Personal information may be processed when necessary to create and manage customer
+accounts, maintain pet profiles, process appointment requests, and provide the services
+requested by customers.
+4.2 Consent
+Where consent is the appropriate lawful basis, the business will seek consent for the
+relevant processing activity. Customers should be informed of the purpose of collection
+and how their information will be used before providing consent.
+4.3. Legitimate Interests
+Where applicable, personal information may be processed for legitimate business
+interests, such as maintaining system security, detecting potentially fraudulent account
+registrations, and protecting the operation of the booking management system. Such
+processing must be necessary and proportionate to the intended purpose and must not
+override the rights and freedoms of the individuals concerned.
+4.4. Compliance with Legal Obligations
+Personal information may be processed when necessary to comply with applicable legal
+obligations.
+The lawful basis for each processing activity will depend on its specific purpose and
+circumstances. Charming Fur-fection Pet Care Services will handle personal information in
+accordance with applicable data privacy requirements, including the principles of transparency,
+legitimate purpose, and proportionality.
+
+Section 5. Data Storage and Protection
+5.1. Data Storage
+Charming Fur-fection Pet Care Services uses Firebase as the cloud database for storing
+and managing information required by the web-based booking management system. This
+information may include customer account details, pet profiles, appointment records, IP
+addresses, and other information necessary for the system's operation.
+5.2. Data Protection
+The business and the development team, during the capstone project, will take
+appropriate measures to protect personal information against unauthorized access,
+disclosure, alteration, loss, or misuse. These measures should be appropriate to the nature
+of the information being processed and the risks associated with its handling.
+Access to personal information should be limited to authorized individuals who require
+the information to perform their assigned responsibilities.
+5.3. Account and Access Security
+The system uses account authentication and access controls, where implemented, to help
+restrict access to authorized users and ensure that administrative and staff functions are
+accessed according to assigned roles. Users are responsible for keeping their account
+credentials confidential and should report suspected unauthorized access to the business.
+5.4. Limitations of Security Measures
+Although reasonable security measures are applied, no online system can be guaranteed
+to be completely secure. The business and the development team will address identified
+security concerns within their respective responsibilities and take appropriate steps to
+protect the information handled by and collected through the system.
+5.5. Responsibilities After System Turnover
+
+During the capstone project, the development team will handle customer information
+only
+
+as necessary for
+
+authorized
+
+development, testing, troubleshooting, and
+
+implementation activities. Following the official turnover, the business will be
+responsible for managing the system, user access, and customer information in
+accordance with applicable data privacy requirements, subject to any continuing legal
+obligations or separately agreed responsibilities.
+Section 6. Access to Information and Sharing
+6.1. Authorized Access
+Access to personal information collected through the Charming Fur-fection Pet Care
+Services booking management system will be limited to authorized individuals who
+require the information to perform their assigned responsibilities.
+The business owner, administrators, and authorized employees may access relevant
+customer, pet, and appointment information as necessary to manage bookings, provide
+pet care services, respond to customer inquiries, and perform other authorized business
+operations.
+6.2. Development Team Access
+During the capstone project, the development team may access customer information
+only when necessary for authorized system development, testing, troubleshooting,
+maintenance, and implementation activities. Such access should be limited to what is
+necessary for these activities and handled in accordance with applicable data privacy
+requirements.
+Upon official system turnover, the business will independently manage customer
+information and system access. The development team's access will end unless further
+access is authorized by the business or required under applicable obligations.
+6.3. Sharing with Third-Party Services
+
+The system uses Firebase for cloud database services and Charming API for AI chatbot
+functionality. Information may be processed by these services as necessary to operate the
+system. The specific information handled by each service depends on the system's
+configuration and the services' respective functions.
+Personal information will not be sold to third parties. Any disclosure or sharing of
+personal information must have an appropriate purpose and lawful basis and must comply
+with applicable data privacy requirements.
+6.4. Disclosure Required by Law
+Personal information may be disclosed to appropriate authorities when required or
+permitted by applicable laws, regulations, or valid legal processes.
+6.5. Confidentiality and Responsible Handling
+Individuals authorized to access personal information are expected to handle it responsibly and
+use it only for authorized purposes. Access to customer information should not be used for
+personal reasons, unauthorized disclosure, or activities unrelated to legitimate system or business
+operations.
+Section 7. AI Chatbot and Conversation Data
+The system includes an AI-powered chatbot that assists customers with general inquiries about
+pet care services, business policies, appointment procedures, and pet health and safety
+information. Customers may also receive a link to the appointment booking page for further
+assistance.
+When customers interact with the chatbot, their messages may be processed through the
+Charming API to generate responses. Chatbot interactions may contain information provided
+voluntarily by customers. Customers are advised not to submit unnecessary sensitive personal
+information through the chatbot.
+The chatbot’s responses may be incomplete, inaccurate, or unsuitable for a pet’s specific
+circumstances. Its responses are intended for general and business informational purposes only
+
+and do not replace professional veterinary advice, diagnosis, or treatment. Customers should
+consult a qualified veterinary professional for health and safety concerns for their pets.
+Access to and processing of chatbot messages will be subject to the applicable privacy practices
+and terms of the services used to operate the chatbot. The business will handle customer
+information in accordance with this Privacy Policy and applicable data privacy laws.
+Section 8. Cookies and Session Information
+The Charming Fur-fection Pet Care Services web-based booking management system may use
+session-related technologies to support user authentication, maintain account sessions, and
+ensure the proper operation of its features.
+The system may use cookies, browser storage, or similar technologies, depending on its
+implementation. These technologies, where applicable, may support account access, security, and
+website functionality.
+Technical information collected through these mechanisms will be handled in accordance with
+this Privacy Policy and applicable data privacy requirements.
+Section 9. Data Retention and Deletion
+Charming Fur-fection Pet Care Services retains personal information only for as long as
+necessary to fulfill the purposes for which it was collected, support business operations, maintain
+relevant appointment records, address disputes, and comply with applicable legal obligations.
+The retention period may vary depending on the type of information, its intended purpose, and
+any applicable legal or operational requirements.
+When personal information is no longer necessary for its intended purpose and there is no lawful
+reason to retain it, the business will take appropriate steps to securely delete, destroy, or
+anonymize the information, where applicable.
+Requests concerning the correction or deletion of personal information may be submitted to the
+business through its designated privacy contact. Such requests will be reviewed in accordance
+
+with applicable data privacy requirements. Certain information may need to be retained when
+required by law or when a valid reason for continued retention exists.
+Following the official turnover of the system, Charming Fur-fection Pet Care Services will be
+responsible for managing the retention and deletion of customer information, subject to
+applicable legal obligations and any separately agreed responsibilities.
+Section 10. Privacy Rights and Requests
+In accordance with the Philippine Data Privacy Act of 2012 (Republic Act No. 10173),
+customers may exercise their applicable rights regarding the personal information collected and
+processed through the Charming Fur-fection Pet Care Services booking management system.
+Depending on the circumstances and applicable legal requirements, these rights may include:
+●​ Right to Be Informed: To be informed about how personal information is collected,
+used, stored, and processed.
+●​ Right to Access: To request access to personal information held by the business.
+●​ Right to Rectification: To request the correction of inaccurate or incomplete personal
+information.
+●​ Right to Object: To object to certain types of processing when permitted under
+applicable data privacy laws.
+●​ Right to Erasure or Blocking: To request the deletion or blocking of personal
+information when the applicable legal conditions are met.
+●​ Right to Data Portability: To request a copy of personal information in a structured,
+commonly used format when this right applies.
+●​ Right to Damages and to File a Complaint: To seek appropriate remedies or file a
+complaint with the relevant authority when the requirements under applicable law are
+satisfied.
+Customers may submit privacy-related questions or requests through the business's designated
+privacy contact listed in this Privacy Policy. The business may request reasonable information to
+verify the identity of the person making a request and protect personal information from
+unauthorized disclosure.
+
+Requests will be reviewed and handled in accordance with applicable data privacy requirements.
+Some requests may be subject to legal restrictions or legitimate retention requirements, such as
+the need to maintain relevant appointment records or comply with applicable laws.
+The business will take appropriate steps to address valid requests and communicate the outcome
+to the requesting customer, where applicable.
+Section 11. Data Breaches and Security Concerns
+Charming Fur-fection Pet Care Services recognizes the importance of protecting customer
+information against unauthorized access, disclosure, alteration, loss, or other forms of misuse.
+Customers who suspect that their accounts or personal information have been compromised, or
+who notice unusual activity involving their accounts, are encouraged to report the concern
+through the business's designated contact information provided in this Privacy Policy.
+Upon receiving a report of a suspected security incident, the business will take appropriate steps
+to assess the concern, investigate the incident where necessary, and address identified risks
+within its responsibilities.
+If a personal data breach occurs, the business will assess and handle the incident in accordance
+with applicable data privacy laws and regulations, including any applicable requirements for
+notification to affected individuals and the National Privacy Commission.
+Customers are encouraged to keep their account credentials confidential and promptly report
+suspected unauthorized account access. The business will handle reported concerns responsibly
+and take appropriate measures based on the nature and circumstances of the incident.
+Section 12. Policy Updates and Contact Information
+12.1 Changes to This Privacy Policy
+Charming Fur-fection Pet Care Services may update this Privacy Policy when necessary to reflect
+changes in the booking management system, business operations, data processing practices, or
+applicable legal requirements.
+
+When changes are made, the updated version will be made available through the system or
+another appropriate communication channel. The revised policy will indicate its latest update date
+so customers can identify the current version.
+If a significant change affects how personal information is collected or processed, the business
+will provide appropriate notice and obtain consent where required by applicable data privacy
+laws.
+12.2 Contact Information
+Customers who have questions, concerns, or requests regarding this Privacy Policy or the
+handling of their personal information may contact Charming Fur-fection Pet Care Services
+through the following details:
+●​ Business Name: Charming Fur-fection Pet Care Services
+●​ Designated Privacy Contact: Mr. Kenny Paquibot Ebuña Jr.
+●​ Email Address: charmingfurfectionpetcare@gmail.com
+●​ Contact Number: +63 950 251 1754
+Customers are encouraged to provide sufficient details about their concern so the business can review and
+respond appropriately.
+
+

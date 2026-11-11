@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { readSessionStorageItem, removeSessionStorageItem } from "../utils/browserState.js";
 import { motion } from "motion/react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, PawPrint, X } from "lucide-react";
+import { Eye, EyeOff, LogIn, PawPrint } from "lucide-react";
 import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
 import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
+import { PolicyDialog } from "./PolicyDialog.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
@@ -43,6 +44,8 @@ export function UnifiedLogin() {
   const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
   const [showPassword, setShowPassword] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [policyTitle, setPolicyTitle] = useState("Terms and Conditions");
+  const [policyDocument, setPolicyDocument] = useState("terms");
   const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
   const nextState = requestedPath ? { from: requestedPath } : undefined;
 
@@ -265,8 +268,10 @@ export function UnifiedLogin() {
             </Link>
 
             <p className="pt-1 text-center text-xs text-[#718387]">
-              By continuing, you agree to our{" "}
-              <button type="button" onClick={() => setShowTerms(true)} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Terms and Conditions</button>.
+              Review our{" "}
+              <button type="button" onClick={() => { setPolicyTitle("Terms and Conditions"); setPolicyDocument("terms"); setShowTerms(true); }} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Terms and Conditions</button>
+              {" "}and{" "}
+              <button type="button" onClick={() => { setPolicyTitle("Privacy Policy"); setPolicyDocument("privacy"); setShowTerms(true); }} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Privacy Policy</button>.
             </p>
           </form>
 
@@ -283,23 +288,7 @@ export function UnifiedLogin() {
           )}
         </motion.section>
       </div>
-      {showTerms && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#102D32]/60 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowTerms(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="login-terms-title" className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-              <h2 id="login-terms-title" className="text-xl font-semibold text-[#20343B]">Terms and Conditions</h2>
-              <button type="button" onClick={() => setShowTerms(false)} aria-label="Close terms and conditions" className="rounded-full p-2 text-[#607277] hover:bg-[#F1F7F7]"><X size={20} /></button>
-            </div>
-            <div className="mt-4 max-h-[60vh] overflow-y-auto pr-2 text-sm leading-5 text-[#607277]">
-              <p>Use accurate account information and keep your password private. You are responsible for activity under your account and should sign in only on devices you trust.</p>
-              <p className="mt-3">Use the service to book appointments for pets under your care. Provide accurate health and contact details so clinic staff can coordinate care and appointment updates.</p>
-              <p className="mt-3">Contact details and submitted pet notes or photos may be used for appointment coordination, account security, reminders, and clinic notices. Authorized clinic staff may review information relevant to your pet's care.</p>
-              <p className="mt-3">Do not attempt to access another person's account or disrupt the service. The clinic may restrict accounts involved in misuse or security concerns.</p>
-            </div>
-            <button type="button" onClick={() => setShowTerms(false)} className="mt-5 w-full rounded-xl bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white">Close</button>
-          </section>
-        </div>
-      )}
+      {showTerms && <PolicyDialog title={policyTitle} initialDocument={policyDocument} onClose={() => setShowTerms(false)} />}
     </div>
   );
 }

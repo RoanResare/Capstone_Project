@@ -13,7 +13,7 @@ const appMock = `
   let promo = null;
   window.__bookedAppointments = [];
   const base = { state: { appointments: [], petRecords: [{id: 'pet', customerId: 'customer', petName: 'Pet', petType: 'Dog'}] }, visibleNotifications: [], kaponPromoReady: true,
-    availabilityReady: true, getPendingAppointmentCount: () => 0, createAppointment: async payload => { window.__bookedAppointments.push(payload); } };
+    availabilityReady: true, createAppointment: async payload => { window.__bookedAppointments.push(payload); } };
   let snapshot;
   const update = value => { promo = value; snapshot = {...base, kaponPromo: promo, kaponPromoAvailable: isKaponPromoAvailable(promo), manageKaponPromo: save}; listeners.forEach(fn => fn()); };
   async function save(payload) {

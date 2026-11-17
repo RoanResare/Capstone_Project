@@ -156,7 +156,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { state, availabilityReady, availabilityError, createAppointment, getPendingAppointmentCount, kaponPromoAvailable } = useApp();
+  const { state, availabilityReady, availabilityError, createAppointment, kaponPromoAvailable } = useApp();
   const customer = currentUser?.role === "customer" ? currentUser : null;
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date();
@@ -392,13 +392,6 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
     if (isSubmitting || !validateForm() || !selectedSlot) return;
 
     const bookingEmail = customer.email?.trim().toLowerCase() || "";
-    const pendingAppointmentCount = getPendingAppointmentCount(customer.uid || customer.id, bookingEmail);
-    if (pendingAppointmentCount + petSelections.length > 2) {
-      const message = "You may have a maximum of two bookings at any one time.";
-      setFeedback({ type: "error", message });
-      toast.error(message);
-      return;
-    }
 
     setIsSubmitting(true);
     const now = new Date().toISOString();

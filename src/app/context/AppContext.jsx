@@ -55,7 +55,6 @@ const PORTAL_USER_STATUSES = ["active", "inactive", "suspended"];
 const PASSWORD_HASH_VERSION = 1;
 const FORECAST_AVAILABILITY_DAYS = 120;
 const INACTIVE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
-const MAX_PENDING_APPOINTMENTS_PER_ACCOUNT = 2;
 const PORTAL_USERS_REFRESH_TTL_MS = 60 * 1000;
 
 function createId(prefix) {
@@ -64,22 +63,6 @@ function createId(prefix) {
 
 function normalizeEmail(email = "") {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
-}
-
-function countPendingAppointments(appointments, customerId = "", customerEmail = "") {
-  const normalizedCustomerId = String(customerId || "").trim();
-  const normalizedCustomerEmail = normalizeEmail(customerEmail);
-
-  return (Array.isArray(appointments) ? appointments : []).filter((appointment) => {
-    if (appointment?.status !== "Pending") {
-      return false;
-    }
-
-    return (
-      (normalizedCustomerId && appointment.customerId === normalizedCustomerId) ||
-      (normalizedCustomerEmail && normalizeEmail(appointment.customerEmail) === normalizedCustomerEmail)
-    );
-  }).length;
 }
 
 function deriveUsernameFromEmail(email = "") {
@@ -2431,9 +2414,6 @@ export function AppProvider({ children }) {
       });
       return markAllNotificationsReadDocuments(visibleNotifications, currentUser.uid || currentUser.id);
     },
-    getPendingAppointmentCount(customerId, customerEmail) {
-      return countPendingAppointments(state.appointments, customerId, customerEmail);
-    },
     async createAppointment(payload, actorName) {
       if (payload.serviceIds !== undefined) {
         validateAppointmentServices(payload.serviceIds, payload.scheduleDate);
@@ -2448,20 +2428,6 @@ export function AppProvider({ children }) {
       ) {
         const error = new Error("This account is restricted from creating new bookings.");
         error.code = "FRAUD_RESTRICTED";
-        throw error;
-      }
-
-      const pendingAppointmentCount = countPendingAppointments(
-        state.appointments,
-        payload?.customerId,
-        payload?.customerEmail,
-      );
-
-      if (pendingAppointmentCount >= MAX_PENDING_APPOINTMENTS_PER_ACCOUNT) {
-        const error = new Error(
-          "You may have a maximum of two bookings at any one time.",
-        );
-        error.code = "PENDING_APPOINTMENT_LIMIT";
         throw error;
       }
 

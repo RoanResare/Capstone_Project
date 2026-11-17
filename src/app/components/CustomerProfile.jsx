@@ -54,8 +54,8 @@ const bookingRules = [
     description: "Each booking is associated with one pet profile.",
   },
   {
-    title: "Maximum of two services per appointment",
-    description: "Only clinic-approved service combinations are available for the selected appointment type.",
+    title: "Choose compatible services",
+    description: "Each service must be available on the selected date and compatible with the clinic's booking rules.",
   },
   {
     title: "Book multiple pets separately",

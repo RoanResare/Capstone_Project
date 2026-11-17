@@ -683,9 +683,9 @@ function appointmentFixture({ existing, slot, active = [] } = {}) {
       }),
     } },
   });
-  return { writes, save: (body, role = "customer") => controller.saveAppointment({
-    params: { id: "booking" }, auth: { user: { uid: "user", fullName: role === "admin" ? "Admin Test" : role === "staff" ? "Staff Test" : "Customer Test", role } },
-    body: { id: "booking", customerId: "user", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId:"slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body },
+  return { writes, save: (body, role = "customer", id = "booking") => controller.saveAppointment({
+    params: { id }, auth: { user: { uid: "user", fullName: role === "admin" ? "Admin Test" : role === "staff" ? "Staff Test" : "Customer Test", role } },
+    body: { id, customerId: "user", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId:"slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body, id },
   }, { json() {} }) };
 }
 
@@ -709,6 +709,18 @@ test("new customer bookings create one persistent appointment notification for A
   assert.match(notification.message, /Customer Test.*Vaccination.*2030-01-05.*09:00/);
   assert.equal(Object.hasOwn(notification, "email"), false);
   assert.equal(Object.hasOwn(notification, "phone"), false);
+});
+
+test("a customer can create a first, second, third, and fourth active appointment", async () => {
+  const fixture = appointmentFixture();
+  const bookingTimes = ["09:00", "11:00", "14:00", "16:00"];
+  for (let index = 0; index < bookingTimes.length; index += 1) {
+    await fixture.save({ slotId: `slot-${index + 1}`, scheduleTime: bookingTimes[index] }, "customer", `booking-${index + 1}`);
+  }
+  const bookings = fixture.writes.filter(write => write.lifecycleEvents?.[0]?.action === "Appointment created");
+  assert.equal(bookings.length, 4);
+  assert.deepEqual(bookings.map(booking => booking.id), ["booking-1", "booking-2", "booking-3", "booking-4"]);
+  assert.ok(bookings.every(booking => booking.status === "Pending" && booking.customerId === "user"));
 });
 
 test("admin and staff can confirm appointments without assignment and keep historical assignments read-only", async () => {

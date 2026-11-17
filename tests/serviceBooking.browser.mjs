@@ -8,7 +8,7 @@ const {chromium}=await import(process.env.BOOKING_PLAYWRIGHT_MODULE
 const mocks={
  "context/AuthContext.jsx":`export const useAuth=()=>({currentUser:{uid:'customer',role:'customer',email:'customer@example.com',username:'Customer',status:'active'},isAuthenticated:true,isLoading:false});`,
  "context/AppContext.jsx":`const state={appointments:[],petRecords:[{id:'pet',customerId:'customer',petName:'Milo',petType:'Dog'},{id:'pet2',customerId:'customer',petName:'Luna',petType:'Cat'}]};
- export const useApp=()=>({state,visibleNotifications:[],availabilityReady:true,kaponPromoReady:true,kaponPromoAvailable:false,getPendingAppointmentCount:()=>0,createAppointment:async payload=>{window.__lastBooking=payload;}});`,
+ export const useApp=()=>({state,visibleNotifications:[],availabilityReady:true,kaponPromoReady:true,kaponPromoAvailable:false,createAppointment:async payload=>{window.__lastBooking=payload;}});`,
  "context/ToastContext.jsx":"export const useToast=()=>({error(){},success(){}});",
  "services/customerAccount.js":"export async function changeCustomerPassword(){}",
  "PricelistImage.jsx":`import React from 'react';export function PricelistImage({category}){return React.createElement('div',{style:{height:200},'data-testid':'pricelist'},category+' pricelist');}`,

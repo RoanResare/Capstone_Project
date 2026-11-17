@@ -35,7 +35,7 @@ const appMock = `
     saveAvailabilitySlot: async () => {}, savePetRecord: async () => {}, createStaff: async () => {},
     updateUser: async () => {}, deleteUser: async () => {}, markNotificationRead: () => {},
     markAllNotificationsRead: () => {}, logChatbotInquiry: () => {}, deletePetRecord: async () => {},
-    createAppointment: async () => true, getPendingAppointmentCount: () => 0,
+    createAppointment: async () => true,
     availabilityReady: true, availabilityError: '', kaponPromo: null, kaponPromoAvailable: false,
     kaponPromoReady: true, kaponPromoError: ''};
   export const useApp = () => snapshot;

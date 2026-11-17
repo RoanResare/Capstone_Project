@@ -302,7 +302,7 @@ test("fixed block capacity cannot be increased by a forged slot ID or submitted 
     delete occupied[`appointments/other-${capacity - 1}`];
     const available = fixture(occupied);
     await available.book(body);
-    assert.equal(available.writes.length, 2);
+    assert.equal(available.records.get("appointments/booking").status, "Pending");
   }
 });
 

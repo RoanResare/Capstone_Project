@@ -3,7 +3,7 @@ import test from "node:test";
 import { validateServiceIds, validateAppointmentServices, validateSinglePet, getEstimatedDuration, appointmentsOverlap, canPairServices, getDefaultBlockCapacity, getBlockCapacity, matchesAppointmentBlock, getActiveAppointmentCountForSlot } from "../shared/bookingServices.mjs";
 import { serviceCatalog } from "../src/app/data/systemData.js";
 
-test("different service pairs respect the excluded combination and two-hour limit in either order", () => {
+test("service combinations preserve incompatible pairs without a service-count or duration ceiling", () => {
   for (const first of serviceCatalog) {
     assert.equal(getEstimatedDuration([first.id]), Number.parseInt(first.duration));
     for (const second of serviceCatalog) {
@@ -12,13 +12,16 @@ test("different service pairs respect the excluded combination and two-hour limi
         const total = Number.parseInt(first.duration) + Number.parseInt(second.duration);
         assert.equal(getEstimatedDuration([first.id, second.id]), total);
         const excluded = [first.id, second.id].includes("laboratory-testing") && [first.id, second.id].includes("pet-grooming");
-        assert.equal(canPairServices(first.id, second.id), !excluded && total <= 120);
-        if (excluded || total > 120) assert.throws(() => validateAppointmentServices([first.id, second.id]));
+        assert.equal(canPairServices(first.id, second.id), !excluded);
+        if (excluded) assert.throws(() => validateAppointmentServices([first.id, second.id]));
         else validateAppointmentServices([first.id, second.id]);
       }
     }
   }
-  for (const ids of [[], ["vaccination", "deworming", "consultation"], ["invalid"]]) assert.throws(() => validateServiceIds(ids));
+  assert.deepEqual(validateServiceIds(["vaccination", "deworming", "consultation", "laboratory-testing", "low-cost-kapon"]),
+    ["vaccination", "deworming", "consultation", "laboratory-testing", "low-cost-kapon"]);
+  assert.doesNotThrow(() => validateAppointmentServices(["vaccination", "deworming", "consultation", "laboratory-testing", "low-cost-kapon"]));
+  for (const ids of [[], ["invalid"]]) assert.throws(() => validateServiceIds(ids));
 });
 
 test("morning and afternoon blocks retain capacities of three and two", () => {

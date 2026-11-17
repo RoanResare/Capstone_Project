@@ -3,7 +3,6 @@ import { createContext, useCallback, useContext, useEffect, useReducer, useRef, 
 import { assertAppropriatePetText } from "../../../shared/petTextValidation.mjs";
 import {
   buildSeedAvailabilitySlots,
-  isServiceAvailableOnDate,
   portalModules,
 } from "../data/systemData.js";
 import {
@@ -2437,7 +2436,7 @@ export function AppProvider({ children }) {
     },
     async createAppointment(payload, actorName) {
       if (payload.serviceIds !== undefined) {
-        validateAppointmentServices(payload.serviceIds);
+        validateAppointmentServices(payload.serviceIds, payload.scheduleDate);
         validateSinglePet(payload);
       }
       if (isLowCostKaponAppointment(payload) && (!kaponPromoReady || !isKaponPromoAvailable(kaponPromo))) {
@@ -2463,12 +2462,6 @@ export function AppProvider({ children }) {
           "You may have a maximum of two bookings at any one time.",
         );
         error.code = "PENDING_APPOINTMENT_LIMIT";
-        throw error;
-      }
-
-      if ((payload?.serviceIds || [payload?.serviceId]).some((id) => !isServiceAvailableOnDate(id, payload?.scheduleDate))) {
-        const error = new Error("This service is available on weekends only. Please choose a Saturday or Sunday.");
-        error.code = "SERVICE_SCHEDULE_UNAVAILABLE";
         throw error;
       }
 

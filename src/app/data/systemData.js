@@ -1,3 +1,9 @@
+import { isServiceAvailableOnDate as isSharedServiceAvailableOnDate, SERVICE_OPERATING_DAYS } from "../../../shared/serviceAvailability.mjs";
+
+function serviceAvailabilityLabel(serviceId) {
+  return SERVICE_OPERATING_DAYS[serviceId] === null ? "daily" : "weekend";
+}
+
 export const serviceCatalog = [
   {
     id: "vaccination",
@@ -6,7 +12,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 300 - 850",
     category: "Preventive Care",
     description: "Core and optional vaccines for cats, dogs, and anti-rabies options.",
-    availability: "weekend",
+    availability: serviceAvailabilityLabel("vaccination"),
   },
   {
     id: "deworming",
@@ -15,7 +21,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 200 - 350",
     category: "Preventive Care",
     description: "Routine parasite control for dogs and cats based on weight brackets.",
-    availability: "weekend",
+    availability: serviceAvailabilityLabel("deworming"),
   },
   {
     id: "consultation",
@@ -24,7 +30,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 300",
     category: "Clinic Visit",
     description: "General veterinary assessment for symptoms, follow-ups, and wellness checks.",
-    availability: "weekend",
+    availability: serviceAvailabilityLabel("consultation"),
   },
   {
     id: "laboratory-testing",
@@ -33,7 +39,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 200 - 2000",
     category: "Diagnostics",
     description: "Diagnostic tests, blood work, screening, and comprehensive chemistry.",
-    availability: "weekend",
+    availability: serviceAvailabilityLabel("laboratory-testing"),
   },
   {
     id: "low-cost-kapon",
@@ -42,7 +48,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 200 - 2,200",
     category: "Surgery",
     description: "Affordable spay and neuter program from registration fee to dog/cat procedures.",
-    availability: "weekend",
+    availability: serviceAvailabilityLabel("low-cost-kapon"),
   },
   {
     id: "pet-grooming",
@@ -51,7 +57,7 @@ export const serviceCatalog = [
     priceLabel: "PHP 250 - 750",
     category: "Grooming",
     description: "Complete grooming packages including basic, sanitary, full groom, and puppy cuts.",
-    availability: "daily",
+    availability: serviceAvailabilityLabel("pet-grooming"),
   },
 ];
 
@@ -212,10 +218,5 @@ export function isWeekendDateKey(dateKey = "") {
 }
 
 export function isServiceAvailableOnDate(serviceId = "", dateKey = "") {
-  const service = serviceCatalog.find((item) => item.id === serviceId);
-  if (!service || !dateKey) {
-    return true;
-  }
-
-  return service.availability === "daily" || isWeekendDateKey(dateKey);
+  return isSharedServiceAvailableOnDate(serviceId, dateKey);
 }

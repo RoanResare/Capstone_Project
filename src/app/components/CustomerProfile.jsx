@@ -252,6 +252,8 @@ function MetricCard({ label, value, description }) {
 
 function NotificationDropdown({ notifications, currentUserId, onReadNotification, onReadAllNotifications }) {
   const [isOpen, setIsOpen] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [selected, setSelected] = useState(null);
   const visibleCount = Math.min(notifications.length, 3);
   const unreadCount = notifications.filter((notification) => !notification.readBy.includes(currentUserId)).length;
 
@@ -282,31 +284,32 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
 
       {isOpen && (
         <>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <div className="flex gap-2">{["all", "unread"].map((value) => <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === value ? "bg-[#173E44] text-white" : "bg-[#F1F6F6] text-[#365057]"}`}>{value === "all" ? "All" : "Unread"}</button>)}</div>
           <button
             type="button"
             onClick={onReadAllNotifications}
             disabled={unreadCount === 0}
             className="rounded-xl bg-[#EEF6F6] px-3 py-2 text-xs font-semibold text-[#24444A] transition hover:bg-[#E3F0F0] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Mark all as Read
+            Mark All as Read
           </button>
         </div>
         <div className="mt-4 max-h-[330px] space-y-3 overflow-y-auto pr-1">
-          {notifications.length === 0 ? (
+          {(filter === "unread" ? notifications.filter((n) => !n.readBy.includes(currentUserId)) : notifications).length === 0 ? (
             <EmptyState
               title="No notifications yet"
               message="Booking confirmations and appointment updates will appear here."
             />
           ) : (
-            notifications.map((notification) => {
+            (filter === "unread" ? notifications.filter((n) => !n.readBy.includes(currentUserId)) : notifications).map((notification) => {
               const isUnread = !notification.readBy.includes(currentUserId);
 
               return (
                 <button
                   key={notification.id}
                   type="button"
-                  onClick={() => onReadNotification(notification.id)}
+                  onClick={() => { onReadNotification(notification.id); setSelected(notification); }}
                   className={`w-full rounded-[18px] border px-4 py-2.5 text-left transition ${
                     isUnread
                       ? "border-[#2D9B9B] bg-[#F5FBFB]"
@@ -315,7 +318,7 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-[#20343B]">{notification.title}</p>
-                    <StatusChip label={notification.actionLabel} />
+                    {isUnread && <span aria-label="Unread" className="h-2.5 w-2.5 rounded-full bg-[#D94A59]" />}
                   </div>
                   <p className="mt-2 text-sm leading-5 text-[#607277]">{notification.message}</p>
                   <p className="mt-3 text-xs text-[#7A9297]">
@@ -326,6 +329,14 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
             })
           )}
         </div>
+        {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#173E44]/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="customer-notification-detail" className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4"><h3 id="customer-notification-detail" className="text-lg font-semibold text-[#20343B]">{selected.title}</h3><button type="button" onClick={() => setSelected(null)} aria-label="Close notification details" className="rounded-lg px-3 py-1 hover:bg-[#F1F6F6]">×</button></div>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#607277]">{selected.message}</p>
+            <p className="mt-4 text-xs text-[#7A9297]">{formatNotificationDate(selected.createdAt)}</p>
+            {selected.relatedAppointmentId && <p className="mt-2 text-sm text-[#4E686E]">Appointment: {selected.petName || "Pet"}{selected.serviceName ? ` · ${selected.serviceName}` : ""}{selected.appointmentDate ? ` · ${selected.appointmentDate}` : ""}</p>}
+          </section>
+        </div>}
         </>
       )}
 
@@ -1249,7 +1260,14 @@ export function CustomerProfile() {
                       notifications={visibleNotifications}
                       currentUserId={currentCustomerId}
                       onReadNotification={markNotificationRead}
-                      onReadAllNotifications={markAllNotificationsRead}
+                      onReadAllNotifications={async () => {
+                        try {
+                          await markAllNotificationsRead();
+                          toast.success("All notifications marked as read.");
+                        } catch (_error) {
+                          toast.error("Notifications could not be updated. Please try again.");
+                        }
+                      }}
                     />
                   </div>
                 </div>

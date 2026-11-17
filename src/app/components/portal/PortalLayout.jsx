@@ -89,6 +89,8 @@ function NotificationPanel({
   onClose,
 }) {
   const navigate = useNavigate();
+  const [filter, setFilter] = useState("all");
+  const [selected, setSelected] = useState(null);
 
   const unreadCount = notifications.filter(
     (notification) => !notification.readBy.includes(currentUser.id),
@@ -96,6 +98,10 @@ function NotificationPanel({
 
   const openNotification = (notification) => {
     markNotificationRead(notification.id);
+    setSelected(notification);
+  };
+
+  const followNotification = (notification) => {
     if (notification.targetType === "portal-account" && currentUser.role !== "admin") {
       navigate(`/portal/appointments?notification=${notification.id}`);
       onClose();
@@ -127,7 +133,7 @@ function NotificationPanel({
           onClick={markAllNotificationsRead}
           className="rounded-lg bg-[#EEF6F6] px-3 py-2 text-xs font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]"
         >
-          Mark read
+          Mark All as Read
         </button>
         <button
           type="button"
@@ -139,13 +145,22 @@ function NotificationPanel({
         </button>
       </div>
 
-      {notifications.length === 0 ? (
+      <div className="mt-3 flex items-center gap-2" role="group" aria-label="Notification filter">
+        {["all", "unread"].map((value) => (
+          <button key={value} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold capitalize ${filter === value ? "bg-[#173E44] text-white" : "bg-[#F1F6F6] text-[#365057]"}`}>
+            {value === "all" ? "All" : "Unread"}
+          </button>
+        ))}
+      </div>
+
+      {(filter === "unread" ? notifications.filter((n) => !n.readBy.includes(currentUser.id)) : notifications).length === 0 ? (
         <div className="mt-3 rounded-lg bg-[#F7FBFB] px-4 py-4 text-sm text-[#607277]">
           No notifications yet. Customer registrations and appointment bookings will appear here.
         </div>
       ) : (
         <div className="mt-3 max-h-[min(420px,calc(100vh-9rem))] space-y-2.5 overflow-y-auto pr-1">
-          {notifications.map((notification) => {
+          {(filter === "unread" ? notifications.filter((n) => !n.readBy.includes(currentUser.id)) : notifications).map((notification) => {
             const isUnread = !notification.readBy.includes(currentUser.id);
 
             return (
@@ -160,17 +175,11 @@ function NotificationPanel({
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#20343B]">{notification.title}</p>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#607277]">{notification.message}</p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      isUnread ? "bg-[#173E44] text-white" : "bg-[#EEF3F5] text-[#4C6368]"
-                    }`}
-                  >
-                    {isUnread ? "Unread" : "Read"}
-                  </span>
+                  {isUnread && <span aria-label="Unread" className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#D94A59]" />}
                 </div>
 
                 <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-[#607277]">
@@ -187,6 +196,18 @@ function NotificationPanel({
               </button>
             );
           })}
+        </div>
+      )}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#173E44]/35 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="notification-detail-title" className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4"><h3 id="notification-detail-title" className="text-lg font-semibold text-[#20343B]">{selected.title}</h3>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Close notification details" className="rounded-lg p-2 hover:bg-[#F1F6F6]"><X size={17}/></button></div>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#607277]">{selected.message}</p>
+            <p className="mt-4 text-xs text-[#7A9297]">{formatDateTime(selected.createdAt)}</p>
+            <p className="mt-2 text-sm text-[#4E686E]">{describeNotificationSubject(selected)}</p>
+            {selected.relatedAppointmentId && <button type="button" onClick={() => followNotification(selected)} className="mt-5 rounded-xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white">Open related appointment</button>}
+          </section>
         </div>
       )}
     </div>
@@ -238,6 +259,15 @@ export function PortalLayout() {
   const unreadCount = visibleNotifications.filter(
     (notification) => !notification.readBy.includes(currentUser.id),
   ).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      toast.success("All notifications marked as read.");
+    } catch (_error) {
+      toast.error("Notifications could not be updated. Please try again.");
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -324,7 +354,7 @@ export function PortalLayout() {
                     currentUser={currentUser}
                     notifications={visibleNotifications}
                     markNotificationRead={markNotificationRead}
-                    markAllNotificationsRead={markAllNotificationsRead}
+                    markAllNotificationsRead={handleMarkAllRead}
                     onClose={() => setPanelOpen(false)}
                   />
                 )}

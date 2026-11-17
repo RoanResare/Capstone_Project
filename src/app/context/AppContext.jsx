@@ -2425,7 +2425,7 @@ export function AppProvider({ children }) {
         type: "MARK_NOTIFICATION_READ",
         payload: { notificationId, userId: currentUser.id },
       });
-      void markNotificationReadDocument(notificationId, currentUser.uid || currentUser.id);
+      return markNotificationReadDocument(notificationId, currentUser.uid || currentUser.id);
     },
     markAllNotificationsRead() {
       if (!currentUser) {
@@ -2436,7 +2436,7 @@ export function AppProvider({ children }) {
         type: "MARK_ALL_NOTIFICATIONS_READ",
         payload: { userId: currentUser.id },
       });
-      void markAllNotificationsReadDocuments(visibleNotifications, currentUser.uid || currentUser.id);
+      return markAllNotificationsReadDocuments(visibleNotifications, currentUser.uid || currentUser.id);
     },
     getPendingAppointmentCount(customerId, customerEmail) {
       return countPendingAppointments(state.appointments, customerId, customerEmail);

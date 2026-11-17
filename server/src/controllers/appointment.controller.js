@@ -339,6 +339,27 @@ async function saveAppointment(req, res) {
         readBy: [],
         createdAt: new Date().toISOString(),
       });
+      const customerNotificationId = `appointment-${id}-customer-created`;
+      transaction.set(db.collection("notifications").doc(customerNotificationId), {
+        id: customerNotificationId,
+        title: "Appointment submitted",
+        message: `Your appointment for ${serviceName} on ${savedAppointment.scheduleDate || "a date to be confirmed"} at ${savedAppointment.scheduleTime || "a time to be confirmed"} was submitted successfully.`,
+        targetRoles: ["customer"],
+        targetUserId: user.uid,
+        targetType: "appointment",
+        targetId: id,
+        relatedAppointmentId: id,
+        actorName: customerName,
+        actorRole: "customer",
+        actionLabel: "Submitted appointment",
+        serviceName,
+        petName: savedAppointment.petName || "",
+        appointmentDate: savedAppointment.scheduleDate || "",
+        appointmentTime: savedAppointment.scheduleTime || "",
+        level: "success",
+        readBy: [],
+        createdAt: new Date().toISOString(),
+      });
     }
     if(staffDecision || staffCancellation){
       const notificationId=`appointment-${id}-${nextStatus.toLowerCase()}`;

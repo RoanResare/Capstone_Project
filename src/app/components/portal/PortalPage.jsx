@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppointmentDecisionForm } from "./AppointmentDecisionForm.jsx";
 import { AppointmentApprovalDialog } from "./AppointmentApprovalDialog.jsx";
 import { PetPhotoDialog, PetPhotoThumbnail, resolveAppointmentPetPhoto } from "./PetPhotoDisplay.jsx";
-import { BookingAdditions } from "../BookingAdditions.jsx";
 import { createPortal } from "react-dom";
 import { PricelistManager } from "./PricelistManager.jsx";
 import { KaponPromoManager } from "./KaponPromoManager.jsx";
@@ -44,6 +43,7 @@ import {
   petTypeOptions,
   portalUserRoles,
   portalUserStatuses,
+  serviceCatalog,
 } from "../../data/systemData.js";
 
 const NEW_PORTAL_USER_ID = "__new-portal-user__";
@@ -511,6 +511,44 @@ function MetricCard({ label, value, tone = "teal" }) {
   );
 }
 
+function getAppointmentServiceGroups(appointment) {
+  const serviceIds = Array.isArray(appointment.serviceIds) && appointment.serviceIds.length
+    ? appointment.serviceIds
+    : appointment.serviceId ? [appointment.serviceId] : [];
+  const clinicalSelections = Array.isArray(appointment.clinicalSelections) ? appointment.clinicalSelections : [];
+
+  return serviceIds.map((serviceId) => {
+    const label = serviceCatalog.find((service) => service.id === serviceId)?.name || serviceId;
+    const selectedClinicalServices = clinicalSelections
+      .filter((selection) => selection.category === serviceId)
+      .map((selection) => selection.name)
+      .filter(Boolean);
+    let details = selectedClinicalServices;
+
+    if (serviceId === "deworming") {
+      const deworming = appointment.deworming;
+      const weight = Number(deworming?.weightKg);
+      details = [deworming?.weightBracket
+        ? `Weight: ${Number.isFinite(weight) && weight > 0 ? `${weight} kg — ` : ""}${deworming.weightBracket}`
+        : "Deworming details not saved"];
+    } else if (serviceId === "pet-grooming") {
+      const grooming = appointment.grooming || {};
+      details = (Array.isArray(grooming.services) ? grooming.services : [])
+        .map((service) => service.name || service.id)
+        .filter(Boolean);
+      if (!details.length && grooming.name) details = grooming.name.split(", ").filter(Boolean);
+      if (grooming.size) details = [...details, `Grooming size: ${grooming.size}`];
+      if (!details.length) details = ["Grooming details not saved"];
+    } else if (serviceId === "vaccination" && appointment.vaccinationFee &&
+        !details.some((detail) => detail === appointment.vaccinationFee.name)) {
+      details = [...details, appointment.vaccinationFee.name];
+    }
+
+    if (!details.length) details = [label];
+    return { id: serviceId, label, details };
+  });
+}
+
 function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSaving = false }) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [decisionStatus,setDecisionStatus]=useState("");
@@ -539,6 +577,7 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
   }
 
   const contactPhone = appointment.contactNumber || "No phone saved";
+  const serviceGroups = getAppointmentServiceGroups(appointment);
   const canComplete = canCompleteAppointment(appointment.status);
   const latestAuditEvent = Array.isArray(appointment.lifecycleEvents) ? appointment.lifecycleEvents.at(-1) : null;
   const clinicToday = appointmentDateKey({ schedule: new Date(sessionNow).toISOString() });
@@ -565,8 +604,8 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
   if(decisionStatus)return <AppointmentDecisionForm status={decisionStatus} busy={isSaving} onSave={updates=>updateAppointment(appointment.id,updates)} onClose={()=>setDecisionStatus("")}/>;
   return (
     <PanelCard
-      title={`${appointment.petName} | ${appointment.service}`}
-      description="Review customer information and manage appointment status."
+      title={`${appointment.petName || "Pet"} — appointment details`}
+      description="Review the booking form by service category, then manage appointment status."
     >
       <div className="space-y-4">
         {approvalOpen && <AppointmentApprovalDialog appointment={appointment} busy={isSaving}
@@ -623,7 +662,6 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
                 </div>
               </div>
               {photoOpen && associatedPet?.photoURL && <PetPhotoDialog photo={associatedPet.photoURL} name={associatedPet.petName} onClose={() => setPhotoOpen(false)} />}
-              <BookingAdditions appointment={appointment}/>
               {appointment.decision?.reason && <p className="text-sm text-[#607277]">Reason: {appointment.decision.reason}</p>}
 
               <div className="flex items-center gap-3">
@@ -637,6 +675,22 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
             </div>
           </div>
         </div>
+
+        <section className="rounded-[24px] border border-[#E6F0F0] bg-white px-5 py-5" aria-label="Selected appointment services">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B878D]">Requested services</h3>
+          {serviceGroups.length ? (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {serviceGroups.map((group) => (
+                <div key={group.id} className="rounded-2xl bg-[#F6FAFA] px-4 py-3">
+                  <h4 className="font-semibold text-[#24444A]">{group.label}</h4>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#607277]">
+                    {group.details.map((detail, index) => <li key={`${group.id}-${index}`}>{detail}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : <p className="mt-2 text-sm text-[#607277]">Service form details are not available for this appointment.</p>}
+        </section>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <button

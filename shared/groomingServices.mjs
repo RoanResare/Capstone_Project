@@ -1,5 +1,4 @@
 export const GROOMING_SIZES = ["Small", "Medium", "Large", "X-Large"];
-export const MAX_GROOMING_SELECTIONS = 2;
 export function groomingSizeForPet(pet) {
   if (String(pet?.petType).toLowerCase() === "cat") return null;
   const weight = Number(pet?.weightKg);
@@ -33,7 +32,7 @@ export function groomingOptionsForPet(pet) {
  return {packages:GROOMING_SERVICES.filter(service=>service.petType.toLowerCase()===type),alaCarte:GROOMING_ALA_CARTE_SERVICES};
 }
 export function buildGroomingSelection(serviceIds,pet) {
- if(!Array.isArray(serviceIds)||!serviceIds.length||serviceIds.length>MAX_GROOMING_SELECTIONS)throw new Error("Choose one grooming service or up to two a la carte services for this appointment.");
+ if(!Array.isArray(serviceIds)||!serviceIds.length)throw new Error("Choose at least one grooming service for this appointment.");
  if(new Set(serviceIds).size!==serviceIds.length)throw new Error("Choose each grooming service only once.");
  const {packages,alaCarte}=groomingOptionsForPet(pet);
  const services=serviceIds.map(id=>{
@@ -41,7 +40,6 @@ export function buildGroomingSelection(serviceIds,pet) {
   if(!entry)throw new Error("Choose grooming services offered for the saved pet's species (cat or dog).");
   return {id:entry.id,name:entry.name,category:packages.includes(entry)?"package":"ala-carte"};
  });
- if(services.some(service=>service.category==="package")&&services.length!==1)throw new Error("Choose one grooming package OR up to two a la carte services, not both.");
  return {serviceIds:[...serviceIds],services,name:services.map(service=>service.name).join(", "),petType:packages[0].petType,size:groomingSizeForPet(pet)||null};
 }
 // Legacy saved appointments have a single serviceId/name rather than services.

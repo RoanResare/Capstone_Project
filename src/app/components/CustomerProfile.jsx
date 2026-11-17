@@ -263,11 +263,11 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
     <div className="relative">
       <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen}
         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-        className="inline-flex h-11 items-center gap-2.5 rounded-2xl bg-[#EEF6F6] px-4 text-sm font-semibold text-[#24444A] shadow-sm transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-        <Bell size={19} className="shrink-0 text-[#365F66]" />
+        className="inline-flex h-6 items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+        <Bell size={14} className="shrink-0" />
         <span>Notifications</span>
-        {unreadCount > 0 && <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#D94A59] px-2 text-xs font-bold leading-none text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
-        <ChevronDown size={16} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        {unreadCount > 0 && <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#D94A59] px-1 text-[9px] font-bold leading-none text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+        <ChevronDown size={13} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && <section className="absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(92vw,380px)] rounded-2xl border border-[#E2EBEB] bg-white p-4 text-left text-[#20343B] shadow-[0_20px_44px_rgba(68,78,79,0.22)]">

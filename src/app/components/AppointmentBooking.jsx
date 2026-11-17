@@ -223,7 +223,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   }, [pricelistIndex, selectedPricelists.length]);
   const unavailableSelectedServices = selectedDate ? [...new Set(petSelections.flatMap((selection) =>
     getUnavailableServiceIds(selectedServiceIds(selection).filter(Boolean), selectedDate)))]: [];
-  const availabilityError = unavailableSelectedServices.length
+  const selectedServicesAvailabilityError = unavailableSelectedServices.length
     ? unavailableSelectedServices.map((id) => getServiceUnavailableMessage(id, selectedDate)).join(" ")
     : "";
   const forecastAvailabilitySlots = useMemo(() => buildSeedAvailabilitySlots({ days: 120 }), []);
@@ -804,7 +804,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                   </p>
                 )}
                 {errors.selectedDate && <p className="mt-3 text-sm text-[#B23949]">{errors.selectedDate}</p>}
-                {availabilityError && <p role="alert" className="mt-3 rounded-lg bg-[#FBECEF] px-3 py-2 text-sm text-[#B23949]">{availabilityError}</p>}
+                {selectedServicesAvailabilityError && <p role="alert" className="mt-3 rounded-lg bg-[#FBECEF] px-3 py-2 text-sm text-[#B23949]">{selectedServicesAvailabilityError}</p>}
                 {errors.selectedSlotId && <p className="mt-3 text-sm text-[#B23949]">{errors.selectedSlotId}</p>}
               </div>
             </div>

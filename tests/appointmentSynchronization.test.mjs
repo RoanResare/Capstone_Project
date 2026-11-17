@@ -16,10 +16,16 @@ const booking = { id: "appointment", customerId: "customer", petRecordId: "pet",
   scheduleDate: "2030-01-12", scheduleTime: "11:00", status: "Pending", createdAt: "2030-01-01T00:00:00Z" };
 const create = { type: "CREATE_APPOINTMENT", payload: booking, meta: { actorName: "Customer", actorRole: "customer" } };
 
-test("legacy expired and elapsed pending bookings become No Show",()=>{
- for(const status of ["Expired","No-show","Pending"]){
+test("legacy no-show states remain normalized and elapsed pending bookings stay pending",()=>{
+ for(const status of ["Expired","No-show"]){
   const normalized=normalizeStoredState({appointments:[{...booking,status,scheduleDate:"2020-01-12"}]});
   assert.equal(normalized.appointments[0].status,"No Show");
+ }
+ const elapsedPending=normalizeStoredState({appointments:[{...booking,status:"Pending",scheduleDate:"2020-01-12",scheduleTime:"11:00"}]});
+ assert.equal(elapsedPending.appointments[0].status,"Pending");
+ for(const status of ["Completed","Cancelled","Rejected"]){
+  const normalized=normalizeStoredState({appointments:[{...booking,status,scheduleDate:"2020-01-12"}]});
+  assert.equal(normalized.appointments[0].status,status);
  }
 });
 

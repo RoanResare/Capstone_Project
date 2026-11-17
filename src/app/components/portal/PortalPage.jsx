@@ -511,7 +511,7 @@ function MetricCard({ label, value, tone = "teal" }) {
   );
 }
 
-function AppointmentDetailPanel({ appointment, currentUser, staffOptions, updateAppointment, onBack, isSaving = false }) {
+function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSaving = false }) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [decisionStatus,setDecisionStatus]=useState("");
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -540,6 +540,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
 
   const contactPhone = appointment.contactNumber || "No phone saved";
   const canComplete = canCompleteAppointment(appointment.status);
+  const latestAuditEvent = Array.isArray(appointment.lifecycleEvents) ? appointment.lifecycleEvents.at(-1) : null;
   const clinicToday = appointmentDateKey({ schedule: new Date(sessionNow).toISOString() });
   const canStartSession = canComplete && appointmentDateKey(appointment) === clinicToday;
   const elapsedSeconds = appointment.sessionStartedAt
@@ -565,7 +566,7 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
   return (
     <PanelCard
       title={`${appointment.petName} | ${appointment.service}`}
-      description="Review customer information, current status, and assignment details."
+      description="Review customer information and manage appointment status."
     >
       <div className="space-y-4">
         {approvalOpen && <AppointmentApprovalDialog appointment={appointment} busy={isSaving}
@@ -637,34 +638,12 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           </div>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-[#425A60]">
-            Assign staff
-          </label>
-          <select
-            value={appointment.assignedStaff || ""}
-            disabled={isSaving || staffOptions.length === 0 || ["Completed", "Cancelled", "Rejected"].includes(appointment.status)}
-            onChange={(event) =>
-              updateAppointment(appointment.id, { assignedStaff: event.target.value })
-            }
-            className="w-full rounded-2xl border border-[#D9E7E7] px-4 py-2.5 text-sm outline-none transition focus:border-[#2D9B9B]"
-          >
-            <option value="" disabled>{staffOptions.length ? "Select staff" : "No active staff available"}</option>
-            {appointment.assignedStaff && !staffOptions.includes(appointment.assignedStaff) && (
-              <option value={appointment.assignedStaff} disabled>{appointment.assignedStaff}</option>
-            )}
-            {staffOptions.map((staffName) => (
-              <option key={staffName}>{staffName}</option>
-            ))}
-          </select>
-        </div>
-
         <div className="grid gap-3 sm:grid-cols-3">
           <button
             type="button"
             onClick={() => requestStatusChange("Accepted")}
-            disabled={isSaving || !appointment.assignedStaff?.trim() || !canApproveAppointment(appointment.status)}
-            title={!appointment.assignedStaff?.trim() ? "Assign a staff member first" : "Approve appointment"}
+            disabled={isSaving || !canApproveAppointment(appointment.status)}
+            title="Approve appointment"
             className="rounded-2xl bg-[#E8F7EE] px-4 py-2.5 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Approve appointment
@@ -705,16 +684,16 @@ function AppointmentDetailPanel({ appointment, currentUser, staffOptions, update
           <p className="mt-3 text-sm leading-5 text-[#607277]">
             {appointment.notes || "No appointment notes were provided by the customer."}
           </p>
-          <p className="mt-4 text-xs text-[#7A9297]">
-            Updated by {currentUser.name} as part of the appointment workflow.
-          </p>
+          {latestAuditEvent?.actorName && <p className="mt-4 text-xs text-[#7A9297]">
+            Latest action: {latestAuditEvent.action || latestAuditEvent.status} by {latestAuditEvent.actorName}{latestAuditEvent.actorRole ? ` (${latestAuditEvent.actorRole})` : ""}.
+          </p>}
         </div>
       </div>
     </PanelCard>
   );
 }
 
-function AppointmentDetailDialog({ appointment, currentUser, staffOptions, updateAppointment, onBack }) {
+function AppointmentDetailDialog({ appointment, updateAppointment, onBack }) {
   const dialogRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
@@ -735,7 +714,7 @@ function AppointmentDetailDialog({ appointment, currentUser, staffOptions, updat
       onCancel={(event) => { event.preventDefault(); if (!isSaving) onBack(); }}
       className="appointment-detail-dialog fixed inset-0 m-auto max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-3xl overflow-y-auto rounded-2xl border border-[#D9E7E7] bg-white p-4 shadow-[0_24px_56px_rgba(20,43,46,0.2)] backdrop:bg-black/40 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:p-5">
       <button type="button" aria-label="Close appointment details" title="Close" disabled={isSaving} onClick={onBack} className="mb-2 ml-auto flex h-8 w-8 items-center justify-center text-[#607277] disabled:opacity-50"><X size={20} /></button>
-      <AppointmentDetailPanel appointment={appointment} currentUser={currentUser} staffOptions={staffOptions}
+      <AppointmentDetailPanel appointment={appointment}
         updateAppointment={save} onBack={onBack} isSaving={isSaving} />
     </dialog>
   );
@@ -860,9 +839,6 @@ function AppointmentsWorkspace({
     .filter((appointment) => appointment && typeof appointment === "object")
     .slice()
     .sort((left, right) => sortByNewest(left, right, ["updatedAt", "schedule"]));
-  const staffOptions = [...new Set((Array.isArray(state.users) ? state.users : [])
-    .filter((user) => user && user.status === "active" && user.role === "staff")
-    .map((user) => user.name?.trim()).filter(Boolean))].sort((left, right) => left.localeCompare(right));
   const handleAppointmentUpdate = async (appointmentId, updates) => {
     const appointment = appointments.find((entry) => entry.id === appointmentId);
     if (updates?.status && !canChangeAppointmentStatus(appointment?.status, updates.status)) {
@@ -1105,8 +1081,6 @@ function AppointmentsWorkspace({
 
       {selectedAppointment && <AppointmentDetailDialog
           appointment={selectedAppointment}
-          currentUser={currentUser}
-          staffOptions={staffOptions}
           updateAppointment={handleAppointmentUpdate}
           onBack={clearSelectedAppointment}
         />}

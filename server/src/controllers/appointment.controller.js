@@ -191,7 +191,9 @@ async function saveAppointment(req, res) {
     );
     const wasActive = ACTIVE_APPOINTMENT_STATUSES.includes(previous.status);
     const willBeActive = ACTIVE_APPOINTMENT_STATUSES.includes(nextStatus);
-    const changedServices = JSON.stringify(nextAppointment.serviceIds) !== JSON.stringify(previous.serviceIds) || nextAppointment.serviceId !== previous.serviceId;
+    const previousServiceIds = previous.serviceIds || (previous.serviceId ? [previous.serviceId] : []);
+    const nextServiceIds = nextAppointment.serviceIds || (nextAppointment.serviceId ? [nextAppointment.serviceId] : []);
+    const changedServices = JSON.stringify(nextServiceIds) !== JSON.stringify(previousServiceIds) || nextAppointment.serviceId !== previous.serviceId;
     const requiresBookingValidation = !existing.exists || changedServices || changedSchedule ||
       (["Cancelled", "Rejected", "Expired", "No Show", "Completed"].includes(previous.status) && ["Pending", "Confirmed", "Accepted", "Approved"].includes(nextStatus));
     let serviceFields = {};
@@ -229,8 +231,12 @@ async function saveAppointment(req, res) {
     }
     if (nextAppointment.serviceIds !== undefined) {
       const { validateAppointmentServices, validateSinglePet, getEstimatedDuration, APPOINTMENT_BLOCK_MINUTES, getDefaultBlockCapacity } = await import("../../../shared/bookingServices.mjs");
+      const { isValidClinicDateKey } = await import("../../../shared/serviceAvailability.mjs");
       try {
-        if (requiresBookingValidation) validateAppointmentServices(nextAppointment.serviceIds);
+        if (requiresBookingValidation && !isValidClinicDateKey(nextAppointment.scheduleDate)) {
+          throw new Error("Choose a valid appointment date.");
+        }
+        if (requiresBookingValidation) validateAppointmentServices(nextAppointment.serviceIds, nextAppointment.scheduleDate);
         if (requiresBookingValidation && !getDefaultBlockCapacity(nextAppointment.scheduleTime)) {
           throw new Error("Select a 9:00 AM, 11:00 AM, 2:00 PM, or 4:00 PM appointment block.");
         }
@@ -239,7 +245,7 @@ async function saveAppointment(req, res) {
           throw new Error("The primary service must match the selected appointment services.");
         }
         serviceFields.estimatedDurationMinutes = getEstimatedDuration(nextAppointment.serviceIds);
-        serviceFields.blockDurationMinutes = APPOINTMENT_BLOCK_MINUTES;
+        serviceFields.blockDurationMinutes = Math.max(APPOINTMENT_BLOCK_MINUTES, serviceFields.estimatedDurationMinutes);
       } catch (error) {
         throw new ApiError(400, error.message);
       }
@@ -259,6 +265,7 @@ async function saveAppointment(req, res) {
         const groomingLabel = 'Pet Grooming: ' + name + (size ? ' (' + size + ')' : '');
         serviceFields.service = nextAppointment.serviceIds.map(id => {
           if(id === "pet-grooming")return groomingLabel;
+          if(id === "deworming")return dewormingDescription(serviceFields.deworming || nextAppointment.deworming);
           const choice=(serviceFields.clinicalSelections || nextAppointment.clinicalSelections || []).find(choice=>choice.category===id);
           const name={vaccination:"Vaccination",consultation:"Consultation",deworming:"Deworming","low-cost-kapon":"Low Cost Kapon"}[id]||id;
           return choice?`${name}: ${choice.name}`:name;

@@ -1,3 +1,5 @@
+import { getServiceUnavailableMessage } from "./serviceAvailability.mjs";
+
 const durations = {
   vaccination: 30,
   deworming: 20,
@@ -10,8 +12,8 @@ const durations = {
 export const APPOINTMENT_BLOCK_MINUTES = 120;
 
 function validateServiceSelection(serviceIds) {
-  if (!Array.isArray(serviceIds) || serviceIds.length < 1 || serviceIds.length > 2) {
-    throw new Error("Select one or two services for each appointment.");
+  if (!Array.isArray(serviceIds) || serviceIds.length < 1) {
+    throw new Error("Select at least one service for each appointment.");
   }
   if (serviceIds.some((id) => !Object.hasOwn(durations, id))) throw new Error("Select a valid service.");
   if (new Set(serviceIds).size !== serviceIds.length) throw new Error("The same service cannot be selected twice for one appointment.");
@@ -30,10 +32,11 @@ export function getEstimatedDuration(serviceIds) {
   return validateServiceSelection(serviceIds).reduce((total, id) => total + durations[id], 0);
 }
 
-export function validateAppointmentServices(serviceIds) {
+export function validateAppointmentServices(serviceIds, dateKey = "") {
   validateServiceIds(serviceIds);
-  if (getEstimatedDuration(serviceIds) > APPOINTMENT_BLOCK_MINUTES) {
-    throw new Error("The selected services exceed the 120-minute appointment block. Please book them separately.");
+  if (dateKey) {
+    const unavailableService = serviceIds.map((id) => getServiceUnavailableMessage(id, dateKey)).find(Boolean);
+    if (unavailableService) throw new Error(unavailableService);
   }
   return serviceIds;
 }

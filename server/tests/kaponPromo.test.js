@@ -47,8 +47,10 @@ function fixture(initial = {}) {
   const load = (name) => {
     const filename = path.join(__dirname, "../src/controllers", name);
     const context = { module: { exports: {} }, require: (id) => {
-      if (id === "../config/firebaseAdmin") return { db };
+      if (id === "../config/postgresDatabase") return { db };
       if (id === "../utils/ApiError") return { ApiError };
+      if (id === "../utils/textModeration") return require("../src/utils/textModeration");
+      if (id === "sharp") return () => ({ metadata: async () => ({ format: "png", width: 1, height: 1 }), rotate() { return this; }, resize() { return this; }, toBuffer: async () => Buffer.from([]) });
       throw new Error(`Unexpected dependency ${id}`);
     } };
     vm.runInNewContext(fs.readFileSync(filename, "utf8"), context, {
@@ -163,10 +165,12 @@ test("staff sessions start once on the clinic date and end with persisted durati
   assert.ok(ended.sessionDurationSeconds >= 0);
   assert.ok(ended.sessionEndedAt);
   assert.equal(ended.sessionAction, undefined);
-  assert.equal(ended.lifecycleEvents.length, 1);
-  assert.equal(ended.lifecycleEvents[0].status, "Completed");
+  assert.equal(ended.lifecycleEvents.length, 2);
+  assert.equal(ended.lifecycleEvents[0].action, "Appointment session started");
   assert.equal(ended.lifecycleEvents[0].actorRole, "staff");
-  assert.equal(ended.lifecycleEvents[0].createdAt, ended.updatedAt);
+  assert.equal(ended.lifecycleEvents[1].status, "Completed");
+  assert.equal(ended.lifecycleEvents[1].actorRole, "staff");
+  assert.equal(ended.lifecycleEvents[1].createdAt, ended.updatedAt);
   const future = fixture({ "appointments/booking": { ...booking, scheduleDate: "2030-01-05" } });
   await assert.rejects(future.book({ ...booking, scheduleDate: "2030-01-05", sessionAction: "start" }, "staff"), /appointment date/);
 });
@@ -221,26 +225,48 @@ test("deactivation blocks new kapon bookings and rescheduling but allows existin
   assert.equal(app.records.get("appointments/booking").status, "Cancelled");
 });
 
-test("paired services create one appointment with a server-calculated duration", async () => {
+test("multiple services create one appointment with a server-calculated duration", async () => {
   const app = fixture();
   await app.book({ serviceId: "vaccination", serviceIds: ["vaccination", "deworming"], petRecordId: "pet", estimatedDurationMinutes: 1 });
-  assert.equal(app.writes.length, 1);
+  assert.equal(app.writes.filter((key) => key === "appointments/booking").length, 1);
   assert.equal(app.records.get("appointments/booking").estimatedDurationMinutes, 50);
   assert.equal(app.records.get("appointments/booking").blockDurationMinutes, 120);
+  const threeServices = fixture();
+  await threeServices.book({ serviceId: "vaccination", serviceIds: ["vaccination", "deworming", "consultation"], petRecordId: "pet" });
+  assert.equal(threeServices.writes.filter((key) => key === "appointments/booking").length, 1);
+  assert.equal(threeServices.records.get("appointments/booking").estimatedDurationMinutes, 95);
+  const fiveServices = fixture({ "lowCostKaponPromo/low-cost-kapon": { ...config, isActive: true } });
+  await fiveServices.book({ serviceId: "vaccination", serviceIds: ["vaccination", "deworming", "consultation", "laboratory-testing", "low-cost-kapon"], petRecordId: "pet" });
+  assert.equal(fiveServices.records.get("appointments/booking").estimatedDurationMinutes, 245);
+  assert.equal(fiveServices.records.get("appointments/booking").blockDurationMinutes, 245);
   for (const body of [
     { serviceIds: ["vaccination", "vaccination"] },
-    { serviceIds: ["vaccination", "deworming", "consultation"] },
     { serviceIds: ["vaccination", "invalid"] },
     { serviceId: "laboratory-testing", serviceIds: ["laboratory-testing", "pet-grooming"] },
     { serviceId: "pet-grooming", serviceIds: ["pet-grooming", "laboratory-testing"] },
-    { serviceId: "low-cost-kapon", serviceIds: ["low-cost-kapon", "laboratory-testing"], estimatedDurationMinutes: 1 },
-    { serviceId: "low-cost-kapon", serviceIds: ["low-cost-kapon", "consultation"], blockDurationMinutes: 999 },
     { petRecordIds: ["pet", "other"] },
   ]) {
     const blocked = fixture();
     await assert.rejects(blocked.book({ serviceId: "vaccination", serviceIds: ["vaccination", "deworming"], petRecordId: "pet", ...body }), { statusCode: 400 });
     assert.equal(blocked.writes.length, 0);
   }
+});
+
+test("backend blocks weekday-incompatible service combinations and accepts them on configured weekend days", async () => {
+  const weekday = fixture();
+  await assert.rejects(weekday.book({
+    serviceId: "pet-grooming", serviceIds: ["pet-grooming", "vaccination"],
+    scheduleDate: "2030-01-08", grooming: { serviceIds: ["feline-basic"] },
+  }), /Vaccination is not available on weekdays/);
+  assert.equal(weekday.writes.length, 0);
+
+  const saturday = fixture();
+  await saturday.book({
+    serviceId: "pet-grooming", serviceIds: ["pet-grooming", "vaccination"],
+    scheduleDate: "2030-01-05", grooming: { serviceIds: ["feline-basic"] },
+  });
+  assert.equal(saturday.records.get("appointments/booking").status, "Pending");
+  assert.equal(saturday.records.get("appointments/booking").estimatedDurationMinutes, 90);
 });
 
 test("a kapon secondary service still requires an active promotion", async () => {

@@ -1,0 +1,292 @@
+import { useAttemptLock } from "../utils/useAttemptLock.js";
+import { useEffect, useState } from "react";
+import { readSessionStorageItem, removeSessionStorageItem } from "../utils/browserState.js";
+import { motion } from "motion/react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, LogIn, PawPrint } from "lucide-react";
+import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
+import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
+import { PolicyDialog } from "./PolicyDialog.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../context/ToastContext.jsx";
+import { resolveAuthorizedPath, resolveHomePath } from "../utils/roleUtils.js";
+import { useRememberedLogin } from "../utils/useRememberedLogin.js";
+import { getLoginAttemptFeedback } from "../utils/loginAttemptFeedback.js";
+import { formatAttemptLockCountdown } from "../utils/attemptLockTime.js";
+import { revokePortalTrustedDevice } from "../services/authApi.js";
+import {
+  clearRememberedCustomerLogin,
+} from "../utils/customerRememberMe.js";
+
+export function UnifiedLogin() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {
+    beginUnifiedLogin,
+    currentUser,
+    supabaseConfigError,
+    homePath,
+    isAuthenticated,
+    isLoading,
+    isOnline,
+  } = useAuth();
+  const { error: showErrorToast, success: showSuccessToast, info: showInfoToast } = useToast();
+  const [form, setForm] = useState({ identifier: "", password: "", rememberDevice: false });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [feedback, setFeedback] = useState(() => {
+    const message = readSessionStorageItem("furfection-security-warning") || "";
+    const verified = new URLSearchParams(location.search).get("emailVerified") === "1";
+    return verified
+      ? { type: "success", message: "Your email is verified. You can now sign in." }
+      : { type: message ? "error" : "", message };
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { secondsRemaining: lockSeconds, applyLock } = useAttemptLock("login", form.identifier);
+  const [showPassword, setShowPassword] = useState(false);
+  const [policyDocument, setPolicyDocument] = useState(null);
+  const requestedPath = typeof location.state?.from === "string" ? location.state.from.trim() : "";
+  const nextState = requestedPath ? { from: requestedPath } : undefined;
+
+  useEffect(() => {
+    const warning = readSessionStorageItem("furfection-security-warning");
+    if (warning) showErrorToast(warning);
+    removeSessionStorageItem("furfection-security-warning");
+  }, []);
+
+  useRememberedLogin(undefined, setForm, setFeedback, showInfoToast);
+
+  if (!isLoading && isAuthenticated && currentUser) {
+    return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;
+  }
+
+  const updateField = (field) => (event) => {
+    setForm((current) => ({ ...current, [field]: event.target.value }));
+    setFeedback({ type: "", message: "" });
+    setFieldErrors((current) => ({ ...current, [field]: "" }));
+  };
+
+  const validateForm = (values) => {
+    const nextErrors = {};
+
+    if (!values.identifier.trim()) {
+      nextErrors.identifier = "Email or username is required.";
+    }
+
+    if (!values.password) {
+      nextErrors.password = "Password is required.";
+    }
+
+    setFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    // Password managers may fill the DOM without updating React state.
+    const submitted = new FormData(event.currentTarget);
+    const values = { ...form, identifier: String(submitted.get("identifier") || ""), password: String(submitted.get("password") || "") };
+    setForm(values);
+
+    if (isSubmitting || lockSeconds > 0 || !validateForm(values)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFeedback({ type: "", message: "" });
+
+    try {
+      const result = await beginUnifiedLogin({
+        identifier: values.identifier.trim(),
+        password: values.password,
+        requestedPath,
+        rememberDevice: form.rememberDevice,
+      });
+
+      if (!result.ok) {
+        applyLock(result);
+        setFeedback({
+          type: "error",
+          message: result.details?.code === "AUTH_ATTEMPTS_LOCKED" ? "" : getLoginAttemptFeedback(result),
+        });
+        return;
+      }
+
+      if (result.requiresTwoFactor) {
+        showSuccessToast(result.message || "Verification code sent to your email.");
+        navigate(result.verificationPath || "/verify-otp", { replace: true });
+        return;
+      }
+
+      navigate(resolveAuthorizedPath(result.user.role, requestedPath), { replace: true });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 lg:py-8">
+      <AuthPageBackdrop />
+      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] items-center gap-5 lg:min-h-[calc(100vh-8rem)] lg:grid-cols-[1.04fr_0.96fr] lg:gap-6">
+        <motion.div
+          initial={{ opacity: 0, x: -18 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45 }}
+          className="order-2 lg:order-1"
+        >
+          <AuthHeroPanel />
+        </motion.div>
+
+        <motion.section
+          initial={{ opacity: 0, x: 18 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, delay: 0.06 }}
+          className="order-1 rounded-[24px] bg-white p-5 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-6 lg:order-2 lg:p-7"
+        >
+          <div className="mb-5 text-center">
+            <PawPrint className="mx-auto mb-2 text-[#168985]" size={30} />
+            <h2 className="text-3xl font-extrabold text-[#07545A]">Welcome Back!</h2>
+            <h3 className="mt-1 text-base font-bold text-[#20343B]">
+              Charming Fur-fection Pet Care Services – Las Piñas City
+            </h3>
+            <p className="mt-2 text-sm text-[#607277]">
+              Enter your email or username and password to continue.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} autoComplete="on" className="space-y-4">
+            {lockSeconds > 0 && <p role="status" className="rounded-lg bg-[#FBECEF] px-4 py-3 text-sm text-[#B23949]">Too many failed attempts. Login temporarily restricted. Try again in {formatAttemptLockCountdown(lockSeconds)}.</p>}
+            {supabaseConfigError && (
+              <div className="rounded-lg border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-2.5 text-sm text-[#8A6410]">
+                Supabase setup is incomplete. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable login.
+              </div>
+            )}
+            {!isOnline && (
+              <div className="rounded-lg border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-2.5 text-sm text-[#48656A]">
+                You are offline. Reconnect before signing in.
+              </div>
+            )}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">
+                Email / Username
+              </label>
+              <input
+                name="identifier"
+                value={form.identifier}
+                autoComplete="username"
+                onChange={updateField("identifier")}
+                disabled={isSubmitting || lockSeconds > 0}
+                className={`w-full rounded-lg border px-4 py-2.5 outline-none transition focus:border-[#2D9B9B] ${
+                  fieldErrors.identifier ? "border-[#D95A6A]" : "border-[#D9E7E7]"
+                }`}
+                placeholder="Enter your email or username"
+              />
+              {fieldErrors.identifier && (
+                <p className="mt-2 text-sm text-[#B23949]">{fieldErrors.identifier}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
+              <div className="relative">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  autoComplete="current-password"
+                  onChange={updateField("password")}
+                  disabled={isSubmitting || lockSeconds > 0}
+                  className={`w-full rounded-lg border px-4 py-2.5 pr-11 outline-none transition focus:border-[#2D9B9B] ${
+                    fieldErrors.password ? "border-[#D95A6A]" : "border-[#D9E7E7]"
+                  }`}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {fieldErrors.password && (
+                <p className="mt-2 text-sm text-[#B23949]">{fieldErrors.password}</p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[#415D62]">
+              <span>Remember me</span>
+              <input
+                type="checkbox"
+                checked={form.rememberDevice}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  if (!checked) {
+                    Promise.allSettled([revokePortalTrustedDevice("admin"), revokePortalTrustedDevice("staff")])
+                      .then((results) => {
+                        const failed = results.find((result) => result.status === "rejected");
+                        if (failed) showErrorToast(failed.reason?.message || "Unable to remove this trusted device right now.");
+                      });
+                    clearRememberedCustomerLogin();
+                    setForm((current) => ({
+                      ...current,
+                      password: "",
+                      rememberDevice: false,
+                    }));
+                    return;
+                  }
+                  setForm((current) => ({ ...current, rememberDevice: checked }));
+                }}
+                disabled={isSubmitting || lockSeconds > 0}
+                className="h-4 w-4 accent-[#2D9B9B]"
+              />
+            </label>
+            <Link to="/forgot-password" className="ui-hover-lift inline-flex min-h-10 items-center justify-center rounded-full border border-[#78B8B2] bg-white px-4 py-2 text-sm font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none">
+              Forgot Password?
+            </Link>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || lockSeconds > 0}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#078F89] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#087C79] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isSubmitting ? "Logging in..." : "Log In"}
+              <LogIn size={16} />
+            </button>
+
+            <div className="flex items-center gap-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#8CA0A2]">
+              <span className="h-px flex-1 bg-[#E4ECE9]" /> Or <span className="h-px flex-1 bg-[#E4ECE9]" />
+            </div>
+
+            <Link to="/customer/signup" state={nextState} className="inline-flex w-full items-center justify-center rounded-xl border border-[#78B8B2] px-5 py-2.5 text-sm font-bold text-[#14545A] transition hover:bg-[#F1FAF8]">
+              Create Account
+            </Link>
+
+            <p className="pt-1 text-center text-xs text-[#718387]">
+              Review our{" "}
+              <button type="button" onClick={() => setPolicyDocument("terms")} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Terms and Conditions</button>
+              {" "}and{" "}
+              <button type="button" onClick={() => setPolicyDocument("privacy")} className="ui-hover-lift inline-flex whitespace-nowrap rounded-full border border-[#D9E7E7] bg-[#F5FAFA] px-2.5 py-1 font-semibold text-[#2D6B73] transition hover:border-[#78B8B2] hover:bg-[#EAF7F7] active:bg-[#DDF1EF] motion-reduce:transition-none">Privacy Policy</button>.
+            </p>
+          </form>
+
+          {feedback.message && (
+            <p
+              className={`mt-5 rounded-lg px-4 py-2.5 text-sm font-medium ${
+                feedback.type === "error"
+                  ? "bg-[#FBECEF] text-[#B23949]"
+                  : "bg-[#EAF7F7] text-[#2D6B73]"
+              }`}
+            >
+              {feedback.message}
+            </p>
+          )}
+        </motion.section>
+      </div>
+      {policyDocument && <PolicyDialog documentType={policyDocument} onClose={() => setPolicyDocument(null)} />}
+    </div>
+  );
+}

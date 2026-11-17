@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /customer/
+Disallow: /portal/
+Disallow: /admin/
+Disallow: /staff/
+Disallow: /dashboard
+Disallow: /verify-otp
+Disallow: /activate-account
+Disallow: /reset-password
+Disallow: /forgot-password
+
+Sitemap: https://www.charmingfurfectionpetscareservices.online/sitemap.xml

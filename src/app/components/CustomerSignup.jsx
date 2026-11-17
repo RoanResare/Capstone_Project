@@ -1,0 +1,473 @@
+import { useEffect, useRef, useState } from "react";
+import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
+import { motion } from "motion/react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, UserPlus, X } from "lucide-react";
+import { AuthHeroPanel } from "./AuthHeroPanel.jsx";
+import { AuthPageBackdrop } from "./AuthPageBackdrop.jsx";
+import { PolicyDialog } from "./PolicyDialog.jsx";
+import { privacyPolicyText, termsAndConditionsText } from "../utils/policyDocuments.js";
+import { canAcceptPolicyAgreement } from "../utils/policyAgreement.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { resolveHomePath } from "../utils/roleUtils.js";
+import { getPasswordPolicyError } from "../utils/passwordPolicy.js";
+import { getPhoneSubscriberInput, normalizePhilippineMobileNumber, PH_MOBILE_ERROR } from "../utils/phoneNumber.js";
+import { checkCustomerVerificationStatus, resendCustomerEmailVerification } from "../services/authApi.js";
+
+function getPasswordStrength(password = "") {
+  const checks = [
+    password.length >= 6,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+    /\d/.test(password),
+  ];
+  const score = checks.filter(Boolean).length;
+
+  if (!password) return { label: "Not started", width: "0%", color: "bg-[#D8E8EA]" };
+  if (score <= 2) return { label: "Weak", width: "33%", color: "bg-[#D85757]" };
+  if (score <= 4) return { label: "Good", width: "66%", color: "bg-[#F0AA3D]" };
+  return { label: "Strong", width: "100%", color: "bg-[#2D9B6F]" };
+}
+
+export function CustomerSignup() {
+  const navigate = useNavigate();
+  const {
+    currentUser,
+    supabaseConfigError,
+    homePath,
+    isAuthenticated,
+    isLoading,
+    isOnline,
+    signUp,
+  } = useAuth();
+  const [form, setForm] = useState({
+    fullName: "",
+    username: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [textErrors, setTextErrors] = useState({});
+  const [verificationDialog, setVerificationDialog] = useState(null);
+  const [verificationAction, setVerificationAction] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [policyDocument, setPolicyDocument] = useState(null);
+  const [termsRead, setTermsRead] = useState(false);
+  const [privacyRead, setPrivacyRead] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsReady, setTermsReady] = useState(false);
+  const submissionInFlightRef = useRef(false);
+  const registrationCompletedRef = useRef(false);
+  const passwordStrength = getPasswordStrength(form.password);
+  const passwordPolicyError = form.password ? getPasswordPolicyError(form.password) : "";
+  const canAgree = canAcceptPolicyAgreement({ termsRead, privacyRead, accepted: termsAccepted });
+
+  useEffect(() => {
+    setTermsRead(false);
+    setPrivacyRead(false);
+    setTermsAccepted(false);
+    setTermsReady(false);
+  }, [termsAndConditionsText, privacyPolicyText]);
+
+  if (!isLoading && isAuthenticated && currentUser) {
+    return <Navigate to={homePath || resolveHomePath(currentUser.role)} replace />;
+  }
+
+  const handleChange = (field) => (event) => {
+    const value = field === "phone"
+      ? getPhoneSubscriberInput(event.target.value)
+      : event.target.value;
+    setForm((current) => ({ ...current, [field]: value }));
+    setTextErrors((current) => ({ ...current, [field]: undefined }));
+    setFeedback((current) => current.type === "error" ? { type: "", message: "" } : current);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (submissionInFlightRef.current || registrationCompletedRef.current) {
+      return;
+    }
+
+    // Password managers can update input values without dispatching onChange.
+    // Snapshot before disabling inputs or opening terms, which causes a rerender.
+    // Preserve passwords exactly; trimming would change the user's credentials.
+    const submittedForm = Object.fromEntries(new FormData(event.currentTarget));
+    setForm(submittedForm);
+
+    if (!termsReady) {
+      setPolicyDocument("combined");
+      setFeedback({ type: "", message: "" });
+      return;
+    }
+
+    const textErrors = getTextValidationErrors(submittedForm, ACCOUNT_TEXT_FIELDS);
+    setTextErrors(textErrors);
+    if (Object.keys(textErrors).length) {
+      return;
+    }
+
+    submissionInFlightRef.current = true;
+    setIsSubmitting(true);
+    setFeedback({ type: "", message: "" });
+
+    try {
+      const normalizedPhone = normalizePhilippineMobileNumber(submittedForm.phone);
+      if (!normalizedPhone) {
+        setFeedback({
+          type: "error",
+          message: PH_MOBILE_ERROR,
+        });
+        return;
+      }
+
+      if (!canAcceptPolicyAgreement({ termsRead, privacyRead, accepted: termsAccepted })) {
+        setTermsReady(false);
+        setPolicyDocument("combined");
+        return;
+      }
+
+      const result = await signUp({
+        fullName: submittedForm.fullName,
+        username: submittedForm.username,
+        email: submittedForm.email,
+        phone: normalizedPhone,
+        password: submittedForm.password,
+        confirmPassword: submittedForm.confirmPassword,
+        termsAndConditionsAccepted: true,
+        privacyPolicyAccepted: true,
+      });
+
+      if (!result.ok) {
+        setFeedback({ type: "error", message: result.error });
+        return;
+      }
+
+      if (result.verificationRequired) {
+        registrationCompletedRef.current = true;
+        setForm((current) => ({ ...current, password: "", confirmPassword: "" }));
+        setVerificationDialog({ email: result.email, statusChallenge: result.statusChallenge, deliveryStatus: result.deliveryStatus,
+          message: result.message, statusMessage: result.deliveryStatus === "sent"
+            ? "Verification email sent. Your account is waiting for email verification."
+            : "Your account is waiting for email verification. Email delivery did not complete; try resending shortly." });
+        return;
+      }
+
+      navigate(result.homePath || "/customer/dashboard", { replace: true });
+    } finally {
+      submissionInFlightRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerificationStatus = async () => {
+    if (!verificationDialog?.statusChallenge || verificationAction) return;
+    setVerificationAction("checking");
+    try {
+      const result = await checkCustomerVerificationStatus(verificationDialog.statusChallenge);
+      if (result.status === "verified") {
+        navigate("/login?emailVerified=1", { replace: true });
+      } else {
+        setVerificationDialog((current) => ({ ...current,
+          statusMessage: "Your email is still awaiting verification. Open the verification email and follow its link before signing in." }));
+      }
+    } catch (error) {
+      setVerificationDialog((current) => ({ ...current, statusMessage: error.message || "Unable to check verification status right now." }));
+    } finally {
+      setVerificationAction("");
+    }
+  };
+
+  const handleVerificationResend = async () => {
+    if (!verificationDialog?.email || verificationAction) return;
+    setVerificationAction("resending");
+    try {
+      const result = await resendCustomerEmailVerification(verificationDialog.email);
+      setVerificationDialog((current) => ({ ...current, deliveryStatus: result.deliveryStatus,
+        statusMessage: result.deliveryStatus === "sent"
+          ? "A new verification email was sent. Your account is still pending until you follow its link."
+          : result.message || "No verification email was sent. Please wait and try again." }));
+    } catch (error) {
+      setVerificationDialog((current) => ({ ...current, statusMessage: error.message || "Unable to resend the verification email right now." }));
+    } finally {
+      setVerificationAction("");
+    }
+  };
+
+  return (
+    <div className="relative isolate min-h-[calc(100vh-5rem)] bg-[#F6F0E7] px-4 py-6 sm:px-6 lg:py-8">
+      {verificationDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#172C31]/60 px-4 py-6" role="presentation">
+          <section role="dialog" aria-modal="true" aria-labelledby="verify-email-title" className="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="verify-email-title" className="text-2xl font-extrabold text-[#07545A]">Verify Your Email</h2>
+                <p className="mt-3 text-sm leading-6 text-[#526B70]">We've sent a verification email to your email address. Please check your inbox and follow the instructions to activate your account.</p>
+              </div>
+              <button type="button" onClick={() => setVerificationDialog(null)} className="rounded-full p-2 text-[#607277] hover:bg-[#F3F8F8]" aria-label="Close verification dialog"><X size={19} /></button>
+            </div>
+            <p role="status" aria-live="polite" className={`mt-4 rounded-2xl px-4 py-3 text-sm ${verificationDialog.deliveryStatus === "sent" ? "bg-[#EAF7F7] text-[#2D6B73]" : "bg-[#FFF6E6] text-[#805A12]"}`}>{verificationDialog.statusMessage}</p>
+            <div className="mt-6 grid gap-3">
+              <a href="https://mail.google.com/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white">Open Gmail</a>
+              <button type="button" onClick={handleVerificationStatus} disabled={Boolean(verificationAction)} className="min-h-12 rounded-2xl bg-[#173E44] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{verificationAction === "checking" ? "Checking..." : "I've Verified My Email / Continue to Login"}</button>
+              <button type="button" onClick={handleVerificationResend} disabled={Boolean(verificationAction)} className="min-h-12 rounded-2xl border border-[#D9E7E7] px-5 py-3 text-sm font-semibold text-[#2D6B73] disabled:opacity-60">{verificationAction === "resending" ? "Resending..." : "Resend Verification Email"}</button>
+            </div>
+          </section>
+        </div>
+      )}
+      <AuthPageBackdrop />
+      <div className="relative z-10 mx-auto grid w-full min-w-0 max-w-[1320px] items-start gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:gap-6">
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55 }}
+          className="order-1 min-w-0 lg:order-1"
+        >
+          <AuthHeroPanel />
+        </motion.div>
+
+        <motion.section
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55, delay: 0.08 }}
+          className="order-2 min-w-0 rounded-[24px] bg-white p-5 shadow-[0_22px_50px_rgba(94,81,60,0.16)] sm:p-6 lg:order-2 lg:p-7"
+        >
+          <div className="mb-5 text-center">
+            <h1 className="text-3xl font-extrabold text-[#07545A]">Create Account</h1>
+            <p className="mt-2 text-sm text-[#607277]">Join us to manage your pet care and appointments.</p>
+          </div>
+          <form noValidate onSubmit={handleSubmit} className="space-y-4">
+            {supabaseConfigError && (
+              <div className="rounded-[22px] border border-[#FFF0CC] bg-[#FFF9EA] px-4 py-4 text-sm text-[#8A6410]">
+                Supabase client setup is incomplete. Fill the `VITE_SUPABASE_*` values in the
+                root `.env` to finish the sign-up flow.
+              </div>
+            )}
+            {!isOnline && (
+              <div className="rounded-[22px] border border-[#D8E8EA] bg-[#F5FAFA] px-4 py-4 text-sm text-[#48656A]">
+            You are offline. Reconnect before registering so we can securely send your activation link.
+              </div>
+            )}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Full name</label>
+              <input
+                name="fullName"
+                value={form.fullName}
+                aria-invalid={Boolean(textErrors.fullName)} aria-describedby={textErrors.fullName ? "signup-name-error" : undefined}
+                autoComplete="name"
+                onChange={handleChange("fullName")}
+                disabled={isSubmitting}
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
+                placeholder="Enter your full name"
+              />
+              {textErrors.fullName && <p id="signup-name-error" role="alert" className="mt-2 text-sm text-[#B23949]">{textErrors.fullName}</p>}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">Email</label>
+              <input
+                name="email"
+                type="email"
+                value={form.email}
+                autoComplete="email"
+                onChange={handleChange("email")}
+                disabled={isSubmitting}
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">
+                Username
+              </label>
+              <input
+                name="username"
+                value={form.username}
+                aria-invalid={Boolean(textErrors.username)} aria-describedby={textErrors.username ? "signup-username-error" : undefined}
+                autoComplete="username"
+                onChange={handleChange("username")}
+                disabled={isSubmitting}
+                className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
+                placeholder="Choose a profile username"
+              />
+              {textErrors.username && <p id="signup-username-error" role="alert" className="mt-2 text-sm text-[#B23949]">{textErrors.username}</p>}
+              <p className="mt-2 text-xs text-[#7A9297]">
+                This username is stored on your customer profile. You can use it or your email to
+                sign in.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#415D62]">
+                Phone number
+              </label>
+              <label className="flex overflow-hidden rounded-[20px] border border-[#D9E7E7] bg-white transition focus-within:border-[#2D9B9B]">
+                <span className="shrink-0 border-r border-[#E2ECEC] bg-[#F6FAFA] px-4 py-2.5 text-sm font-semibold text-[#33545A]">
+                  +63
+                </span>
+                <input
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleChange("phone")}
+                  disabled={isSubmitting}
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="9[0-9]{9}"
+                  maxLength={10}
+                  autoComplete="tel"
+                  className="min-w-0 flex-1 px-4 py-2.5 outline-none"
+                  placeholder="9XXXXXXXXX"
+                />
+              </label>
+              <p className="mt-2 text-xs text-[#7A9297]">
+                Format: +63 9XXXXXXXXX or 09XXXXXXXXX. A phone number can be used for up to 3 accounts.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#415D62]">Password</label>
+                <div className="relative">
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    autoComplete="new-password"
+                    onChange={handleChange("password")}
+                    disabled={isSubmitting}
+                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Create a password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-[#607277]">
+                  Use at least 6 characters with uppercase, lowercase, and a special character.
+                </p>
+                <div className="mt-3">
+                  <div className="h-2 overflow-hidden rounded-full bg-[#E7F0F0]">
+                    <div
+                      className={`h-full rounded-full transition-all ${passwordStrength.color}`}
+                      style={{ width: passwordStrength.width }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-[#607277]">
+                    Password strength: {passwordStrength.label}
+                    {passwordPolicyError ? ` - ${passwordPolicyError}` : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#415D62]">
+                  Confirm password
+                </label>
+                <div className="relative">
+                  <input
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={form.confirmPassword}
+                    autoComplete="new-password"
+                    onChange={handleChange("confirmPassword")}
+                    disabled={isSubmitting}
+                    className="w-full rounded-[20px] border border-[#D9E7E7] px-4 py-2.5 pr-12 outline-none transition focus:border-[#2D9B9B]"
+                    placeholder="Repeat your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((visible) => !visible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#607277]"
+                    aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-[#718387]">
+              Review{" "}
+              <button type="button" onClick={() => setPolicyDocument("combined")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Terms and Conditions</button>
+              {" "}and{" "}
+              <button type="button" onClick={() => setPolicyDocument("combined")} className="font-semibold text-[#2D6B73] underline underline-offset-2">Privacy Policy</button>.
+            </p>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="ui-hover-lift inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2D9B9B] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#288A8A] hover:shadow-md motion-reduce:transition-none"
+            >
+              {isSubmitting ? "Creating account..." : "Create account"}
+              <UserPlus size={16} />
+            </button>
+
+            <div className="grid gap-3 text-sm">
+              <Link
+                to="/login"
+                className="ui-hover-lift inline-flex min-h-11 w-full items-center justify-center rounded-full border border-[#78B8B2] bg-white px-5 py-2.5 text-center font-semibold text-[#14545A] shadow-sm transition hover:border-[#4EAAA4] hover:bg-[#F1FAF8] hover:shadow-md motion-reduce:transition-none"
+              >
+                Already have an account? Log In
+              </Link>
+            </div>
+          </form>
+
+          {feedback.message && (
+            <p
+              role={feedback.type === "error" ? "alert" : "status"}
+              aria-live="polite"
+              className={`mt-5 rounded-[22px] px-4 py-2.5 text-sm font-medium ${
+                feedback.type === "error"
+                  ? "bg-[#FBECEF] text-[#B23949]"
+                  : "bg-[#EAF7F7] text-[#2D6B73]"
+              }`}
+            >
+              {feedback.message}
+            </p>
+          )}
+          {feedback.type === "success" && feedback.email && (
+            <Link to={`/activate-account?email=${encodeURIComponent(feedback.email)}`} className="mt-3 inline-flex text-sm font-semibold text-[#2D6B73] underline underline-offset-4">
+              Link expired or missing? Request another activation link
+            </Link>
+          )}
+        </motion.section>
+      </div>
+      {policyDocument && (
+        <PolicyDialog
+          documentType={policyDocument}
+          onClose={() => setPolicyDocument(null)}
+          onReachedBottom={() => { setTermsRead(true); setPrivacyRead(true); }}
+          footer={(
+            <div className="shrink-0 pt-3">
+              <label className="flex items-start gap-3 text-sm font-semibold text-[#415D62]">
+                <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} disabled={!termsRead || !privacyRead || isSubmitting} className="mt-1 h-4 w-4 accent-[#2D9B9B] disabled:cursor-not-allowed" />
+                <span>I have read and agree to the Terms and Conditions and Privacy Policy.</span>
+              </label>
+              {(!termsRead || !privacyRead) && <p className="mt-2 text-xs text-[#7A9297]">Scroll to the bottom of both documents before continuing.</p>}
+              <button
+                type="button"
+                disabled={!canAgree || isSubmitting}
+                onClick={() => { setTermsReady(true); setPolicyDocument(null); setFeedback({ type: "", message: "" }); }}
+                className="mt-4 w-full rounded-xl bg-[#2D9B9B] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Agree and continue
+              </button>
+            </div>
+          )}
+        />
+      )}
+    </div>
+  );
+}

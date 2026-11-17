@@ -1,0 +1,25 @@
+import * as postgres from "./postgresBrowser.js";
+
+const provider = (import.meta.env.VITE_DATABASE_PROVIDER || "postgres").trim().toLowerCase();
+if (provider !== "postgres") throw new Error("Only the Supabase PostgreSQL database provider is supported.");
+const database = postgres;
+export const isPostgresEnabled = true;
+export const collection = (...args) => database.collection(...args);
+export const doc = (...args) => database.doc(...args);
+export const query = (...args) => database.query(...args);
+export const where = (...args) => database.where(...args);
+export const orderBy = (...args) => database.orderBy(...args);
+export const limit = (...args) => database.limit(...args);
+export const startAfter = (...args) => database.startAfter(...args);
+export const getDoc = (...args) => database.getDoc(...args);
+export const getDocs = (...args) => database.getDocs(...args);
+export const getDocFromCache = (...args) => database.getDocFromCache(...args);
+export const setDoc = (...args) => database.setDoc(...args);
+export const updateDoc = (...args) => database.updateDoc(...args);
+export const deleteDoc = (...args) => database.deleteDoc(...args);
+export const writeBatch = (...args) => database.writeBatch(...args);
+export const serverTimestamp = (...args) => database.serverTimestamp(...args);
+export const deleteField = (...args) => database.deleteField(...args);
+export const arrayUnion = (...args) => database.arrayUnion(...args);
+export const onSnapshot = (...args) => database.onSnapshot(...args);
+export const runTransaction = (...args) => database.runTransaction(...args);

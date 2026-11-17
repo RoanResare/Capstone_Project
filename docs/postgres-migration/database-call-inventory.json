@@ -1,0 +1,2242 @@
+{
+  "note": "Static call-site inventory; nearestDeclaration is a navigation hint, not AST scope resolution. Runtime collections are allowlisted; export discovers unreferenced subcollections too.",
+  "tables": {
+    "users": "users",
+    "usernames": "usernames",
+    "appointments": "appointments",
+    "pets": "pets",
+    "deletedPets": "deleted_pets",
+    "availabilitySlots": "availability_slots",
+    "notifications": "notifications",
+    "photoModeration": "photo_moderation",
+    "lowCostKaponPromo": "low_cost_kapon_promo",
+    "promotionDetails": "promotion_details",
+    "servicePricelists": "service_pricelists",
+    "sessionSecurity": "session_security",
+    "sessionConnections": "session_connections",
+    "authenticationAttempts": "authentication_attempts",
+    "phoneAccountLimits": "phone_account_limits",
+    "admin_staff_otp": "admin_staff_otp",
+    "customers": "customers",
+    "chatbot_faqs": "chatbot_faqs",
+    "services": "services",
+    "timeSlots": "time_slots",
+    "slotManagement": "slot_management_camel",
+    "schedules": "schedules",
+    "slot_management": "slot_management",
+    "revoked_tokens": "revoked_tokens"
+  },
+  "sites": [
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 197,
+      "nearestDeclaration": "customerProfileReference",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 223,
+      "nearestDeclaration": "tryReadCustomerProfileFromCache",
+      "operations": [
+        "getDocFromCache"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 232,
+      "nearestDeclaration": "readCustomerProfileSnapshot",
+      "operations": [
+        "getDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 250,
+      "nearestDeclaration": "writeCustomerProfileSnapshot",
+      "operations": [
+        "setDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 330,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 353,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "getDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 360,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 364,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 369,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 377,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 378,
+      "nearestDeclaration": "upsertCustomerProfileDocument",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 595,
+      "nearestDeclaration": "signInCustomerWithEmailPassword",
+      "operations": [
+        "getDoc",
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 697,
+      "nearestDeclaration": "updateCustomerProfile",
+      "operations": [
+        "deleteField"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 698,
+      "nearestDeclaration": "updateCustomerProfile",
+      "operations": [
+        "deleteField"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 699,
+      "nearestDeclaration": "updateCustomerProfile",
+      "operations": [
+        "deleteField"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 700,
+      "nearestDeclaration": "updateCustomerProfile",
+      "operations": [
+        "deleteField"
+      ]
+    },
+    {
+      "file": "src/app/services/customerAccount.js",
+      "line": 701,
+      "nearestDeclaration": "updateCustomerProfile",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 1,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 8,
+      "nearestDeclaration": "collection",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 9,
+      "nearestDeclaration": "doc",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 11,
+      "nearestDeclaration": "where",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 12,
+      "nearestDeclaration": "orderBy",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 14,
+      "nearestDeclaration": "startAfter",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 15,
+      "nearestDeclaration": "getDoc",
+      "operations": [
+        "getDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 16,
+      "nearestDeclaration": "getDocs",
+      "operations": [
+        "getDocs"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 17,
+      "nearestDeclaration": "getDocFromCache",
+      "operations": [
+        "getDocFromCache"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 18,
+      "nearestDeclaration": "setDoc",
+      "operations": [
+        "setDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 19,
+      "nearestDeclaration": "updateDoc",
+      "operations": [
+        "updateDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 20,
+      "nearestDeclaration": "deleteDoc",
+      "operations": [
+        "deleteDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 21,
+      "nearestDeclaration": "writeBatch",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 22,
+      "nearestDeclaration": "serverTimestamp",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 23,
+      "nearestDeclaration": "deleteField",
+      "operations": [
+        "deleteField"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 24,
+      "nearestDeclaration": "arrayUnion",
+      "operations": [
+        "arrayUnion"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 25,
+      "nearestDeclaration": "onSnapshot",
+      "operations": [
+        "onSnapshot"
+      ]
+    },
+    {
+      "file": "src/app/services/database.js",
+      "line": 26,
+      "nearestDeclaration": "runTransaction",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 139,
+      "nearestDeclaration": "tryReadDocumentFromCache",
+      "operations": [
+        "getDocFromCache"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 154,
+      "nearestDeclaration": "readDocumentSnapshot",
+      "operations": [
+        "getDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 337,
+      "nearestDeclaration": "findUserProfileReference",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 440,
+      "nearestDeclaration": "findEmailForIdentifier",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 462,
+      "nearestDeclaration": "ensureUsernameAvailable",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 498,
+      "nearestDeclaration": "createCustomerUserProfile",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 499,
+      "nearestDeclaration": "createCustomerUserProfile",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 509,
+      "nearestDeclaration": "createCustomerUserProfile",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 510,
+      "nearestDeclaration": "createCustomerUserProfile",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 718,
+      "nearestDeclaration": "updateFirebaseUserProfile",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 722,
+      "nearestDeclaration": "updateFirebaseUserProfile",
+      "operations": [
+        "updateDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/firebaseAuth.js",
+      "line": 725,
+      "nearestDeclaration": "updateFirebaseUserProfile",
+      "operations": [
+        "serverTimestamp"
+      ]
+    },
+    {
+      "file": "src/app/services/kaponPromo.js",
+      "line": 16,
+      "nearestDeclaration": "subscribeKaponPromo",
+      "operations": [
+        "onSnapshot",
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/kaponPromo.js",
+      "line": 33,
+      "nearestDeclaration": "refresh",
+      "operations": [
+        "getDoc",
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/kaponPromo.js",
+      "line": 73,
+      "nearestDeclaration": "saveKaponPromo",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/kaponPromo.js",
+      "line": 74,
+      "nearestDeclaration": "saveKaponPromo",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 51,
+      "nearestDeclaration": "getDoc",
+      "operations": [
+        "getDoc"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 58,
+      "nearestDeclaration": "getDocFromCache",
+      "operations": [
+        "getDocFromCache"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 73,
+      "nearestDeclaration": "getDocs",
+      "operations": [
+        "getDocs"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 79,
+      "nearestDeclaration": "bounded",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 87,
+      "nearestDeclaration": "writeBatch",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 97,
+      "nearestDeclaration": "setDoc",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 98,
+      "nearestDeclaration": "updateDoc",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 99,
+      "nearestDeclaration": "updateDoc",
+      "operations": [
+        "writeBatch"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 100,
+      "nearestDeclaration": "runTransaction",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 102,
+      "nearestDeclaration": "onSnapshot",
+      "operations": [
+        "onSnapshot"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 120,
+      "nearestDeclaration": "refresh",
+      "operations": [
+        "getDoc",
+        "getDocs"
+      ]
+    },
+    {
+      "file": "src/app/services/postgresBrowser.js",
+      "line": 141,
+      "nearestDeclaration": "drain",
+      "operations": [
+        "getDoc",
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 111,
+      "nearestDeclaration": "saveDocument",
+      "operations": [
+        "setDoc",
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 126,
+      "nearestDeclaration": "deleteDocument",
+      "operations": [
+        "deleteDoc",
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 148,
+      "nearestDeclaration": "request",
+      "operations": [
+        "getDocs",
+        "collection",
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 281,
+      "nearestDeclaration": "loadRecentNotifications",
+      "operations": [
+        "collection",
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 293,
+      "nearestDeclaration": "loadMoreRecentNotifications",
+      "operations": [
+        "getDocs"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 294,
+      "nearestDeclaration": "loadMoreRecentNotifications",
+      "operations": [
+        "collection",
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 295,
+      "nearestDeclaration": "loadMoreRecentNotifications",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 325,
+      "nearestDeclaration": "loadCustomerNotifications",
+      "operations": [
+        "collection",
+        "where",
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 339,
+      "nearestDeclaration": "request",
+      "operations": [
+        "getDocs"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 366,
+      "nearestDeclaration": "loadFilteredScheduleDocuments",
+      "operations": [
+        "getDocs"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 439,
+      "nearestDeclaration": "start",
+      "operations": [
+        "onSnapshot",
+        "collection"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 455,
+      "nearestDeclaration": "start",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 458,
+      "nearestDeclaration": "start",
+      "operations": [
+        "onSnapshot",
+        "collection"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 459,
+      "nearestDeclaration": "start",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 491,
+      "nearestDeclaration": "subscribeNotifications",
+      "operations": [
+        "onSnapshot"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 492,
+      "nearestDeclaration": "subscribeNotifications",
+      "operations": [
+        "collection",
+        "orderBy"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 637,
+      "nearestDeclaration": "refresh",
+      "operations": [
+        "onSnapshot",
+        "collection"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 667,
+      "nearestDeclaration": "markNotificationReadDocument",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "src/app/services/scheduleData.js",
+      "line": 668,
+      "nearestDeclaration": "markNotificationReadDocument",
+      "operations": [
+        "updateDoc",
+        "arrayUnion"
+      ]
+    },
+    {
+      "file": "src/firebase.js",
+      "line": 10,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "src/firebase.js",
+      "line": 11,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "server/src/config/firebaseAdmin.js",
+      "line": 1,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "server/src/config/firebaseAdmin.js",
+      "line": 2,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "server/src/config/firebaseAdmin.js",
+      "line": 3,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "server/src/config/firebaseAdmin.js",
+      "line": 4,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 22,
+      "nearestDeclaration": "saveAppointment",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 24,
+      "nearestDeclaration": "saveAppointment",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 27,
+      "nearestDeclaration": "saveAppointment",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 133,
+      "nearestDeclaration": "saveAppointment",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 141,
+      "nearestDeclaration": "saveAppointment",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 180,
+      "nearestDeclaration": "saveAppointment",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 202,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 203,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 204,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 208,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 222,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 228,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 239,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 240,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 245,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 246,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 277,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/appointment.controller.js",
+      "line": 303,
+      "nearestDeclaration": "choice",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 17,
+      "nearestDeclaration": "savePet",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 18,
+      "nearestDeclaration": "savePet",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 20,
+      "nearestDeclaration": "savePet",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 50,
+      "nearestDeclaration": "deletePet",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 52,
+      "nearestDeclaration": "deletePet",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 58,
+      "nearestDeclaration": "deletePet",
+      "operations": [
+        "collection",
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 60,
+      "nearestDeclaration": "deletePet",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pet.controller.js",
+      "line": 61,
+      "nearestDeclaration": "deletePet",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pricelist.controller.js",
+      "line": 18,
+      "nearestDeclaration": "savePricelist",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/pricelist.controller.js",
+      "line": 20,
+      "nearestDeclaration": "savePricelist",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/promo.controller.js",
+      "line": 21,
+      "nearestDeclaration": "saveKaponPromo",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/promo.controller.js",
+      "line": 22,
+      "nearestDeclaration": "saveKaponPromo",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/promo.controller.js",
+      "line": 23,
+      "nearestDeclaration": "saveKaponPromo",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 72,
+      "nearestDeclaration": "createCustomerProfile",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 73,
+      "nearestDeclaration": "createCustomerProfile",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 74,
+      "nearestDeclaration": "createCustomerProfile",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 80,
+      "nearestDeclaration": "createCustomerProfile",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 101,
+      "nearestDeclaration": "createCustomerProfile",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 140,
+      "nearestDeclaration": "activatePendingProfile",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 148,
+      "nearestDeclaration": "activatePendingProfile",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 154,
+      "nearestDeclaration": "activatePendingProfile",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 160,
+      "nearestDeclaration": "activatePendingProfile",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/registration.controller.js",
+      "line": 191,
+      "nearestDeclaration": "notSent",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 24,
+      "nearestDeclaration": "slotReference",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 38,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 45,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 46,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 47,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 53,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 54,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 55,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 87,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 90,
+      "nearestDeclaration": "persistSlotChange",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 105,
+      "nearestDeclaration": "listAvailabilitySlots",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 106,
+      "nearestDeclaration": "listAvailabilitySlots",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "server/src/controllers/schedule.controller.js",
+      "line": 110,
+      "nearestDeclaration": "listAvailabilitySlots",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 16,
+      "nearestDeclaration": "createPostgresDatabase",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 17,
+      "nearestDeclaration": "createPostgresDatabase",
+      "operations": [
+        "doc",
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 18,
+      "nearestDeclaration": "createPostgresDatabase",
+      "operations": [
+        "getAll"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 19,
+      "nearestDeclaration": "createPostgresDatabase",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 20,
+      "nearestDeclaration": "createPostgresDatabase",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 50,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 51,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 52,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 56,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 57,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 58,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 60,
+      "nearestDeclaration": "snapshot",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "server/src/database/postgres.js",
+      "line": 142,
+      "nearestDeclaration": "writeBuffer",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/database/values.js",
+      "line": 1,
+      "nearestDeclaration": "module",
+      "operations": []
+    },
+    {
+      "file": "server/src/database/values.js",
+      "line": 27,
+      "nearestDeclaration": "decode",
+      "operations": [
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/routes/database.routes.js",
+      "line": 42,
+      "nearestDeclaration": "validateReference",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/routes/database.routes.js",
+      "line": 82,
+      "nearestDeclaration": "publicPayload",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/routes/database.routes.js",
+      "line": 83,
+      "nearestDeclaration": "publicPayload",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/routes/database.routes.js",
+      "line": 84,
+      "nearestDeclaration": "publicPayload",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "server/src/routes/database.routes.js",
+      "line": 85,
+      "nearestDeclaration": "publicPayload",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "server/src/routes/database.routes.js",
+      "line": 106,
+      "nearestDeclaration": "applyTransforms",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 32,
+      "nearestDeclaration": "markAppointmentNoShow",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 39,
+      "nearestDeclaration": "markAppointmentNoShow",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 42,
+      "nearestDeclaration": "markAppointmentNoShow",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 82,
+      "nearestDeclaration": "markPastAppointmentsNoShow",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 83,
+      "nearestDeclaration": "markPastAppointmentsNoShow",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 84,
+      "nearestDeclaration": "markPastAppointmentsNoShow",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 85,
+      "nearestDeclaration": "markPastAppointmentsNoShow",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentNoShow.service.js",
+      "line": 87,
+      "nearestDeclaration": "markPastAppointmentsNoShow",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentReminder.service.js",
+      "line": 27,
+      "nearestDeclaration": "run",
+      "operations": [
+        "collection",
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentReminder.service.js",
+      "line": 32,
+      "nearestDeclaration": "run",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentReminder.service.js",
+      "line": 36,
+      "nearestDeclaration": "run",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentReminder.service.js",
+      "line": 52,
+      "nearestDeclaration": "run",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/appointmentReminder.service.js",
+      "line": 62,
+      "nearestDeclaration": "run",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/authAttempts.service.js",
+      "line": 10,
+      "nearestDeclaration": "attemptReference",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/authAttempts.service.js",
+      "line": 35,
+      "nearestDeclaration": "recordFailedAttempt",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/authAttempts.service.js",
+      "line": 51,
+      "nearestDeclaration": "resetAttempts",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 35,
+      "nearestDeclaration": "getLatestOtpRecordForUser",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 36,
+      "nearestDeclaration": "getLatestOtpRecordForUser",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 37,
+      "nearestDeclaration": "getLatestOtpRecordForUser",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 53,
+      "nearestDeclaration": "getLatestOtpRecordForUser",
+      "operations": [
+        "collection",
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 69,
+      "nearestDeclaration": "getOpenOtpDocumentsForUser",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 70,
+      "nearestDeclaration": "getOpenOtpDocumentsForUser",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 71,
+      "nearestDeclaration": "getOpenOtpDocumentsForUser",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 86,
+      "nearestDeclaration": "getOpenOtpDocumentsForUser",
+      "operations": [
+        "collection",
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 130,
+      "nearestDeclaration": "invalidateOpenOtpsForUser",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 155,
+      "nearestDeclaration": "createOtpVerification",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 187,
+      "nearestDeclaration": "verifyOtpCode",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/otp.service.js",
+      "line": 190,
+      "nearestDeclaration": "verifyOtpCode",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/pendingRegistrationCleanup.service.js",
+      "line": 11,
+      "nearestDeclaration": "purgeExpiredPendingRegistrations",
+      "operations": [
+        "collection",
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/pendingRegistrationCleanup.service.js",
+      "line": 16,
+      "nearestDeclaration": "purgeExpiredPendingRegistrations",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/pendingRegistrationCleanup.service.js",
+      "line": 35,
+      "nearestDeclaration": "purgeExpiredPendingRegistrations",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/pendingRegistrationCleanup.service.js",
+      "line": 40,
+      "nearestDeclaration": "purgeExpiredPendingRegistrations",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/phoneAccounts.service.js",
+      "line": 11,
+      "nearestDeclaration": "findPhoneAccounts",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/pricelists.service.js",
+      "line": 7,
+      "nearestDeclaration": "loadPricelists",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/pricelists.service.js",
+      "line": 8,
+      "nearestDeclaration": "loadPricelists",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/pricelists.service.js",
+      "line": 9,
+      "nearestDeclaration": "loadPricelists",
+      "operations": [
+        "getAll"
+      ]
+    },
+    {
+      "file": "server/src/services/scheduleRecords.service.js",
+      "line": 16,
+      "nearestDeclaration": "listRecords",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/scheduleRecords.service.js",
+      "line": 21,
+      "nearestDeclaration": "listRecords",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/scheduleRecords.service.js",
+      "line": 28,
+      "nearestDeclaration": "listRecords",
+      "operations": [
+        "orderBy"
+      ]
+    },
+    {
+      "file": "server/src/services/scheduleRecords.service.js",
+      "line": 29,
+      "nearestDeclaration": "listRecords",
+      "operations": [
+        "startAfter"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 176,
+      "nearestDeclaration": "revokeUserSession",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 179,
+      "nearestDeclaration": "revokeUserSession",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 193,
+      "nearestDeclaration": "revokeUserSession",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 216,
+      "nearestDeclaration": "assertTokenNotRevoked",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 241,
+      "nearestDeclaration": "createFreshSessionBinding",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 273,
+      "nearestDeclaration": "validateSessionSecurity",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 295,
+      "nearestDeclaration": "waitForFreshSession",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/sessionSecurity.service.js",
+      "line": 303,
+      "nearestDeclaration": "waitForFreshSession",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 147,
+      "nearestDeclaration": "getUserByUid",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 151,
+      "nearestDeclaration": "getUserByUid",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 152,
+      "nearestDeclaration": "getUserByUid",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 167,
+      "nearestDeclaration": "getUsernameOwner",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 230,
+      "nearestDeclaration": "writeUsernameIndex",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 255,
+      "nearestDeclaration": "deleteUsernameIndex",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 266,
+      "nearestDeclaration": "findUsernameIndexesByUid",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 267,
+      "nearestDeclaration": "findUsernameIndexesByUid",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 281,
+      "nearestDeclaration": "getUserByEmail",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 282,
+      "nearestDeclaration": "getUserByEmail",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 302,
+      "nearestDeclaration": "getUserByPhone",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 303,
+      "nearestDeclaration": "getUserByPhone",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 311,
+      "nearestDeclaration": "getUserByPhone",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 334,
+      "nearestDeclaration": "findUserByEmailCaseInsensitive",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 358,
+      "nearestDeclaration": "getUserByUsername",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 359,
+      "nearestDeclaration": "getUserByUsername",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 367,
+      "nearestDeclaration": "getUserByUsername",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 390,
+      "nearestDeclaration": "relinkUserProfileToUid",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 391,
+      "nearestDeclaration": "relinkUserProfileToUid",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 404,
+      "nearestDeclaration": "relinkUserProfileToUid",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 409,
+      "nearestDeclaration": "relinkUserProfileToUid",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 444,
+      "nearestDeclaration": "pickAvailableUsername",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 482,
+      "nearestDeclaration": "repairPortalUserConsistency",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 491,
+      "nearestDeclaration": "repairPortalUserConsistency",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 497,
+      "nearestDeclaration": "repairPortalUserConsistency",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 516,
+      "nearestDeclaration": "repairPortalUserConsistency",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 590,
+      "nearestDeclaration": "listPortalUsers",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 591,
+      "nearestDeclaration": "listPortalUsers",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 636,
+      "nearestDeclaration": "touchLastLogin",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 646,
+      "nearestDeclaration": "updateStoredPasswordHash",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 731,
+      "nearestDeclaration": "createPortalUser",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 732,
+      "nearestDeclaration": "createPortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 739,
+      "nearestDeclaration": "createPortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 761,
+      "nearestDeclaration": "createPortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 879,
+      "nearestDeclaration": "updatePortalUser",
+      "operations": [
+        "runTransaction"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 880,
+      "nearestDeclaration": "updatePortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 881,
+      "nearestDeclaration": "updatePortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 920,
+      "nearestDeclaration": "updatePortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 979,
+      "nearestDeclaration": "purgeExpiredInactivePortalUsers",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 980,
+      "nearestDeclaration": "purgeExpiredInactivePortalUsers",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 1040,
+      "nearestDeclaration": "updateOwnUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 1148,
+      "nearestDeclaration": "deletePortalUser",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 1149,
+      "nearestDeclaration": "deletePortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 1152,
+      "nearestDeclaration": "deletePortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/src/services/user.service.js",
+      "line": 1156,
+      "nearestDeclaration": "deletePortalUser",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/scripts/backfillUsernames.js",
+      "line": 22,
+      "nearestDeclaration": "main",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/scripts/backfillUsernames.js",
+      "line": 41,
+      "nearestDeclaration": "main",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/scripts/backfillUsernames.js",
+      "line": 52,
+      "nearestDeclaration": "main",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/scripts/postgresMigration.js",
+      "line": 39,
+      "nearestDeclaration": "exportFirestore",
+      "operations": []
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 55,
+      "nearestDeclaration": "getUsernameRecordForUid",
+      "operations": [
+        "collection"
+      ]
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 56,
+      "nearestDeclaration": "getUsernameRecordForUid",
+      "operations": [
+        "where"
+      ]
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 84,
+      "nearestDeclaration": "pickAvailableUsername",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 132,
+      "nearestDeclaration": "main",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 171,
+      "nearestDeclaration": "main",
+      "operations": [
+        "batch"
+      ]
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 174,
+      "nearestDeclaration": "main",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    },
+    {
+      "file": "server/scripts/repairUserProfiles.js",
+      "line": 186,
+      "nearestDeclaration": "main",
+      "operations": [
+        "collection",
+        "doc"
+      ]
+    }
+  ]
+}

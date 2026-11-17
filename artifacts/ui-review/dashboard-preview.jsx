@@ -1,0 +1,12 @@
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import '../../src/styles/index.css';
+import {CustomerProfile} from '../../src/app/components/CustomerProfile.jsx';
+import {CustomerSignup} from '../../src/app/components/CustomerSignup.jsx';
+import {Login} from '../../src/app/components/Login.jsx';
+import {Home} from '../../src/app/components/Home.jsx';
+import {Layout} from '../../src/app/components/Layout.jsx';
+const params=new URLSearchParams(location.search), screen=params.get('screen'), tab=params.get('tab');
+const path=screen==='signup'?'/customer/signup':screen==='login'?'/login':screen==='home'?'/':'/customer/dashboard'+(tab?'?tab='+tab:'');
+createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={[path]}><Routes><Route element={<Layout/>}><Route path="/customer/dashboard" element={<CustomerProfile/>}/><Route path="/customer/signup" element={<CustomerSignup/>}/><Route path="/login" element={<Login/>}/><Route path="/" element={<Home/>}/></Route></Routes></MemoryRouter>);

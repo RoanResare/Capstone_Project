@@ -1460,7 +1460,7 @@ export function CustomerProfile() {
                           {selectedAppointment.notes || "No additional notes."}
                         </p>
                       </div>
-                      {["Pending", "Confirmed", "Accepted"].includes(selectedAppointment.status) &&
+                      {["Confirmed", "Accepted", "Approved"].includes(selectedAppointment.status) &&
                         profileForm.status === "active" && (
                           <button
                             type="button"

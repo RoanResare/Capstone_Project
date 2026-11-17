@@ -2472,7 +2472,7 @@ export function AppProvider({ children }) {
         type: "UPDATE_APPOINTMENT",
         payload: { id, updates: nextUpdates },
         meta: {
-          actorName: actorName || currentUser?.name || "System User",
+          actorName: actorName || currentUser?.fullName || currentUser?.name || "System User",
           actorRole: currentUser?.role || "customer",
         },
       });

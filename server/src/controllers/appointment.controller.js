@@ -17,11 +17,16 @@ function normalizeAppointmentStatus(status = "") {
   return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "Pending";
 }
 
+function appointmentActorFullName(actor = {}) {
+  return [actor.fullName, actor.full_name, actor.name]
+    .find((value) => typeof value === "string" && value.trim())?.trim() || "Unknown account";
+}
+
 function buildAppointmentAuditEvent({ isNew, previous, appointment, actor, createdAt }) {
   if (isNew) {
     return {
       status: normalizeAppointmentStatus(appointment.status), action: "Appointment created", changedFields: [],
-      actorId: actor.uid, actorName: actor.fullName || actor.name || actor.username || actor.uid, actorRole: actor.role, createdAt,
+      actorId: actor.uid, actorName: appointmentActorFullName(actor), actorRole: actor.role, createdAt,
     };
   }
 
@@ -66,7 +71,7 @@ function buildAppointmentAuditEvent({ isNew, previous, appointment, actor, creat
     changedFields,
     reason: appointment.rejectionReason || appointment.cancellationReason || "",
     actorId: actor.uid,
-    actorName: actor.fullName || actor.name || actor.username || actor.uid,
+    actorName: appointmentActorFullName(actor),
     actorRole: actor.role,
     createdAt,
   };
@@ -110,8 +115,11 @@ async function saveAppointment(req, res) {
     if (user.role === "customer" && existing.exists) {
       const existingStatus = existing.data().status || "Pending";
       const statusChanged = appointment.status && appointment.status !== existingStatus;
-      if (statusChanged && appointment.status !== "Cancelled") {
+      if (statusChanged && normalizeAppointmentStatus(appointment.status) !== "Cancelled") {
         throw new ApiError(403, "Customers can only cancel existing appointments.");
+      }
+      if (statusChanged && normalizeAppointmentStatus(existingStatus) !== "Approved") {
+        throw new ApiError(409, "Appointments can only be cancelled after they have been approved.");
       }
     }
     const { isLowCostKaponAppointment, isKaponPromoAvailable, KAPON_UNAVAILABLE_MESSAGE } =
@@ -133,7 +141,7 @@ async function saveAppointment(req, res) {
         ? "Completed"
         : normalizeAppointmentStatus(appointment.status || previous.status);
       const allowedTransition = previousStatus === requestedStatus ||
-        (previousStatus === "Pending" && ["Approved", "Rejected", "Cancelled"].includes(requestedStatus)) ||
+        (previousStatus === "Pending" && ["Approved", "Rejected"].includes(requestedStatus)) ||
         (previousStatus === "Approved" && ["Cancelled", "Completed"].includes(requestedStatus));
       if (!allowedTransition) {
         throw new ApiError(400, "This status change is not allowed for the appointment's current status.");
@@ -147,7 +155,8 @@ async function saveAppointment(req, res) {
     if (user.role === "customer" && (decisionChanged || appointment.rejectionReason !== previous.rejectionReason || appointment.cancellationReason !== previous.cancellationReason)) throw new ApiError(403,"Only clinic staff can set a rejection or cancellation reason.");
     if (!["Rejected", "Cancelled"].includes(nextStatus) && decisionChanged) throw new ApiError(400,"Decision reasons can only be set when rejecting or cancelling an appointment.");
     if (staffDecision) {
-      if (!existing.exists || (nextStatus === "Rejected" ? previous.status !== "Pending" : !["Pending", "Approved"].includes(normalizeAppointmentStatus(previous.status)))) throw new ApiError(409,"Only pending appointments can be rejected, and only pending or approved appointments can be cancelled.");
+      const previousStatus = normalizeAppointmentStatus(previous.status);
+      if (!existing.exists || (nextStatus === "Rejected" ? previousStatus !== "Pending" : previousStatus !== "Approved")) throw new ApiError(409,"Appointments can only be rejected while pending, and cancelled after approval.");
       const {validateAppointmentDecision} = await import("../../../shared/appointmentDecisions.mjs");
       try {
         const decision=validateAppointmentDecision(appointment.decision);
@@ -428,7 +437,7 @@ async function saveAppointment(req, res) {
         targetRoles:["customer"],targetUserId:savedAppointment.customerId,email:savedAppointment.customerEmail||"",
         targetType:"appointment",targetId:id,relatedAppointmentId:id,petName:savedAppointment.petName||"",serviceName:savedAppointment.service||"",
         appointmentDate:savedAppointment.scheduleDate||"",appointmentTime:savedAppointment.scheduleTime||"",
-        actorName:user.name||user.fullName||"Clinic team",actorRole:user.role,level:"info",readBy:[],createdAt:new Date().toISOString(),
+        actorName:appointmentActorFullName(user),actorRole:user.role,level:"info",readBy:[],createdAt:new Date().toISOString(),
       });
     }
   });

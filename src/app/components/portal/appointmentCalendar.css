@@ -25,6 +25,20 @@
   cursor: pointer;
   border-radius: 4px;
   margin: 2px 3px;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, filter 150ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .appointment-calendar .fc-event:hover {
+    z-index: 5;
+    transform: translateY(-2px) scale(1.02);
+    filter: brightness(1.04);
+    box-shadow: 0 4px 10px rgba(23, 62, 68, 0.2);
+  }
+}
+
+.appointment-calendar .fc-event:active {
+  transform: scale(0.98);
 }
 
 .appointment-calendar .calendar-event-content {

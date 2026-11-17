@@ -19,7 +19,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
-import { groomingOptionsForPet, buildGroomingSelection, MAX_GROOMING_SELECTIONS } from "../../../shared/groomingServices.mjs";
+import { groomingOptionsForPet, buildGroomingSelection } from "../../../shared/groomingServices.mjs";
 import { validateAppointmentServices, getEstimatedDuration, getActiveAppointmentCountForSlot, getBlockCapacity, APPOINTMENT_BLOCK_MINUTES } from "../../../shared/bookingServices.mjs";
 import { getServiceUnavailableMessage, getUnavailableServiceIds } from "../../../shared/serviceAvailability.mjs";
 import {
@@ -607,7 +607,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                                     className="min-w-0 flex-1 rounded-lg border border-[#D9E7E7] bg-white px-4 py-2.5 outline-none transition focus:border-[#2D9B9B]"
                                   >
                                     <option value="">Choose service</option>
-                                    {serviceCatalog.map((service) => {
+                                    {serviceCatalog.filter((service) => service.id !== KAPON_SERVICE_ID || serviceId === KAPON_SERVICE_ID).map((service) => {
                                       let incompatible = otherIds.includes(service.id);
                                       if (!incompatible && service.id !== serviceId) {
                                         try { validateAppointmentServices([...otherIds, service.id]); }
@@ -657,17 +657,15 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                         {selectedPet && (selectedServiceIds(selection).includes("pet-grooming") && (
                               <fieldset className="mt-4 rounded-lg border border-[#D9E7E7] bg-[#F3F8F8] p-3 md:col-span-2">
                                 <legend className="px-1 text-sm font-semibold text-[#365057]">{selectedPet.petType} grooming</legend>
-                                <p className="mb-3 text-xs text-[#607277]">Choose one grooming service OR up to {MAX_GROOMING_SELECTIONS} à la carte services. Uncheck your selections to switch between them.</p>
+                                <p className="mb-3 text-xs text-[#607277]">Select any grooming services and à la carte options you want for this pet.</p>
                                 <div className="grid gap-4 sm:grid-cols-2">
                                   {Object.entries(groomingOptionsForPet(selectedPet)).map(([group, options]) => (
                                     <div key={group}>
                                       <p className="mb-2 text-sm font-semibold text-[#365057]">{group === "packages" ? "Grooming services" : "À la carte services"}</p>
                                       <div className="space-y-2">{options.map(item => {
                                         const checked = selection.groomingServiceIds.includes(item.id);
-                                        const hasPackage = groomingOptionsForPet(selectedPet).packages.some(option => selection.groomingServiceIds.includes(option.id));
-                                        const unavailable = !checked && (group === "packages" ? selection.groomingServiceIds.length > 0 : hasPackage || selection.groomingServiceIds.length >= MAX_GROOMING_SELECTIONS);
                                         return <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-[#D9E7E7] bg-white px-3 py-2.5 text-sm has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50">
-                                          <input type="checkbox" checked={checked} disabled={unavailable}
+                                          <input type="checkbox" checked={checked}
                                             onChange={() => updateSelection(selection.id, {groomingServiceIds: checked ? selection.groomingServiceIds.filter(id => id !== item.id) : [...selection.groomingServiceIds, item.id]})}
                                             className="h-4 w-4 shrink-0 accent-[#173E44]"/>{item.name}
                                         </label>;
@@ -837,7 +835,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                     try {
                       const quote = buildGroomingSelection(selection.groomingServiceIds, pet);
                       return <p className="mt-1 text-white/90">{quote.name}</p>;
-                    } catch { return <p className="mt-1 text-white/72">Choose one grooming service or up to two à la carte services.</p>; }
+                    } catch { return <p className="mt-1 text-white/72">Choose at least one grooming service or à la carte option.</p>; }
                   })()}
                   {services.length > 0 && <p className="mt-1 text-white/72">Estimated duration: {getEstimatedDuration(serviceIds)} minutes</p>}
                   {priceRange.count > 0 && <p className="mt-1 font-semibold">Estimated service total: {formatPriceRange(priceRange)}</p>}

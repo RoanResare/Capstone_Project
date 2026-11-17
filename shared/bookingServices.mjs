@@ -22,9 +22,6 @@ function validateServiceSelection(serviceIds) {
 
 export function validateServiceIds(serviceIds) {
   validateServiceSelection(serviceIds);
-  if (serviceIds.includes("laboratory-testing") && serviceIds.includes("pet-grooming")) {
-    throw new Error("Laboratory Testing and Pet Grooming cannot be booked in the same appointment.");
-  }
   return serviceIds;
 }
 

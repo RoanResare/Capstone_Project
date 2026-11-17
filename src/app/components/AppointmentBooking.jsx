@@ -1,4 +1,5 @@
-import {CLINICAL_SERVICES,clinicalOptions,buildClinicalSelections} from "../../../shared/clinicalServices.mjs";
+import {CLINICAL_SERVICES,clinicalOptions,buildClinicalSelections,normalizeClinicalChoices} from "../../../shared/clinicalServices.mjs";
+import { getSelectedPricelistCategories } from "../../../shared/pricelists.mjs";
 import {REQUIRED_VACCINATION_FEE,dewormingForPet,dewormingDescription} from "../../../shared/bookingAdditions.mjs";
 import { PricelistImage } from "./PricelistImage.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -165,6 +166,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   const [petSelections, setPetSelections] = useState(() => [createPetSelection(initialServiceId)]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [pricelistIndex, setPricelistIndex] = useState(0);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [errors, setErrors] = useState({});
   const [feedback, setFeedback] = useState({ type: "", message: "" });
@@ -179,7 +181,10 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
         serviceIds: serviceIds.length ? serviceIds : [""],
         groomingServiceIds: rebookAppointment.grooming?.serviceIds || [],
         notes: rebookAppointment.notes || "",
-        clinicalChoices: Object.fromEntries((rebookAppointment.clinicalSelections || []).filter(choice => !choice.required).map(choice => [choice.category, choice.serviceId])),
+        clinicalChoices: (rebookAppointment.clinicalSelections || []).filter(choice => !choice.required).reduce((choices, choice) => {
+          (choices[choice.category] ||= []).push(choice.serviceId);
+          return choices;
+        }, {}),
       }]);
       setReminderEnabled(rebookAppointment.reminderEnabled !== false);
       setSelectedDate("");
@@ -211,6 +216,11 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   const appointments = Array.isArray(state.appointments) ? state.appointments : [];
   const hasUnavailableKapon = !kaponPromoAvailable && petSelections.some((selection) =>
     selectedServiceIds(selection).includes(KAPON_SERVICE_ID));
+  const selectedPricelists = getSelectedPricelistCategories(petSelections.flatMap(selectedServiceIds));
+  const activePricelist = selectedPricelists[pricelistIndex] || null;
+  useEffect(() => {
+    if (pricelistIndex >= selectedPricelists.length) setPricelistIndex(Math.max(selectedPricelists.length - 1, 0));
+  }, [pricelistIndex, selectedPricelists.length]);
   const unavailableSelectedServices = selectedDate ? [...new Set(petSelections.flatMap((selection) =>
     getUnavailableServiceIds(selectedServiceIds(selection).filter(Boolean), selectedDate)))]: [];
   const availabilityError = unavailableSelectedServices.length
@@ -293,10 +303,9 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   };
 
   const clearServiceFeedback = () => { setFeedback({ type: "", message: "" }); setErrors({}); };
-  const addServiceSelection = () => {
-    setPetSelections((current) => current.map((selection, index) =>
-      index === current.length - 1
-        ? { ...selection, serviceIds: [...selectedServiceIds(selection), ""] } : selection));
+  const addServiceSelection = (selectionId) => {
+    setPetSelections((current) => current.map((selection) =>
+      selection.id === selectionId ? { ...selection, serviceIds: [...selectedServiceIds(selection), ""] } : selection));
     clearServiceFeedback();
   };
   const updateService = (selectionId, serviceIndex, serviceId) => {
@@ -438,7 +447,7 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
             clinicalSelections,
             vaccinationFee: serviceIds.includes("vaccination") ? REQUIRED_VACCINATION_FEE : null,
             deworming: serviceIds.includes("deworming") ? dewormingForPet(pet) : null,
-            service: services.map((item) => item.id === "pet-grooming" ? `Pet Grooming: ${grooming.name}${grooming.size ? ` (${grooming.size})` : ""}` : item.id === "deworming" ? dewormingDescription(dewormingForPet(pet)) : clinicalSelections.filter(choice => choice.category === item.id).map(choice => choice.name).join(" + ") ? `${item.name}: ${clinicalSelections.filter(choice => choice.category === item.id).map(choice => choice.name).join(" + ")}` : item.name).join(" + "),
+            service: services.map((item) => item.id === "pet-grooming" ? `Pet Grooming: ${grooming.name}${grooming.size ? ` (${grooming.size})` : ""}` : item.id === "deworming" ? dewormingDescription(dewormingForPet(pet)) : clinicalSelections.filter(choice => choice.category === item.id && !choice.required).map(choice => choice.name).join(" + ") ? `${item.name}: ${clinicalSelections.filter(choice => choice.category === item.id && !choice.required).map(choice => choice.name).join(" + ")}` : item.name).join(" + "),
             servicePrice: "",
             ...(grooming ? { grooming } : {}),
             estimatedDurationMinutes: getEstimatedDuration(serviceIds),
@@ -499,7 +508,20 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
 
       <form onSubmit={handleSubmit} className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
-          <PricelistImage category={initialServiceId} />
+          {activePricelist && <div>
+            {selectedPricelists.length > 1 && <div className="mb-2 flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 shadow-sm sm:px-4">
+              <button type="button" aria-label="Previous selected service pricelist" onClick={() => setPricelistIndex((index) => Math.max(index - 1, 0))}
+                disabled={pricelistIndex === 0} className="inline-flex items-center gap-1 rounded-lg border border-[#D9E7E7] px-3 py-2 text-sm font-semibold text-[#24444A] disabled:opacity-40">
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <p aria-live="polite" className="text-center text-sm font-semibold text-[#365057]">{activePricelist.name} pricelist · {pricelistIndex + 1} of {selectedPricelists.length}</p>
+              <button type="button" aria-label="Next selected service pricelist" onClick={() => setPricelistIndex((index) => Math.min(index + 1, selectedPricelists.length - 1))}
+                disabled={pricelistIndex === selectedPricelists.length - 1} className="inline-flex items-center gap-1 rounded-lg border border-[#D9E7E7] px-3 py-2 text-sm font-semibold text-[#24444A] disabled:opacity-40">
+                Next <ChevronRight size={16} />
+              </button>
+            </div>}
+            <PricelistImage category={activePricelist.id} />
+          </div>}
           <section className="rounded-lg bg-white p-4 shadow-[0_14px_32px_rgba(94,81,60,0.12)] md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#EAF6F6] text-[#2D6B73]">
@@ -597,6 +619,10 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                                   {(serviceIndex > 0 || selectedServiceIds(selection).length > 1) && <button type="button" onClick={() => removeService(selection.id, serviceIndex)} title={`Remove ${label.toLowerCase()}`} aria-label={`Remove ${label.toLowerCase()}`} className="p-2 text-[#B23949]"><Trash2 size={16} /></button>}
                                 </div>;
                               })}
+                              <button type="button" onClick={() => addServiceSelection(selection.id)}
+                                className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-3 py-2 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0]">
+                                <Plus size={15} /> Add service
+                              </button>
                             </div>
                             {errors[`service-${selection.id}`] && (
                               <p className="mt-2 text-sm text-[#B23949]">{errors[`service-${selection.id}`]}</p>
@@ -607,12 +633,17 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                         {selectedPet && [...new Set(selectedServiceIds(selection).filter(id => Object.hasOwn(CLINICAL_SERVICES,id)))].map(category => (
                           <fieldset key={category} className="rounded-lg border border-[#D9E7E7] bg-[#F3F8F8] p-3 md:col-span-2">
                             <legend className="px-1 text-sm font-semibold">{serviceCatalog.find(item => item.id === category)?.name} services</legend>
-                            <p className="mb-3 text-xs text-[#607277]">Choose one service for {selectedPet.petName}.</p>
+                            <p className="mb-3 text-xs text-[#607277]">Choose any services needed for {selectedPet.petName}.</p>
                             {category==="vaccination"&&<p className="mb-3 text-xs text-[#607277]">Doctor's Fee is required and will be added after booking.</p>}
                             <div className="grid gap-2 sm:grid-cols-2">{clinicalOptions(category,selectedPet).map(option => (
                               <label key={option.id} className="flex items-start gap-3 rounded-lg border border-[#D9E7E7] bg-white p-3 text-sm">
-                                <input type="radio" name={`clinical-${selection.id}-${category}`} checked={selection.clinicalChoices[category] === option.id}
-                                  onChange={() => updateSelection(selection.id,{clinicalChoices:{...selection.clinicalChoices,[category]:option.id}})} className="mt-1 accent-[#173E44]"/>
+                                <input type="checkbox" checked={(normalizeClinicalChoices(selection.clinicalChoices)[category] || []).includes(option.id)}
+                                  onChange={() => {
+                                    const choices = normalizeClinicalChoices(selection.clinicalChoices);
+                                    const selected = choices[category] || [];
+                                    choices[category] = selected.includes(option.id) ? selected.filter(id => id !== option.id) : [...selected, option.id];
+                                    updateSelection(selection.id, { clinicalChoices: choices });
+                                  }} className="mt-1 h-4 w-4 shrink-0 accent-[#173E44]"/>
                                 <span>{option.name}{option.description && <span className="mt-1 block text-xs text-[#607277]">{option.description}</span>}</span>
                               </label>
                             ))}</div>
@@ -651,16 +682,6 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                   );
                 })}
 
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={addServiceSelection}
-                    className="inline-flex items-center gap-2 rounded-lg bg-[#EEF6F6] px-4 py-2.5 text-sm font-semibold text-[#24444A] transition hover:bg-[#E3F0F0] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Plus size={16} />
-                    Add service
-                  </button>
-                </div>
               </div>
             )}
             {errors.petSelections && <p className="mt-3 text-sm text-[#B23949]">{errors.petSelections}</p>}
@@ -805,7 +826,11 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
                   {services.length ? <div className="mt-1 space-y-1 text-white/80">{services.map((item) => <p key={item.id}>{item.name} <span className="text-white/65">({item.priceLabel})</span></p>)}</div> : <p className="mt-1 text-white/72">Choose service</p>}
                   {serviceIds.includes("vaccination")&&<p className="mt-1 text-white/90">{REQUIRED_VACCINATION_FEE.name} — required with vaccination</p>}
                   {serviceIds.includes("deworming")&&<p className="mt-1 text-white/90">{dewormingDescription(dewormingForPet(pet))}</p>}
-                  {[...new Set(serviceIds.filter(id=>Object.hasOwn(CLINICAL_SERVICES,id)))].map(category=><p key={category} className="mt-1 text-white/90">{clinicalOptions(category,pet).find(option=>option.id===selection.clinicalChoices[category])?.name || "Choose a specific service"}</p>)}
+                  {[...new Set(serviceIds.filter(id=>Object.hasOwn(CLINICAL_SERVICES,id)))].map(category=>{
+                    const choices=normalizeClinicalChoices(selection.clinicalChoices)[category] || [];
+                    const names=clinicalOptions(category,pet).filter(option=>choices.includes(option.id)).map(option=>option.name);
+                    return <p key={category} className="mt-1 text-white/90">{names.join(", ") || "Choose at least one specific service"}</p>;
+                  })}
                   {serviceIds.includes("pet-grooming") && (() => {
                     try {
                       const quote = buildGroomingSelection(selection.groomingServiceIds, pet);

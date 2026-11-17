@@ -4,7 +4,7 @@ const { ApiError } = require("../utils/ApiError");
 const ACTIVE_APPOINTMENT_STATUSES = ["Pending", "Confirmed", "Accepted", "Approved"];
 const MAX_APPOINTMENT_LOOKUP_LIMIT = 200;
 const AUDITED_APPOINTMENT_FIELDS = [
-  "scheduleDate", "scheduleTime", "schedule", "slotId", "assignedStaff", "assignedStaffId", "petName",
+  "scheduleDate", "scheduleTime", "schedule", "slotId", "assignedStaff", "petName",
   "service", "serviceId", "serviceIds", "petRecordId", "notes", "clinicalSelections",
   "grooming", "deworming", "vaccinationFee", "estimatedDurationMinutes", "blockDurationMinutes",
 ];
@@ -43,7 +43,7 @@ function buildAppointmentAuditEvent({ isNew, previous, appointment, actor, creat
 
   const status = normalizeAppointmentStatus(appointment.status);
   const scheduleChanged = changedFields.some((field) => ["scheduleDate", "scheduleTime", "schedule", "slotId"].includes(field));
-  const assignmentChanged = changedFields.some((field) => ["assignedStaff", "assignedStaffId"].includes(field));
+  const assignmentChanged = changedFields.includes("assignedStaff");
   let action;
   if (changedFields.includes("status")) {
     action = ({
@@ -109,28 +109,7 @@ async function saveAppointment(req, res) {
     }
     const nextStatus = appointment.status || existing.data?.()?.status;
     const previous = existing.data?.() || {};
-    let assignedStaff = String(previous.assignedStaff || "").trim();
-    let assignedStaffId = String(previous.assignedStaffId || "").trim();
-    if (["admin", "staff"].includes(user.role) && Object.hasOwn(appointment, "assignedStaffId")) {
-      const requestedStaffId = String(appointment.assignedStaffId || "").trim();
-      const shouldChangeAssignment = requestedStaffId !== assignedStaffId || (!requestedStaffId && assignedStaff);
-      if (shouldChangeAssignment) {
-        if (!requestedStaffId) {
-          assignedStaff = "";
-          assignedStaffId = "";
-        } else {
-          const { getUserByUid } = require("../services/user.service");
-          const staff = await getUserByUid(requestedStaffId);
-          const accountStatus = String(staff?.accountStatus || staff?.status || "").toLowerCase();
-          const fullName = String(staff?.fullName || staff?.name || "").trim();
-          if (!staff || staff.role !== "staff" || accountStatus !== "active" || !fullName) {
-            throw new ApiError(400, "Choose an active staff account with a full name.");
-          }
-          assignedStaff = fullName;
-          assignedStaffId = staff.uid;
-        }
-      }
-    }
+    const assignedStaff = existing.exists ? String(previous.assignedStaff || "").trim() : "";
     if (user.role === "customer" && ["Confirmed", "Accepted", "Completed", "Approved"].includes(nextStatus)) {
       throw new ApiError(403, "Customers cannot confirm or approve appointments.");
     }
@@ -395,8 +374,7 @@ async function saveAppointment(req, res) {
       }, {merge:true});
     }
     const { sessionAction, assignedStaff: _requestedAssignedStaff, assignedStaffId: _requestedAssignedStaffId, ...payload } = appointment;
-    savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields,
-      assignedStaff, assignedStaffId, updatedAt: new Date().toISOString() };
+    savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields, updatedAt: new Date().toISOString() };
     const lifecycleEvents = Array.isArray(previous.lifecycleEvents) ? previous.lifecycleEvents : [];
     const auditEvent = buildAppointmentAuditEvent({ isNew: !existing.exists, previous, appointment: savedAppointment, actor: user, createdAt: savedAppointment.updatedAt });
     savedAppointment.lifecycleEvents = auditEvent ? [...lifecycleEvents, auditEvent] : lifecycleEvents;

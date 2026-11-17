@@ -470,6 +470,9 @@ export function CustomerProfile() {
     filteredCustomerAppointments.find((appointment) => appointment.id === selectedAppointmentId) ||
     pagedAppointments.appointments[0] ||
     null;
+  const selectedAppointmentLatestAudit = Array.isArray(selectedAppointment?.lifecycleEvents)
+    ? selectedAppointment.lifecycleEvents.at(-1)
+    : null;
   const currentCustomerId = customer?.id || customer?.uid;
   useNotificationSound(visibleNotifications, currentCustomerId);
   const appointmentStats = useMemo(() => getCustomerAppointmentStats(customerAppointments), [customerAppointments]);
@@ -1440,11 +1443,12 @@ export function CustomerProfile() {
                         </div>
                         <div className="rounded-[22px] bg-[#F6FAFA] px-4 py-4">
                           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7A979C]">
-                            Assigned staff
+                            Last action by
                           </p>
                           <p className="mt-2 text-base font-semibold text-[#20343B]">
-                            {selectedAppointment.assignedStaff || "To be assigned"}
+                            {selectedAppointmentLatestAudit?.actorName || "Account name unavailable"}
                           </p>
+                          {selectedAppointmentLatestAudit?.action && <p className="mt-1 text-xs text-[#607277]">{selectedAppointmentLatestAudit.action}</p>}
                         </div>
                       </div>
                       <div className="mt-4 rounded-[22px] bg-[#F6FAFA] px-4 py-4">

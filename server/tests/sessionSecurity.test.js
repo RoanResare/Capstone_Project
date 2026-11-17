@@ -662,7 +662,7 @@ test("booking transaction enforces ownership and capacity before writing", async
   assert.equal(writes, 0);
   full = false;
   await controller.saveAppointment(req, { json() {} });
-  assert.equal(writes, 3);
+  assert.equal(writes, 4);
 });
 
 function appointmentFixture({ existing, slot, active = [] } = {}) {
@@ -684,7 +684,7 @@ function appointmentFixture({ existing, slot, active = [] } = {}) {
     } },
   });
   return { writes, save: (body, role = "customer") => controller.saveAppointment({
-    params: { id: "booking" }, auth: { user: { uid: "user", role } },
+    params: { id: "booking" }, auth: { user: { uid: "user", fullName: role === "admin" ? "Admin Test" : role === "staff" ? "Staff Test" : "Customer Test", role } },
     body: { id: "booking", customerId: "user", status: "Pending", serviceId: "vaccination", serviceIds: ["vaccination"], clinicalSelections: [{category:"vaccination",serviceId:"4-in-1"},{category:"vaccination",serviceId:"doctors-fee"}], petRecordId: "pet", slotId:"slot", scheduleDate: "2030-01-05", scheduleTime: "09:00", ...body },
   }, { json() {} }) };
 }
@@ -692,16 +692,21 @@ function appointmentFixture({ existing, slot, active = [] } = {}) {
 test("new customer bookings create one persistent appointment notification for Admin and Staff", async () => {
   const fixture = appointmentFixture();
   await fixture.save({ ownerName: "Sam Customer", petName: "Milo" });
+  const savedAppointment = fixture.writes.find(write => write.id === "booking");
+  assert.equal(savedAppointment.lifecycleEvents[0].action, "Appointment created");
+  assert.equal(savedAppointment.lifecycleEvents[0].actorId, "user");
+  assert.equal(savedAppointment.lifecycleEvents[0].actorName, "Customer Test");
+  assert.equal(savedAppointment.lifecycleEvents[0].actorRole, "customer");
   const notifications = fixture.writes.filter(write => write.title === "New appointment booking");
   assert.equal(notifications.length, 1);
   const notification = notifications[0];
   assert.equal(notification.id, "appointment-booking-created");
   assert.equal(Array.from(notification.targetRoles).join(","), "admin,staff");
   assert.equal(notification.relatedAppointmentId, "booking");
-  assert.equal(notification.actorName, "Sam Customer");
+  assert.equal(notification.actorName, "Customer Test");
   assert.equal(notification.appointmentDate, "2030-01-05");
   assert.equal(notification.appointmentTime, "09:00");
-  assert.match(notification.message, /Sam Customer.*Vaccination.*2030-01-05.*09:00/);
+  assert.match(notification.message, /Customer Test.*Vaccination.*2030-01-05.*09:00/);
   assert.equal(Object.hasOwn(notification, "email"), false);
   assert.equal(Object.hasOwn(notification, "phone"), false);
 });
@@ -718,7 +723,12 @@ test("admin and staff must assign staff before confirmation or acceptance", asyn
       assert.equal(fixture.writes.length, 2);
       assert.equal(fixture.writes.filter(write => write.notificationType === "appointment-status-email").length, 1);
       assert.equal(fixture.writes.find(write => write.notificationType === "appointment-status-email").status, "Approved");
-      assert.equal(fixture.writes.find(write => !write.notificationType).assignedStaff, "Active Staff");
+      const savedAppointment = fixture.writes.find(write => !write.notificationType);
+      assert.equal(savedAppointment.assignedStaff, "Active Staff");
+      const audit = savedAppointment.lifecycleEvents.at(-1);
+      assert.equal(audit.actorId, "user");
+      assert.equal(audit.actorName, role === "admin" ? "Admin Test" : "Staff Test");
+      assert.equal(audit.actorRole, role);
     }
   }
   const fixture = appointmentFixture({ existing: { status: "Confirmed", assignedStaff: "Staff" } });
@@ -735,7 +745,7 @@ test("disabled slots reject new bookings and rescheduling; reopened slots accept
   }
   const reopened = appointmentFixture({ slot: { isOpen: true, disabled: false, status: "Open", capacity: 3 } });
   await reopened.save({ slotId: "reopened" });
-  assert.equal(reopened.writes.length, 3);
+  assert.equal(reopened.writes.length, 4);
 });
 
 test("stored slot capacity overrides customer input and customers cannot approve or reopen appointments", async () => {
@@ -757,7 +767,7 @@ test("Pending appointments reserve slot capacity and cancellations free the slot
 
   const released = appointmentFixture({ slot: { isOpen: true, capacity: 1 } });
   await released.save({ slotId: "slot" });
-  assert.equal(released.writes.length, 3);
+  assert.equal(released.writes.length, 4);
   assert.equal(released.writes[0].reservationVersion, 1);
 
   const cancelled = appointmentFixture({ slot: { isOpen: true, capacity: 1 }, existing: { status: "Cancelled" }, active: [{ status: "Pending", slotId: "slot", scheduleDate: "2030-01-05", scheduleTime: "09:00" }] });

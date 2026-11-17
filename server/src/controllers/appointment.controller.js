@@ -3,6 +3,11 @@ const { ApiError } = require("../utils/ApiError");
 
 const ACTIVE_APPOINTMENT_STATUSES = ["Pending", "Confirmed", "Accepted", "Approved"];
 const MAX_APPOINTMENT_LOOKUP_LIMIT = 200;
+const AUDITED_APPOINTMENT_FIELDS = [
+  "scheduleDate", "scheduleTime", "schedule", "slotId", "assignedStaff", "petName",
+  "service", "serviceId", "serviceIds", "petRecordId", "notes", "clinicalSelections",
+  "grooming", "deworming", "vaccinationFee", "estimatedDurationMinutes", "blockDurationMinutes",
+];
 
 function normalizeAppointmentStatus(status = "") {
   const normalized = String(status).trim().toLowerCase().replace(/[\s_-]+/g, " ");
@@ -10,6 +15,61 @@ function normalizeAppointmentStatus(status = "") {
   if (["no show", "expired"].includes(normalized)) return "No Show";
   if (normalized === "canceled") return "Cancelled";
   return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "Pending";
+}
+
+function buildAppointmentAuditEvent({ isNew, previous, appointment, actor, createdAt }) {
+  if (isNew) {
+    return {
+      status: normalizeAppointmentStatus(appointment.status), action: "Appointment created", changedFields: [],
+      actorId: actor.uid, actorName: actor.fullName || actor.name || actor.username || actor.uid, actorRole: actor.role, createdAt,
+    };
+  }
+
+  const changedFields = [];
+  if (normalizeAppointmentStatus(previous.status) !== normalizeAppointmentStatus(appointment.status)) {
+    changedFields.push("status");
+  }
+  for (const field of AUDITED_APPOINTMENT_FIELDS) {
+    if (JSON.stringify(previous[field]) !== JSON.stringify(appointment[field])) changedFields.push(field);
+  }
+  if (previous.sessionStartedAt !== appointment.sessionStartedAt) changedFields.push("sessionStartedAt");
+  if (previous.sessionEndedAt !== appointment.sessionEndedAt) changedFields.push("sessionEndedAt");
+  if (!changedFields.length) return null;
+
+  const status = normalizeAppointmentStatus(appointment.status);
+  const scheduleChanged = changedFields.some((field) => ["scheduleDate", "scheduleTime", "schedule", "slotId"].includes(field));
+  const assignmentChanged = changedFields.includes("assignedStaff");
+  let action;
+  if (changedFields.includes("status")) {
+    action = ({
+      Approved: "Appointment approved",
+      Rejected: "Appointment rejected",
+      Cancelled: "Appointment cancelled",
+      Completed: "Appointment completed",
+      "No Show": "Appointment marked No Show",
+    })[status] || `Appointment status changed to ${status}`;
+  } else if (scheduleChanged) {
+    action = "Appointment rescheduled";
+  } else if (assignmentChanged) {
+    action = previous.assignedStaff ? "Staff assignment updated" : "Staff assigned";
+  } else if (changedFields.includes("sessionStartedAt")) {
+    action = "Appointment session started";
+  } else if (changedFields.includes("sessionEndedAt")) {
+    action = "Appointment session completed";
+  } else {
+    action = "Appointment details updated";
+  }
+
+  return {
+    status,
+    action,
+    changedFields,
+    reason: appointment.rejectionReason || appointment.cancellationReason || "",
+    actorId: actor.uid,
+    actorName: actor.fullName || actor.name || actor.username || actor.uid,
+    actorRole: actor.role,
+    createdAt,
+  };
 }
 
 async function saveAppointment(req, res) {
@@ -299,17 +359,9 @@ async function saveAppointment(req, res) {
     const { sessionAction, ...payload } = appointment;
     savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields, updatedAt: new Date().toISOString() };
     if(savedAppointment.status==="Expired")savedAppointment.status="No Show";
-    const lifecycleStatus = normalizeAppointmentStatus(savedAppointment.status);
     const lifecycleEvents = Array.isArray(previous.lifecycleEvents) ? previous.lifecycleEvents : [];
-    savedAppointment.lifecycleEvents = lifecycleEvents;
-    if (["Completed", "Rejected", "Cancelled", "No Show"].includes(lifecycleStatus) &&
-        normalizeAppointmentStatus(previous.status) !== lifecycleStatus) {
-      savedAppointment.lifecycleEvents = [...lifecycleEvents, {
-        status: lifecycleStatus, createdAt: savedAppointment.updatedAt,
-        actorId: user.uid, actorName: user.fullName || user.name || "Clinic team", actorRole: user.role,
-        reason: savedAppointment.rejectionReason || savedAppointment.cancellationReason || "",
-      }];
-    }
+    const auditEvent = buildAppointmentAuditEvent({ isNew: !existing.exists, previous, appointment: savedAppointment, actor: user, createdAt: savedAppointment.updatedAt });
+    savedAppointment.lifecycleEvents = auditEvent ? [...lifecycleEvents, auditEvent] : lifecycleEvents;
     const { queueStatusEmail } = await import("../services/appointmentStatusEmail.service.js");
     emailNotification = queueStatusEmail({ db, transaction, previous: existing.exists ? previous : null,
       appointment: savedAppointment, actor: user, reason: decisionFields.decision?.reason || "" });

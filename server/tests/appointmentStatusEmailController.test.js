@@ -41,12 +41,14 @@ function fixture(status = "Pending") {
   const jobs = () => [...records.values()].filter(data => data.notificationType === TYPE);
   const save = async (updates, role = "staff") => {
     let response;
-    await saveAppointment({ params: { id: "booking" }, body: { ...records.get("appointments/booking"), ...updates }, auth: { user: { uid: role === "customer" ? "customer" : "employee", role } } }, { json: value => { response = value; } });
+    const uid = role === "customer" ? "customer" : "employee";
+    const fullName = role === "admin" ? "Alex Administrator" : role === "staff" ? "Sam Staff" : "Casey Customer";
+    await saveAppointment({ params: { id: "booking" }, body: { ...records.get("appointments/booking"), ...updates }, auth: { user: { uid, fullName, role } } }, { json: value => { response = value; } });
     return response;
   };
   return { db, records, initial, save, jobs, closeSlot: async () => {
     let response;
-    await disableAvailabilitySlot({ params: { id: "slot" }, auth: { user: { uid: "employee", role: "staff" } } }, { json: value => { response = value; } });
+    await disableAvailabilitySlot({ params: { id: "slot" }, auth: { user: { uid: "employee", fullName: "Taylor Staff", role: "staff" } } }, { json: value => { response = value; } });
     return response;
   } };
 }
@@ -54,10 +56,21 @@ function fixture(status = "Pending") {
 for (const role of ["admin", "staff"]) {
   test(`${role} approval and duplicate requests create exactly one committed event`, async () => {
     const app = fixture();
-    const first = await app.save({ status: "Approved" }, role);
+    const first = await app.save({ status: "Approved", actorName: "Forged Frontend Name", lifecycleEvents: [
+      { status: "Approved", action: "Forged", actorId: "forged-id", actorName: "Forged Frontend Name", actorRole: "admin" },
+    ] }, role);
     assert.equal(first.emailNotification.state, "pending");
+    const audit = app.records.get("appointments/booking").lifecycleEvents[0];
+    assert.equal(audit.action, "Appointment approved");
+    assert.equal(audit.actorId, "employee");
+    assert.equal(audit.actorName, role === "admin" ? "Alex Administrator" : "Sam Staff");
+    assert.equal(audit.actorRole, role);
     assert.equal(app.jobs().length, 1);
     await app.save({ status: "Approved" }, role); await app.save({ status: "Approved", notes: "internal only" }, role);
+    const events = app.records.get("appointments/booking").lifecycleEvents;
+    assert.equal(events.length, 2, "a repeated unchanged request adds no duplicate audit record");
+    assert.equal(events[1].action, "Appointment details updated");
+    assert.equal(events[1].actorName, role === "admin" ? "Alex Administrator" : "Sam Staff");
     assert.equal(app.jobs().length, 1); assert.equal(app.jobs()[0].details.notes, undefined);
   });
 }
@@ -98,6 +111,25 @@ test("customer cancellation and unchanged reads/assignment edits never enqueue s
   assert.equal(app.jobs().length, 0);
   await app.save({ status: "Cancelled" }, "customer"); assert.equal(app.jobs().length, 0);
 });
+test("rescheduling, assignment, and detail updates create one authenticated audit event each", async () => {
+  const app = fixture();
+  await app.save({ scheduleDate: "2030-02-02" }, "staff");
+  let events = app.records.get("appointments/booking").lifecycleEvents;
+  assert.equal(events.length, 1);
+  assert.equal(events[0].action, "Appointment rescheduled");
+  assert.ok(events[0].changedFields.includes("scheduleDate"));
+  await app.save({ scheduleDate: "2030-02-02" }, "staff");
+  assert.equal(app.records.get("appointments/booking").lifecycleEvents.length, 1);
+  await app.save({ assignedStaff: "Taylor Staff", actorName: "Spoofed Name" }, "staff");
+  events = app.records.get("appointments/booking").lifecycleEvents;
+  assert.equal(events[1].action, "Staff assigned");
+  assert.equal(events[1].actorId, "employee");
+  assert.equal(events[1].actorName, "Sam Staff");
+  await app.save({ notes: "Updated by clinic" }, "staff");
+  events = app.records.get("appointments/booking").lifecycleEvents;
+  assert.equal(events[2].action, "Appointment details updated");
+  assert.equal(events[2].actorName, "Sam Staff");
+});
 test("email failure leaves the committed staff decision intact", async () => {
   const app = fixture(); await app.save({ status: "Approved", customerEmail: "wrong@example.invalid", customerId: "request-supplied-account" });
   const worker = createStatusEmailWorker({ db: app.db, pause: async () => {}, resolveRecipient: async id => { assert.equal(id, "customer"); return "correct@example.invalid"; }, makeEnvelope: (_job, to) => ({ to }), send: async () => { throw new Error("simulated outage"); } });
@@ -111,6 +143,9 @@ test("closing a slot atomically queues each actual cancellation and a repeated c
   app.records.get("appointments/booking").slotId = "slot";
   await app.closeSlot();
   assert.equal(app.records.get("appointments/booking").status, "Cancelled");
+  const event = app.records.get("appointments/booking").lifecycleEvents[0];
+  assert.equal(event.actorId, "employee"); assert.equal(event.actorName, "Taylor Staff"); assert.equal(event.actorRole, "staff");
+  assert.equal(event.action, "Appointment cancelled due to schedule closure");
   assert.equal(app.jobs().length, 1); assert.match(app.jobs()[0].details.reason, /closed this date/);
   await app.closeSlot(); assert.equal(app.jobs().length, 1);
 });

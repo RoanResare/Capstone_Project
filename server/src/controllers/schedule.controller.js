@@ -65,9 +65,17 @@ async function persistSlotChange(req, payload) {
         const matchesLegacyId = appointment.slotId === slot.id && (!appointment.scheduleDate || !appointment.scheduleTime || !slot.date || !slot.time);
         if ((!matchesSchedule && !matchesLegacyId) || !ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) continue;
         const cancellationReason = "The clinic administration closed this date and time slot, so your appointment was cancelled. Please choose another available slot.";
+        const actor = req.auth.user;
+        const actorName = actor.fullName || actor.name || actor.username || actor.uid;
+        const eventTime = new Date().toISOString();
+        const lifecycleEvents = Array.isArray(appointment.lifecycleEvents) ? appointment.lifecycleEvents : [];
         const updated = { ...appointment, id, status: "Cancelled", cancellationReason,
-          cancelledBy: req.auth.user.uid, cancelledAt: payload.updatedAt, updatedAt: payload.updatedAt };
-        queueStatusEmail({ db, transaction, previous: appointment, appointment: updated, actor: req.auth.user, reason: cancellationReason });
+          cancelledBy: actor.uid, cancelledAt: eventTime, updatedAt: eventTime,
+          lifecycleEvents: [...lifecycleEvents, {
+            status: "Cancelled", action: "Appointment cancelled due to schedule closure", changedFields: ["status"],
+            reason: cancellationReason, actorId: actor.uid, actorName, actorRole: actor.role, createdAt: eventTime,
+          }] };
+        queueStatusEmail({ db, transaction, previous: appointment, appointment: updated, actor, reason: cancellationReason });
         cancelledAppointments.push(updated);
         notifications.push({
           id: `slot-cancelled-${id}-${Date.parse(payload.updatedAt)}`,
@@ -78,7 +86,7 @@ async function persistSlotChange(req, payload) {
           email: appointment.customerEmail || "", petName: appointment.petName || "",
           serviceName: appointment.service || "", appointmentDate: appointment.scheduleDate || slot.date || "",
           appointmentTime: appointment.scheduleTime || slot.time || "", readBy: [], level: "info",
-          actorName: payload.updatedBy, actorRole: req.auth.user.role,
+          actorId: actor.uid, actorName, actorRole: actor.role,
           actionLabel: "Cancelled appointment due to slot closure", createdAt: payload.updatedAt,
         });
       }

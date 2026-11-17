@@ -802,8 +802,8 @@ function NotificationContextPanel({ notification, relatedAppointment, openAppoin
 
 function AppointmentHistory({ currentUser, appointments, openAppointment, onLoadMore, isLoadingMore }) {
   const events = buildAppointmentHistory(appointments, currentUser.role);
-  return <PanelCard title="History" description="Completed, rejected, cancelled, and no-show appointment events visible to your role.">
-    {events.length === 0 ? <EmptyState title="No appointment history" message="Completed, rejected, cancelled, and no-show appointments will appear here." /> : (
+  return <PanelCard title="History" description="Appointment actions performed by Admin and Staff, with actor and timestamp details.">
+    {events.length === 0 ? <EmptyState title="No appointment history" message="Appointment creation, updates, assignments, status changes, and completions will appear here." /> : (
       <div className="portal-scroll-panel max-h-[420px] space-y-3 overflow-y-auto overscroll-contain pr-2">
         {events.map(event => <button key={event.id} type="button" onClick={() => openAppointment(event.appointmentId)}
           className="w-full rounded-[22px] border border-[#D7ECEC] bg-[#F8FCFC] px-4 py-4 text-left transition hover:border-[#BFE1E1]">
@@ -815,6 +815,7 @@ function AppointmentHistory({ currentUser, appointments, openAppointment, onLoad
             </p>
             <StatusBadge status={event.status} />
           </div>
+          {event.action && <p className="mt-2 text-sm font-semibold text-[#365F66]">{event.action}</p>}
           <p className="mt-2 text-sm text-[#607277]">{event.customerName} {event.scheduleDate} {event.scheduleTime}</p>
           {event.actorName && <p className="mt-2 text-xs text-[#607277]">{event.actorName} | {event.actorRole}</p>}
           {event.reason && <p className="mt-2 text-sm text-[#607277]">Reason: {event.reason}</p>}

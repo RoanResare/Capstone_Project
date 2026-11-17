@@ -26,7 +26,7 @@ import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { containsInappropriatePetText, getPetTextErrors } from "../../../shared/petTextValidation.mjs";
 import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
-import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentCreatedNewest } from "../utils/appointmentPresentation.js";
+import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentCreatedNewest, getCustomerAppointmentStats, findNearestUpcomingAppointment } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -360,6 +360,7 @@ export function CustomerProfile() {
   const [appointmentFilter, setAppointmentFilter] = useState("All");
   const [appointmentSearch, setAppointmentSearch] = useState("");
   const [appointmentPage, setAppointmentPage] = useState(0);
+  const [dashboardNow, setDashboardNow] = useState(() => Date.now());
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [profileTextErrors, setProfileTextErrors] = useState({});
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -381,6 +382,11 @@ export function CustomerProfile() {
   const petSectionRef = useRef(null);
   const [petTextErrors, setPetTextErrors] = useState({});
   const [pendingBookingServiceId, setPendingBookingServiceId] = useState("");
+  useEffect(() => {
+    if (activeTab !== "overview") return undefined;
+    const timer = window.setInterval(() => setDashboardNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [activeTab]);
   useEffect(() => {
     if (activeTab === "overview" && (pendingBookingServiceId || new URLSearchParams(location.search).has("addPet"))) {
       petSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -464,6 +470,8 @@ export function CustomerProfile() {
     pagedAppointments.appointments[0] ||
     null;
   const currentCustomerId = customer?.id || customer?.uid;
+  const appointmentStats = useMemo(() => getCustomerAppointmentStats(customerAppointments), [customerAppointments]);
+  const upcomingAppointment = useMemo(() => findNearestUpcomingAppointment(customerAppointments, dashboardNow), [customerAppointments, dashboardNow]);
   const upcomingAppointments = customerAppointments.filter((appointment) =>
     ["Pending", "Confirmed", "Accepted"].includes(appointment.status),
   );
@@ -841,18 +849,29 @@ export function CustomerProfile() {
           className="rounded-[24px] bg-[linear-gradient(135deg,#173E44_0%,#2D6B73_58%,#82C8C0_100%)] p-4 text-white shadow-[0_20px_44px_rgba(20,43,46,0.18)] md:p-5"
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="min-w-0">
+            <div className="min-w-0 lg:flex-1">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
                   Customer Dashboard
                 </p>
                 <h1 className="mt-1 truncate text-2xl font-semibold md:text-[28px]">
-                  Hi, {profileForm.username || customer?.username || "Customer"}
+                  Hi, {(profileForm.fullName || customer?.fullName || customer?.name || profileForm.username || "Customer").trim().split(/\s+/)[0]}!
                 </h1>
-                <p className="mt-1 truncate text-sm text-white/72">{profileForm.email}</p>
-              </div>
+                <p className="mt-1 text-sm text-white/80">Welcome back! Here's an overview of your appointments.</p>
+                <p className="mt-1 truncate text-xs text-white/65">{profileForm.email}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 space-y-2.5 lg:w-[min(68%,760px)]">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { label: "Total Appointments", value: appointmentStats.total },
+                  { label: "Pending", value: appointmentStats.pending },
+                  { label: "Confirmed", value: appointmentStats.confirmed },
+                  { label: "Completed", value: appointmentStats.completed },
+                ].map((stat) => <div key={stat.label} className="min-w-0 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-white/70 sm:text-[11px]">{stat.label}</p>
+                  <p className="mt-1 text-lg font-semibold leading-none text-white">{stat.value}</p>
+                </div>)}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <NotificationDropdown
                 notifications={visibleNotifications}
                 currentUserId={currentCustomerId}
@@ -868,7 +887,7 @@ export function CustomerProfile() {
               />
               <StatusChip label={profileForm.status} />
               <StatusChip label={`${customerPetRecords.length} pets`} />
-              <StatusChip label={`${customerAppointments.length} appointments`} />
+              </div>
             </div>
           </div>
 
@@ -1215,6 +1234,18 @@ export function CustomerProfile() {
                           Choose service &amp; book
                         </button>
                       </div>
+                    </section>
+                    <section aria-label="Upcoming appointment" className="rounded-[24px] border border-[#D9E7E7] bg-white p-4 shadow-[0_14px_30px_rgba(102,91,72,0.1)]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B9A9F]">Upcoming appointment</p>
+                      {upcomingAppointment ? <>
+                        <div className="mt-3 flex items-start justify-between gap-2">
+                          <h2 className="min-w-0 text-base font-semibold text-[#20343B]">{upcomingAppointment.appointment.petName || "Your pet"}</h2>
+                          <StatusChip label={appointmentStatusLabel(upcomingAppointment.appointment.status)} />
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-sm text-[#607277]">{upcomingAppointment.appointment.service || "Appointment"}</p>
+                        <p className="mt-3 text-sm font-semibold text-[#2D6B73]">{new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(upcomingAppointment.startsAt)}</p>
+                        <p className="mt-1 text-sm text-[#607277]">{new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", hour: "numeric", minute: "2-digit" }).format(upcomingAppointment.startsAt)}</p>
+                      </> : <p className="mt-3 text-sm text-[#607277]">No upcoming appointments.</p>}
                     </section>
                   </div>
                 </div>

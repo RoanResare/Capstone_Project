@@ -88,28 +88,15 @@ export function AppointmentCalendar({ appointments, onOpenAppointment }) {
         dateClick={(info) => changeView("timeGridDay", info.dateStr)}
         eventClick={(info) => onOpenAppointment(info.event.id)}
         eventDidMount={(info) => {
-          const { ownerName, customerEmail, petName, petType, service, status, assignedStaff } = info.event.extendedProps;
-          info.el.title = `${ownerName} | ${customerEmail} | ${petName} (${petType}) | ${service} | ${info.timeText} | ${status} | Staff: ${assignedStaff}`;
+          const { petName, service } = info.event.extendedProps;
+          info.el.title = `${petName} | ${service}. Click to view appointment details.`;
         }}
         eventContent={(info) => {
-          const { ownerName, customerEmail, petName, petType, service, status, assignedStaff } = info.event.extendedProps;
-          if (info.view.type.startsWith("timeGrid")) {
-            return (
-              <div className="calendar-event-content calendar-event-timegrid">
-                <span className="calendar-event-name">{petName}</span>
-                <span className="calendar-event-service">{service}</span>
-                <span>{info.timeText} - {status}</span>
-              </div>
-            );
-          }
+          const { petName, service } = info.event.extendedProps;
           return (
             <div className="calendar-event-content">
-              <span className="calendar-event-name">{ownerName}</span>
-              <span className="calendar-event-contact">{customerEmail}</span>
-              <span className="calendar-event-pet">{petName} | {petType}</span>
+              <span className="calendar-event-name">{petName}</span>
               <span className="calendar-event-service">{service}</span>
-              <span>{info.timeText} - {status}</span>
-              <span className="calendar-event-assignee">Staff: {assignedStaff}</span>
             </div>
           );
         }}

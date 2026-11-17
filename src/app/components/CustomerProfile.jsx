@@ -30,6 +30,7 @@ import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, pa
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { useNotificationSound } from "../utils/notificationSound.js";
 import { breedsByPetType, petTypeOptions, serviceCatalog } from "../data/systemData.js";
 import { changeCustomerPassword } from "../services/customerAccount.js";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../utils/emailValidation.js";
@@ -470,6 +471,7 @@ export function CustomerProfile() {
     pagedAppointments.appointments[0] ||
     null;
   const currentCustomerId = customer?.id || customer?.uid;
+  useNotificationSound(visibleNotifications, currentCustomerId);
   const appointmentStats = useMemo(() => getCustomerAppointmentStats(customerAppointments), [customerAppointments]);
   const upcomingAppointment = useMemo(() => findNearestUpcomingAppointment(customerAppointments, dashboardNow), [customerAppointments, dashboardNow]);
   const upcomingAppointments = customerAppointments.filter((appointment) =>

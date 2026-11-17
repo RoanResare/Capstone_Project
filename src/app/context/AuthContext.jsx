@@ -61,6 +61,7 @@ function isAuthConnectionIssue(error) {
 }
 
 const AuthContext = createContext(null);
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 function isTimestampExpired(value = "") {
   const timestamp = typeof value === "string" ? value.trim() : "";
 
@@ -901,6 +902,54 @@ export function AuthProvider({ children }) {
 
   const securitySignOutRef = useRef(signOut);
   securitySignOutRef.current = signOut;
+  useEffect(() => {
+    if (!currentUser?.uid && !currentUser?.id) return undefined;
+
+    let lastActivityAt = Date.now();
+    let timeoutId;
+    let hasSignedOut = false;
+    const signOutForInactivity = () => {
+      if (hasSignedOut) return;
+      hasSignedOut = true;
+      void securitySignOutRef.current();
+    };
+    const checkInactivity = () => {
+      if (Date.now() - lastActivityAt >= INACTIVITY_TIMEOUT_MS) {
+        signOutForInactivity();
+        return true;
+      }
+      return false;
+    };
+    const scheduleTimeout = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(checkInactivity, INACTIVITY_TIMEOUT_MS);
+    };
+    const recordActivity = () => {
+      if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastActivityAt < 1000) return;
+      if (checkInactivity()) return;
+      lastActivityAt = now;
+      scheduleTimeout();
+    };
+    const checkWhenVisible = () => {
+      if (document.visibilityState === "visible") checkInactivity();
+    };
+
+    scheduleTimeout();
+    const activityEvents = ["pointerdown", "pointermove", "keydown", "touchstart", "scroll"];
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, recordActivity, { passive: true }));
+    document.addEventListener("visibilitychange", checkWhenVisible);
+    window.addEventListener("focus", checkWhenVisible);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, recordActivity));
+      document.removeEventListener("visibilitychange", checkWhenVisible);
+      window.removeEventListener("focus", checkWhenVisible);
+    };
+  }, [currentUser?.id, currentUser?.role, currentUser?.uid]);
+
   useEffect(() => { setSecuritySession(currentUser?.uid || "", accessToken || ""); }, [currentUser?.uid, accessToken]);
   useEffect(() => {
     let terminating = false;

@@ -4,6 +4,7 @@ import { ArrowLeft, Bell, CalendarDays, Clock3, LogOut, PawPrint, Users, X } fro
 import { useApp } from "../../context/AppContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
+import { useNotificationSound } from "../../utils/notificationSound.js";
 import { BrandMark } from "../BrandMark.jsx";
 import { resolveHomePath } from "../../utils/roleUtils.js";
 
@@ -228,6 +229,7 @@ export function PortalLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const notificationToastStateRef = useRef(null);
+  useNotificationSound(visibleNotifications, currentUser.id || currentUser.uid);
 
   if (notificationToastStateRef.current?.userId !== currentUser.uid) {
     notificationToastStateRef.current = {

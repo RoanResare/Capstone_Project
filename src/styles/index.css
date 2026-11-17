@@ -29,6 +29,21 @@ textarea:disabled,
   cursor: not-allowed;
 }
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href] {
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, filter 150ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover,
+  a[href]:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.025);
+  }
+}
+
 /* Consistent keyboard feedback across public and authenticated screens. */
 :where(button, a[href], input, select, textarea, [tabindex]):focus-visible {
   outline: 3px solid rgba(45, 155, 155, 0.58);
@@ -36,8 +51,9 @@ textarea:disabled,
 }
 
 button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
 a[href]:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.99);
 }
 
 /* Opt-in lift for interactive surfaces; hover-only devices avoid stuck touch states. */

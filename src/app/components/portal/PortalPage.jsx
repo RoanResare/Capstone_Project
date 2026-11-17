@@ -555,6 +555,12 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
   const [photoOpen, setPhotoOpen] = useState(false);
   const { state } = useApp();
   const associatedPet = resolveAppointmentPetPhoto(state.petRecords, appointment);
+  const activeStaffAccounts = (Array.isArray(state.users) ? state.users : []).filter((user) =>
+    user?.role === "staff" && String(user.accountStatus || user.status || "").toLowerCase() === "active");
+  const matchingAssignedStaff = activeStaffAccounts.find((user) =>
+    user.id === appointment?.assignedStaffId || (!appointment?.assignedStaffId && user.name === appointment?.assignedStaff));
+  const assignedStaffSelectValue = appointment?.assignedStaffId || matchingAssignedStaff?.id ||
+    (appointment?.assignedStaff ? "__legacy_assigned_staff__" : "");
   const [sessionNow, setSessionNow] = useState(Date.now());
   useEffect(() => {
     setSessionNow(Date.now());
@@ -668,9 +674,17 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
                 <Clock3 size={16} />
                 <span>Booked: {formatDateTime(appointment.createdAt, "Booking timestamp unavailable")}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <Clock3 size={16} />
-                <span>Assigned staff: {appointment.assignedStaff || "Not assigned"}</span>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <UserRound size={16} className="shrink-0" />
+                <label htmlFor={`appointment-assigned-staff-${appointment.id}`} className="shrink-0">Assigned staff</label>
+                <select id={`appointment-assigned-staff-${appointment.id}`} value={assignedStaffSelectValue}
+                  disabled={isSaving} onChange={(event) => updateAppointment(appointment.id, { assignedStaffId: event.target.value })}
+                  className="min-w-0 rounded-lg border border-[#D9E7E7] bg-white px-3 py-2 text-sm font-semibold text-[#365057] disabled:opacity-60">
+                  <option value="">To be assigned</option>
+                  {appointment.assignedStaff && (!matchingAssignedStaff || assignedStaffSelectValue === "__legacy_assigned_staff__") &&
+                    <option value={assignedStaffSelectValue}>{appointment.assignedStaff}</option>}
+                  {activeStaffAccounts.map((staff) => <option key={staff.id} value={staff.id}>{staff.fullName || staff.name}</option>)}
+                </select>
               </div>
             </div>
           </div>

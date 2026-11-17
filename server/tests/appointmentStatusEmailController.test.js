@@ -111,7 +111,7 @@ test("customer cancellation and unchanged reads/assignment edits never enqueue s
   assert.equal(app.jobs().length, 0);
   await app.save({ status: "Cancelled" }, "customer"); assert.equal(app.jobs().length, 0);
 });
-test("rescheduling, assignment, and detail updates create one authenticated audit event each", async () => {
+test("rescheduling and detail updates create authenticated audit events while assignment remains historical", async () => {
   const app = fixture();
   await app.save({ scheduleDate: "2030-02-02" }, "staff");
   let events = app.records.get("appointments/booking").lifecycleEvents;
@@ -122,13 +122,12 @@ test("rescheduling, assignment, and detail updates create one authenticated audi
   assert.equal(app.records.get("appointments/booking").lifecycleEvents.length, 1);
   await app.save({ assignedStaff: "Taylor Staff", actorName: "Spoofed Name" }, "staff");
   events = app.records.get("appointments/booking").lifecycleEvents;
-  assert.equal(events[1].action, "Staff assigned");
-  assert.equal(events[1].actorId, "employee");
-  assert.equal(events[1].actorName, "Sam Staff");
+  assert.equal(events.length, 1, "assignment payloads cannot change or create an assignment audit event");
+  assert.equal(app.records.get("appointments/booking").assignedStaff, undefined);
   await app.save({ notes: "Updated by clinic" }, "staff");
   events = app.records.get("appointments/booking").lifecycleEvents;
-  assert.equal(events[2].action, "Appointment details updated");
-  assert.equal(events[2].actorName, "Sam Staff");
+  assert.equal(events[1].action, "Appointment details updated");
+  assert.equal(events[1].actorName, "Sam Staff");
 });
 test("email failure leaves the committed staff decision intact", async () => {
   const app = fixture(); await app.save({ status: "Approved", customerEmail: "wrong@example.invalid", customerId: "request-supplied-account" });

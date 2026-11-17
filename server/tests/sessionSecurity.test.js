@@ -711,20 +711,16 @@ test("new customer bookings create one persistent appointment notification for A
   assert.equal(Object.hasOwn(notification, "phone"), false);
 });
 
-test("admin and staff must assign staff before confirmation or acceptance", async () => {
+test("admin and staff can confirm appointments without assignment and keep historical assignments read-only", async () => {
   for (const role of ["admin", "staff"]) {
     for (const status of ["Confirmed", "Accepted"]) {
       const fixture = appointmentFixture({ existing: { status: "Pending" } });
-      for (const assignedStaff of [undefined, "", "   "]) {
-        await assert.rejects(fixture.save({ status, assignedStaff }, role), { statusCode: 400 });
-      }
-      assert.equal(fixture.writes.length, 0);
-      await fixture.save({ status, assignedStaff: "Active Staff" }, role);
+      await fixture.save({ status }, role);
       assert.equal(fixture.writes.length, 2);
       assert.equal(fixture.writes.filter(write => write.notificationType === "appointment-status-email").length, 1);
       assert.equal(fixture.writes.find(write => write.notificationType === "appointment-status-email").status, "Approved");
       const savedAppointment = fixture.writes.find(write => !write.notificationType);
-      assert.equal(savedAppointment.assignedStaff, "Active Staff");
+      assert.equal(savedAppointment.assignedStaff || "", "");
       const audit = savedAppointment.lifecycleEvents.at(-1);
       assert.equal(audit.actorId, "user");
       assert.equal(audit.actorName, role === "admin" ? "Admin Test" : "Staff Test");
@@ -732,7 +728,8 @@ test("admin and staff must assign staff before confirmation or acceptance", asyn
     }
   }
   const fixture = appointmentFixture({ existing: { status: "Confirmed", assignedStaff: "Staff" } });
-  await assert.rejects(fixture.save({ status: "Confirmed", assignedStaff: "" }, "admin"), { statusCode: 400 });
+  await fixture.save({ status: "Confirmed", assignedStaff: "" }, "admin");
+  assert.equal(fixture.writes.find(write => !write.notificationType).assignedStaff, "Staff");
 });
 
 test("disabled slots reject new bookings and rescheduling; reopened slots accept bookings", async () => {

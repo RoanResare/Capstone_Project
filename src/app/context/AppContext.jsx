@@ -453,12 +453,6 @@ function normalizeAppointment(appointment) {
     typeof current.status === "string" && current.status.trim()
       ? current.status.trim()
       : "Pending";
-  const shouldExpire =
-    ["Pending", "Accepted", "Approved", "Confirmed"].includes(rawStatus) &&
-    !current.sessionStartedAt &&
-    resolvedSchedule &&
-    resolvedSchedule.getTime() < Date.now();
-
   return {
     ...current,
     service: formatAppointmentService(current.service),
@@ -473,7 +467,7 @@ function normalizeAppointment(appointment) {
         ? toLocalTimeKey(resolvedSchedule)
         : rawScheduleTime,
     schedule: resolvedSchedule ? resolvedSchedule.toISOString() : null,
-    status: appointmentStatusLabel(shouldExpire ? "No Show" : rawStatus),
+    status: appointmentStatusLabel(rawStatus),
     assignedStaff:
       typeof current.assignedStaff === "string" && current.assignedStaff.trim()
         ? current.assignedStaff.trim()
@@ -2500,24 +2494,12 @@ export function AppProvider({ children }) {
     },
     async updateAppointment(id, updates, actorName) {
       const existingAppointment = state.appointments.find((appointment) => appointment.id === id);
-      const nextUpdates = {
-        ...updates,
-        assignedStaff:
-          updates?.status === "Completed" && !updates.assignedStaff && !existingAppointment?.assignedStaff
-            ? actorName || currentUser?.name || "Clinic staff"
-            : updates.assignedStaff,
-      };
-      if (typeof nextUpdates.assignedStaff === "undefined") {
-        delete nextUpdates.assignedStaff;
-      }
+      const nextUpdates = { ...updates };
       const nextAppointment = existingAppointment
         ? normalizeAppointment({ ...existingAppointment, ...nextUpdates })
         : null;
 
       if (!nextAppointment) return false;
-      if (["Confirmed", "Accepted"].includes(nextAppointment.status) && !nextAppointment.assignedStaff?.trim()) {
-        throw new Error("Assign a staff member before confirming the appointment.");
-      }
       const savedAppointment = await saveAppointmentDocument(nextAppointment);
       const sessionAction = nextUpdates.sessionAction;
       delete nextUpdates.sessionAction;

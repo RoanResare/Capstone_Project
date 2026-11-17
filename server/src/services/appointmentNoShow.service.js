@@ -27,25 +27,22 @@ function clinicDate(now = new Date()) {
   }).format(now);
 }
 
-function hasAppointmentTimePassed(appointment, today, now) {
+function hasAppointmentDayPassed(appointment, today) {
   const date = String(appointment.scheduleDate || "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  if (date < today) return true;
-  if (date > today) return false;
-  const time = String(appointment.scheduleTime || "").slice(0, 5);
-  if (!/^\d{2}:\d{2}$/.test(time)) return false;
-  const scheduledAt = new Date(`${date}T${time}:00+08:00`);
-  return Number.isFinite(scheduledAt.getTime()) && scheduledAt.getTime() < now.getTime();
+  const scheduledDay = new Date(`${date}T00:00:00+08:00`);
+  if (!Number.isFinite(scheduledDay.getTime()) || clinicDate(scheduledDay) !== date) return false;
+  return date < today;
 }
 
 async function markAppointmentNoShow(entry, now) {
   const appointmentRef = entry.ref;
-  await db.runTransaction(async (transaction) => {
+  return db.runTransaction(async (transaction) => {
     const currentSnapshot = await transaction.get(appointmentRef);
     if (!currentSnapshot.exists) return false;
     const current = currentSnapshot.data() || {};
-    if (!ACTIVE_BOOKING_STATUSES.includes(current.status) || current.sessionStartedAt ||
-        !hasAppointmentTimePassed(current, clinicDate(now), now)) return false;
+    if (!ACTIVE_BOOKING_STATUSES.includes(current.status) || current.sessionStartedAt || current.sessionEndedAt ||
+        !hasAppointmentDayPassed(current, clinicDate(now))) return false;
 
     const slotRef = current.slotId ? db.collection("availabilitySlots").doc(current.slotId) : null;
     const slotSnapshot = slotRef ? await transaction.get(slotRef) : null;
@@ -68,7 +65,7 @@ async function markAppointmentNoShow(entry, now) {
       transaction.set(notificationRef, {
         id: notificationRef.id,
         title: "Appointment marked No Show",
-        message: `${current.petName || "Your pet"}'s appointment was marked No Show because the scheduled time passed without a session being started.`,
+        message: `${current.petName || "Your pet"}'s appointment was marked No Show because the scheduled day passed without a session being started.`,
         targetRoles: ["customer"],
         targetUserId: customerId,
         email: customerEmail,
@@ -79,7 +76,7 @@ async function markAppointmentNoShow(entry, now) {
         serviceName: current.service || "",
         appointmentDate: current.scheduleDate || "",
         appointmentTime: current.scheduleTime || "",
-        actorName: "System",
+        actorName: "Automatic appointment monitor",
         actorRole: "system",
         level: "info",
         readBy: [],
@@ -97,7 +94,7 @@ async function markPastAppointmentsNoShow(now = new Date()) {
   while (true) {
     let dueQuery = db.collection("appointments")
       .where("status", "in", ACTIVE_BOOKING_STATUSES)
-      .where("scheduleDate", "<=", today)
+      .where("scheduleDate", "<", today)
       .orderBy("scheduleDate", "asc")
       .limit(NO_SHOW_BATCH_SIZE);
     if (cursor) dueQuery = dueQuery.startAfter(cursor);
@@ -105,9 +102,8 @@ async function markPastAppointmentsNoShow(now = new Date()) {
     if (snapshot.empty) break;
     for (const entry of snapshot.docs) {
       const data = entry.data() || {};
-      if (data.sessionStartedAt || !hasAppointmentTimePassed(data, today, now)) continue;
-      await markAppointmentNoShow(entry, now);
-      changed += 1;
+      if (data.sessionStartedAt || data.sessionEndedAt || !hasAppointmentDayPassed(data, today)) continue;
+      if (await markAppointmentNoShow(entry, now)) changed += 1;
     }
     if (snapshot.size < NO_SHOW_BATCH_SIZE) break;
     cursor = snapshot.docs.at(-1);
@@ -126,4 +122,4 @@ function startAppointmentNoShowUpdates() {
   return timer;
 }
 
-module.exports = { markPastAppointmentsNoShow, startAppointmentNoShowUpdates };
+module.exports = { clinicDate, hasAppointmentDayPassed, markPastAppointmentsNoShow, startAppointmentNoShowUpdates };

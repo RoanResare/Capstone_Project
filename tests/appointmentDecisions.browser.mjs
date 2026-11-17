@@ -26,7 +26,6 @@ const appMock = `
   ].map(([id, petName, status, day, time], index) => ({id, petName, status, scheduleDate: month + '-' + day, scheduleTime: time,
     customerId: 'customer', customerEmail: 'customer@example.com', ownerName: 'Customer', petType: 'Dog', service: 'Vaccination',
     serviceId: 'vaccination', assignedStaff: status === 'Pending' ? '' : 'Staff A', createdAt: new Date(Date.now() - index * 100000).toISOString()}));
-  records.find(record=>record.id==='approve').assignedStaff='Staff A';
   let snapshot;
   const notify = () => listeners.forEach(fn => fn());
   const updateAppointment = async (id, changes) => {snapshot = {...snapshot, state: {...snapshot.state, appointments: snapshot.state.appointments.map(record => record.id === id ? {...record, ...changes} : record)}}; notify(); return {ok:true,emailNotification:changes.status ? {state:'pending',eventId:'test-event'} : null};};
@@ -78,7 +77,9 @@ try {
  const list=page.getByRole('heading',{name:'Manage appointments',exact:true}).locator('xpath=ancestor::section[1]');
  await page.getByRole('heading',{name:'Manage appointments',exact:true}).waitFor({timeout:90000});
  await list.getByRole('button',{name:/Approval Test/}).click();
- await page.getByRole('dialog',{name:'Appointment details',exact:true}).getByRole('button',{name:'Approve appointment',exact:true}).click();
+ const approvalDialog=page.getByRole('dialog',{name:'Appointment details',exact:true});
+ assert.equal(await approvalDialog.getByText('Assign staff',{exact:true}).count(),0);
+ await approvalDialog.getByRole('button',{name:'Approve appointment',exact:true}).click();
  await page.getByRole('dialog',{name:'Approve appointment',exact:true}).getByRole('button',{name:'Confirm approval',exact:true}).click();
  await page.waitForFunction(()=>window.__appointmentSnapshot().state.appointments.find(a=>a.id==='approve').status==='Accepted');
  await page.getByRole('button',{name:'Close appointment details',exact:true}).click();

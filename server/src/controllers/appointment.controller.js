@@ -103,10 +103,7 @@ async function saveAppointment(req, res) {
       throw new ApiError(403, "You cannot save appointments.");
     }
     const nextStatus = appointment.status || existing.data?.()?.status;
-    const assignedStaff = String(appointment.assignedStaff ?? existing.data?.()?.assignedStaff ?? "").trim();
-    if (["Confirmed", "Accepted"].includes(nextStatus) && !assignedStaff) {
-      throw new ApiError(400, "Assign a staff member before confirming the appointment.", { code: "STAFF_ASSIGNMENT_REQUIRED" });
-    }
+    const assignedStaff = existing.exists ? String(existing.data()?.assignedStaff || "").trim() : "";
     if (user.role === "customer" && ["Confirmed", "Accepted", "Completed", "Approved"].includes(nextStatus)) {
       throw new ApiError(403, "Customers cannot confirm or approve appointments.");
     }
@@ -188,7 +185,7 @@ async function saveAppointment(req, res) {
         !["Accepted", "Approved", "Confirmed"].includes(previous.status)) {
       throw new ApiError(400, "Only approved appointments can be marked completed.");
     }
-    const nextAppointment = { ...previous, ...appointment };
+    const nextAppointment = { ...previous, ...appointment, assignedStaff };
     const changedSchedule = ["slotId", "scheduleDate", "scheduleTime", "schedule"].some(
       (field) => nextAppointment[field] !== previous[field],
     );
@@ -356,9 +353,8 @@ async function saveAppointment(req, res) {
         reservationUpdatedAt: new Date().toISOString(),
       }, {merge:true});
     }
-    const { sessionAction, ...payload } = appointment;
+    const { sessionAction, assignedStaff: _requestedAssignedStaff, ...payload } = appointment;
     savedAppointment = { ...previous, ...payload, ...serviceFields, ...sessionFields, ...decisionFields, updatedAt: new Date().toISOString() };
-    if(savedAppointment.status==="Expired")savedAppointment.status="No Show";
     const lifecycleEvents = Array.isArray(previous.lifecycleEvents) ? previous.lifecycleEvents : [];
     const auditEvent = buildAppointmentAuditEvent({ isNew: !existing.exists, previous, appointment: savedAppointment, actor: user, createdAt: savedAppointment.updatedAt });
     savedAppointment.lifecycleEvents = auditEvent ? [...lifecycleEvents, auditEvent] : lifecycleEvents;

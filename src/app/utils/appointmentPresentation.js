@@ -47,6 +47,26 @@ export function compareAppointmentSchedule(left, right) {
     String(left.id || "").localeCompare(String(right.id || ""));
 }
 
+function appointmentCreationTime(appointment) {
+  const value = appointment?.created_at ?? appointment?.createdAt;
+  if (value && typeof value.toDate === "function") return value.toDate().getTime();
+  if (value && typeof value.toMillis === "function") return value.toMillis();
+  if (value && typeof value === "object" && Number.isFinite(value.seconds)) {
+    return value.seconds * 1000 + Math.floor((Number(value.nanoseconds) || 0) / 1e6);
+  }
+  const parsed = value instanceof Date ? value.getTime() : Date.parse(value || "");
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function compareAppointmentCreatedNewest(left, right) {
+  const leftCreated = appointmentCreationTime(left);
+  const rightCreated = appointmentCreationTime(right);
+  if (leftCreated === null && rightCreated === null) return 0;
+  if (leftCreated === null) return 1;
+  if (rightCreated === null) return -1;
+  return rightCreated - leftCreated;
+}
+
 export function filterAppointmentList(appointments, status = "All", search = "") {
   const query = search.trim().toLowerCase();
   return appointments.filter((appointment) =>

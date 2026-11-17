@@ -484,7 +484,7 @@ function normalizeAppointment(appointment) {
             : "",
     reminderEnabled:
       typeof current.reminderEnabled === "boolean" ? current.reminderEnabled : true,
-    createdAt: parseDateValue(current.createdAt)?.toISOString() || new Date().toISOString(),
+    createdAt: parseDateValue(current.created_at ?? current.createdAt)?.toISOString() || "",
   };
 }
 

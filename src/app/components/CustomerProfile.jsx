@@ -26,7 +26,7 @@ import { BrandMark } from "./BrandMark.jsx";
 import { KAPON_SERVICE_ID, KAPON_UNAVAILABLE_MESSAGE } from "../../../shared/lowCostKaponPromo.mjs";
 import { containsInappropriatePetText, getPetTextErrors } from "../../../shared/petTextValidation.mjs";
 import { getTextValidationErrors, ACCOUNT_TEXT_FIELDS } from "../../../shared/textModeration.mjs";
-import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentSchedule } from "../utils/appointmentPresentation.js";
+import { APPOINTMENT_STATUSES, appointmentStatusLabel, filterAppointmentList, paginateAppointmentList, compareAppointmentCreatedNewest } from "../utils/appointmentPresentation.js";
 import { useApp } from "../context/AppContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -263,9 +263,10 @@ function NotificationDropdown({ notifications, currentUserId, onReadNotification
     <div className="relative">
       <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen}
         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-        className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/25 bg-white/15 px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-        <span className="relative inline-flex"><Bell size={19} />{unreadCount > 0 && <span className="absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#D94A59] px-1 text-[10px] font-bold leading-none text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}</span>
+        className="inline-flex h-11 items-center gap-2.5 rounded-2xl bg-[#EEF6F6] px-4 text-sm font-semibold text-[#24444A] shadow-sm transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+        <Bell size={19} className="shrink-0 text-[#365F66]" />
         <span>Notifications</span>
+        {unreadCount > 0 && <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-[#D94A59] px-2 text-xs font-bold leading-none text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
         <ChevronDown size={16} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
@@ -452,7 +453,8 @@ export function CustomerProfile() {
             appointment.customerId === customer?.uid ||
             appointment.customerEmail?.toLowerCase() === customer?.email?.toLowerCase(),
         )
-        .sort(compareAppointmentSchedule),
+        .slice()
+        .sort(compareAppointmentCreatedNewest),
     [customer?.email, customer?.uid, state.appointments],
   );
   const filteredCustomerAppointments = filterAppointmentList(customerAppointments, appointmentFilter, appointmentSearch);

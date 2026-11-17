@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterAppointmentList, paginateAppointmentList, groupPendingAppointments, appointmentStatusLabel, appointmentStart, compareAppointmentSchedule, APPOINTMENT_COLORS } from "../src/app/utils/appointmentPresentation.js";
+import { APPOINTMENT_STATUSES, filterAppointmentList, paginateAppointmentList, groupPendingAppointments, appointmentStatusLabel, appointmentStart, compareAppointmentSchedule, compareAppointmentCreatedNewest, APPOINTMENT_COLORS } from "../src/app/utils/appointmentPresentation.js";
 
 test("customer pagination returns three appointments without losing the rest", () => {
   const records = Array.from({ length: 7 }, (_, index) => ({ id: String(index) }));
@@ -40,7 +40,7 @@ test("calendar statuses follow amber, green, dark-green and red color groups", (
   assert.equal(APPOINTMENT_COLORS["No Show"].border, "#9CA3AF");
 });
 
-test("customer appointments sort from earliest to latest scheduled date and time", () => {
+test("schedule comparator sorts by scheduled date and time", () => {
   const records = [
     { id: "last", scheduleDate: "2030-10-17", scheduleTime: "09:00" },
     { id: "afternoon", scheduleDate: "2030-10-13", scheduleTime: "14:00" },
@@ -49,4 +49,25 @@ test("customer appointments sort from earliest to latest scheduled date and time
     { id: "unscheduled" },
   ];
   assert.deepEqual(records.sort(compareAppointmentSchedule).map((record) => record.id), ["morning", "afternoon", "middle", "last", "unscheduled"]);
+});
+
+test("customer appointment ordering stays newest-first across All, status, and search filters", () => {
+  const records = [
+    { id: "older-pending", status: "Pending", petName: "Milo", createdAt: "2026-11-12T10:00:00+08:00", scheduleDate: "2027-02-01" },
+    { id: "newest-approved", status: "Approved", petName: "Luna", created_at: "2026-11-15T20:00:00+08:00", scheduleDate: "2026-11-20" },
+    { id: "middle-pending", status: "Pending", petName: "Milo", createdAt: "2026-11-14T15:00:00+08:00", scheduleDate: "2026-11-16" },
+    { id: "missing-time", status: "Cancelled", petName: "Nori" },
+  ];
+  const newestFirst = records.slice().sort(compareAppointmentCreatedNewest);
+
+  assert.deepEqual(newestFirst.map((record) => record.id), ["newest-approved", "middle-pending", "older-pending", "missing-time"]);
+  for (const status of ["All", ...APPOINTMENT_STATUSES]) {
+    const result = filterAppointmentList(newestFirst, status);
+    assert.deepEqual(result.map((record) => record.id), newestFirst
+      .filter((record) => status === "All" || appointmentStatusLabel(record.status) === status)
+      .map((record) => record.id));
+  }
+  assert.deepEqual(filterAppointmentList(newestFirst, "All", "milo").map((record) => record.id), ["middle-pending", "older-pending"]);
+  assert.deepEqual(paginateAppointmentList(newestFirst, 0, 2).appointments.map((record) => record.id), ["newest-approved", "middle-pending"]);
+  assert.deepEqual(paginateAppointmentList(newestFirst, 1, 2).appointments.map((record) => record.id), ["older-pending", "missing-time"]);
 });

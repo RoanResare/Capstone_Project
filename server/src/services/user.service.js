@@ -112,7 +112,7 @@ function assertValidUsername(username = "") {
 
 function normalizeUserPayload(payload = {}, documentId = "") {
   const uid = normalizeString(payload.uid || payload.id || documentId);
-  const fullName = normalizeString(payload.fullName || payload.name);
+  const fullName = normalizeString(payload.fullName || payload.full_name || payload.name);
   const normalizedEmail =
     typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
   const storedStatus = normalizeString(payload.accountStatus || payload.account_status || payload.status).toLowerCase();

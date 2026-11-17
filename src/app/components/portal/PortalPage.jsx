@@ -692,32 +692,32 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
           ) : <p className="mt-2 text-sm text-[#607277]">Service form details are not available for this appointment.</p>}
         </section>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <button
+        <div className="flex flex-wrap gap-3">
+          {canApproveAppointment(appointment.status) && <button
             type="button"
             onClick={() => requestStatusChange("Accepted")}
-            disabled={isSaving || !canApproveAppointment(appointment.status)}
+            disabled={isSaving}
             title="Approve appointment"
-            className="rounded-2xl bg-[#E8F7EE] px-4 py-2.5 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+            className="min-w-48 flex-1 rounded-2xl bg-[#E8F7EE] px-4 py-2.5 text-sm font-semibold text-[#1D7C45] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Approve appointment
-          </button>
-          <button
+          </button>}
+          {canChangeAppointmentStatus(appointment.status, "Rejected") && <button
             type="button"
-            disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Rejected")}
+            disabled={isSaving}
             onClick={() => requestStatusChange("Rejected")}
-            className="rounded-2xl bg-[#FFF4DF] px-4 py-2.5 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+            className="min-w-48 flex-1 rounded-2xl bg-[#FFF4DF] px-4 py-2.5 text-sm font-semibold text-[#A56A0F] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Reject appointment
-          </button>
-          <button
+          </button>}
+          {canChangeAppointmentStatus(appointment.status, "Cancelled") && <button
             type="button"
-            disabled={isSaving || !canChangeAppointmentStatus(appointment.status, "Cancelled")}
+            disabled={isSaving}
             onClick={() => requestStatusChange("Cancelled")}
-            className="rounded-2xl bg-[#FBECEF] px-4 py-2.5 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
+            className="min-w-48 flex-1 rounded-2xl bg-[#FBECEF] px-4 py-2.5 text-sm font-semibold text-[#B23949] disabled:cursor-not-allowed disabled:bg-[#F1F5F5] disabled:text-[#91A0A3]"
           >
             Cancel appointment
-          </button>
+          </button>}
         </div>
 
         {(canStartSession || appointment.sessionStartedAt) && (
@@ -900,7 +900,7 @@ function AppointmentsWorkspace({
       return false;
     }
     try {
-      const result = await updateAppointment(appointmentId, updates, currentUser.name);
+      const result = await updateAppointment(appointmentId, updates, currentUser.fullName || currentUser.name);
       if (result === false) return false;
       if (["Accepted", "Confirmed", "Approved", "Rejected", "Cancelled"].includes(updates.status)) {
         const label = ["Accepted", "Confirmed"].includes(updates.status) ? "approved" : updates.status.toLowerCase();

@@ -216,7 +216,8 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
   const appointments = Array.isArray(state.appointments) ? state.appointments : [];
   const hasUnavailableKapon = !kaponPromoAvailable && petSelections.some((selection) =>
     selectedServiceIds(selection).includes(KAPON_SERVICE_ID));
-  const selectedPricelists = getSelectedPricelistCategories(petSelections.flatMap(selectedServiceIds));
+  const bookingServiceIds = [...new Set(petSelections.flatMap(selectedServiceIds).filter(Boolean))];
+  const selectedPricelists = getSelectedPricelistCategories(bookingServiceIds);
   const activePricelist = selectedPricelists[pricelistIndex] || null;
   useEffect(() => {
     if (pricelistIndex >= selectedPricelists.length) setPricelistIndex(Math.max(selectedPricelists.length - 1, 0));
@@ -239,9 +240,10 @@ export function AppointmentBooking({ embedded = false, initialServiceId = "", se
           return { ...slot, bookedCount, remaining: Math.max(getBlockCapacity(slot) - bookedCount, 0) };
         })
         .filter(isBookableFutureSlot)
+        .filter((slot) => getUnavailableServiceIds(bookingServiceIds, slot.date).length === 0)
         .filter((slot) => slot.remaining > 0)
         .sort((left, right) => `${left.date} ${left.time}`.localeCompare(`${right.date} ${right.time}`)),
-    [appointments, availabilitySlots],
+    [appointments, availabilitySlots, bookingServiceIds.join("|")],
   );
   const fullyBookedDates = useMemo(() => {
     const bookedByDate = new Map();

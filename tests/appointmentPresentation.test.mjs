@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { APPOINTMENT_STATUSES, filterAppointmentList, paginateAppointmentList, groupPendingAppointments, appointmentStatusLabel, appointmentStart, compareAppointmentSchedule, compareAppointmentCreatedNewest, APPOINTMENT_COLORS } from "../src/app/utils/appointmentPresentation.js";
+import { APPOINTMENT_STATUSES, filterAppointmentList, paginateAppointmentList, groupPendingAppointments, appointmentStatusLabel, appointmentStart, compareAppointmentSchedule, compareAppointmentCreatedNewest, getCustomerAppointmentStats, findNearestUpcomingAppointment, APPOINTMENT_COLORS } from "../src/app/utils/appointmentPresentation.js";
 
 test("customer pagination returns three appointments without losing the rest", () => {
   const records = Array.from({ length: 7 }, (_, index) => ({ id: String(index) }));
@@ -70,4 +70,20 @@ test("customer appointment ordering stays newest-first across All, status, and s
   assert.deepEqual(filterAppointmentList(newestFirst, "All", "milo").map((record) => record.id), ["middle-pending", "older-pending"]);
   assert.deepEqual(paginateAppointmentList(newestFirst, 0, 2).appointments.map((record) => record.id), ["newest-approved", "middle-pending"]);
   assert.deepEqual(paginateAppointmentList(newestFirst, 1, 2).appointments.map((record) => record.id), ["older-pending", "missing-time"]);
+});
+
+test("customer dashboard counts owned records by existing statuses and finds nearest eligible booking", () => {
+  const appointments = [
+    { id: "pending-later", status: "Pending", scheduleDate: "2026-11-20", scheduleTime: "09:00" },
+    { id: "confirmed-nearest", status: "Confirmed", scheduleDate: "2026-11-18", scheduleTime: "14:00" },
+    { id: "approved-later", status: "Approved", scheduleDate: "2026-11-19", scheduleTime: "09:00" },
+    { id: "completed", status: "Completed", scheduleDate: "2026-11-17", scheduleTime: "12:00" },
+    { id: "cancelled", status: "Cancelled", scheduleDate: "2026-11-17", scheduleTime: "10:00" },
+    { id: "past", status: "Pending", scheduleDate: "2026-11-16", scheduleTime: "10:00" },
+  ];
+  assert.deepEqual(getCustomerAppointmentStats(appointments), { total: 6, pending: 2, confirmed: 2, completed: 1 });
+  const nearest = findNearestUpcomingAppointment(appointments, Date.parse("2026-11-17T00:00:00+08:00"));
+  assert.equal(nearest.appointment.id, "confirmed-nearest");
+  assert.equal(nearest.startsAt.toISOString(), "2026-11-18T06:00:00.000Z");
+  assert.equal(findNearestUpcomingAppointment([], Date.now()), null);
 });

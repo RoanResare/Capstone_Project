@@ -2,21 +2,26 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildAppointmentHistory } from "../shared/appointmentHistory.mjs";
 
-test("admin and staff history includes only terminal appointment events in newest order", () => {
+test("admin and staff history includes appointment audit events and legacy terminal events in newest order", () => {
   const appointments = [
     { id: "pending", status: "Pending", petName: "Pending pet" },
     { id: "approved", status: "Confirmed" },
     { id: "completed", status: "Completed", petName: "Milo", updatedAt: "2030-01-02T12:00:00Z",
       lifecycleEvents: [{ status: "Completed", actorName: "Staff A", actorRole: "staff", createdAt: "2030-01-01T12:00:00Z" }] },
+    { id: "approved", status: "Approved", petName: "Luna", lifecycleEvents: [
+      { status: "Approved", action: "Appointment approved", actorId: "staff-id", actorName: "Staff B", actorRole: "staff", createdAt: "2030-01-05T12:00:00Z" },
+    ] },
     { id: "cancelled", status: "Cancelled", updatedAt: "2030-01-03T12:00:00Z" },
     { id: "rejected", status: "Rejected", updatedAt: "2030-01-02T12:00:00Z", rejectionReason: "Unavailable" },
     { id: "no-show", status: "No-Show", updatedAt: "2030-01-04T12:00:00Z" },
   ];
   for (const role of ["admin", "staff"]) {
     const events = buildAppointmentHistory(appointments, role);
-    assert.deepEqual(events.map(event => event.appointmentId), ["no-show", "cancelled", "rejected", "completed"]);
+    assert.deepEqual(events.map(event => event.appointmentId), ["approved", "no-show", "cancelled", "rejected", "completed"]);
+    assert.equal(events[0].actorName, "Staff B");
+    assert.equal(events[0].action, "Appointment approved");
+    assert.equal(events[3].reason, "Unavailable");
     assert.equal(events.at(-1).actorName, "Staff A");
-    assert.equal(events[2].reason, "Unavailable");
     assert.equal(events.at(-1).createdAt, "2030-01-01T12:00:00Z");
   }
   assert.deepEqual(buildAppointmentHistory(appointments, "customer"), []);

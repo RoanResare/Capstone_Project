@@ -67,6 +67,30 @@ export function compareAppointmentCreatedNewest(left, right) {
   return rightCreated - leftCreated;
 }
 
+export function getCustomerAppointmentStats(appointments = []) {
+  const statuses = appointments.map((appointment) => appointmentStatusLabel(appointment?.status));
+  return {
+    total: appointments.length,
+    pending: statuses.filter((status) => status === "Pending").length,
+    confirmed: statuses.filter((status) => status === "Approved").length,
+    completed: statuses.filter((status) => status === "Completed").length,
+  };
+}
+
+export function findNearestUpcomingAppointment(appointments = [], now = Date.now()) {
+  const nowTime = now instanceof Date ? now.getTime() : Number(now);
+  return appointments
+    .filter((appointment) => ["Pending", "Approved"].includes(appointmentStatusLabel(appointment?.status)))
+    .map((appointment) => {
+      const start = appointmentStart(appointment);
+      const startsAt = start ? Date.parse(`${start}+08:00`) : NaN;
+      return { appointment, startsAt };
+    })
+    .filter(({ startsAt }) => Number.isFinite(startsAt) && startsAt >= nowTime)
+    .sort((left, right) => left.startsAt - right.startsAt)
+    .map(({ appointment, startsAt }) => ({ appointment, startsAt: new Date(startsAt) }))[0] || null;
+}
+
 export function filterAppointmentList(appointments, status = "All", search = "") {
   const query = search.trim().toLowerCase();
   return appointments.filter((appointment) =>

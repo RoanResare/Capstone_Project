@@ -53,7 +53,11 @@ async function markAppointmentNoShow(entry, now) {
     const notificationRef = db.collection("notifications").doc(`appointment-${entry.id}-no-show`);
     const customerEmail = await resolveCustomerEmail(current);
     const updatedAt = now.toISOString();
-    transaction.update(appointmentRef, { status: "No Show", updatedAt });
+    const lifecycleEvents = Array.isArray(current.lifecycleEvents) ? current.lifecycleEvents : [];
+    transaction.update(appointmentRef, { status: "No Show", updatedAt, lifecycleEvents: [...lifecycleEvents, {
+      status: "No Show", action: "Appointment marked No Show", changedFields: ["status"],
+      actorId: "system", actorName: "Automatic appointment monitor", actorRole: "system", createdAt: updatedAt,
+    }] });
     if (slotRef && slotSnapshot?.exists) {
       transaction.set(slotRef, {
         reservationVersion: (Number(slotSnapshot.data()?.reservationVersion) || 0) + 1,

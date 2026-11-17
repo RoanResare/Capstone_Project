@@ -216,13 +216,17 @@ async function saveAppointment(req, res) {
       const {buildClinicalSelections}=await import("../../../shared/clinicalServices.mjs");
       try {
         const selections=nextAppointment.clinicalSelections;
-        if(!Array.isArray(selections))throw new Error("Choose one specific service per clinical category.");
+        if(!Array.isArray(selections))throw new Error("Choose at least one specific service for each selected clinical category.");
         const selectedOptions=selections.filter(item=>!(item?.category==="vaccination"&&item?.serviceId===REQUIRED_VACCINATION_FEE.id));
-        if(new Set(selectedOptions.map(item=>item?.category)).size!==selectedOptions.length)throw new Error("Choose one specific service per clinical category.");
-        serviceFields.clinicalSelections=buildClinicalSelections(nextAppointment.serviceIds,Object.fromEntries(selectedOptions.map(choice=>[choice?.category,choice?.serviceId])),pet.data());
+        const choicesByCategory=selectedOptions.reduce((choices,choice)=>{
+          if(!choice?.category||!choice?.serviceId)throw new Error("Choose valid specific services for the selected appointment categories.");
+          if(nextAppointment.serviceIds.includes(choice.category)) (choices[choice.category] ||= []).push(choice.serviceId);
+          return choices;
+        },{});
+        serviceFields.clinicalSelections=buildClinicalSelections(nextAppointment.serviceIds,choicesByCategory,pet.data());
         serviceFields.service=nextAppointment.serviceIds.map(id=>{
           if(id==="deworming")return dewormingDescription(serviceFields.deworming || nextAppointment.deworming);
-          const choices=serviceFields.clinicalSelections.filter(choice=>choice.category===id);
+          const choices=serviceFields.clinicalSelections.filter(choice=>choice.category===id&&!choice.required);
           const name={vaccination:"Vaccination",consultation:"Consultation","laboratory-testing":"Laboratory Testing",deworming:"Deworming","pet-grooming":"Pet Grooming","low-cost-kapon":"Low Cost Kapon"}[id]||id;
           return choices.length?`${name}: ${choices.map(choice=>choice.name).join(" + ")}`:name;
         }).join(" + ");
@@ -266,9 +270,9 @@ async function saveAppointment(req, res) {
         serviceFields.service = nextAppointment.serviceIds.map(id => {
           if(id === "pet-grooming")return groomingLabel;
           if(id === "deworming")return dewormingDescription(serviceFields.deworming || nextAppointment.deworming);
-          const choice=(serviceFields.clinicalSelections || nextAppointment.clinicalSelections || []).find(choice=>choice.category===id);
+          const choices=(serviceFields.clinicalSelections || nextAppointment.clinicalSelections || []).filter(choice=>choice.category===id&&!choice.required);
           const name={vaccination:"Vaccination",consultation:"Consultation",deworming:"Deworming","low-cost-kapon":"Low Cost Kapon"}[id]||id;
-          return choice?`${name}: ${choice.name}`:name;
+          return choices.length?`${name}: ${choices.map(choice=>choice.name).join(" + ")}`:name;
         }).join(' + ');
         serviceFields.servicePrice = '';
 

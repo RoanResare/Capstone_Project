@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createRequire} from "node:module";
-import {PRICELIST_CATEGORIES,validatePricelistFile,MAX_PRICELIST_BYTES} from "../shared/pricelists.mjs";
+import {PRICELIST_CATEGORIES,getSelectedPricelistCategories,validatePricelistFile,MAX_PRICELIST_BYTES} from "../shared/pricelists.mjs";
 const require=createRequire(import.meta.url);
 const {validateImage}=require("../server/src/utils/pricelistImage.js");
 test("five independent pricelist category IDs",()=>{
  assert.deepEqual(PRICELIST_CATEGORIES.map(c=>c.id),["vaccination","deworming","consultation","laboratory-testing","pet-grooming"]);
+ assert.deepEqual(getSelectedPricelistCategories(["pet-grooming","vaccination","pet-grooming","low-cost-kapon"]).map(c=>c.id),["vaccination","pet-grooming"]);
 });
 test("client rejects empty, oversized, and unsupported uploads",()=>{
  for(const file of [{type:"image/png",size:0},{type:"image/png",size:MAX_PRICELIST_BYTES+1},{type:"image/svg+xml",size:100}])assert.throws(()=>validatePricelistFile(file));

@@ -1,4 +1,8 @@
 export const PRICELIST_CATEGORIES = [{id:"vaccination",name:"Vaccination"},{id:"deworming",name:"Deworming"},{id:"consultation",name:"Veterinary Services"},{id:"laboratory-testing",name:"Laboratory Testing"},{id:"pet-grooming",name:"Pet Grooming"}];
+export function getSelectedPricelistCategories(serviceIds = []) {
+ const selected = new Set(Array.isArray(serviceIds) ? serviceIds : []);
+ return PRICELIST_CATEGORIES.filter(category => selected.has(category.id));
+}
 export const MAX_PRICELIST_BYTES = 5 * 1024 * 1024;
 // Includes Base64 expansion and prefix, with >100 KiB left for document metadata.
 export const MAX_PRICELIST_DATA_URL_BYTES = 900 * 1024;

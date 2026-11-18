@@ -30,10 +30,9 @@ import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
 import { getActiveAppointmentCountForSlot, getBlockCapacity } from "../../../../shared/bookingServices.mjs";
-import { groupPendingAppointments, appointmentDateKey } from "../../utils/appointmentPresentation.js";
+import { groupPendingAppointments } from "../../utils/appointmentPresentation.js";
 import {
   canApproveAppointment,
-  canCompleteAppointment,
   canChangeAppointmentStatus,
 } from "../../utils/appointmentActions.js";
 import {
@@ -555,13 +554,6 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
   const [photoOpen, setPhotoOpen] = useState(false);
   const { state } = useApp();
   const associatedPet = resolveAppointmentPetPhoto(state.petRecords, appointment);
-  const [sessionNow, setSessionNow] = useState(Date.now());
-  useEffect(() => {
-    setSessionNow(Date.now());
-    if (!appointment?.sessionStartedAt || appointment.sessionEndedAt) return;
-    const timer = window.setInterval(() => setSessionNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [appointment?.sessionStartedAt, appointment?.sessionEndedAt]);
   if (!appointment) {
     return (
       <PanelCard
@@ -578,12 +570,7 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
 
   const contactPhone = appointment.contactNumber || "No phone saved";
   const serviceGroups = getAppointmentServiceGroups(appointment);
-  const canComplete = canCompleteAppointment(appointment.status);
   const latestAuditEvent = Array.isArray(appointment.lifecycleEvents) ? appointment.lifecycleEvents.at(-1) : null;
-  const clinicToday = appointmentDateKey({ schedule: new Date(sessionNow).toISOString() });
-  const canStartSession = canComplete && appointmentDateKey(appointment) === clinicToday;
-  const elapsedSeconds = appointment.sessionStartedAt
-    ? Math.max(0, Math.floor(((appointment.sessionEndedAt ? Date.parse(appointment.sessionEndedAt) : sessionNow) - Date.parse(appointment.sessionStartedAt)) / 1000)) : 0;
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
     if (status === "Accepted") { setApprovalOpen(true); return; }
@@ -720,15 +707,12 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
           </button>}
         </div>
 
-        {(canStartSession || appointment.sessionStartedAt) && (
-          <div className="space-y-3 rounded-2xl border border-[#D9E7E7] bg-[#F8FCFC] p-4">
-            {appointment.sessionStartedAt && <p className="text-sm text-[#365057]" role="timer">Session duration: {Math.floor(elapsedSeconds / 3600)}h {Math.floor(elapsedSeconds / 60) % 60}m {elapsedSeconds % 60}s</p>}
-            {canComplete && !appointment.sessionEndedAt && <button type="button" disabled={isSaving}
-              onClick={() => updateAppointment(appointment.id, { sessionAction: appointment.sessionStartedAt ? "end" : "start" })}
-              className="rounded-2xl bg-[#173E44] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-              {appointment.sessionStartedAt ? "End session" : "Start session"}
-            </button>}
-          </div>
+        {canChangeAppointmentStatus(appointment.status, "Completed") && (
+          <button type="button" disabled={isSaving}
+            onClick={() => requestStatusChange("Completed")}
+            className="w-full rounded-2xl bg-[#165B3B] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+            Mark as completed
+          </button>
         )}
 
         <div className="rounded-[24px] border border-[#E6F0F0] bg-[#FCFEFE] px-5 py-5">

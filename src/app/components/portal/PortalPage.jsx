@@ -30,7 +30,7 @@ import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { isValidEmail, ILLEGITIMATE_EMAIL_ERROR } from "../../utils/emailValidation.js";
 import { getActiveAppointmentCountForSlot, getBlockCapacity } from "../../../../shared/bookingServices.mjs";
-import { groupPendingAppointments } from "../../utils/appointmentPresentation.js";
+import { appointmentDateKey, groupPendingAppointments } from "../../utils/appointmentPresentation.js";
 import {
   canApproveAppointment,
   canChangeAppointmentStatus,
@@ -571,6 +571,7 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
   const contactPhone = appointment.contactNumber || "No phone saved";
   const serviceGroups = getAppointmentServiceGroups(appointment);
   const latestAuditEvent = Array.isArray(appointment.lifecycleEvents) ? appointment.lifecycleEvents.at(-1) : null;
+  const canCompleteToday = appointmentDateKey(appointment) === appointmentDateKey({ schedule: new Date().toISOString() });
   const requestStatusChange = (status) => {
     if (!canChangeAppointmentStatus(appointment.status, status)) return;
     if (status === "Accepted") { setApprovalOpen(true); return; }
@@ -708,9 +709,10 @@ function AppointmentDetailPanel({ appointment, updateAppointment, onBack, isSavi
         </div>
 
         {canChangeAppointmentStatus(appointment.status, "Completed") && (
-          <button type="button" disabled={isSaving}
+          <button type="button" disabled={isSaving || !canCompleteToday}
             onClick={() => requestStatusChange("Completed")}
-            className="w-full rounded-2xl bg-[#165B3B] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
+            title={!canCompleteToday ? "This appointment can only be completed on its scheduled day." : undefined}
+            className="w-full rounded-2xl bg-[#165B3B] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#6B7280]">
             Mark as completed
           </button>
         )}
